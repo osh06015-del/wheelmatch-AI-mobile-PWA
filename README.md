@@ -302,8 +302,33 @@ Import 화면의 **Environment Variables**에 아래 하나만 넣는다.
 그래서 업로드 전에 긴 변 2048px로 줄인다. 이 축소를 제거하면 갤러리에서 고른
 사진이 배포 환경에서만 413으로 실패한다.
 
-### 환경변수를 바꿨을 때
+### 환경변수를 바꿨을 때 — 반드시 재배포
 
-`NEXT_PUBLIC_*` 변수는 빌드 시점에 번들에 새겨진다. 값을 바꾸면 **반드시
-Redeploy** 해야 반영된다. 서버 전용 변수(`ANTHROPIC_API_KEY`)는 재배포 없이도
-다음 요청부터 적용된다.
+**추가하거나 바꾼 환경변수는 이미 배포된 것에 반영되지 않는다.**
+서버 전용 변수(`ANTHROPIC_API_KEY`)도 예외가 아니다.
+
+> Any change you make to environment variables are not applied to previous
+> deployments, they only apply to new deployments. — [Vercel 문서](https://vercel.com/docs/environment-variables)
+
+키를 넣었는데도 `ANTHROPIC_API_KEY가 설정되지 않았습니다` 오류가 난다면
+재배포를 하지 않은 것이다.
+
+재배포 방법: Vercel 대시보드 → **Deployments** → 최신 배포의 **⋯** →
+**Redeploy**. (또는 아무 커밋이나 push)
+
+### 배포 후 점검
+
+```bash
+U=https://wheelmatch-oh-sehyuhn-s-projects.vercel.app
+
+# 1) 앱이 공개되어 있는가 (302면 Deployment Protection이 켜진 것)
+curl -sI "$U/" | head -1
+
+# 2) API 키가 들어갔는가 — Claude를 호출하지 않으므로 비용 0
+#    400이면 키 있음 / 500이면 키 없음
+curl -s -X POST "$U/api/extract" \
+  -H "Content-Type: application/json" -d '{"type":"grinder"}'
+```
+
+`/api/extract`는 키 확인을 가장 먼저 하고 그 다음에 `image` 필드를 검사한다.
+그래서 image 없이 보내면 API 호출 없이 키 설정 여부만 알 수 있다.
