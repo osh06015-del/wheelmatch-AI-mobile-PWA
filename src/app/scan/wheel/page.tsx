@@ -179,7 +179,10 @@ export default function WheelScanPage() {
         rawText={ocr?.rawText ?? ''}
         onChange={updateField}
       />
-      <ManualConfirmToggle checked={userConfirmed} onChange={setUserConfirmed} />
+      <ManualConfirmToggle
+        checked={userConfirmed}
+        onChange={setUserConfirmed}
+      />
       <div className="flex flex-col gap-3">
         <button
           type="button"

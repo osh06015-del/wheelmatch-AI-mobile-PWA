@@ -101,22 +101,21 @@ export function useInspection(): InspectionStore {
     getServerSnapshot,
   );
 
-  const setGrinder = useCallback(
-    (spec: GrinderSpec, image?: Blob | null) => {
-      writeStored(GRINDER_KEY, spec);
-      setState(
-        image === undefined
-          ? { grinder: spec }
-          : { grinder: spec, grinderImage: image },
-      );
-    },
-    [],
-  );
+  const setGrinder = useCallback((spec: GrinderSpec, image?: Blob | null) => {
+    writeStored(GRINDER_KEY, spec);
+    setState(
+      image === undefined
+        ? { grinder: spec }
+        : { grinder: spec, grinderImage: image },
+    );
+  }, []);
 
   const setWheel = useCallback((spec: WheelSpec, image?: Blob | null) => {
     writeStored(WHEEL_KEY, spec);
     setState(
-      image === undefined ? { wheel: spec } : { wheel: spec, wheelImage: image },
+      image === undefined
+        ? { wheel: spec }
+        : { wheel: spec, wheelImage: image },
     );
   }, []);
 

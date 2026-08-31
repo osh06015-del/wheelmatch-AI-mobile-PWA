@@ -1,0 +1,19 @@
+# 빌드 산출물과 의존성
+node_modules
+.next
+out
+build
+dist
+coverage
+*.tsbuildinfo
+
+# 잠금 파일 / 바이너리
+package-lock.json
+public/icons
+
+# next dev가 자동 생성·관리하는 파일 (포맷하면 매번 diff가 생긴다)
+AGENTS.md
+
+# 비밀값
+.env
+.env.*

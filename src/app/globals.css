@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /*
   현장 작업자가 야외에서 보는 화면이다.
@@ -25,10 +25,10 @@ body {
   font-family:
     system-ui,
     -apple-system,
-    "Segoe UI",
-    "Malgun Gothic",
-    "Apple SD Gothic Neo",
-    "Noto Sans KR",
+    'Segoe UI',
+    'Malgun Gothic',
+    'Apple SD Gothic Neo',
+    'Noto Sans KR',
     sans-serif;
   -webkit-text-size-adjust: 100%;
 }

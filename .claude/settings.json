@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Read(.env)",
+      "Read(.env.local)",
+      "Read(.env.*.local)",
+      "Read(.env.production)",
+      "Read(.env.development)",
+      "Read(package-lock.json)",
+      "Read(tsconfig.tsbuildinfo)",
+      "Edit(tsconfig.tsbuildinfo)",
+      "Read(/.next/**)",
+      "Edit(/.next/**)",
+      "Read(/out/**)",
+      "Read(/dist/**)",
+      "Read(/build/**)",
+      "Read(/coverage/**)",
+      "Edit(AGENTS.md)"
+    ],
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npx prettier *)",
+      "Bash(npx eslint *)",
+      "Bash(npx tsc *)",
+      "Bash(npx vitest *)",
+      "Bash(node scripts/*)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git branch *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/format-on-edit.mjs",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

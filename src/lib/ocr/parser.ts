@@ -4,7 +4,12 @@
 // 단위 테스트로 전부 검증할 수 있다. Phase 1(Claude API)에서도 원주속도 환산은
 // 이 파일의 함수를 그대로 쓴다. 산술은 한 군데에만 둔다.
 
-import type { Confidence, GrinderSpec, WheelPurpose, WheelSpec } from '@/lib/rules/types';
+import type {
+  Confidence,
+  GrinderSpec,
+  WheelPurpose,
+  WheelSpec,
+} from '@/lib/rules/types';
 
 /** 숫자 안의 천 단위 쉼표와 공백을 제거한다. "12,200" → 12200 */
 function toNumber(raw: string): number | null {
@@ -114,16 +119,23 @@ export function parsePurpose(text: string): WheelPurpose {
  * 제조사명(BOSCH 등) 단독은 모델명으로 보지 않는다.
  */
 export function parseModel(text: string): string | null {
-  const match = text.match(/\b([A-Z][A-Z0-9]{1,}[\s-]?\d{2,4}(?:\s*-\s*\d{1,4})?)\b/);
+  const match = text.match(
+    /\b([A-Z][A-Z0-9]{1,}[\s-]?\d{2,4}(?:\s*-\s*\d{1,4})?)\b/,
+  );
   if (!match) return null;
-  return match[1].replace(/\s*-\s*/g, '-').replace(/\s+/g, ' ').trim();
+  return match[1]
+    .replace(/\s*-\s*/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /**
  * 읽어낸 값의 개수로 신뢰도를 정한다.
  * OCR 자체가 신뢰도를 주지 않으므로, 핵심 값이 비어 있을수록 낮게 본다.
  */
-function confidenceFromFields(values: Array<number | string | null>): Confidence {
+function confidenceFromFields(
+  values: Array<number | string | null>,
+): Confidence {
   const found = values.filter((value) => value !== null && value !== '').length;
   if (found === values.length) return 'high';
   if (found === 0) return 'low';

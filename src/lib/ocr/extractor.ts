@@ -83,5 +83,7 @@ export function getOCRMode(): OCRMode {
 }
 
 export function getExtractor(mode: OCRMode = getOCRMode()): OCRExtractor {
-  return mode === 'tesseract' ? new TesseractExtractor() : new ClaudeExtractor();
+  return mode === 'tesseract'
+    ? new TesseractExtractor()
+    : new ClaudeExtractor();
 }

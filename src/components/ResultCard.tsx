@@ -24,9 +24,11 @@ const VERDICT_STYLE: Record<Verdict, string> = {
 };
 
 const VERDICT_NOTE: Record<Verdict, string> = {
-  COMPATIBLE: '표시된 규격끼리는 서로 맞습니다. 아래 안전 체크리스트를 확인하세요.',
+  COMPATIBLE:
+    '표시된 규격끼리는 서로 맞습니다. 아래 안전 체크리스트를 확인하세요.',
   INCOMPATIBLE: '이 조합은 사용하면 안 됩니다. 아래 원인을 확인하세요.',
-  UNDETERMINED: '값이 부족해 판정할 수 없습니다. 재촬영하거나 값을 직접 입력하세요.',
+  UNDETERMINED:
+    '값이 부족해 판정할 수 없습니다. 재촬영하거나 값을 직접 입력하세요.',
 };
 
 function checkIcon(passed: boolean | null): string {
@@ -55,9 +57,7 @@ function CheckRow({ check }: { check: CheckItem }) {
         )}
         <span
           className={`text-base leading-relaxed ${
-            check.passed === false
-              ? 'font-bold text-red-300'
-              : 'text-slate-400'
+            check.passed === false ? 'font-bold text-red-300' : 'text-slate-400'
           }`}
         >
           {check.reason}

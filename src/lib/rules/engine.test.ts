@@ -45,14 +45,23 @@ describe('규칙엔진 — 적합 케이스', () => {
   it('2. 그라인더 11000rpm/125mm + 숫돌 13300rpm/100mm 연삭 → COMPATIBLE', () => {
     const result = matchSpecs(
       grinder(),
-      wheel({ maxRPM: 13300, diameter: 100, thickness: 6.0, purpose: 'grinding' }),
+      wheel({
+        maxRPM: 13300,
+        diameter: 100,
+        thickness: 6.0,
+        purpose: 'grinding',
+      }),
     );
     expect(result.verdict).toBe('COMPATIBLE');
   });
 
   it('3. 그라인더 10000rpm/100mm + 숫돌 15300rpm/100mm 절단 → COMPATIBLE', () => {
     const result = matchSpecs(
-      grinder({ model: 'GWS 750-100', noLoadRPM: 10000, maxWheelDiameter: 100 }),
+      grinder({
+        model: 'GWS 750-100',
+        noLoadRPM: 10000,
+        maxWheelDiameter: 100,
+      }),
       wheel({ maxRPM: 15300, diameter: 100 }),
     );
     expect(result.verdict).toBe('COMPATIBLE');
@@ -95,7 +104,12 @@ describe('규칙엔진 — 부적합 케이스', () => {
   it('7. RPM과 지름을 동시에 위반 → INCOMPATIBLE, 원인 2건', () => {
     const result = matchSpecs(
       grinder({ noLoadRPM: 12000 }),
-      wheel({ maxRPM: 11000, diameter: 180, thickness: 6.0, purpose: 'grinding' }),
+      wheel({
+        maxRPM: 11000,
+        diameter: 180,
+        thickness: 6.0,
+        purpose: 'grinding',
+      }),
     );
     expect(result.verdict).toBe('INCOMPATIBLE');
     expect(failureReasons(result)).toHaveLength(2);
@@ -103,7 +117,11 @@ describe('규칙엔진 — 부적합 케이스', () => {
 
   it('8. 숫돌 9000rpm < 그라인더 10000rpm → INCOMPATIBLE', () => {
     const result = matchSpecs(
-      grinder({ model: 'GWS 750-100', noLoadRPM: 10000, maxWheelDiameter: 100 }),
+      grinder({
+        model: 'GWS 750-100',
+        noLoadRPM: 10000,
+        maxWheelDiameter: 100,
+      }),
       wheel({ maxRPM: 9000, diameter: 100 }),
     );
     expect(result.verdict).toBe('INCOMPATIBLE');
@@ -225,7 +243,9 @@ describe('규칙엔진 — 결과 형식', () => {
 
   it('받침 유무에 맞는 조사를 붙인다', () => {
     expect(withParticle('회전속도', '을', '를')).toBe('회전속도를');
-    expect(withParticle('최고사용회전속도', '을', '를')).toBe('최고사용회전속도를');
+    expect(withParticle('최고사용회전속도', '을', '를')).toBe(
+      '최고사용회전속도를',
+    );
     expect(withParticle('지름값', '을', '를')).toBe('지름값을');
     // 한글이 아닌 글자로 끝나면 받침 없는 쪽을 쓴다.
     expect(withParticle('RPM', '을', '를')).toBe('RPM를');
@@ -241,7 +261,12 @@ describe('규칙엔진 — 결과 형식', () => {
   it('모든 검사 항목은 한국어 사유를 반드시 가진다', () => {
     const result = matchSpecs(
       grinder({ noLoadRPM: null, maxWheelDiameter: null, confidence: 'low' }),
-      wheel({ maxRPM: null, diameter: null, purpose: 'unknown', confidence: 'low' }),
+      wheel({
+        maxRPM: null,
+        diameter: null,
+        purpose: 'unknown',
+        confidence: 'low',
+      }),
     );
     for (const check of result.checks) {
       expect(check.reason.length).toBeGreaterThan(0);

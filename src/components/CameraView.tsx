@@ -20,8 +20,15 @@ export function CameraView({
   onPickFile,
   disabled = false,
 }: CameraViewProps) {
-  const { videoRef, canvasRef, status, error, flashing, capturePhoto, restart } =
-    useCamera();
+  const {
+    videoRef,
+    canvasRef,
+    status,
+    error,
+    flashing,
+    capturePhoto,
+    restart,
+  } = useCamera();
 
   async function handleCapture() {
     const photo = await capturePhoto();

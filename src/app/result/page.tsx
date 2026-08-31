@@ -73,7 +73,9 @@ export default function ResultPage() {
       reset();
       router.push('/history');
     } catch {
-      setSaveError('저장에 실패했습니다. 저장 공간을 확인한 뒤 다시 시도하세요.');
+      setSaveError(
+        '저장에 실패했습니다. 저장 공간을 확인한 뒤 다시 시도하세요.',
+      );
       setSaving(false);
     }
   }

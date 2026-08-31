@@ -29,7 +29,9 @@ function summarize(record: InspectionRecord): string {
   const rpm =
     record.grinder.noLoadRPM === null ? '—' : `${record.grinder.noLoadRPM}rpm`;
   const wheel =
-    record.wheel.diameter === null ? '지름 미상' : `Φ${record.wheel.diameter}mm`;
+    record.wheel.diameter === null
+      ? '지름 미상'
+      : `Φ${record.wheel.diameter}mm`;
   const wheelRpm =
     record.wheel.maxRPM === null ? '—' : `${record.wheel.maxRPM}rpm`;
   return `${model} ${rpm} · 숫돌 ${wheel} ${wheelRpm}`;

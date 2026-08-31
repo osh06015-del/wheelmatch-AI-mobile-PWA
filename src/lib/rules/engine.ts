@@ -181,7 +181,8 @@ export function checkPurpose(wheel: WheelSpec): CheckItem {
     return {
       ...base,
       passed: null,
-      reason: '숫돌 용도(절단/연삭)를 인식하지 못했습니다. 라벨을 직접 확인하세요.',
+      reason:
+        '숫돌 용도(절단/연삭)를 인식하지 못했습니다. 라벨을 직접 확인하세요.',
     };
   }
 
@@ -211,7 +212,8 @@ export function checkConfidence(
     return {
       ...base,
       passed: null,
-      reason: '라벨 인식 신뢰도가 낮습니다. 재촬영하거나 수동으로 값을 입력하세요.',
+      reason:
+        '라벨 인식 신뢰도가 낮습니다. 재촬영하거나 수동으로 값을 입력하세요.',
     };
   }
 

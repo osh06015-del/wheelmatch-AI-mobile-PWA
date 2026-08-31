@@ -58,7 +58,9 @@ export function useCamera(): UseCameraResult {
     async function start() {
       if (!navigator.mediaDevices?.getUserMedia) {
         setStatus('error');
-        setError('이 브라우저는 카메라를 지원하지 않습니다. HTTPS 환경인지 확인하세요.');
+        setError(
+          '이 브라우저는 카메라를 지원하지 않습니다. HTTPS 환경인지 확인하세요.',
+        );
         return;
       }
 
@@ -124,5 +126,13 @@ export function useCamera(): UseCameraResult {
     });
   }, []);
 
-  return { videoRef, canvasRef, status, error, flashing, capturePhoto, restart };
+  return {
+    videoRef,
+    canvasRef,
+    status,
+    error,
+    flashing,
+    capturePhoto,
+    restart,
+  };
 }

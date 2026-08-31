@@ -1,0 +1,41 @@
+#!/bin/sh
+# commit 직전 최종 게이트.
+#
+# Claude hook = 빠른 피드백(포맷). 이 hook = 최종 검증.
+# 역할이 겹치지 않게 여기서만 lint/typecheck/test를 돌린다.
+#
+# 급할 때는 git commit --no-verify 로 건너뛸 수 있다.
+
+set -e
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
+if [ -z "$STAGED" ]; then
+  exit 0
+fi
+
+echo "pre-commit: 포맷 확인..."
+if ! npm run --silent format:check; then
+  echo "" >&2
+  echo "포맷이 맞지 않습니다. 아래를 실행한 뒤 다시 add 하세요:" >&2
+  echo "  npm run format" >&2
+  exit 1
+fi
+
+# src의 TypeScript가 바뀐 경우에만 무거운 검사를 돌린다.
+# 문서나 설정만 고친 commit을 30초씩 붙잡아 두지 않기 위해서다.
+SOURCE_CHANGED=$(printf '%s\n' "$STAGED" | grep -E '^src/.*\.(ts|tsx)$' || true)
+if [ -z "$SOURCE_CHANGED" ]; then
+  echo "pre-commit: src 변경 없음 — lint/typecheck/test 생략"
+  exit 0
+fi
+
+echo "pre-commit: lint..."
+npm run --silent lint
+
+echo "pre-commit: typecheck..."
+npm run --silent typecheck
+
+echo "pre-commit: test..."
+npm run --silent test
+
+echo "pre-commit: 통과"

@@ -44,7 +44,10 @@ export async function POST(request: Request) {
   if (!apiKey) {
     // 키가 없을 때 임의의 값을 지어내지 않는다. 실패를 그대로 알린다.
     return NextResponse.json(
-      { error: 'ANTHROPIC_API_KEY가 설정되지 않았습니다. 서버 환경변수를 확인하세요.' },
+      {
+        error:
+          'ANTHROPIC_API_KEY가 설정되지 않았습니다. 서버 환경변수를 확인하세요.',
+      },
       { status: 500 },
     );
   }
@@ -106,7 +109,9 @@ export async function POST(request: Request) {
       ],
       output_config: {
         format: zodOutputFormat(
-          target === 'grinder' ? grinderExtractionSchema : wheelExtractionSchema,
+          target === 'grinder'
+            ? grinderExtractionSchema
+            : wheelExtractionSchema,
         ),
       },
     });

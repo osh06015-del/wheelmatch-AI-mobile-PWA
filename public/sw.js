@@ -26,7 +26,9 @@ self.addEventListener('install', (event) => {
     caches
       .open(CACHE)
       // 일부 경로가 실패해도 설치를 막지 않는다.
-      .then((cache) => Promise.allSettled(APP_SHELL.map((url) => cache.add(url))))
+      .then((cache) =>
+        Promise.allSettled(APP_SHELL.map((url) => cache.add(url))),
+      )
       .then(() => self.skipWaiting()),
   );
 });
@@ -36,7 +38,9 @@ self.addEventListener('activate', (event) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))),
+        Promise.all(
+          keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)),
+        ),
       )
       .then(() => self.clients.claim()),
   );
@@ -89,7 +93,8 @@ self.addEventListener('fetch', (event) => {
         })
         // 오프라인이면 캐시된 화면을, 그것도 없으면 메인 화면을 돌려준다.
         .catch(async () => {
-          const cached = (await caches.match(request)) ?? (await caches.match('/'));
+          const cached =
+            (await caches.match(request)) ?? (await caches.match('/'));
           return (
             cached ??
             new Response('오프라인 상태입니다. 네트워크를 확인하세요.', {

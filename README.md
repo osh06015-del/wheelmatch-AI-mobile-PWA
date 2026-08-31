@@ -49,15 +49,15 @@ npm run dev
 
 ### 명령어
 
-| 명령 | 설명 |
-| --- | --- |
-| `npm run dev` | 개발 서버 |
-| `npm run build` | 프로덕션 빌드 |
-| `npm test` | 규칙엔진·파서 단위 테스트 |
-| `npm run test:watch` | 테스트 watch 모드 |
-| `npm run typecheck` | TypeScript strict 검사 |
-| `npm run lint` | ESLint |
-| `node scripts/generate-icons.mjs` | PWA 아이콘 재생성 |
+| 명령                              | 설명                      |
+| --------------------------------- | ------------------------- |
+| `npm run dev`                     | 개발 서버                 |
+| `npm run build`                   | 프로덕션 빌드             |
+| `npm test`                        | 규칙엔진·파서 단위 테스트 |
+| `npm run test:watch`              | 테스트 watch 모드         |
+| `npm run typecheck`               | TypeScript strict 검사    |
+| `npm run lint`                    | ESLint                    |
+| `node scripts/generate-icons.mjs` | PWA 아이콘 재생성         |
 
 ---
 
@@ -65,13 +65,13 @@ npm run dev
 
 `src/lib/rules/engine.ts`에 5개 규칙이 순서대로 들어 있다.
 
-| # | 규칙 | 내용 | 위반 시 |
-| --- | --- | --- | --- |
-| 1 | 필수값 존재 | 그라인더 `noLoadRPM`, 숫돌 `maxRPM`이 둘 다 있어야 한다 | 판정불가 |
-| 2 | RPM 안전 | 숫돌 `maxRPM` ≥ 그라인더 `noLoadRPM` | **부적합** |
-| 3 | 지름 호환 | 숫돌 `diameter` ≤ 그라인더 `maxWheelDiameter` | **부적합** |
-| 4 | 용도 확인 | 절단/연삭을 인식했는가 (경고 수준) | 경고만, 판정은 유지 |
-| 5 | 신뢰도 검증 | 어느 한쪽이라도 `confidence === 'low'`인가 | 판정불가 |
+| #   | 규칙        | 내용                                                    | 위반 시             |
+| --- | ----------- | ------------------------------------------------------- | ------------------- |
+| 1   | 필수값 존재 | 그라인더 `noLoadRPM`, 숫돌 `maxRPM`이 둘 다 있어야 한다 | 판정불가            |
+| 2   | RPM 안전    | 숫돌 `maxRPM` ≥ 그라인더 `noLoadRPM`                    | **부적합**          |
+| 3   | 지름 호환   | 숫돌 `diameter` ≤ 그라인더 `maxWheelDiameter`           | **부적합**          |
+| 4   | 용도 확인   | 절단/연삭을 인식했는가 (경고 수준)                      | 경고만, 판정은 유지 |
+| 5   | 신뢰도 검증 | 어느 한쪽이라도 `confidence === 'low'`인가              | 판정불가            |
 
 최종 판정:
 
@@ -92,13 +92,13 @@ npm run dev
 
 ## 시연용 테스트 조합 5세트
 
-| 세트 | 그라인더 | 숫돌 | 예상 결과 |
-| --- | --- | --- | --- |
-| 1 — 적합 | GWS 750-125 / 11000rpm / Φ125mm | 12200rpm / Φ125×1.6mm / 절단용 | `COMPATIBLE` |
-| 2 — 부적합 (RPM) | GWS 750-125 / 11000rpm / Φ125mm | 8500rpm / Φ125×6.0mm / 연삭용 | `INCOMPATIBLE` — RPM 위반 |
-| 3 — 부적합 (지름) | GWS 750-100 / 11000rpm / Φ100mm | 12200rpm / Φ125×1.6mm / 절단용 | `INCOMPATIBLE` — 지름 위반 |
-| 4 — 판정불가 | 모델명만 보이고 RPM 판독 불가 | 정상 | `UNDETERMINED` |
-| 5 — 수동 보정 | RPM 오인식 → 사용자가 수정 → 확인 체크 | 정상 | `COMPATIBLE` |
+| 세트              | 그라인더                               | 숫돌                           | 예상 결과                  |
+| ----------------- | -------------------------------------- | ------------------------------ | -------------------------- |
+| 1 — 적합          | GWS 750-125 / 11000rpm / Φ125mm        | 12200rpm / Φ125×1.6mm / 절단용 | `COMPATIBLE`               |
+| 2 — 부적합 (RPM)  | GWS 750-125 / 11000rpm / Φ125mm        | 8500rpm / Φ125×6.0mm / 연삭용  | `INCOMPATIBLE` — RPM 위반  |
+| 3 — 부적합 (지름) | GWS 750-100 / 11000rpm / Φ100mm        | 12200rpm / Φ125×1.6mm / 절단용 | `INCOMPATIBLE` — 지름 위반 |
+| 4 — 판정불가      | 모델명만 보이고 RPM 판독 불가          | 정상                           | `UNDETERMINED`             |
+| 5 — 수동 보정     | RPM 오인식 → 사용자가 수정 → 확인 체크 | 정상                           | `COMPATIBLE`               |
 
 세트 4·5는 앱의 핵심을 보여준다. **값을 못 읽었을 때 대충 판정하지 않고 멈춘 뒤,
 사람이 확인해야만 다시 진행된다.**
@@ -163,10 +163,10 @@ interface OCRExtractor {
 }
 ```
 
-| Phase | 구현 | 동작 | 전환 방법 |
-| --- | --- | --- | --- |
-| 1 | `ClaudeExtractor` | `/api/extract` → Claude 이미지 분석 | 기본값 |
-| 2 | `TesseractExtractor` | 브라우저에서 Tesseract.js + `parser.ts` | `NEXT_PUBLIC_OCR_MODE=tesseract` |
+| Phase | 구현                 | 동작                                    | 전환 방법                        |
+| ----- | -------------------- | --------------------------------------- | -------------------------------- |
+| 1     | `ClaudeExtractor`    | `/api/extract` → Claude 이미지 분석     | 기본값                           |
+| 2     | `TesseractExtractor` | 브라우저에서 Tesseract.js + `parser.ts` | `NEXT_PUBLIC_OCR_MODE=tesseract` |
 
 Tesseract 경로는 외부 API 호출이 없어 오프라인에서도 동작하지만 인식 정확도가 낮다.
 따라서 값을 읽지 못하면 `null`로 남기고 신뢰도를 낮춰, 규칙엔진이 판정불가를 내게 한다.
@@ -197,6 +197,56 @@ rpm = (v[m/s] × 60) / (π × d[m])
   시스템 프롬프트에 명시했다.
 
 ---
+
+## Claude Code 작업 환경
+
+이 저장소는 Claude Code로 개발하도록 설정돼 있다.
+
+```
+CLAUDE.md                          항상 로드되는 핵심 규칙 (약 90줄)
+.claude/rules/safety-invariants.md src/lib/rules · ocr · api 를 열 때만 로드
+.claude/rules/nextjs-react.md      src/app · components 를 열 때만 로드
+.claude/rules/testing.md           *.test.ts 를 열 때만 로드
+.claude/settings.json              접근 제한 + PostToolUse hook
+.claude/hooks/format-on-edit.mjs   파일 수정 직후 Prettier 자동 실행 (0.5초)
+.githooks/pre-commit               commit 직전 최종 게이트
+```
+
+규칙을 경로별로 쪼갠 이유는 컨텍스트 절약이다. 안전 불변조건은 판정 코드를
+건드릴 때만 필요하지, UI를 고칠 때는 필요 없다.
+
+### 검증 단계
+
+| 시점              | 실행되는 것            | 소요    |
+| ----------------- | ---------------------- | ------- |
+| 파일 저장 직후    | Prettier (자동)        | 0.5초   |
+| 작업 단위 완료    | `npm run verify`       | 약 30초 |
+| `git commit` 직전 | pre-commit hook (자동) | 약 45초 |
+
+pre-commit은 `src/**/*.ts(x)`가 staged일 때만 무거운 검사를 돌린다.
+문서만 고친 commit은 5초로 끝난다. 급하면 `git commit --no-verify`로 건너뛴다.
+
+새로 clone 받았을 때는 `npm install`이 `prepare` 스크립트로 git hook을 자동 연결한다.
+
+### 읽기가 차단된 경로
+
+`.env*`(비밀값), `package-lock.json`, `.next/`, 빌드 산출물. 컨텍스트 낭비와
+키 노출을 막기 위한 것이다. `node_modules`는 **일부러 열어 두었다** —
+Next 16 문서가 `node_modules/next/dist/docs/`에 있기 때문이다.
+
+### 알아두면 좋은 명령
+
+| 명령                 | 용도                                       |
+| -------------------- | ------------------------------------------ |
+| `/context`           | 지금 컨텍스트를 무엇이 차지하는지 확인     |
+| `/compact`           | 대화가 길어졌을 때 수동으로 압축           |
+| `/memory`            | CLAUDE.md·규칙 파일 열기, 자동 메모리 확인 |
+| `/doctor`            | 설정이 제대로 로드됐는지 진단              |
+| `/mcp`               | 연결된 MCP 서버 확인                       |
+| `/statusline`        | 상태줄 설정                                |
+| `npx ccusage@latest` | 토큰 사용량·비용 확인 (설치 불필요)        |
+
+`/context`를 실행하면 **Memory files** 항목에 `CLAUDE.md`가 보여야 정상이다.
 
 ## 배포 (Vercel)
 
