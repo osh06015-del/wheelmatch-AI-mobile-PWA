@@ -1,5 +1,7 @@
 # WheelMatch AI
 
+[![CI](https://github.com/osh06015-del/wheelmatch-AI-mobile-PWA/actions/workflows/ci.yml/badge.svg)](https://github.com/osh06015-del/wheelmatch-AI-mobile-PWA/actions/workflows/ci.yml)
+
 휴대용 그라인더 명판과 연삭·절단 숫돌 라벨을 촬영해 **규격 호환성을 사전점검**하는 모바일 PWA.
 
 > ⚠ 이 앱은 라벨에 표시된 규격의 대조 결과만 제공합니다. 작업 안전성을 보증하지 않으며,
@@ -217,14 +219,18 @@ CLAUDE.md                          항상 로드되는 핵심 규칙 (약 90줄)
 
 ### 검증 단계
 
-| 시점              | 실행되는 것            | 소요    |
-| ----------------- | ---------------------- | ------- |
-| 파일 저장 직후    | Prettier (자동)        | 0.5초   |
-| 작업 단위 완료    | `npm run verify`       | 약 30초 |
-| `git commit` 직전 | pre-commit hook (자동) | 약 45초 |
+| 시점              | 실행되는 것            | 소요     |
+| ----------------- | ---------------------- | -------- |
+| 파일 저장 직후    | Prettier (자동)        | 0.5초    |
+| 작업 단위 완료    | `npm run verify`       | 약 40초  |
+| `git commit` 직전 | pre-commit hook (자동) | 약 55초  |
+| `git push` 이후   | GitHub Actions (자동)  | 약 2~3분 |
 
 pre-commit은 `src/**/*.ts(x)`가 staged일 때만 무거운 검사를 돌린다.
 문서만 고친 commit은 5초로 끝난다. 급하면 `git commit --no-verify`로 건너뛴다.
+
+**CI는 건너뛸 수 없다.** `--no-verify`로 밀어 넣은 코드도 push하면 Actions에서
+잡힌다. README 맨 위 배지가 빨간색이면 `main`이 깨진 것이다.
 
 새로 clone 받았을 때는 `npm install`이 `prepare` 스크립트로 git hook을 자동 연결한다.
 

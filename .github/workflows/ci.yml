@@ -31,9 +31,31 @@ jobs:
       # package-lock.json 그대로 설치한다. npm install과 달리 lock을 바꾸지 않는다.
       - run: npm ci
 
-      # format:check -> lint -> typecheck -> test
-      - run: npm run verify
+      # verify를 한 단계로 묶지 않고 쪼갠다.
+      # 묶으면 Actions 화면에 "npm run verify 실패"만 남아 어디서 깨졌는지 모른다.
+      # 쪼개면 실패한 단계가 이름으로 바로 보인다.
+      - name: Format check
+        run: npm run format:check
 
-      # 빌드는 verify가 못 잡는 Next 고유 오류(라우트 타입, 정적 생성 등)를 잡는다.
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      # 빌드는 앞 단계가 못 잡는 Next 고유 오류(라우트 타입, 정적 생성 등)를 잡는다.
       # 이 앱은 API 키를 요청 시점에만 읽으므로 빌드에 secret이 필요 없다.
-      - run: npm run build
+      - name: Build
+        run: npm run build
+
+      # 앞에서 실패했더라도 환경 정보를 남긴다. 로컬(Windows)과 CI(Linux) 차이를
+      # 추적할 때 필요하다.
+      - name: Environment
+        if: always()
+        run: |
+          node -v
+          npm -v
+          uname -a
