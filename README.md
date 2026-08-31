@@ -49,15 +49,15 @@ npm run dev
 
 ### 명령어
 
-| 명령                              | 설명                      |
-| --------------------------------- | ------------------------- |
-| `npm run dev`                     | 개발 서버                 |
-| `npm run build`                   | 프로덕션 빌드             |
-| `npm test`                        | 규칙엔진·파서 단위 테스트 |
-| `npm run test:watch`              | 테스트 watch 모드         |
-| `npm run typecheck`               | TypeScript strict 검사    |
-| `npm run lint`                    | ESLint                    |
-| `node scripts/generate-icons.mjs` | PWA 아이콘 재생성         |
+| 명령                              | 설명                        |
+| --------------------------------- | --------------------------- |
+| `npm run dev`                     | 개발 서버                   |
+| `npm run build`                   | 프로덕션 빌드               |
+| `npm test`                        | 단위·컴포넌트 테스트 (76개) |
+| `npm run test:watch`              | 테스트 watch 모드           |
+| `npm run typecheck`               | TypeScript strict 검사      |
+| `npm run lint`                    | ESLint                      |
+| `node scripts/generate-icons.mjs` | PWA 아이콘 재생성           |
 
 ---
 

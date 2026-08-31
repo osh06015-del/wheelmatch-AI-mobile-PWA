@@ -13,13 +13,15 @@
 | ------------- | -------------------------------------------- |
 | 개발 서버     | `npm run dev`                                |
 | 빌드          | `npm run build`                              |
-| 테스트        | `npm test` (Vitest, 현재 53개 통과)          |
+| 테스트        | `npm test` (Vitest + happy-dom, 76개 통과)   |
 | 타입 검사     | `npm run typecheck`                          |
 | lint          | `npm run lint` (ESLint 9 flat config)        |
 | 포맷          | `npm run format` / `npm run format:check`    |
 | **전체 검증** | `npm run verify` ← 작업을 끝냈다고 말하기 전 |
 
-`npm run verify` = format:check → lint → typecheck → test. 약 30초 걸린다.
+`npm run verify` = format:check → lint → typecheck → test. 약 40초 걸린다.
+
+Node는 `.nvmrc`로 24에 맞춰져 있다 (`engines`: >=20.9.0).
 
 ## 핵심 원칙
 
@@ -44,6 +46,16 @@ src/lib/db/               IndexedDB (Dexie). 기록은 기기 안에만 남는�
 src/app/api/extract/      서버 전용 OCR 라우트. API 키는 여기서만 읽는다
 src/components/           UI. page 파일에서 컴포넌트를 export 하지 않는다
 ```
+
+### 경계는 lint가 강제한다
+
+`eslint.config.mjs`에 import 경계가 들어 있다. 어기면 `npm run lint`가 막는다.
+
+- `src/lib/rules/**` → 상대 경로만. 패키지·alias import 금지 (엔진 순수성)
+- 클라이언트 코드 → `@anthropic-ai/sdk`, `next/server` 금지 (키 유출 방지)
+- `src/lib/**` → `@/components`, `@/app` 금지 (레이어 역전 방지)
+
+우회하지 말고 설계를 고친다. 엔진에 외부 값이 필요하면 인자로 받는다.
 
 ## 코딩 규칙
 
