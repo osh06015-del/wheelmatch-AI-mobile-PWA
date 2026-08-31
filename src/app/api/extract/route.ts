@@ -23,8 +23,17 @@ export const maxDuration = 60;
 /** 사양서의 claude-sonnet-4-6 대신 더 최신·저렴한 Sonnet을 기본으로 둔다. */
 const DEFAULT_MODEL = 'claude-sonnet-5';
 
-/** base64 문자열 상한. 클라이언트가 압축해 보내므로 여유 있게 잡는다. */
-const MAX_BASE64_LENGTH = 8_000_000;
+/**
+ * base64 문자열 상한.
+ *
+ * Vercel 함수의 요청 본문 한도는 4.5MB다. 그 한도를 넘으면 이 코드에 닿기도 전에
+ * 413으로 잘려서 원인을 알기 어려운 오류가 난다. 그보다 낮게 잡아, 초과 시
+ * 여기서 한국어 안내를 돌려주도록 한다.
+ *
+ * 클라이언트는 lib/image/optimize.ts가 2.5MB 이하로 줄여 보내므로
+ * (base64로 약 3.3MB) 정상 경로에서는 걸리지 않는다.
+ */
+const MAX_BASE64_LENGTH = 4_000_000;
 
 const ALLOWED_MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 type AllowedMediaType = (typeof ALLOWED_MEDIA_TYPES)[number];
@@ -65,7 +74,9 @@ export async function POST(request: Request) {
     return badRequest('image 필드에 base64 이미지 문자열이 필요합니다.');
   }
   if (image.length > MAX_BASE64_LENGTH) {
-    return badRequest('이미지가 너무 큽니다. 다시 촬영해 주세요.');
+    return badRequest(
+      '이미지가 너무 큽니다. 해상도가 낮은 사진으로 다시 시도해 주세요.',
+    );
   }
   if (type !== 'grinder' && type !== 'wheel') {
     return badRequest("type 필드는 'grinder' 또는 'wheel'이어야 합니다.");

@@ -256,13 +256,54 @@ Next 16 문서가 `node_modules/next/dist/docs/`에 있기 때문이다.
 
 ## 배포 (Vercel)
 
-```bash
-git add . && git commit -m "feat: WheelMatch AI v0.1"
-# GitHub 리포지토리 생성 후 push
-```
+저장소: <https://github.com/osh06015-del/wheelmatch-AI-mobile-PWA>
 
-1. vercel.com에서 Import
-2. Environment Variables에 `ANTHROPIC_API_KEY` 설정
-3. 배포 후 HTTPS URL을 휴대폰에서 열고 **홈 화면에 추가**로 PWA 설치
+### 1. 프로젝트 Import
 
-`NEXT_PUBLIC_*` 변수는 빌드 시점에 번들에 새겨진다. 값을 바꾸면 **반드시 재배포**해야 한다.
+1. <https://vercel.com/new> 접속 → GitHub 계정 연결
+2. `wheelmatch-AI-mobile-PWA` 선택 → **Import**
+3. Framework Preset이 **Next.js**로 자동 인식되는지 확인. 나머지 빌드 설정은
+   건드리지 않는다 (zero-config로 동작한다)
+
+### 2. 환경변수
+
+Import 화면의 **Environment Variables**에 아래 하나만 넣는다.
+
+| Name                | Value          | 환경          |
+| ------------------- | -------------- | ------------- |
+| `ANTHROPIC_API_KEY` | 발급받은 새 키 | 3개 모두 체크 |
+
+- `ANTHROPIC_MODEL`은 넣지 않으면 `claude-sonnet-5`를 쓴다.
+- `NEXT_PUBLIC_OCR_MODE`도 넣지 않으면 `claude`를 쓴다.
+- **키를 채팅이나 이슈에 붙여넣지 않는다.** Vercel 입력창에 직접 입력한다.
+
+빌드에는 키가 필요 없다. 키는 요청이 들어올 때만 읽으므로, 키를 나중에
+넣어도 배포 자체는 성공한다.
+
+### 3. Deploy → 확인
+
+1. **Deploy** 클릭 후 완료를 기다린다 (약 2~3분)
+2. 발급된 HTTPS URL을 **휴대폰에서** 연다
+3. 그라인더 명판 → 숫돌 라벨 순서로 촬영해 결과까지 확인
+4. 브라우저 메뉴에서 **홈 화면에 추가**로 PWA 설치
+
+카메라(`getUserMedia`)는 HTTPS에서만 열린다. Vercel URL은 HTTPS이므로 동작한다.
+로컬 `http://` 주소를 휴대폰에서 직접 열면 카메라가 열리지 않는다.
+
+### Vercel 한도와 이 앱
+
+| 한도                | 값                 | 이 앱                                                            |
+| ------------------- | ------------------ | ---------------------------------------------------------------- |
+| 함수 요청 본문      | 4.5 MB             | 업로드 전 이미지를 2.5MB 이하로 줄인다 (`lib/image/optimize.ts`) |
+| 함수 최대 실행 시간 | 300초 (Hobby)      | 라우트에서 60초로 제한. OCR 1회는 약 10초                        |
+| Node 버전           | 24.x / 22.x / 20.x | `engines.node`의 `>=20.9.0` → 최신 24.x                          |
+
+원본 휴대폰 사진(12MP)은 base64로 감싸면 10MB가 넘어 4.5MB 한도에 걸린다.
+그래서 업로드 전에 긴 변 2048px로 줄인다. 이 축소를 제거하면 갤러리에서 고른
+사진이 배포 환경에서만 413으로 실패한다.
+
+### 환경변수를 바꿨을 때
+
+`NEXT_PUBLIC_*` 변수는 빌드 시점에 번들에 새겨진다. 값을 바꾸면 **반드시
+Redeploy** 해야 반영된다. 서버 전용 변수(`ANTHROPIC_API_KEY`)는 재배포 없이도
+다음 요청부터 적용된다.

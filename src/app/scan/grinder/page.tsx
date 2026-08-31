@@ -15,6 +15,7 @@ import {
 } from '@/components/FieldConfirm';
 import { ManualConfirmToggle } from '@/components/ManualConfirmToggle';
 import { ScanHeader } from '@/components/ScanHeader';
+import { optimizeForUpload } from '@/lib/image/optimize';
 import { getExtractor } from '@/lib/ocr/extractor';
 import { useInspection } from '@/lib/state/inspection';
 import type { GrinderSpec } from '@/lib/rules/types';
@@ -42,11 +43,13 @@ export default function GrinderScanPage() {
   const [userConfirmed, setUserConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function analyze(blob: Blob) {
-    setPhoto(blob);
+  async function analyze(source: Blob) {
     setPhase('analyzing');
     setError(null);
     try {
+      // 원본 사진은 Vercel 함수의 4.5MB 요청 한도를 넘길 수 있다. 먼저 줄인다.
+      const blob = await optimizeForUpload(source);
+      setPhoto(blob);
       const spec = await getExtractor().extractGrinder(blob);
       setOcr(spec);
       setForm({
