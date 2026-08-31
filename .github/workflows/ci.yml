@@ -1,0 +1,39 @@
+name: CI
+
+# 로컬 pre-commit hook은 `git commit --no-verify`로 건너뛸 수 있다.
+# CI는 건너뛸 수 없다. 여기가 마지막 관문이다.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch: # Actions 탭에서 수동 실행
+
+# 같은 브랜치에 연달아 push하면 이전 실행을 취소한다. 무료 사용량을 아낀다.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # .nvmrc를 단일 출처로 삼는다. 로컬과 CI가 갈라지지 않게.
+          node-version-file: .nvmrc
+          cache: npm
+
+      # package-lock.json 그대로 설치한다. npm install과 달리 lock을 바꾸지 않는다.
+      - run: npm ci
+
+      # format:check -> lint -> typecheck -> test
+      - run: npm run verify
+
+      # 빌드는 verify가 못 잡는 Next 고유 오류(라우트 타입, 정적 생성 등)를 잡는다.
+      # 이 앱은 API 키를 요청 시점에만 읽으므로 빌드에 secret이 필요 없다.
+      - run: npm run build
