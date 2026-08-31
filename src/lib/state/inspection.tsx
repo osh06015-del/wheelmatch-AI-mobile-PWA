@@ -1,0 +1,148 @@
+'use client';
+
+// 촬영 화면과 결과 화면 사이에서 규격 값을 옮기는 저장소.
+//
+// 값(JSON)은 sessionStorage에도 함께 저장한다. 현장에서 화면이 새로고침되거나
+// 앱이 잠깐 백그라운드로 내려가도 촬영을 처음부터 다시 하지 않게 하기 위해서다.
+// 이미지 Blob은 메모리에만 둔다. sessionStorage에 담을 수 없고, 저장 시점에만 쓰인다.
+//
+// React 상태 대신 모듈 저장소 + useSyncExternalStore를 쓴다.
+// sessionStorage는 React 바깥의 시스템이라, effect에서 setState로 끌어오면
+// hydration 시점에 값이 한 박자 늦게 들어와 잘못된 화면 전환을 유발한다.
+
+import { useCallback, useMemo, useSyncExternalStore } from 'react';
+import type { GrinderSpec, WheelSpec } from '@/lib/rules/types';
+
+const GRINDER_KEY = 'wheelmatch.grinder';
+const WHEEL_KEY = 'wheelmatch.wheel';
+
+interface InspectionState {
+  grinder: GrinderSpec | null;
+  wheel: WheelSpec | null;
+  grinderImage: Blob | null;
+  wheelImage: Blob | null;
+  /** 서버 렌더 결과에서는 false. 브라우저 값이 반영된 뒤에만 true가 된다. */
+  hydrated: boolean;
+}
+
+/** 서버 렌더와 hydration에 쓰는 고정 스냅샷. 절대 바뀌지 않는다. */
+const SERVER_SNAPSHOT: InspectionState = {
+  grinder: null,
+  wheel: null,
+  grinderImage: null,
+  wheelImage: null,
+  hydrated: false,
+};
+
+function readStored<T>(key: string): T | null {
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStored(key: string, value: unknown): void {
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // 저장 실패는 치명적이지 않다. 메모리 상태만으로도 흐름은 이어진다.
+  }
+}
+
+function initialClientState(): InspectionState {
+  if (typeof window === 'undefined') return SERVER_SNAPSHOT;
+  return {
+    grinder: readStored<GrinderSpec>(GRINDER_KEY),
+    wheel: readStored<WheelSpec>(WHEEL_KEY),
+    grinderImage: null,
+    wheelImage: null,
+    hydrated: true,
+  };
+}
+
+let state: InspectionState = initialClientState();
+const listeners = new Set<() => void>();
+
+function setState(next: Partial<InspectionState>): void {
+  state = { ...state, ...next };
+  for (const listener of listeners) listener();
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+/** 스냅샷은 참조가 안정적이어야 한다. 변경이 있을 때만 새 객체를 만든다. */
+function getSnapshot(): InspectionState {
+  return state;
+}
+
+function getServerSnapshot(): InspectionState {
+  return SERVER_SNAPSHOT;
+}
+
+export interface InspectionStore extends InspectionState {
+  /** 브라우저 값이 아직 반영되지 않은 렌더인지 여부 */
+  hydrating: boolean;
+  setGrinder: (spec: GrinderSpec, image?: Blob | null) => void;
+  setWheel: (spec: WheelSpec, image?: Blob | null) => void;
+  reset: () => void;
+}
+
+export function useInspection(): InspectionStore {
+  const snapshot = useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    getServerSnapshot,
+  );
+
+  const setGrinder = useCallback(
+    (spec: GrinderSpec, image?: Blob | null) => {
+      writeStored(GRINDER_KEY, spec);
+      setState(
+        image === undefined
+          ? { grinder: spec }
+          : { grinder: spec, grinderImage: image },
+      );
+    },
+    [],
+  );
+
+  const setWheel = useCallback((spec: WheelSpec, image?: Blob | null) => {
+    writeStored(WHEEL_KEY, spec);
+    setState(
+      image === undefined ? { wheel: spec } : { wheel: spec, wheelImage: image },
+    );
+  }, []);
+
+  const reset = useCallback(() => {
+    try {
+      window.sessionStorage.removeItem(GRINDER_KEY);
+      window.sessionStorage.removeItem(WHEEL_KEY);
+    } catch {
+      // 무시한다.
+    }
+    setState({
+      grinder: null,
+      wheel: null,
+      grinderImage: null,
+      wheelImage: null,
+    });
+  }, []);
+
+  return useMemo(
+    () => ({
+      ...snapshot,
+      hydrating: !snapshot.hydrated,
+      setGrinder,
+      setWheel,
+      reset,
+    }),
+    [snapshot, setGrinder, setWheel, reset],
+  );
+}
