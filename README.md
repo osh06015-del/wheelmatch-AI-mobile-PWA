@@ -55,7 +55,7 @@ npm run dev
 | --------------------------------- | --------------------------- |
 | `npm run dev`                     | 개발 서버                   |
 | `npm run build`                   | 프로덕션 빌드               |
-| `npm test`                        | 단위·컴포넌트 테스트 (76개) |
+| `npm test`                        | 단위·컴포넌트 테스트 (92개) |
 | `npm run test:watch`              | 테스트 watch 모드           |
 | `npm run typecheck`               | TypeScript strict 검사      |
 | `npm run lint`                    | ESLint                      |
@@ -257,6 +257,8 @@ Next 16 문서가 `node_modules/next/dist/docs/`에 있기 때문이다.
 ## 배포 (Vercel)
 
 저장소: <https://github.com/osh06015-del/wheelmatch-AI-mobile-PWA>
+
+배포 주소: <https://wheelmatch-nu.vercel.app>
 
 ### 1. 프로젝트 Import
 
