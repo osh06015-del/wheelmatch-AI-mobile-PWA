@@ -174,11 +174,23 @@ export async function POST(request: Request) {
       );
     }
     if (error instanceof Anthropic.APIError) {
+      // 상태 코드만 돌려주면 원인을 알 수 없다. 실제로 배포 환경에서 400이
+      // 났는데 모델 문제인지 요청 형식 문제인지 구분할 방법이 없었다.
+      // Anthropic의 오류 메시지에는 API 키가 들어가지 않으므로 그대로 전달한다.
+      console.error(
+        '[extract] Anthropic APIError',
+        error.status,
+        error.message,
+      );
       return NextResponse.json(
-        { error: `라벨 분석에 실패했습니다. (${error.status})` },
+        {
+          error: `라벨 분석에 실패했습니다. (${error.status})`,
+          detail: error.message,
+        },
         { status: 502 },
       );
     }
+    console.error('[extract] unknown error', error);
     return NextResponse.json(
       { error: '라벨 분석 중 알 수 없는 오류가 발생했습니다.' },
       { status: 500 },
