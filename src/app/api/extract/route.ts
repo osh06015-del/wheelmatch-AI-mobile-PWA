@@ -9,6 +9,7 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { NextResponse } from 'next/server';
 
 import { rpmFromPeripheralSpeed } from '@/lib/ocr/parser';
+import { resolveModel } from '@/lib/ocr/model';
 import {
   grinderExtractionSchema,
   systemPromptFor,
@@ -19,9 +20,6 @@ import type { GrinderSpec, WheelSpec } from '@/lib/rules/types';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
-
-/** 사양서의 claude-sonnet-4-6 대신 더 최신·저렴한 Sonnet을 기본으로 둔다. */
-const DEFAULT_MODEL = 'claude-sonnet-5';
 
 /**
  * base64 문자열 상한.
@@ -93,7 +91,7 @@ export async function POST(request: Request) {
 
   try {
     const response = await client.messages.parse({
-      model: process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL,
+      model: resolveModel(process.env.ANTHROPIC_MODEL),
       max_tokens: 8000,
       system: systemPromptFor(target),
       messages: [
