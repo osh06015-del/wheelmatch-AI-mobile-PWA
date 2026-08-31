@@ -30,6 +30,21 @@ node_modules/next/dist/docs/01-app/
 - **`next dev`가 `AGENTS.md`를 다시 쓴다.** 그 파일은 편집하지 않는다.
   Claude용 내용은 `CLAUDE.md`에 쓴다 (AGENTS.md가 관리 블록을 갖고 있는 한
   next는 CLAUDE.md를 건드리지 않는다).
+- **`LayoutProps` / `PageProps` 같은 타입은 Next가 생성한다.** `.next/types`에
+  들어가는데 그 폴더는 gitignore 대상이다. 그래서 빌드 산출물이 없는 환경
+  (CI, 새로 clone)에서는 `tsc`가 `Cannot find name 'LayoutProps'`로 죽는다.
+  `npm run typecheck`가 `next typegen`을 먼저 돌리도록 해둔 이유다. 빼지 마라.
+  로컬에서만 통과하는 검사는 검사가 아니다.
+
+## 로컬에서만 통과하는 상태를 의심하기
+
+로컬에는 `.next/`, `next-env.d.ts`, `tsconfig.tsbuildinfo`가 남아 있다.
+CI와 새 clone에는 없다. 검사 스크립트를 고쳤으면 아래로 재현해서 확인한다.
+
+```bash
+rm -rf .next next-env.d.ts tsconfig.tsbuildinfo
+npm run verify
+```
 
 ## 상태 전달
 
