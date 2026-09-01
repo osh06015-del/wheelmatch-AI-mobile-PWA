@@ -17,8 +17,10 @@ import {
   isChecklistComplete,
 } from '@/components/ChecklistForm';
 import { Disclaimer } from '@/components/Disclaimer';
+import { HazardList } from '@/components/HazardList';
 import { ResultCard } from '@/components/ResultCard';
 import { saveInspection } from '@/lib/db';
+import { elapsedSince } from '@/lib/record/elapsed';
 import { matchSpecs } from '@/lib/rules/engine';
 import { useInspection } from '@/lib/state/inspection';
 import type { SafetyChecklist } from '@/lib/rules/types';
@@ -27,6 +29,7 @@ export default function ResultPage() {
   const router = useRouter();
   const {
     declaredPurpose,
+    startedAt,
     grinder,
     wheel,
     grinderImage,
@@ -77,6 +80,8 @@ export default function ResultPage() {
         result,
         checklist,
         declaredPurpose,
+        // 저장 버튼을 누른 순간이 점검의 끝이다.
+        elapsedMs: elapsedSince(startedAt) ?? undefined,
         grinderImage: grinderImage ?? undefined,
         wheelImage: wheelImage ?? undefined,
         createdAt: new Date().toISOString(),
@@ -131,6 +136,8 @@ export default function ResultPage() {
           </div>
         </div>
       )}
+
+      <HazardList purpose={declaredPurpose} />
 
       <ChecklistForm
         checklist={checklist}

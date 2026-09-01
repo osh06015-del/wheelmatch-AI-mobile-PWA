@@ -117,5 +117,10 @@ export interface InspectionRecord {
   declaredPurpose?: WorkPurpose | null;
   grinderImage?: Blob;
   wheelImage?: Blob;
+  /**
+   * 작업 선택부터 저장까지 걸린 시간(ms).
+   * 이 기능 도입 전 기록과 시계가 뒤로 간 경우에는 없다.
+   */
+  elapsedMs?: number;
   createdAt: string;
 }

@@ -16,10 +16,13 @@ import type { GrinderSpec, WheelSpec, WorkPurpose } from '@/lib/rules/types';
 const GRINDER_KEY = 'wheelmatch.grinder';
 const WHEEL_KEY = 'wheelmatch.wheel';
 const PURPOSE_KEY = 'wheelmatch.purpose';
+const STARTED_KEY = 'wheelmatch.startedAt';
 
 interface InspectionState {
   /** 작업자가 시작할 때 고른 오늘의 작업 */
   declaredPurpose: WorkPurpose | null;
+  /** 점검을 시작한 시각(epoch ms). 작업을 고른 순간이다. */
+  startedAt: number | null;
   grinder: GrinderSpec | null;
   wheel: WheelSpec | null;
   grinderImage: Blob | null;
@@ -31,6 +34,7 @@ interface InspectionState {
 /** 서버 렌더와 hydration에 쓰는 고정 스냅샷. 절대 바뀌지 않는다. */
 const SERVER_SNAPSHOT: InspectionState = {
   declaredPurpose: null,
+  startedAt: null,
   grinder: null,
   wheel: null,
   grinderImage: null,
@@ -59,6 +63,7 @@ function initialClientState(): InspectionState {
   if (typeof window === 'undefined') return SERVER_SNAPSHOT;
   return {
     declaredPurpose: readStored<WorkPurpose>(PURPOSE_KEY),
+    startedAt: readStored<number>(STARTED_KEY),
     grinder: readStored<GrinderSpec>(GRINDER_KEY),
     wheel: readStored<WheelSpec>(WHEEL_KEY),
     grinderImage: null,
@@ -107,9 +112,14 @@ export function useInspection(): InspectionStore {
     getServerSnapshot,
   );
 
+  // 작업을 고르는 것이 곧 점검 시작이다. 여기서 시계를 켠다.
+  // 되돌아와 다시 고르면 처음부터 다시 잰다 — 중간에 그만둔 시도까지
+  // 합산하면 "한 건에 걸린 시간"이 아니게 된다.
   const setPurpose = useCallback((purpose: WorkPurpose) => {
+    const startedAt = Date.now();
     writeStored(PURPOSE_KEY, purpose);
-    setState({ declaredPurpose: purpose });
+    writeStored(STARTED_KEY, startedAt);
+    setState({ declaredPurpose: purpose, startedAt });
   }, []);
 
   const setGrinder = useCallback((spec: GrinderSpec, image?: Blob | null) => {
@@ -133,6 +143,7 @@ export function useInspection(): InspectionStore {
   const reset = useCallback(() => {
     try {
       window.sessionStorage.removeItem(PURPOSE_KEY);
+      window.sessionStorage.removeItem(STARTED_KEY);
       window.sessionStorage.removeItem(GRINDER_KEY);
       window.sessionStorage.removeItem(WHEEL_KEY);
     } catch {
@@ -140,6 +151,7 @@ export function useInspection(): InspectionStore {
     }
     setState({
       declaredPurpose: null,
+      startedAt: null,
       grinder: null,
       wheel: null,
       grinderImage: null,
