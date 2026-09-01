@@ -32,6 +32,8 @@ export default function ResultPage() {
     startedAt,
     grinder,
     wheel,
+    grinderOcr,
+    wheelOcr,
     grinderImage,
     wheelImage,
     hydrating,
@@ -82,6 +84,8 @@ export default function ResultPage() {
         declaredPurpose,
         // 저장 버튼을 누른 순간이 점검의 끝이다.
         elapsedMs: elapsedSince(startedAt) ?? undefined,
+        grinderOcr: grinderOcr ?? undefined,
+        wheelOcr: wheelOcr ?? undefined,
         grinderImage: grinderImage ?? undefined,
         wheelImage: wheelImage ?? undefined,
         createdAt: new Date().toISOString(),

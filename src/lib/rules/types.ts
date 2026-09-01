@@ -115,6 +115,12 @@ export interface InspectionRecord {
   checklist: SafetyChecklist;
   /** 작업자가 고른 오늘의 작업. 이 기능 도입 전 기록에는 없다. */
   declaredPurpose?: WorkPurpose | null;
+  /**
+   * 사용자가 고치기 전의 OCR 원본값. 인식률·정정률을 재는 데만 쓴다.
+   * 이 기능 도입 전 기록에는 없다.
+   */
+  grinderOcr?: GrinderSpec;
+  wheelOcr?: WheelSpec;
   grinderImage?: Blob;
   wheelImage?: Blob;
   /**

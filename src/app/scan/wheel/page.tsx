@@ -94,7 +94,7 @@ export default function WheelScanPage() {
       rawText: ocr?.rawText ?? '',
       confidence: userConfirmed ? 'high' : (ocr?.confidence ?? 'low'),
     };
-    setWheel(spec, photo);
+    setWheel(spec, photo, ocr);
     router.push('/result');
   }
 

@@ -83,7 +83,7 @@ export default function GrinderScanPage() {
       // 사용자가 직접 확인했으면 그 확인을 신뢰한다. 아니면 OCR 신뢰도를 그대로 쓴다.
       confidence: userConfirmed ? 'high' : (ocr?.confidence ?? 'low'),
     };
-    setGrinder(spec, photo);
+    setGrinder(spec, photo, ocr);
     router.push('/scan/wheel');
   }
 

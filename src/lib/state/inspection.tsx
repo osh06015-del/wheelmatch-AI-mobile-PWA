@@ -17,6 +17,8 @@ const GRINDER_KEY = 'wheelmatch.grinder';
 const WHEEL_KEY = 'wheelmatch.wheel';
 const PURPOSE_KEY = 'wheelmatch.purpose';
 const STARTED_KEY = 'wheelmatch.startedAt';
+const GRINDER_OCR_KEY = 'wheelmatch.grinderOcr';
+const WHEEL_OCR_KEY = 'wheelmatch.wheelOcr';
 
 interface InspectionState {
   /** 작업자가 시작할 때 고른 오늘의 작업 */
@@ -25,6 +27,14 @@ interface InspectionState {
   startedAt: number | null;
   grinder: GrinderSpec | null;
   wheel: WheelSpec | null;
+  /**
+   * 사용자가 손대기 전의 OCR 결과.
+   *
+   * 최종 값만 남기면 "AI가 처음에 뭐라고 읽었는지"가 사라져 인식률을 잴 수 없다.
+   * 연구용 지표(정정률)를 뽑으려면 둘 다 있어야 한다. 판정에는 쓰지 않는다.
+   */
+  grinderOcr: GrinderSpec | null;
+  wheelOcr: WheelSpec | null;
   grinderImage: Blob | null;
   wheelImage: Blob | null;
   /** 서버 렌더 결과에서는 false. 브라우저 값이 반영된 뒤에만 true가 된다. */
@@ -37,6 +47,8 @@ const SERVER_SNAPSHOT: InspectionState = {
   startedAt: null,
   grinder: null,
   wheel: null,
+  grinderOcr: null,
+  wheelOcr: null,
   grinderImage: null,
   wheelImage: null,
   hydrated: false,
@@ -66,6 +78,8 @@ function initialClientState(): InspectionState {
     startedAt: readStored<number>(STARTED_KEY),
     grinder: readStored<GrinderSpec>(GRINDER_KEY),
     wheel: readStored<WheelSpec>(WHEEL_KEY),
+    grinderOcr: readStored<GrinderSpec>(GRINDER_OCR_KEY),
+    wheelOcr: readStored<WheelSpec>(WHEEL_OCR_KEY),
     grinderImage: null,
     wheelImage: null,
     hydrated: true,
@@ -100,8 +114,16 @@ export interface InspectionStore extends InspectionState {
   /** 브라우저 값이 아직 반영되지 않은 렌더인지 여부 */
   hydrating: boolean;
   setPurpose: (purpose: WorkPurpose) => void;
-  setGrinder: (spec: GrinderSpec, image?: Blob | null) => void;
-  setWheel: (spec: WheelSpec, image?: Blob | null) => void;
+  setGrinder: (
+    spec: GrinderSpec,
+    image?: Blob | null,
+    ocr?: GrinderSpec | null,
+  ) => void;
+  setWheel: (
+    spec: WheelSpec,
+    image?: Blob | null,
+    ocr?: WheelSpec | null,
+  ) => void;
   reset: () => void;
 }
 
@@ -122,23 +144,31 @@ export function useInspection(): InspectionStore {
     setState({ declaredPurpose: purpose, startedAt });
   }, []);
 
-  const setGrinder = useCallback((spec: GrinderSpec, image?: Blob | null) => {
-    writeStored(GRINDER_KEY, spec);
-    setState(
-      image === undefined
-        ? { grinder: spec }
-        : { grinder: spec, grinderImage: image },
-    );
-  }, []);
+  const setGrinder = useCallback(
+    (spec: GrinderSpec, image?: Blob | null, ocr?: GrinderSpec | null) => {
+      writeStored(GRINDER_KEY, spec);
+      if (ocr !== undefined) writeStored(GRINDER_OCR_KEY, ocr);
+      setState({
+        grinder: spec,
+        ...(image === undefined ? {} : { grinderImage: image }),
+        ...(ocr === undefined ? {} : { grinderOcr: ocr }),
+      });
+    },
+    [],
+  );
 
-  const setWheel = useCallback((spec: WheelSpec, image?: Blob | null) => {
-    writeStored(WHEEL_KEY, spec);
-    setState(
-      image === undefined
-        ? { wheel: spec }
-        : { wheel: spec, wheelImage: image },
-    );
-  }, []);
+  const setWheel = useCallback(
+    (spec: WheelSpec, image?: Blob | null, ocr?: WheelSpec | null) => {
+      writeStored(WHEEL_KEY, spec);
+      if (ocr !== undefined) writeStored(WHEEL_OCR_KEY, ocr);
+      setState({
+        wheel: spec,
+        ...(image === undefined ? {} : { wheelImage: image }),
+        ...(ocr === undefined ? {} : { wheelOcr: ocr }),
+      });
+    },
+    [],
+  );
 
   const reset = useCallback(() => {
     try {
@@ -146,6 +176,8 @@ export function useInspection(): InspectionStore {
       window.sessionStorage.removeItem(STARTED_KEY);
       window.sessionStorage.removeItem(GRINDER_KEY);
       window.sessionStorage.removeItem(WHEEL_KEY);
+      window.sessionStorage.removeItem(GRINDER_OCR_KEY);
+      window.sessionStorage.removeItem(WHEEL_OCR_KEY);
     } catch {
       // 무시한다.
     }
@@ -154,6 +186,8 @@ export function useInspection(): InspectionStore {
       startedAt: null,
       grinder: null,
       wheel: null,
+      grinderOcr: null,
+      wheelOcr: null,
       grinderImage: null,
       wheelImage: null,
     });

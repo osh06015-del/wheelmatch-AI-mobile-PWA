@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 import { HistoryList } from '@/components/HistoryList';
+import { ResearchPanel } from '@/components/ResearchPanel';
 import { clearInspections, listInspections } from '@/lib/db';
 
 export default function HistoryPage() {
@@ -74,6 +75,8 @@ export default function HistoryPage() {
           )}
         </div>
       )}
+
+      {records !== undefined && <ResearchPanel records={records} />}
 
       <Link
         href="/scan/grinder"
