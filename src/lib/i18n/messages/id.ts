@@ -5,9 +5,7 @@
 import type { Messages } from './ko';
 
 export const id: Messages = {
-  'common.back': 'Kembali',
   'common.home': 'Beranda',
-  'common.retake': 'Foto ulang',
   'common.grinder': 'Gerinda',
   'common.wheel': 'Batu gerinda',
   'common.language': 'Bahasa',
@@ -52,7 +50,7 @@ export const id: Messages = {
   'rule.workPurpose': 'Sesuai pekerjaan Anda',
   'rule.wheelType': 'Jenis batu gerinda',
   'rule.visibleDamage': 'Kerusakan yang terlihat',
-  'rule.peripheralSpeed': 'Pemeriksaan silang kecepatan tepi',
+  'rule.peripheralSpeed': 'Pemeriksaan silang kecepatan keliling',
   'rule.confidence': 'Keyakinan pembacaan',
 
   'action.title': 'JANGAN DIGUNAKAN',

@@ -6,9 +6,7 @@
 import type { Messages } from './ko';
 
 export const en: Messages = {
-  'common.back': 'Back',
   'common.home': 'Home',
-  'common.retake': 'Retake photo',
   'common.grinder': 'Grinder',
   'common.wheel': 'Wheel',
   'common.language': 'Language',
@@ -26,30 +24,30 @@ export const en: Messages = {
 
   'verdict.compatible': 'SPECS MATCH',
   'verdict.incompatible': 'SPECS DO NOT MATCH',
-  'verdict.undetermined': 'CANNOT JUDGE',
+  'verdict.undetermined': 'CANNOT DETERMINE',
   'verdict.note.compatible':
     'The printed specifications match each other. Complete the safety checklist below.',
   'verdict.note.incompatible':
     'Do not use this combination. Check the reasons below.',
   'verdict.note.undetermined':
-    'Not enough values to judge. Take the photo again or enter the values yourself.',
+    'There is not enough information to decide. Take the photos again or enter the values yourself.',
 
   'result.title': 'Specification check result',
   'result.loading': 'Loading the result...',
   'result.undetermined.help':
     'Some values are missing or were read with low confidence. Take the photos again or enter the values yourself to get a judgement.',
   'result.retakeGrinder': 'Start again from the grinder',
-  'result.retakeWheel': 'Redo the wheel only',
+  'result.retakeWheel': 'Check the wheel again',
   'result.save': 'Finish and save',
   'result.saving': 'Saving...',
   'result.saveError': 'Saving failed. Check your storage space and try again.',
 
-  'checks.title': 'Result by check',
+  'checks.title': 'Results for each check',
   'rule.requiredValues': 'Required values',
   'rule.rpmSafety': 'Speed rating',
   'rule.diameterFit': 'Diameter fit',
   'rule.purpose': 'Wheel use',
-  'rule.workPurpose': 'Matches your job',
+  'rule.workPurpose': 'Job match',
   'rule.wheelType': 'Wheel type',
   'rule.visibleDamage': 'Visible damage',
   'rule.peripheralSpeed': 'Speed cross-check',
@@ -61,7 +59,7 @@ export const en: Messages = {
   'action.diameterFit':
     'Do not mount this wheel. Replace it with one no larger than the grinder allows.',
   'action.workPurpose':
-    "Replace it with a wheel made for today's job. A wheel made for other work can break.",
+    "Fit a wheel made for today's job instead. A wheel made for other work can break.",
   'action.generic':
     'Do not mount this wheel. Replace it with one that meets the conditions.',
 

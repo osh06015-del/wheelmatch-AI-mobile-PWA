@@ -7,9 +7,7 @@
 // 안전 문구를 한 언어만 고쳐두면 사람에 따라 다른 지시를 받게 된다.
 
 export const ko = {
-  'common.back': '뒤로',
   'common.home': '처음으로',
-  'common.retake': '재촬영',
   'common.grinder': '그라인더',
   'common.wheel': '숫돌',
   'common.language': '언어',

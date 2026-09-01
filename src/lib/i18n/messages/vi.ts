@@ -5,9 +5,7 @@
 import type { Messages } from './ko';
 
 export const vi: Messages = {
-  'common.back': 'Quay lại',
-  'common.home': 'Trang đầu',
-  'common.retake': 'Chụp lại',
+  'common.home': 'Trang chủ',
   'common.grinder': 'Máy mài',
   'common.wheel': 'Đá mài',
   'common.language': 'Ngôn ngữ',
@@ -85,8 +83,8 @@ export const vi: Messages = {
     'Bạn phải xác nhận đủ {count} mục an toàn thì mới lưu được.',
 
   disclaimer:
-    'Ứng dụng này chỉ đối chiếu các thông số in trên nhãn. Ứng dụng không bảo đảm an toàn lao động và không thay thế hướng dẫn của nhà sản xuất hay nội quy an toàn của công trường.',
+    'Ứng dụng này chỉ đối chiếu các thông số in trên nhãn. Ứng dụng không bảo đảm an toàn lao động và không thay thế hướng dẫn của nhà sản xuất hay nội quy an toàn của nơi làm việc.',
 
   'translation.notice':
-    'Bản dịch này chưa được kiểm duyệt. Nếu nghĩa chưa rõ, hãy theo bản tiếng Hàn và hỏi người quản lý.',
+    'Bản dịch này chưa được hiệu đính. Nếu nghĩa chưa rõ, hãy theo bản tiếng Hàn và hỏi người quản lý.',
 };

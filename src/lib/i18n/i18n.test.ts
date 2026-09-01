@@ -3,6 +3,8 @@
 // 번역문이 맞는지는 사람이 봐야 안다. 여기서 지키는 것은 그 앞 단계다 —
 // 빠진 문구, 빈 문구, 어긋난 자리표시자. 안전 문구가 빈 칸으로 뜨는 일을 막는다.
 
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { RULE } from '@/lib/rules/engine';
@@ -95,5 +97,33 @@ describe('규칙 이름 연결', () => {
     for (const key of Object.values(ACTION_MESSAGE_KEY)) {
       expect(ko).toHaveProperty(key);
     }
+  });
+});
+
+describe('쓰이지 않는 문구', () => {
+  /** src 아래 소스를 전부 이어 붙인다 (문구 파일과 테스트는 뺀다). */
+  function appSource(dir = 'src'): string {
+    let out = '';
+    for (const name of readdirSync(dir)) {
+      const path = join(dir, name);
+      if (statSync(path).isDirectory()) {
+        out += appSource(path);
+      } else if (
+        /\.tsx?$/.test(name) &&
+        !name.includes('.test.') &&
+        !path.includes('messages')
+      ) {
+        out += readFileSync(path, 'utf-8');
+      }
+    }
+    return out;
+  }
+
+  it('모든 문구가 화면 어딘가에서 쓰인다', () => {
+    // 안 쓰는 키가 남아 있으면 번역이 실제보다 많이 된 것처럼 보인다.
+    // 화면을 새로 번역할 때 키를 먼저 만들지 말고, 쓸 때 만든다.
+    const source = appSource();
+    const unused = KEYS.filter((key) => !source.includes(`'${key}'`));
+    expect(unused).toEqual([]);
   });
 });

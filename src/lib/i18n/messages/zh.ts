@@ -5,9 +5,7 @@
 import type { Messages } from './ko';
 
 export const zh: Messages = {
-  'common.back': '返回',
   'common.home': '首页',
-  'common.retake': '重新拍摄',
   'common.grinder': '角磨机',
   'common.wheel': '砂轮',
   'common.language': '语言',
@@ -30,7 +28,7 @@ export const zh: Messages = {
   'verdict.note.undetermined': '数据不足，无法判定。请重新拍摄或自行输入数值。',
 
   'result.title': '规格核对结果',
-  'result.loading': '正在载入结果...',
+  'result.loading': '正在加载结果...',
   'result.undetermined.help':
     '数据不足或识别可信度低。请重新拍摄或自行输入数值后再判定。',
   'result.retakeGrinder': '从角磨机重新开始',
@@ -58,7 +56,7 @@ export const zh: Messages = {
   'action.generic': '请勿安装此砂轮。请更换为符合条件的砂轮。',
 
   'checklist.title': '安全检查清单',
-  'checklist.note': '这些项目需要你亲自确认，规格核对不包含这些内容。',
+  'checklist.note': '这些项目需要亲自确认，规格核对不包含这些内容。',
   'checklist.guardCover': '已安装防护罩',
   'checklist.guardCoverHint': '确认砂轮外露角度是否按规定遮挡',
   'checklist.auxiliaryHandle': '已安装辅助手柄',
@@ -67,8 +65,8 @@ export const zh: Messages = {
   'checklist.wheelDamageHint': '确认有无裂纹、缺口、变形（若有请立即更换）',
   'checklist.ppe': '已穿戴防护用品',
   'checklist.ppeHint': '确认是否佩戴护目镜、手套和面罩',
-  'checklist.preWork': '作业前请确认火花不会朝向人员或易燃物。',
-  'checklist.incomplete': '必须确认全部 {count} 项安全项目后才能保存。',
+  'checklist.preWork': '就在开始作业前，请确认火花不会朝向人员或易燃物。',
+  'checklist.incomplete': '必须确认安全检查清单的全部 {count} 项后才能保存。',
 
   disclaimer:
     '本应用仅提供标签所示规格的核对结果。不保证作业安全，也不能替代制造商说明书和作业现场的安全规程。',
