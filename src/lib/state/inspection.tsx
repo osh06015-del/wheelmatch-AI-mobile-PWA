@@ -11,12 +11,15 @@
 // hydration 시점에 값이 한 박자 늦게 들어와 잘못된 화면 전환을 유발한다.
 
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
-import type { GrinderSpec, WheelSpec } from '@/lib/rules/types';
+import type { GrinderSpec, WheelSpec, WorkPurpose } from '@/lib/rules/types';
 
 const GRINDER_KEY = 'wheelmatch.grinder';
 const WHEEL_KEY = 'wheelmatch.wheel';
+const PURPOSE_KEY = 'wheelmatch.purpose';
 
 interface InspectionState {
+  /** 작업자가 시작할 때 고른 오늘의 작업 */
+  declaredPurpose: WorkPurpose | null;
   grinder: GrinderSpec | null;
   wheel: WheelSpec | null;
   grinderImage: Blob | null;
@@ -27,6 +30,7 @@ interface InspectionState {
 
 /** 서버 렌더와 hydration에 쓰는 고정 스냅샷. 절대 바뀌지 않는다. */
 const SERVER_SNAPSHOT: InspectionState = {
+  declaredPurpose: null,
   grinder: null,
   wheel: null,
   grinderImage: null,
@@ -54,6 +58,7 @@ function writeStored(key: string, value: unknown): void {
 function initialClientState(): InspectionState {
   if (typeof window === 'undefined') return SERVER_SNAPSHOT;
   return {
+    declaredPurpose: readStored<WorkPurpose>(PURPOSE_KEY),
     grinder: readStored<GrinderSpec>(GRINDER_KEY),
     wheel: readStored<WheelSpec>(WHEEL_KEY),
     grinderImage: null,
@@ -89,6 +94,7 @@ function getServerSnapshot(): InspectionState {
 export interface InspectionStore extends InspectionState {
   /** 브라우저 값이 아직 반영되지 않은 렌더인지 여부 */
   hydrating: boolean;
+  setPurpose: (purpose: WorkPurpose) => void;
   setGrinder: (spec: GrinderSpec, image?: Blob | null) => void;
   setWheel: (spec: WheelSpec, image?: Blob | null) => void;
   reset: () => void;
@@ -100,6 +106,11 @@ export function useInspection(): InspectionStore {
     getSnapshot,
     getServerSnapshot,
   );
+
+  const setPurpose = useCallback((purpose: WorkPurpose) => {
+    writeStored(PURPOSE_KEY, purpose);
+    setState({ declaredPurpose: purpose });
+  }, []);
 
   const setGrinder = useCallback((spec: GrinderSpec, image?: Blob | null) => {
     writeStored(GRINDER_KEY, spec);
@@ -121,12 +132,14 @@ export function useInspection(): InspectionStore {
 
   const reset = useCallback(() => {
     try {
+      window.sessionStorage.removeItem(PURPOSE_KEY);
       window.sessionStorage.removeItem(GRINDER_KEY);
       window.sessionStorage.removeItem(WHEEL_KEY);
     } catch {
       // 무시한다.
     }
     setState({
+      declaredPurpose: null,
       grinder: null,
       wheel: null,
       grinderImage: null,
@@ -138,10 +151,11 @@ export function useInspection(): InspectionStore {
     () => ({
       ...snapshot,
       hydrating: !snapshot.hydrated,
+      setPurpose,
       setGrinder,
       setWheel,
       reset,
     }),
-    [snapshot, setGrinder, setWheel, reset],
+    [snapshot, setPurpose, setGrinder, setWheel, reset],
   );
 }

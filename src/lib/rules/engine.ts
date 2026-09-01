@@ -11,6 +11,7 @@ import type {
   Verdict,
   WheelPurpose,
   WheelSpec,
+  WorkPurpose,
 } from './types';
 
 /** 검사 규칙 이름. UI와 테스트가 항목을 찾을 때 쓰는 키이기도 하다. */
@@ -19,6 +20,7 @@ export const RULE = {
   RPM_SAFETY: 'RPM 안전',
   DIAMETER_FIT: '지름 호환',
   PURPOSE: '용도 확인',
+  WORK_PURPOSE: '작업 목적 일치',
   CONFIDENCE: '신뢰도 검증',
 } as const;
 
@@ -34,6 +36,11 @@ const PURPOSE_LABEL: Record<WheelPurpose, string> = {
   cutting: '절단용',
   grinding: '연삭용',
   unknown: '미확인',
+};
+
+const WORK_PURPOSE_LABEL: Record<WorkPurpose, string> = {
+  cutting: '절단',
+  grinding: '연삭',
 };
 
 const rpmText = (value: number | null): string | null =>
@@ -194,7 +201,55 @@ export function checkPurpose(wheel: WheelSpec): CheckItem {
 }
 
 /**
- * Rule 5 — 신뢰도 검증
+ * Rule 5 — 작업 목적 일치
+ *
+ * 작업자가 시작할 때 고른 작업과 숫돌 라벨의 용도를 대조한다.
+ * Rule 4(용도 확인)가 "라벨을 읽었는가"라면, 이 규칙은 "읽은 것이 오늘 할
+ * 작업과 맞는가"다. 연삭 작업에 절단날을 쓰면 측면 하중이 걸려 숫돌이 깨진다.
+ * 그래서 불일치는 경고가 아니라 부적합이다.
+ *
+ * 작업을 고르지 않았으면(구버전 기록 등) 대조할 대상이 없으므로 건너뛴다.
+ * 이때는 Rule 4가 예전처럼 경고 수준으로 남는다.
+ */
+export function checkWorkPurpose(
+  wheel: WheelSpec,
+  declaredPurpose: WorkPurpose | null,
+): CheckItem | null {
+  if (declaredPurpose === null) return null;
+
+  const base = {
+    rule: RULE.WORK_PURPOSE,
+    grinderValue: WORK_PURPOSE_LABEL[declaredPurpose],
+    wheelValue: PURPOSE_LABEL[wheel.purpose],
+  };
+
+  // 라벨 용도를 읽지 못하면 대조가 성립하지 않는다.
+  // 작업을 선언한 이상 "모르겠다"를 통과시키지 않는다.
+  if (wheel.purpose === 'unknown') {
+    return {
+      ...base,
+      passed: null,
+      reason: `오늘 작업은 ${WORK_PURPOSE_LABEL[declaredPurpose]}인데 숫돌 용도를 읽지 못했습니다. 라벨의 용도 표기를 직접 확인하세요.`,
+    };
+  }
+
+  if (wheel.purpose !== declaredPurpose) {
+    return {
+      ...base,
+      passed: false,
+      reason: `오늘 작업은 ${WORK_PURPOSE_LABEL[declaredPurpose]}인데 이 숫돌은 ${PURPOSE_LABEL[wheel.purpose]}입니다. 용도에 맞지 않는 숫돌은 측면 하중으로 파손될 수 있습니다.`,
+    };
+  }
+
+  return {
+    ...base,
+    passed: true,
+    reason: `오늘 작업(${WORK_PURPOSE_LABEL[declaredPurpose]})과 숫돌 용도가 일치합니다.`,
+  };
+}
+
+/**
+ * Rule 6 — 신뢰도 검증
  * 어느 한쪽이라도 인식 신뢰도가 낮으면, 나머지 항목이 통과하더라도
  * 그 값을 믿고 적합 판정을 내릴 수 없다. 전체를 판정불가로 되돌린다.
  */
@@ -253,16 +308,29 @@ export function decideVerdict(checks: CheckItem[]): Verdict {
  * 어떤 규칙도 건너뛰지 않는다. 판정을 막는 규칙이 있어도 나머지 항목의 결과를
  * 함께 보여줘야 사용자가 무엇을 고쳐야 하는지 알 수 있다.
  */
+export interface MatchOptions {
+  /** 작업자가 고른 오늘의 작업. 고르지 않았으면 목적 대조를 건너뛴다. */
+  declaredPurpose?: WorkPurpose | null;
+  /** 테스트에서 시각을 고정하기 위한 주입점 */
+  now?: Date;
+}
+
 export function matchSpecs(
   grinder: GrinderSpec,
   wheel: WheelSpec,
-  now: Date = new Date(),
+  options: MatchOptions = {},
 ): MatchResult {
+  const { declaredPurpose = null, now = new Date() } = options;
+
+  const workPurpose = checkWorkPurpose(wheel, declaredPurpose);
+
   const checks: CheckItem[] = [
     checkRequiredValues(grinder, wheel),
     checkRpmSafety(grinder, wheel),
     checkDiameterFit(grinder, wheel),
     checkPurpose(wheel),
+    // 작업을 고르지 않았으면 이 항목 자체가 없다.
+    ...(workPurpose ? [workPurpose] : []),
     checkConfidence(grinder, wheel),
   ];
 

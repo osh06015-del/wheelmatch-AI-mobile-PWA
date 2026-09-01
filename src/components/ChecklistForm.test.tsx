@@ -11,6 +11,7 @@ import {
   CHECKLIST_ITEMS,
   ChecklistForm,
   EMPTY_CHECKLIST,
+  PRE_WORK_REMINDER,
   isChecklistComplete,
 } from './ChecklistForm';
 import type { SafetyChecklist } from '@/lib/rules/types';
@@ -19,16 +20,24 @@ const ALL_CHECKED: SafetyChecklist = {
   guardCover: true,
   auxiliaryHandle: true,
   wheelDamage: true,
-  sparkDirection: true,
   ppe: true,
 };
+
+describe('안전 체크리스트 구성', () => {
+  it('불꽃 방향은 체크박스에서 뺀다', () => {
+    // 장착 전에 예/아니오로 답할 수 있는 항목이 아니다.
+    // 작업 직전 안내(PRE_WORK_REMINDER)로 따로 띄운다.
+    expect(CHECKLIST_ITEMS.map((i) => i.key)).not.toContain('sparkDirection');
+    expect(PRE_WORK_REMINDER).toContain('불꽃');
+  });
+});
 
 describe('isChecklistComplete', () => {
   it('빈 체크리스트는 미완료다', () => {
     expect(isChecklistComplete(EMPTY_CHECKLIST)).toBe(false);
   });
 
-  it('5개를 모두 체크해야 완료다', () => {
+  it('정의된 항목을 모두 체크해야 완료다', () => {
     expect(isChecklistComplete(ALL_CHECKED)).toBe(true);
   });
 
@@ -47,10 +56,13 @@ describe('isChecklistComplete', () => {
 });
 
 describe('ChecklistForm', () => {
-  it('5개 항목을 모두 렌더한다', () => {
+  it('정의된 항목을 모두 렌더한다', () => {
     render(<ChecklistForm checklist={EMPTY_CHECKLIST} onToggle={vi.fn()} />);
 
-    expect(screen.getAllByRole('checkbox')).toHaveLength(5);
+    // 개수를 숫자로 박지 않는다. 항목이 늘거나 줄 때 테스트가 조용히 어긋난다.
+    expect(screen.getAllByRole('checkbox')).toHaveLength(
+      CHECKLIST_ITEMS.length,
+    );
     for (const item of CHECKLIST_ITEMS) {
       expect(
         screen.getByRole('checkbox', { name: new RegExp(item.label) }),

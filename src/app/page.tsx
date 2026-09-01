@@ -1,20 +1,45 @@
 'use client';
 
-// 메인 화면. 점검을 새로 시작하는 곳이다.
+// 메인 화면 — 오늘 할 작업을 고르는 것으로 점검이 시작된다.
+//
+// "시작" 버튼을 따로 두지 않는다. 작업을 고르는 행위가 곧 시작이다.
+// 현장에서는 화면을 한 번이라도 덜 넘기는 쪽이 낫다.
+//
+// 작업을 먼저 선언받는 이유: 숫돌 라벨의 용도(절단/연삭)와 대조하기 위해서다.
+// 연삭 작업에 절단날을 쓰면 측면 하중으로 숫돌이 깨진다. 규칙엔진이 이를 잡는다.
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { useInspection } from '@/lib/state/inspection';
+
 import { Disclaimer } from '@/components/Disclaimer';
+import { useInspection } from '@/lib/state/inspection';
+import type { WorkPurpose } from '@/lib/rules/types';
+
+const CHOICES: Array<{
+  value: WorkPurpose;
+  label: string;
+  hint: string;
+  icon: string;
+}> = [
+  { value: 'cutting', label: '절단', hint: '자르기', icon: '✂' },
+  { value: 'grinding', label: '연삭', hint: '갈기·연마', icon: '🛠' },
+];
 
 export default function Home() {
-  const { reset } = useInspection();
+  const router = useRouter();
+  const { reset, setPurpose } = useInspection();
 
   // 메인으로 돌아오면 이전 점검 값을 비운다.
   // 지난 촬영 값이 남아 다음 점검에 섞여 들어가면 안 된다.
   useEffect(() => {
     reset();
   }, [reset]);
+
+  function start(purpose: WorkPurpose) {
+    setPurpose(purpose);
+    router.push('/scan/grinder');
+  }
 
   return (
     <main className="flex flex-1 flex-col justify-between gap-8 px-6 py-10">
@@ -24,20 +49,30 @@ export default function Home() {
       </header>
 
       <div className="flex flex-col gap-4">
-        <Link
-          href="/scan/grinder"
-          className="flex min-h-[160px] flex-col items-center justify-center gap-4 rounded-2xl bg-slate-800 px-6 py-8 text-center active:bg-slate-700"
-        >
-          <span aria-hidden className="text-5xl">
-            🛠️
-          </span>
-          <span className="text-2xl font-bold text-slate-100">
-            명판 촬영 시작
-          </span>
-          <span className="text-base text-slate-400">
-            그라인더 명판 → 숫돌 라벨 순서로 촬영합니다
-          </span>
-        </Link>
+        <h2 className="text-2xl font-bold text-slate-100">오늘 작업은?</h2>
+
+        <div className="grid grid-cols-2 gap-4">
+          {CHOICES.map((choice) => (
+            <button
+              key={choice.value}
+              type="button"
+              onClick={() => start(choice.value)}
+              className="flex min-h-[160px] flex-col items-center justify-center gap-3 rounded-2xl bg-slate-800 px-4 py-6 active:bg-slate-700"
+            >
+              <span aria-hidden className="text-5xl">
+                {choice.icon}
+              </span>
+              <span className="text-3xl font-black text-slate-100">
+                {choice.label}
+              </span>
+              <span className="text-base text-slate-400">{choice.hint}</span>
+            </button>
+          ))}
+        </div>
+
+        <p className="text-base leading-relaxed text-slate-400">
+          작업을 고르면 명판 → 숫돌 라벨 순서로 촬영합니다.
+        </p>
 
         <Link
           href="/history"

@@ -231,13 +231,77 @@ describe('규칙엔진 — 복합 시나리오', () => {
   });
 });
 
-describe('규칙엔진 — 결과 형식', () => {
-  it('timestamp는 ISO 8601 문자열로 기록된다', () => {
+describe('규칙엔진 — 작업 목적 대조', () => {
+  it('작업을 고르지 않으면 이 항목 자체가 없다 (기존 동작 유지)', () => {
+    const result = matchSpecs(grinder(), wheel());
+    expect(
+      result.checks.find((c) => c.rule === RULE.WORK_PURPOSE),
+    ).toBeUndefined();
+    expect(result.checks).toHaveLength(5);
+  });
+
+  it('절단 작업 + 절단용 숫돌 → 통과', () => {
+    const result = matchSpecs(grinder(), wheel({ purpose: 'cutting' }), {
+      declaredPurpose: 'cutting',
+    });
+    expect(checkOf(result, RULE.WORK_PURPOSE).passed).toBe(true);
+    expect(result.verdict).toBe('COMPATIBLE');
+  });
+
+  it('연삭 작업인데 절단용 숫돌 → INCOMPATIBLE', () => {
+    // 절단날에 측면 하중을 주면 깨진다. 경고가 아니라 부적합이다.
+    const result = matchSpecs(grinder(), wheel({ purpose: 'cutting' }), {
+      declaredPurpose: 'grinding',
+    });
+    expect(result.verdict).toBe('INCOMPATIBLE');
+    expect(checkOf(result, RULE.WORK_PURPOSE).passed).toBe(false);
+    expect(checkOf(result, RULE.WORK_PURPOSE).reason).toContain('측면 하중');
+  });
+
+  it('절단 작업인데 연삭용 숫돌 → INCOMPATIBLE', () => {
+    const result = matchSpecs(grinder(), wheel({ purpose: 'grinding' }), {
+      declaredPurpose: 'cutting',
+    });
+    expect(result.verdict).toBe('INCOMPATIBLE');
+  });
+
+  it('작업을 골랐는데 숫돌 용도를 못 읽으면 → UNDETERMINED', () => {
+    // 작업을 선언한 이상 "모르겠다"를 통과시키지 않는다.
+    // 작업을 고르지 않았을 때(테스트 16)와 결과가 달라지는 지점이다.
+    const result = matchSpecs(grinder(), wheel({ purpose: 'unknown' }), {
+      declaredPurpose: 'cutting',
+    });
+    expect(result.verdict).toBe('UNDETERMINED');
+    expect(checkOf(result, RULE.WORK_PURPOSE).passed).toBeNull();
+  });
+
+  it('목적이 맞아도 RPM이 부족하면 여전히 부적합이다', () => {
+    // 새 규칙이 기존 안전 판정을 덮어쓰지 않는지 확인한다.
     const result = matchSpecs(
       grinder(),
-      wheel(),
-      new Date('2026-08-31T09:00:00.000Z'),
+      wheel({ maxRPM: 8500, purpose: 'cutting' }),
+      { declaredPurpose: 'cutting' },
     );
+    expect(result.verdict).toBe('INCOMPATIBLE');
+    expect(checkOf(result, RULE.RPM_SAFETY).passed).toBe(false);
+    expect(checkOf(result, RULE.WORK_PURPOSE).passed).toBe(true);
+  });
+
+  it('작업 목적 항목은 그라인더·숫돌 값을 나란히 보여준다', () => {
+    const result = matchSpecs(grinder(), wheel({ purpose: 'grinding' }), {
+      declaredPurpose: 'cutting',
+    });
+    const check = checkOf(result, RULE.WORK_PURPOSE);
+    expect(check.grinderValue).toBe('절단');
+    expect(check.wheelValue).toBe('연삭용');
+  });
+});
+
+describe('규칙엔진 — 결과 형식', () => {
+  it('timestamp는 ISO 8601 문자열로 기록된다', () => {
+    const result = matchSpecs(grinder(), wheel(), {
+      now: new Date('2026-08-31T09:00:00.000Z'),
+    });
     expect(result.timestamp).toBe('2026-08-31T09:00:00.000Z');
   });
 

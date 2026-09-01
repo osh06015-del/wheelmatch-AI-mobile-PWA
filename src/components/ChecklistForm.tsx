@@ -28,11 +28,6 @@ export const CHECKLIST_ITEMS: Array<{
     hint: '균열·깨짐·변형이 없는지 확인 (있으면 즉시 교체)',
   },
   {
-    key: 'sparkDirection',
-    label: '불꽃 방향 확인',
-    hint: '사람·가연물 쪽으로 불꽃이 향하지 않는지 확인',
-  },
-  {
     key: 'ppe',
     label: '보호구 착용',
     hint: '보안경·장갑·안면보호구 착용 여부 확인',
@@ -43,9 +38,18 @@ export const EMPTY_CHECKLIST: SafetyChecklist = {
   guardCover: null,
   auxiliaryHandle: null,
   wheelDamage: null,
-  sparkDirection: null,
   ppe: null,
 };
+
+/**
+ * 불꽃 방향은 체크박스에서 뺐다.
+ *
+ * 장착 전에 예/아니오로 답할 수 있는 상태가 아니다. 작업 자세와 주변 상황에
+ * 따라 매 순간 달라지므로, 미리 체크해두면 "확인했다"는 착각만 남는다.
+ * 대신 점검을 마친 뒤 작업 직전 안내로 띄운다.
+ */
+export const PRE_WORK_REMINDER =
+  '작업 직전, 불꽃이 사람·가연물 쪽으로 향하지 않는지 확인하세요.';
 
 /** 모든 항목이 true여야 점검 완료로 본다. */
 export function isChecklistComplete(checklist: SafetyChecklist): boolean {

@@ -8,22 +8,32 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
+import { ActionGuide } from '@/components/ActionGuide';
 import {
+  CHECKLIST_ITEMS,
   ChecklistForm,
   EMPTY_CHECKLIST,
+  PRE_WORK_REMINDER,
   isChecklistComplete,
 } from '@/components/ChecklistForm';
 import { Disclaimer } from '@/components/Disclaimer';
 import { ResultCard } from '@/components/ResultCard';
 import { saveInspection } from '@/lib/db';
-import { failureReasons, matchSpecs } from '@/lib/rules/engine';
+import { matchSpecs } from '@/lib/rules/engine';
 import { useInspection } from '@/lib/state/inspection';
 import type { SafetyChecklist } from '@/lib/rules/types';
 
 export default function ResultPage() {
   const router = useRouter();
-  const { grinder, wheel, grinderImage, wheelImage, hydrating, reset } =
-    useInspection();
+  const {
+    declaredPurpose,
+    grinder,
+    wheel,
+    grinderImage,
+    wheelImage,
+    hydrating,
+    reset,
+  } = useInspection();
 
   const [checklist, setChecklist] = useState<SafetyChecklist>(EMPTY_CHECKLIST);
   const [saving, setSaving] = useState(false);
@@ -40,8 +50,9 @@ export default function ResultPage() {
   }, [saved, hydrating, grinder, wheel, router]);
 
   const result = useMemo(
-    () => (grinder && wheel ? matchSpecs(grinder, wheel) : null),
-    [grinder, wheel],
+    () =>
+      grinder && wheel ? matchSpecs(grinder, wheel, { declaredPurpose }) : null,
+    [grinder, wheel, declaredPurpose],
   );
 
   if (!grinder || !wheel || !result) {
@@ -52,7 +63,7 @@ export default function ResultPage() {
     );
   }
 
-  const failures = failureReasons(result);
+  const failures = result.checks.filter((check) => check.passed === false);
   const complete = isChecklistComplete(checklist);
 
   async function save() {
@@ -65,6 +76,7 @@ export default function ResultPage() {
         wheel,
         result,
         checklist,
+        declaredPurpose,
         grinderImage: grinderImage ?? undefined,
         wheelImage: wheelImage ?? undefined,
         createdAt: new Date().toISOString(),
@@ -95,21 +107,7 @@ export default function ResultPage() {
 
       <ResultCard result={result} />
 
-      {failures.length > 0 && (
-        <section className="flex flex-col gap-3 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-4">
-          <h2 className="text-xl font-bold text-red-200">부적합 원인</h2>
-          <ul className="flex list-disc flex-col gap-2 pl-5">
-            {failures.map((reason) => (
-              <li
-                key={reason}
-                className="text-lg font-bold leading-relaxed text-red-100"
-              >
-                {reason}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <ActionGuide failures={failures} />
 
       {result.verdict === 'UNDETERMINED' && (
         <div className="flex flex-col gap-3 rounded-xl border border-yellow-500/40 bg-yellow-500/10 px-4 py-4">
@@ -141,6 +139,10 @@ export default function ResultPage() {
         }
       />
 
+      <p className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-4 text-base leading-relaxed text-yellow-100">
+        ⚠ {PRE_WORK_REMINDER}
+      </p>
+
       {saveError && (
         <p className="rounded-lg border border-red-500/40 bg-red-500/15 px-4 py-4 text-base leading-relaxed text-red-200">
           {saveError}
@@ -158,7 +160,8 @@ export default function ResultPage() {
         </button>
         {!complete && (
           <p className="text-base text-slate-400">
-            안전 체크리스트 5개 항목을 모두 확인해야 저장할 수 있습니다.
+            안전 체크리스트 {CHECKLIST_ITEMS.length}개 항목을 모두 확인해야
+            저장할 수 있습니다.
           </p>
         )}
         <Link
