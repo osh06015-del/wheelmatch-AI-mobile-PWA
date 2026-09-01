@@ -1,6 +1,10 @@
 // Tiếng Việt (베트남어).
 //
 // 검수 전이다. 현장 투입 전 원어민 확인이 필요하다 (docs/i18n.md 참고).
+//
+// 용어는 베트남 현지 산업안전 자료와 Bosch 베트남 자료를 대조해 골랐다.
+//   máy mài (góc) · đá mài · tay cầm phụ · giật ngược  ← 현지 용례 확인됨
+// 확인하지 못한 것은 docs/i18n.md의 검수 질문 목록에 남겼다.
 
 import type { Messages } from './ko';
 
@@ -16,7 +20,7 @@ export const vi: Messages = {
   'home.cutting': 'Cắt',
   'home.cuttingHint': 'Công việc cắt',
   'home.grinding': 'Mài',
-  'home.grindingHint': 'Mài và đánh bóng',
+  'home.grindingHint': 'Công việc mài',
   'home.afterChoice':
     'Sau khi chọn, hãy chụp nhãn máy mài trước, rồi đến nhãn đá mài.',
   'home.history': 'Xem lịch sử kiểm tra →',
@@ -66,7 +70,7 @@ export const vi: Messages = {
   'checklist.title': 'Danh mục kiểm tra an toàn',
   'checklist.note':
     'Những mục này bạn phải tự kiểm tra. Việc đối chiếu thông số không bao gồm chúng.',
-  'checklist.guardCover': 'Đã lắp nắp bảo vệ',
+  'checklist.guardCover': 'Đã lắp chụp bảo vệ',
   'checklist.guardCoverHint':
     'Kiểm tra đá mài đã được che đúng góc quy định chưa',
   'checklist.auxiliaryHandle': 'Đã lắp tay cầm phụ',
