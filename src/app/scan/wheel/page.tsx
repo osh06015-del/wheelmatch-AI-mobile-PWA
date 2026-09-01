@@ -14,6 +14,7 @@ import {
 } from '@/components/FieldConfirm';
 import { ManualConfirmToggle } from '@/components/ManualConfirmToggle';
 import { ScanHeader } from '@/components/ScanHeader';
+import { WHEEL_FIELD_GUIDE } from '@/lib/guide/fieldGuide';
 import { optimizeForUpload } from '@/lib/image/optimize';
 import { getExtractor } from '@/lib/ocr/extractor';
 import { useInspection } from '@/lib/state/inspection';
@@ -103,6 +104,7 @@ export default function WheelScanPage() {
       unit: 'rpm',
       kind: 'number',
       value: form.maxRPM,
+      guide: WHEEL_FIELD_GUIDE.maxRPM,
     },
     {
       key: 'diameter',
@@ -110,6 +112,7 @@ export default function WheelScanPage() {
       unit: 'mm',
       kind: 'number',
       value: form.diameter,
+      guide: WHEEL_FIELD_GUIDE.diameter,
     },
     {
       key: 'thickness',
@@ -117,8 +120,15 @@ export default function WheelScanPage() {
       unit: 'mm',
       kind: 'number',
       value: form.thickness,
+      guide: WHEEL_FIELD_GUIDE.thickness,
     },
-    { key: 'purpose', label: '용도', kind: 'purpose', value: form.purpose },
+    {
+      key: 'purpose',
+      label: '용도',
+      kind: 'purpose',
+      value: form.purpose,
+      guide: WHEEL_FIELD_GUIDE.purpose,
+    },
   ];
 
   if (phase === 'capture') {

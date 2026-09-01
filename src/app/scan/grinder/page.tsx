@@ -15,6 +15,7 @@ import {
 } from '@/components/FieldConfirm';
 import { ManualConfirmToggle } from '@/components/ManualConfirmToggle';
 import { ScanHeader } from '@/components/ScanHeader';
+import { GRINDER_FIELD_GUIDE } from '@/lib/guide/fieldGuide';
 import { optimizeForUpload } from '@/lib/image/optimize';
 import { getExtractor } from '@/lib/ocr/extractor';
 import { useInspection } from '@/lib/state/inspection';
@@ -87,13 +88,20 @@ export default function GrinderScanPage() {
   }
 
   const fields: FieldSpec[] = [
-    { key: 'model', label: '모델명', kind: 'text', value: form.model },
+    {
+      key: 'model',
+      label: '모델명',
+      kind: 'text',
+      value: form.model,
+      guide: GRINDER_FIELD_GUIDE.model,
+    },
     {
       key: 'noLoadRPM',
       label: '무부하 회전속도',
       unit: 'rpm',
       kind: 'number',
       value: form.noLoadRPM,
+      guide: GRINDER_FIELD_GUIDE.noLoadRPM,
     },
     {
       key: 'maxWheelDiameter',
@@ -101,6 +109,7 @@ export default function GrinderScanPage() {
       unit: 'mm',
       kind: 'number',
       value: form.maxWheelDiameter,
+      guide: GRINDER_FIELD_GUIDE.maxWheelDiameter,
     },
   ];
 

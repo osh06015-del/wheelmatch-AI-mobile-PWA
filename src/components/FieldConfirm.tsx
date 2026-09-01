@@ -6,6 +6,7 @@
 // 값이 비어 있으면 채워 넣지 않고 null로 남긴다. 임의로 추정한 값을 넣지 않는다.
 
 import { useState } from 'react';
+import type { FieldGuide } from '@/lib/guide/fieldGuide';
 import type { Confidence, WheelPurpose } from '@/lib/rules/types';
 
 export interface FieldSpec {
@@ -14,6 +15,8 @@ export interface FieldSpec {
   unit?: string;
   kind: 'number' | 'text' | 'purpose';
   value: string;
+  /** 작업자용 설명. 없으면 설명 없이 입력칸만 보여준다. */
+  guide?: FieldGuide;
 }
 
 interface FieldConfirmProps {
@@ -69,6 +72,13 @@ export function FieldConfirm({
               {field.unit ? ` (${field.unit})` : ''}
             </span>
 
+            {/* 이게 무엇이고 왜 중요한지. 항상 보여준다. */}
+            {field.guide && (
+              <span className="text-base leading-relaxed text-slate-400">
+                {field.guide.hint}
+              </span>
+            )}
+
             {field.kind === 'purpose' ? (
               <select
                 value={field.value}
@@ -90,6 +100,14 @@ export function FieldConfirm({
                 onChange={(event) => onChange(field.key, event.target.value)}
                 className="min-h-12 rounded-lg border border-slate-600 bg-slate-800 px-4 text-lg text-slate-100 placeholder:text-slate-500"
               />
+            )}
+
+            {/* 값을 읽지 못했을 때만 어디를 봐야 하는지 알려준다.
+                직접 입력해야 하는 순간에 정확히 필요한 정보다. */}
+            {field.guide && field.value.trim() === '' && (
+              <span className="rounded-lg bg-slate-800 px-3 py-2 text-base leading-relaxed text-slate-300">
+                📍 {field.guide.where}
+              </span>
             )}
           </label>
         ))}
