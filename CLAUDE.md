@@ -13,7 +13,7 @@
 | ------------- | -------------------------------------------- |
 | 개발 서버     | `npm run dev`                                |
 | 빌드          | `npm run build`                              |
-| 테스트        | `npm test` (Vitest + happy-dom, 178개 통과)  |
+| 테스트        | `npm test` (Vitest + happy-dom, 235개 통과)  |
 | 타입 검사     | `npm run typecheck`                          |
 | lint          | `npm run lint` (ESLint 9 flat config)        |
 | 포맷          | `npm run format` / `npm run format:check`    |

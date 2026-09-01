@@ -3,6 +3,8 @@
 // 적합 / 부적합 / 판정불가 결과 카드.
 // 야외 눈부심을 고려해 배경은 어둡게, 판정은 큰 글씨와 색으로 즉시 구분되게 한다.
 
+import { useLocale, type MessageKey, type Translate } from '@/lib/i18n';
+import { RULE_MESSAGE_KEY } from '@/lib/i18n/ruleLabel';
 import { RULE } from '@/lib/rules/engine';
 import { grinderSummary, margins } from '@/lib/rules/requirement';
 import type {
@@ -13,10 +15,10 @@ import type {
   WheelSpec,
 } from '@/lib/rules/types';
 
-const VERDICT_TEXT: Record<Verdict, string> = {
-  COMPATIBLE: '적합',
-  INCOMPATIBLE: '부적합',
-  UNDETERMINED: '판정불가',
+const VERDICT_TEXT: Record<Verdict, MessageKey> = {
+  COMPATIBLE: 'verdict.compatible',
+  INCOMPATIBLE: 'verdict.incompatible',
+  UNDETERMINED: 'verdict.undetermined',
 };
 
 const VERDICT_ICON: Record<Verdict, string> = {
@@ -31,13 +33,21 @@ const VERDICT_STYLE: Record<Verdict, string> = {
   UNDETERMINED: 'bg-yellow-500 text-slate-950',
 };
 
-const VERDICT_NOTE: Record<Verdict, string> = {
-  COMPATIBLE:
-    '표시된 규격끼리는 서로 맞습니다. 아래 안전 체크리스트를 확인하세요.',
-  INCOMPATIBLE: '이 조합은 사용하면 안 됩니다. 아래 원인을 확인하세요.',
-  UNDETERMINED:
-    '값이 부족해 판정할 수 없습니다. 재촬영하거나 값을 직접 입력하세요.',
+const VERDICT_NOTE: Record<Verdict, MessageKey> = {
+  COMPATIBLE: 'verdict.note.compatible',
+  INCOMPATIBLE: 'verdict.note.incompatible',
+  UNDETERMINED: 'verdict.note.undetermined',
 };
+
+/**
+ * 규칙 이름을 고른 언어로 바꾼다.
+ *
+ * 짝이 없으면 엔진이 낸 한국어 이름을 그대로 쓴다. 빈 칸이 되지 않게 하려는 것이다.
+ */
+function ruleLabel(rule: string, t: Translate): string {
+  const key = RULE_MESSAGE_KEY[rule];
+  return key ? t(key) : rule;
+}
 
 function checkIcon(passed: boolean | null): string {
   if (passed === true) return '✅';
@@ -48,13 +58,15 @@ function checkIcon(passed: boolean | null): string {
 function CheckRow({
   check,
   margin,
+  t,
 }: {
   check: CheckItem;
   margin?: string | null;
+  t: Translate;
 }) {
   const comparison =
     check.grinderValue || check.wheelValue
-      ? `그라인더 ${check.grinderValue ?? '—'} / 숫돌 ${check.wheelValue ?? '—'}`
+      ? `${t('common.grinder')} ${check.grinderValue ?? '—'} / ${t('common.wheel')} ${check.wheelValue ?? '—'}`
       : null;
 
   return (
@@ -64,7 +76,7 @@ function CheckRow({
       </span>
       <div className="flex flex-col gap-1">
         <span className="text-base font-semibold text-slate-100">
-          {check.rule}
+          {ruleLabel(check.rule, t)}
         </span>
         {comparison && (
           <span className="text-base text-slate-300">{comparison}</span>
@@ -101,6 +113,7 @@ interface ResultCardProps {
 }
 
 export function ResultCard({ result, grinder, wheel }: ResultCardProps) {
+  const { t } = useLocale();
   const gap = grinder && wheel ? margins(grinder, wheel) : null;
   const marginFor = (rule: string): string | null => {
     if (!gap) return null;
@@ -118,12 +131,12 @@ export function ResultCard({ result, grinder, wheel }: ResultCardProps) {
           {VERDICT_ICON[result.verdict]}
         </span>
         <span className="text-3xl font-black">
-          {VERDICT_TEXT[result.verdict]}
+          {t(VERDICT_TEXT[result.verdict])}
         </span>
       </div>
 
       <p className="text-base leading-relaxed text-slate-300">
-        {VERDICT_NOTE[result.verdict]}
+        {t(VERDICT_NOTE[result.verdict])}
       </p>
 
       {/* 어떤 기계로 점검했는지. 이력에서 다시 볼 때도 필요하다. */}
@@ -133,13 +146,14 @@ export function ResultCard({ result, grinder, wheel }: ResultCardProps) {
         </p>
       )}
 
-      <h2 className="text-xl font-bold text-slate-100">검사 항목별 결과</h2>
+      <h2 className="text-xl font-bold text-slate-100">{t('checks.title')}</h2>
       <ul className="flex flex-col gap-3">
         {result.checks.map((check) => (
           <CheckRow
             key={check.rule}
             check={check}
             margin={marginFor(check.rule)}
+            t={t}
           />
         ))}
       </ul>

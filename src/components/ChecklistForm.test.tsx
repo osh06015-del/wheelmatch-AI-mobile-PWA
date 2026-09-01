@@ -11,9 +11,10 @@ import {
   CHECKLIST_ITEMS,
   ChecklistForm,
   EMPTY_CHECKLIST,
-  PRE_WORK_REMINDER,
+  PRE_WORK_REMINDER_KEY,
   isChecklistComplete,
 } from './ChecklistForm';
+import { translate } from '@/lib/i18n';
 import type { SafetyChecklist } from '@/lib/rules/types';
 
 const ALL_CHECKED: SafetyChecklist = {
@@ -26,9 +27,9 @@ const ALL_CHECKED: SafetyChecklist = {
 describe('안전 체크리스트 구성', () => {
   it('불꽃 방향은 체크박스에서 뺀다', () => {
     // 장착 전에 예/아니오로 답할 수 있는 항목이 아니다.
-    // 작업 직전 안내(PRE_WORK_REMINDER)로 따로 띄운다.
+    // 작업 직전 안내(PRE_WORK_REMINDER_KEY)로 따로 띄운다.
     expect(CHECKLIST_ITEMS.map((i) => i.key)).not.toContain('sparkDirection');
-    expect(PRE_WORK_REMINDER).toContain('불꽃');
+    expect(translate('ko', PRE_WORK_REMINDER_KEY)).toContain('불꽃');
   });
 });
 
@@ -65,7 +66,9 @@ describe('ChecklistForm', () => {
     );
     for (const item of CHECKLIST_ITEMS) {
       expect(
-        screen.getByRole('checkbox', { name: new RegExp(item.label) }),
+        screen.getByRole('checkbox', {
+          name: new RegExp(translate('ko', item.labelKey)),
+        }),
       ).toBeInTheDocument();
     }
   });

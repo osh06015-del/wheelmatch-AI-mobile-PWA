@@ -8,18 +8,10 @@
 // 문구는 AI가 만들지 않는다. 규칙마다 미리 정해둔 문장을 쓴다.
 // 매번 다른 표현이 나오면 작업자가 익힐 수 없고, 잘못된 문장이 섞일 수도 있다.
 
+import { useLocale, type Translate } from '@/lib/i18n';
+import { ACTION_MESSAGE_KEY, RULE_MESSAGE_KEY } from '@/lib/i18n/ruleLabel';
 import { RULE } from '@/lib/rules/engine';
 import type { CheckItem } from '@/lib/rules/types';
-
-/** 규칙별 조치 문장. 위험 설명이 아니라 지금 할 행동을 적는다. */
-const ACTION: Record<string, string> = {
-  [RULE.RPM_SAFETY]:
-    '이 숫돌을 장착하지 마세요. 그라인더 회전속도 이상을 견디는 숫돌로 교체해야 합니다.',
-  [RULE.DIAMETER_FIT]:
-    '이 숫돌을 장착하지 마세요. 그라인더가 허용하는 지름 이하의 숫돌로 교체해야 합니다.',
-  [RULE.WORK_PURPOSE]:
-    '오늘 작업에 맞는 용도의 숫돌로 교체하세요. 용도가 다른 숫돌은 파손 위험이 큽니다.',
-};
 
 /** 검사 항목에서 숫자만 뽑는다. "11000rpm" → 11000 */
 function numberIn(value: string | null): number | null {
@@ -32,7 +24,7 @@ function numberIn(value: string | null): number | null {
  * 두 값의 차이를 사람이 읽는 문장으로 만든다.
  * 차이를 보여주면 "얼마나 위험한가"가 한눈에 들어온다.
  */
-function describeGap(check: CheckItem): string | null {
+function describeGap(check: CheckItem, t: Translate): string | null {
   const grinderValue = numberIn(check.grinderValue);
   const wheelValue = numberIn(check.wheelValue);
   if (grinderValue === null || wheelValue === null) return null;
@@ -40,42 +32,56 @@ function describeGap(check: CheckItem): string | null {
   if (check.rule === RULE.RPM_SAFETY) {
     const over = grinderValue - wheelValue;
     if (over <= 0) return null;
-    return `그라인더가 숫돌 허용속도보다 ${over.toLocaleString('ko-KR')}rpm 빠릅니다.`;
+    // 숫자와 단위만 남긴다. 언어와 무관하게 읽히고, 문장을 언어마다
+    // 새로 만들 필요도 없다. 어느 쪽이 큰지는 화살표가 말해준다.
+    return `${t('common.grinder')} ${check.grinderValue} > ${t('common.wheel')} ${check.wheelValue} (+${over.toLocaleString('en-US')}rpm)`;
   }
 
   if (check.rule === RULE.DIAMETER_FIT) {
     const over = wheelValue - grinderValue;
     if (over <= 0) return null;
-    return `숫돌이 허용 지름보다 ${over}mm 큽니다.`;
+    return `${t('common.wheel')} ${check.wheelValue} > ${t('common.grinder')} ${check.grinderValue} (+${over}mm)`;
   }
 
   return null;
 }
 
 export function ActionGuide({ failures }: { failures: CheckItem[] }) {
+  const { t } = useLocale();
+
   if (failures.length === 0) return null;
 
   return (
     <section className="flex flex-col gap-4 rounded-xl border-2 border-red-500 bg-red-500/10 px-4 py-5">
-      <h2 className="text-2xl font-black text-red-200">사용하지 마십시오</h2>
+      <h2 className="text-2xl font-black text-red-200">{t('action.title')}</h2>
 
       {failures.map((check) => {
-        const gap = describeGap(check);
+        const gap = describeGap(check, t);
+        const ruleKey = RULE_MESSAGE_KEY[check.rule];
+        // 조치 문장이 따로 없는 규칙은 공통 문장으로 받는다.
+        // 엔진의 한국어 사유를 그대로 띄우면 다른 언어 사용자는 읽지 못한다.
+        const actionKey = ACTION_MESSAGE_KEY[check.rule] ?? 'action.generic';
         return (
           <div key={check.rule} className="flex flex-col gap-3">
-            <p className="text-xl font-bold text-red-100">{check.rule}</p>
+            <p className="text-xl font-bold text-red-100">
+              {ruleKey ? t(ruleKey) : check.rule}
+            </p>
 
             {/* 두 값을 크게 나란히 보여준다 */}
             {check.grinderValue && check.wheelValue && (
               <div className="flex items-stretch gap-3">
                 <div className="flex flex-1 flex-col gap-1 rounded-lg bg-slate-900/60 px-3 py-3">
-                  <span className="text-sm text-slate-400">그라인더</span>
+                  <span className="text-sm text-slate-400">
+                    {t('common.grinder')}
+                  </span>
                   <span className="text-2xl font-black text-slate-100">
                     {check.grinderValue}
                   </span>
                 </div>
                 <div className="flex flex-1 flex-col gap-1 rounded-lg bg-slate-900/60 px-3 py-3">
-                  <span className="text-sm text-slate-400">숫돌</span>
+                  <span className="text-sm text-slate-400">
+                    {t('common.wheel')}
+                  </span>
                   <span className="text-2xl font-black text-slate-100">
                     {check.wheelValue}
                   </span>
@@ -87,7 +93,7 @@ export function ActionGuide({ failures }: { failures: CheckItem[] }) {
 
             {/* 다음 행동. 이게 이 화면의 핵심이다. */}
             <p className="rounded-lg bg-red-500 px-4 py-4 text-lg font-bold leading-relaxed text-white">
-              → {ACTION[check.rule] ?? check.reason}
+              → {t(actionKey)}
             </p>
           </div>
         );

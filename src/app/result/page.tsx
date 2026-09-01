@@ -13,12 +13,14 @@ import {
   CHECKLIST_ITEMS,
   ChecklistForm,
   EMPTY_CHECKLIST,
-  PRE_WORK_REMINDER,
+  PRE_WORK_REMINDER_KEY,
   isChecklistComplete,
 } from '@/components/ChecklistForm';
 import { Disclaimer } from '@/components/Disclaimer';
 import { HazardList } from '@/components/HazardList';
+import { LanguagePicker } from '@/components/LanguagePicker';
 import { ResultCard } from '@/components/ResultCard';
+import { useLocale } from '@/lib/i18n';
 import { saveInspection } from '@/lib/db';
 import { elapsedSince } from '@/lib/record/elapsed';
 import { matchSpecs } from '@/lib/rules/engine';
@@ -27,6 +29,7 @@ import type { SafetyChecklist } from '@/lib/rules/types';
 
 export default function ResultPage() {
   const router = useRouter();
+  const { t } = useLocale();
   const {
     declaredPurpose,
     startedAt,
@@ -63,7 +66,7 @@ export default function ResultPage() {
   if (!grinder || !wheel || !result) {
     return (
       <main className="flex flex-1 items-center justify-center px-6">
-        <p className="text-lg text-slate-400">결과를 불러오는 중입니다...</p>
+        <p className="text-lg text-slate-400">{t('result.loading')}</p>
       </main>
     );
   }
@@ -94,9 +97,7 @@ export default function ResultPage() {
       reset();
       router.push('/history');
     } catch {
-      setSaveError(
-        '저장에 실패했습니다. 저장 공간을 확인한 뒤 다시 시도하세요.',
-      );
+      setSaveError(t('result.saveError'));
       setSaving(false);
     }
   }
@@ -106,12 +107,14 @@ export default function ResultPage() {
       <header className="flex items-center gap-3">
         <Link
           href="/"
-          aria-label="처음으로"
+          aria-label={t('common.home')}
           className="flex h-12 w-12 items-center justify-center rounded-lg text-2xl text-slate-300 active:bg-slate-800"
         >
           ←
         </Link>
-        <h1 className="text-xl font-bold text-slate-100">규격 대조 결과</h1>
+        <h1 className="text-xl font-bold text-slate-100">
+          {t('result.title')}
+        </h1>
       </header>
 
       <ResultCard result={result} grinder={grinder} wheel={wheel} />
@@ -121,21 +124,20 @@ export default function ResultPage() {
       {result.verdict === 'UNDETERMINED' && (
         <div className="flex flex-col gap-3 rounded-xl border border-yellow-500/40 bg-yellow-500/10 px-4 py-4">
           <p className="text-lg leading-relaxed text-yellow-100">
-            값이 부족하거나 인식 신뢰도가 낮습니다. 다시 촬영하거나 값을 직접
-            입력하면 판정할 수 있습니다.
+            {t('result.undetermined.help')}
           </p>
           <div className="flex flex-col gap-3">
             <Link
               href="/scan/grinder"
               className="flex min-h-14 items-center justify-center rounded-lg bg-yellow-500 text-lg font-bold text-slate-950 active:bg-yellow-400"
             >
-              그라인더부터 다시 확인
+              {t('result.retakeGrinder')}
             </Link>
             <Link
               href="/scan/wheel"
               className="flex min-h-14 items-center justify-center rounded-lg border border-yellow-500/60 text-lg font-semibold text-yellow-100 active:bg-yellow-500/20"
             >
-              숫돌만 다시 확인
+              {t('result.retakeWheel')}
             </Link>
           </div>
         </div>
@@ -151,7 +153,7 @@ export default function ResultPage() {
       />
 
       <p className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-4 text-base leading-relaxed text-yellow-100">
-        ⚠ {PRE_WORK_REMINDER}
+        ⚠ {t(PRE_WORK_REMINDER_KEY)}
       </p>
 
       {saveError && (
@@ -167,21 +169,22 @@ export default function ResultPage() {
           disabled={!complete || saving}
           className="min-h-14 rounded-lg bg-green-500 text-lg font-bold text-slate-950 active:bg-green-400 disabled:bg-slate-700 disabled:text-slate-400"
         >
-          {saving ? '저장 중...' : '점검 완료 및 저장'}
+          {saving ? t('result.saving') : t('result.save')}
         </button>
         {!complete && (
           <p className="text-base text-slate-400">
-            안전 체크리스트 {CHECKLIST_ITEMS.length}개 항목을 모두 확인해야
-            저장할 수 있습니다.
+            {t('checklist.incomplete', { count: CHECKLIST_ITEMS.length })}
           </p>
         )}
         <Link
           href="/"
           className="flex min-h-14 items-center justify-center rounded-lg border border-slate-600 text-lg font-semibold text-slate-200 active:bg-slate-800"
         >
-          처음으로
+          {t('common.home')}
         </Link>
       </div>
+
+      <LanguagePicker />
 
       <Disclaimer />
     </main>

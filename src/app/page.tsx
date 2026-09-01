@@ -13,22 +13,35 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 import { Disclaimer } from '@/components/Disclaimer';
+import { LanguagePicker } from '@/components/LanguagePicker';
+import { useLocale, type MessageKey } from '@/lib/i18n';
 import { useInspection } from '@/lib/state/inspection';
 import type { WorkPurpose } from '@/lib/rules/types';
 
 const CHOICES: Array<{
   value: WorkPurpose;
-  label: string;
-  hint: string;
+  labelKey: MessageKey;
+  hintKey: MessageKey;
   icon: string;
 }> = [
-  { value: 'cutting', label: '절단', hint: '자르기', icon: '✂' },
-  { value: 'grinding', label: '연삭', hint: '갈기·연마', icon: '🛠' },
+  {
+    value: 'cutting',
+    labelKey: 'home.cutting',
+    hintKey: 'home.cuttingHint',
+    icon: '✂',
+  },
+  {
+    value: 'grinding',
+    labelKey: 'home.grinding',
+    hintKey: 'home.grindingHint',
+    icon: '🛠',
+  },
 ];
 
 export default function Home() {
   const router = useRouter();
   const { reset, setPurpose } = useInspection();
+  const { t } = useLocale();
 
   // 메인으로 돌아오면 이전 점검 값을 비운다.
   // 지난 촬영 값이 남아 다음 점검에 섞여 들어가면 안 된다.
@@ -44,12 +57,16 @@ export default function Home() {
   return (
     <main className="flex flex-1 flex-col justify-between gap-8 px-6 py-10">
       <header className="flex flex-col gap-2">
-        <h1 className="text-3xl font-black text-slate-100">WheelMatch AI</h1>
-        <p className="text-lg text-slate-400">그라인더·숫돌 규격 대조</p>
+        <h1 className="text-3xl font-black text-slate-100">
+          {t('home.title')}
+        </h1>
+        <p className="text-lg text-slate-400">{t('home.subtitle')}</p>
       </header>
 
       <div className="flex flex-col gap-4">
-        <h2 className="text-2xl font-bold text-slate-100">오늘 작업은?</h2>
+        <h2 className="text-2xl font-bold text-slate-100">
+          {t('home.question')}
+        </h2>
 
         <div className="grid grid-cols-2 gap-4">
           {CHOICES.map((choice) => (
@@ -63,24 +80,28 @@ export default function Home() {
                 {choice.icon}
               </span>
               <span className="text-3xl font-black text-slate-100">
-                {choice.label}
+                {t(choice.labelKey)}
               </span>
-              <span className="text-base text-slate-400">{choice.hint}</span>
+              <span className="text-base text-slate-400">
+                {t(choice.hintKey)}
+              </span>
             </button>
           ))}
         </div>
 
         <p className="text-base leading-relaxed text-slate-400">
-          작업을 고르면 명판 → 숫돌 라벨 순서로 촬영합니다.
+          {t('home.afterChoice')}
         </p>
 
         <Link
           href="/history"
           className="flex min-h-12 items-center justify-center rounded-lg px-6 py-4 text-lg text-slate-300 underline underline-offset-4 active:text-slate-100"
         >
-          점검 이력 보기 →
+          {t('home.history')}
         </Link>
       </div>
+
+      <LanguagePicker />
 
       <Disclaimer />
     </main>

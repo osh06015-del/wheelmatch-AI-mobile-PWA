@@ -5,32 +5,35 @@
 // 규격 대조만으로는 안전을 보증할 수 없다. 카메라로 확인할 수 없는 항목은
 // 작업자가 직접 눈으로 보고 체크하게 한다. 전부 체크해야 저장이 열린다.
 
+import { useLocale, type MessageKey } from '@/lib/i18n';
 import type { SafetyChecklist } from '@/lib/rules/types';
 
+// 문구 자체가 아니라 문구 키를 들고 있다. 언어를 바꾸면 같은 항목이
+// 그 언어로 나온다. 항목 순서와 개수는 언어와 무관하게 같아야 한다.
 export const CHECKLIST_ITEMS: Array<{
   key: keyof SafetyChecklist;
-  label: string;
-  hint: string;
+  labelKey: MessageKey;
+  hintKey: MessageKey;
 }> = [
   {
     key: 'guardCover',
-    label: '방호덮개 장착',
-    hint: '숫돌 노출 각도가 규정대로 덮여 있는지 확인',
+    labelKey: 'checklist.guardCover',
+    hintKey: 'checklist.guardCoverHint',
   },
   {
     key: 'auxiliaryHandle',
-    label: '보조손잡이 장착',
-    hint: '반동에 대비해 양손으로 잡을 수 있는지 확인',
+    labelKey: 'checklist.auxiliaryHandle',
+    hintKey: 'checklist.auxiliaryHandleHint',
   },
   {
     key: 'wheelDamage',
-    label: '숫돌 손상 없음',
-    hint: '균열·깨짐·변형이 없는지 확인 (있으면 즉시 교체)',
+    labelKey: 'checklist.wheelDamage',
+    hintKey: 'checklist.wheelDamageHint',
   },
   {
     key: 'ppe',
-    label: '보호구 착용',
-    hint: '보안경·장갑·안면보호구 착용 여부 확인',
+    labelKey: 'checklist.ppe',
+    hintKey: 'checklist.ppeHint',
   },
 ];
 
@@ -48,8 +51,7 @@ export const EMPTY_CHECKLIST: SafetyChecklist = {
  * 따라 매 순간 달라지므로, 미리 체크해두면 "확인했다"는 착각만 남는다.
  * 대신 점검을 마친 뒤 작업 직전 안내로 띄운다.
  */
-export const PRE_WORK_REMINDER =
-  '작업 직전, 불꽃이 사람·가연물 쪽으로 향하지 않는지 확인하세요.';
+export const PRE_WORK_REMINDER_KEY: MessageKey = 'checklist.preWork';
 
 /** 모든 항목이 true여야 점검 완료로 본다. */
 export function isChecklistComplete(checklist: SafetyChecklist): boolean {
@@ -62,11 +64,15 @@ interface ChecklistFormProps {
 }
 
 export function ChecklistForm({ checklist, onToggle }: ChecklistFormProps) {
+  const { t } = useLocale();
+
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-xl font-bold text-slate-100">안전 체크리스트</h2>
+      <h2 className="text-xl font-bold text-slate-100">
+        {t('checklist.title')}
+      </h2>
       <p className="text-base leading-relaxed text-slate-400">
-        규격 대조와 별개로 직접 확인해야 하는 항목입니다.
+        {t('checklist.note')}
       </p>
 
       <ul className="flex flex-col gap-3">
@@ -83,10 +89,10 @@ export function ChecklistForm({ checklist, onToggle }: ChecklistFormProps) {
                 />
                 <span className="flex flex-col gap-1">
                   <span className="text-lg font-semibold text-slate-100">
-                    {item.label}
+                    {t(item.labelKey)}
                   </span>
                   <span className="text-base leading-relaxed text-slate-400">
-                    {item.hint}
+                    {t(item.hintKey)}
                   </span>
                 </span>
               </label>
