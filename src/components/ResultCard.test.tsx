@@ -28,6 +28,8 @@ function wheel(overrides: Partial<WheelSpec> = {}): WheelSpec {
     diameter: 125,
     thickness: 1.6,
     purpose: 'cutting',
+    wheelType: 'bonded_abrasive',
+    visibleDamage: 'none_visible',
     rawText: '',
     confidence: 'high',
     ...overrides,

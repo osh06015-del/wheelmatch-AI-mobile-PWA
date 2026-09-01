@@ -11,6 +11,7 @@ import type {
   Verdict,
   WheelPurpose,
   WheelSpec,
+  WheelType,
   WorkPurpose,
 } from './types';
 
@@ -21,20 +22,29 @@ export const RULE = {
   DIAMETER_FIT: '지름 호환',
   PURPOSE: '용도 확인',
   WORK_PURPOSE: '작업 목적 일치',
+  WHEEL_TYPE: '숫돌 종류',
+  VISIBLE_DAMAGE: '외관 손상',
   CONFIDENCE: '신뢰도 검증',
 } as const;
-
-/**
- * 경고 수준 규칙.
- * 이 규칙이 판정불가(null)로 남더라도 전체 verdict를 끌어내리지 않는다.
- * 용도(절단/연삭) 미인식은 위험 요소를 알리는 정보일 뿐,
- * 회전속도·지름 같은 물리적 안전 조건을 무효화하지는 않기 때문이다.
- */
-const ADVISORY_RULES: ReadonlySet<string> = new Set<string>([RULE.PURPOSE]);
 
 const PURPOSE_LABEL: Record<WheelPurpose, string> = {
   cutting: '절단용',
   grinding: '연삭용',
+  unknown: '미확인',
+};
+
+/** 이 앱의 RPM·지름 규칙이 성립하는 종류. 나머지는 규격 체계가 다르다. */
+const SUPPORTED_WHEEL_TYPES: ReadonlySet<WheelType> = new Set<WheelType>([
+  'bonded_abrasive',
+]);
+
+const WHEEL_TYPE_LABEL: Record<WheelType, string> = {
+  bonded_abrasive: '결합숫돌 (절단·연삭)',
+  flap_disc: '플랩디스크',
+  cup_wheel: '컵휠',
+  diamond: '다이아몬드',
+  wire_brush: '와이어 브러시',
+  other: '기타',
   unknown: '미확인',
 };
 
@@ -182,6 +192,8 @@ export function checkPurpose(wheel: WheelSpec): CheckItem {
     rule: RULE.PURPOSE,
     grinderValue: null,
     wheelValue: PURPOSE_LABEL[wheel.purpose],
+    // 용도 미인식은 알림이다. 회전속도·지름 같은 물리 조건을 무효화하지 않는다.
+    advisory: true,
   };
 
   if (wheel.purpose === 'unknown') {
@@ -249,7 +261,94 @@ export function checkWorkPurpose(
 }
 
 /**
- * Rule 6 — 신뢰도 검증
+ * Rule 6 — 숫돌 종류
+ *
+ * 이 앱의 RPM·지름 규칙은 일반 결합숫돌(절단날·연삭석)을 전제로 만들어졌다.
+ * 다이아몬드 절단날, 컵휠, 플랩디스크, 와이어 브러시는 규격 체계가 달라
+ * 같은 규칙을 적용하면 틀린 답이 나온다. 조용히 틀리느니 멈추는 편이 낫다.
+ *
+ * 지원하지 않는 종류는 부적합이 아니라 판정불가다.
+ * 그 숫돌이 위험하다는 뜻이 아니라, 이 앱이 판단할 수 없다는 뜻이기 때문이다.
+ */
+export function checkWheelType(wheel: WheelSpec): CheckItem {
+  const base = {
+    rule: RULE.WHEEL_TYPE,
+    grinderValue: null,
+    wheelValue: WHEEL_TYPE_LABEL[wheel.wheelType],
+  };
+
+  // 확인하지 못한 것과 확인해보니 다른 종류인 것을 구분한다.
+  //
+  // 종류를 못 봤다고 판정을 막으면, 글자만 읽는 Tesseract 경로에서는
+  // 항상 판정불가가 되어 오프라인 모드가 통째로 쓸모없어진다.
+  // 못 본 것은 알리기만 하고, 다른 종류임을 확인했을 때만 막는다.
+  if (wheel.wheelType === 'unknown') {
+    return {
+      ...base,
+      passed: null,
+      advisory: true,
+      reason:
+        '숫돌 종류를 사진으로 확인하지 못했습니다. 결합숫돌(일반 절단날·연삭석)이 맞는지 직접 확인하세요.',
+    };
+  }
+
+  if (!SUPPORTED_WHEEL_TYPES.has(wheel.wheelType)) {
+    return {
+      ...base,
+      passed: null,
+      reason: `${withParticle(WHEEL_TYPE_LABEL[wheel.wheelType], '은', '는')} 이 앱이 다루지 않는 종류입니다. 규격 체계가 달라 판정할 수 없으니 제조사 취급설명서를 확인하세요.`,
+    };
+  }
+
+  return {
+    ...base,
+    passed: true,
+    reason: '이 앱이 다루는 결합숫돌입니다.',
+  };
+}
+
+/**
+ * Rule 7 — 외관 손상 (경고 수준, 한 방향으로만 작동)
+ *
+ * 사진으로는 눈에 띄는 파손만 알 수 있다. 미세균열은 보이지 않고
+ * 표준 확인법은 타음검사다. 그래서 이 규칙은 한쪽으로만 움직인다.
+ *
+ *   손상이 보임      → 경고를 올린다
+ *   손상이 안 보임    → 아무것도 보장하지 않는다 (통과 근거로 쓰지 않는다)
+ *
+ * "손상 없음"을 승인하는 경로는 만들지 않는다.
+ */
+export function checkVisibleDamage(wheel: WheelSpec): CheckItem {
+  const base = {
+    rule: RULE.VISIBLE_DAMAGE,
+    grinderValue: null,
+    wheelValue: null,
+    // 보이면 경고, 안 보여도 아무것도 보장하지 않는다.
+    // 어느 쪽이든 판정을 움직이지 않는다.
+    advisory: true as const,
+  };
+
+  if (wheel.visibleDamage === 'suspected') {
+    return {
+      ...base,
+      passed: null,
+      reason:
+        '사진에서 깨짐·균열로 보이는 부분이 있습니다. 이 숫돌을 사용하지 말고 직접 확인하세요.',
+    };
+  }
+
+  // none_visible / unknown 둘 다 "확인되지 않음"으로 같게 다룬다.
+  // 사진에 안 보인다고 손상이 없는 것이 아니다.
+  return {
+    ...base,
+    passed: null,
+    reason:
+      '사진으로는 미세균열을 확인할 수 없습니다. 장착 전 타음검사(가볍게 두드려 소리 확인)를 하세요.',
+  };
+}
+
+/**
+ * Rule 8 — 신뢰도 검증
  * 어느 한쪽이라도 인식 신뢰도가 낮으면, 나머지 항목이 통과하더라도
  * 그 값을 믿고 적합 판정을 내릴 수 없다. 전체를 판정불가로 되돌린다.
  */
@@ -293,11 +392,7 @@ export function decideVerdict(checks: CheckItem[]): Verdict {
   if (checks.some((check) => check.passed === false)) {
     return 'INCOMPATIBLE';
   }
-  if (
-    checks.some(
-      (check) => check.passed === null && !ADVISORY_RULES.has(check.rule),
-    )
-  ) {
+  if (checks.some((check) => check.passed === null && !check.advisory)) {
     return 'UNDETERMINED';
   }
   return 'COMPATIBLE';
@@ -331,6 +426,8 @@ export function matchSpecs(
     checkPurpose(wheel),
     // 작업을 고르지 않았으면 이 항목 자체가 없다.
     ...(workPurpose ? [workPurpose] : []),
+    checkWheelType(wheel),
+    checkVisibleDamage(wheel),
     checkConfidence(grinder, wheel),
   ];
 

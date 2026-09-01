@@ -85,6 +85,10 @@ export default function WheelScanPage() {
       diameter: toNumberOrNull(form.diameter),
       thickness: toNumberOrNull(form.thickness),
       purpose: form.purpose as WheelPurpose,
+      // 종류와 외관 손상은 사진에서 판별한 값이다. 사용자가 숫자를 고쳐도
+      // 그대로 이어간다. 값이 없으면 'unknown'으로 두어 판정불가로 이어지게 한다.
+      wheelType: ocr?.wheelType ?? 'unknown',
+      visibleDamage: ocr?.visibleDamage ?? 'unknown',
       rawText: ocr?.rawText ?? '',
       confidence: userConfirmed ? 'high' : (ocr?.confidence ?? 'low'),
     };

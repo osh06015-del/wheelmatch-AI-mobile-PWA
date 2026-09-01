@@ -173,6 +173,10 @@ export function parseWheelText(text: string): WheelSpec {
     diameter: resolvedDiameter,
     thickness: thickness ?? parseThickness(text),
     purpose: parsePurpose(text),
+    // Tesseract는 글자만 읽는다. 숫돌 생김새는 판별할 수 없으므로 unknown이다.
+    // 규칙엔진이 이를 판정불가로 처리한다.
+    wheelType: 'unknown',
+    visibleDamage: 'unknown',
     rawText: text,
     confidence: confidenceFromFields([maxRPM, resolvedDiameter]),
   };

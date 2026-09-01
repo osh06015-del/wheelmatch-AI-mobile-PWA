@@ -23,6 +23,25 @@ export const wheelExtractionSchema = z.object({
   diameter: z.number().nullable(),
   thickness: z.number().nullable(),
   purpose: z.enum(['cutting', 'grinding', 'unknown']),
+
+  // 라벨 글자가 아니라 숫돌 자체의 생김새로 판별하는 종류.
+  // purpose(라벨이 말하는 용도)와 다르다. 예를 들어 다이아몬드 절단날은
+  // purpose가 cutting이지만 종류가 달라 이 앱의 규칙이 적용되지 않는다.
+  wheelType: z.enum([
+    'bonded_abrasive', // 일반 결합숫돌 (절단·연삭) — 이 앱이 다루는 대상
+    'flap_disc', // 플랩디스크
+    'cup_wheel', // 컵휠
+    'diamond', // 다이아몬드 절단날·컵
+    'wire_brush', // 와이어 브러시
+    'other',
+    'unknown',
+  ]),
+
+  // 눈에 띄는 파손만. 미세균열은 사진으로 판별할 수 없으므로 묻지 않는다.
+  // 'none_visible'은 "손상이 없다"는 뜻이 아니라 "사진에서 보이지 않는다"는 뜻이다.
+  // 규칙엔진은 이 값을 통과 근거로 쓰지 않는다. 'suspected'일 때만 경고한다.
+  visibleDamage: z.enum(['suspected', 'none_visible', 'unknown']),
+
   rawText: z.string(),
   confidence: confidenceSchema,
 });
@@ -60,6 +79,21 @@ const WHEEL_RULES = `이번 이미지는 연삭·절단 숫돌 라벨입니다. 
 - purpose: "절단", "cutting", "cut-off"가 보이면 "cutting".
   "연삭", "grinding", "depressed center"가 보이면 "grinding".
   둘 다 확실하지 않으면 "unknown".
+- wheelType: 라벨 글자가 아니라 **숫돌의 생김새**로 판별합니다.
+  - bonded_abrasive: 평평한 원반형 결합숫돌 (일반 절단날·연삭석)
+  - flap_disc: 사포 조각이 겹겹이 붙은 플랩디스크
+  - cup_wheel: 컵처럼 오목한 형태
+  - diamond: 테두리가 분절되어 있거나 다이아몬드 세그먼트가 보이는 것
+  - wire_brush: 금속 와이어가 방사형으로 뻗은 것
+  - other: 위 어디에도 해당하지 않는 것
+  - unknown: 숫돌 형태가 사진에 충분히 보이지 않는 경우
+- visibleDamage: **눈에 띄는 큰 손상만** 봅니다.
+  - suspected: 깨진 모서리, 뚜렷한 균열, 조각 떨어짐이 보임
+  - none_visible: 그런 손상이 사진에서 보이지 않음
+  - unknown: 숫돌 표면이 사진에 충분히 보이지 않음
+
+  머리카락 같은 미세균열은 사진으로 판별할 수 없습니다. 찾으려 하지 마세요.
+  none_visible은 "손상이 없다"가 아니라 "사진에서 보이지 않는다"는 뜻입니다.
 
 주의: m/s를 rpm으로 직접 환산하지 마세요. 환산은 앱이 수행합니다.
 보이는 숫자를 각 필드에 그대로 넣기만 합니다.`;

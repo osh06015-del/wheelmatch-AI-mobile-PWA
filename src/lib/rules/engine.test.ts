@@ -23,6 +23,8 @@ function wheel(overrides: Partial<WheelSpec> = {}): WheelSpec {
     diameter: 125,
     thickness: 1.6,
     purpose: 'cutting',
+    wheelType: 'bonded_abrasive',
+    visibleDamage: 'none_visible',
     rawText: '최고사용회전속도 12200RPM 125x1.6mm 절단용',
     confidence: 'high',
     ...overrides,
@@ -223,11 +225,13 @@ describe('규칙엔진 — 복합 시나리오', () => {
     expect(checkOf(result, RULE.PURPOSE).passed).toBeNull();
   });
 
-  it('20. 모든 항목 통과 → COMPATIBLE, 5개 검사 전부 true', () => {
+  it('20. 모든 항목 통과 → COMPATIBLE, 차단 항목이 하나도 없다', () => {
     const result = matchSpecs(grinder(), wheel());
     expect(result.verdict).toBe('COMPATIBLE');
-    expect(result.checks).toHaveLength(5);
-    expect(result.checks.every((check) => check.passed === true)).toBe(true);
+    // 경고 항목(외관 손상 등)은 언제나 null로 남는다. 사진으로 확정할 수 없기
+    // 때문이다. 그래서 "전부 true"가 아니라 "차단 항목이 없다"로 확인한다.
+    const blocking = result.checks.filter((check) => !check.advisory);
+    expect(blocking.every((check) => check.passed === true)).toBe(true);
   });
 });
 
@@ -237,7 +241,7 @@ describe('규칙엔진 — 작업 목적 대조', () => {
     expect(
       result.checks.find((c) => c.rule === RULE.WORK_PURPOSE),
     ).toBeUndefined();
-    expect(result.checks).toHaveLength(5);
+    expect(result.verdict).toBe('COMPATIBLE');
   });
 
   it('절단 작업 + 절단용 숫돌 → 통과', () => {
@@ -294,6 +298,77 @@ describe('규칙엔진 — 작업 목적 대조', () => {
     const check = checkOf(result, RULE.WORK_PURPOSE);
     expect(check.grinderValue).toBe('절단');
     expect(check.wheelValue).toBe('연삭용');
+  });
+});
+
+describe('규칙엔진 — 숫돌 종류 (사진으로 판별)', () => {
+  it('결합숫돌이면 통과한다', () => {
+    const result = matchSpecs(
+      grinder(),
+      wheel({ wheelType: 'bonded_abrasive' }),
+    );
+    expect(checkOf(result, RULE.WHEEL_TYPE).passed).toBe(true);
+    expect(result.verdict).toBe('COMPATIBLE');
+  });
+
+  it.each([
+    ['diamond', '다이아몬드'],
+    ['cup_wheel', '컵휠'],
+    ['flap_disc', '플랩디스크'],
+    ['wire_brush', '와이어 브러시'],
+  ] as const)('%s 는 이 앱이 다루지 않으므로 UNDETERMINED', (type, label) => {
+    // 규격 체계가 달라 같은 규칙을 적용하면 조용히 틀린 답이 나온다.
+    // 부적합이 아니라 판정불가다. 위험하다는 뜻이 아니라 판단할 수 없다는 뜻이다.
+    const result = matchSpecs(grinder(), wheel({ wheelType: type }));
+    expect(result.verdict).toBe('UNDETERMINED');
+    const check = checkOf(result, RULE.WHEEL_TYPE);
+    expect(check.passed).toBeNull();
+    expect(check.wheelValue).toBe(label);
+  });
+
+  it('종류를 못 봤으면 경고만 하고 판정을 막지 않는다', () => {
+    // 글자만 읽는 Tesseract 경로는 형태를 볼 수 없어 항상 unknown이다.
+    // 이걸 차단하면 오프라인 모드가 통째로 쓸모없어진다.
+    const result = matchSpecs(grinder(), wheel({ wheelType: 'unknown' }));
+    expect(result.verdict).toBe('COMPATIBLE');
+    expect(checkOf(result, RULE.WHEEL_TYPE).advisory).toBe(true);
+  });
+
+  it('미지원 종류라도 RPM 위반이 있으면 부적합이 먼저다', () => {
+    const result = matchSpecs(
+      grinder(),
+      wheel({ wheelType: 'diamond', maxRPM: 8500 }),
+    );
+    expect(result.verdict).toBe('INCOMPATIBLE');
+  });
+});
+
+describe('규칙엔진 — 외관 손상 (한 방향으로만)', () => {
+  it('손상이 보이면 경고하되 판정은 끌어내리지 않는다', () => {
+    const result = matchSpecs(grinder(), wheel({ visibleDamage: 'suspected' }));
+    const check = checkOf(result, RULE.VISIBLE_DAMAGE);
+    expect(check.passed).toBeNull();
+    expect(check.advisory).toBe(true);
+    expect(check.reason).toContain('사용하지 말고');
+  });
+
+  it('손상이 안 보여도 통과로 치지 않는다', () => {
+    // 사진에 안 보인다고 손상이 없는 것이 아니다. 미세균열은 타음검사로 확인한다.
+    const result = matchSpecs(
+      grinder(),
+      wheel({ visibleDamage: 'none_visible' }),
+    );
+    const check = checkOf(result, RULE.VISIBLE_DAMAGE);
+    expect(check.passed).not.toBe(true);
+    expect(check.reason).toContain('타음검사');
+  });
+
+  it('어느 값이든 적합 판정을 막지 않는다', () => {
+    for (const damage of ['suspected', 'none_visible', 'unknown'] as const) {
+      expect(
+        matchSpecs(grinder(), wheel({ visibleDamage: damage })).verdict,
+      ).toBe('COMPATIBLE');
+    }
   });
 });
 

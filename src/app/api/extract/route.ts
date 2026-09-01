@@ -154,6 +154,8 @@ export async function POST(request: Request) {
       diameter: value.diameter,
       thickness: value.thickness,
       purpose: value.purpose,
+      wheelType: value.wheelType,
+      visibleDamage: value.visibleDamage,
       rawText: value.rawText,
       confidence: value.confidence,
     };
@@ -212,6 +214,8 @@ function emptySpec(target: ExtractionTarget): GrinderSpec | WheelSpec {
     diameter: null,
     thickness: null,
     purpose: 'unknown',
+    wheelType: 'unknown',
+    visibleDamage: 'unknown',
     rawText: '',
     confidence: 'low',
   };

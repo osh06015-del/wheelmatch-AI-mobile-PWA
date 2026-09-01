@@ -161,6 +161,9 @@ describe('parseWheelText', () => {
       diameter: 125,
       thickness: 1.6,
       purpose: 'cutting',
+      // Tesseract는 글자만 읽으므로 숫돌 형태와 손상은 판별할 수 없다.
+      wheelType: 'unknown',
+      visibleDamage: 'unknown',
       rawText: WHEEL_LABEL,
       confidence: 'high',
     });

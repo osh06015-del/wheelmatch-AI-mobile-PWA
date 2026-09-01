@@ -15,12 +15,40 @@ export interface WheelSpec {
   maxRPM: number | null; // 최고사용회전속도 (rpm)
   diameter: number | null; // 지름 (mm)
   thickness: number | null; // 두께 (mm)
-  purpose: WheelPurpose; // 용도
+  purpose: WheelPurpose; // 라벨이 말하는 용도
+  wheelType: WheelType; // 숫돌 자체의 생김새로 판별한 종류
+  visibleDamage: VisibleDamage; // 눈에 띄는 큰 손상만
   rawText: string;
   confidence: 'high' | 'medium' | 'low';
 }
 
 export type WheelPurpose = 'cutting' | 'grinding' | 'unknown';
+
+/**
+ * 숫돌의 물리적 종류. 라벨 글자가 아니라 생김새로 판별한다.
+ *
+ * WheelPurpose와 다르다. 다이아몬드 절단날은 purpose가 'cutting'이지만
+ * 결합숫돌과 다른 규격 체계를 쓰므로 이 앱의 RPM·지름 규칙을 적용하면 안 된다.
+ * 그래서 종류를 따로 본다.
+ */
+export type WheelType =
+  | 'bonded_abrasive' // 일반 결합숫돌 — 이 앱이 다루는 대상
+  | 'flap_disc'
+  | 'cup_wheel'
+  | 'diamond'
+  | 'wire_brush'
+  | 'other'
+  | 'unknown';
+
+/**
+ * 사진에서 보이는 손상 여부.
+ *
+ * 'none_visible'은 "손상이 없다"가 아니라 "사진에서 보이지 않는다"는 뜻이다.
+ * 미세균열은 사진으로 판별할 수 없고 표준 확인법은 타음검사다.
+ * 그래서 규칙엔진은 이 값을 통과 근거로 절대 쓰지 않는다.
+ * 'suspected'일 때만 경고를 올린다. 판정을 완화하는 방향으로는 쓰지 않는다.
+ */
+export type VisibleDamage = 'suspected' | 'none_visible' | 'unknown';
 
 /**
  * 작업자가 시작할 때 고른 오늘의 작업.
@@ -49,6 +77,15 @@ export interface CheckItem {
   reason: string; // 한국어 사유
   grinderValue: string | null;
   wheelValue: string | null;
+  /**
+   * 경고 수준 항목인지.
+   *
+   * true이면 판정불가(null)로 남아도 전체 판정을 끌어내리지 않는다.
+   * "확인하지 못했다"와 "확인해보니 문제가 있다"를 구분하기 위한 것이다.
+   * 규칙 이름이 아니라 항목별로 정하는 이유는, 같은 규칙이라도 상황에 따라
+   * 차단해야 할 때와 알리기만 하면 될 때가 다르기 때문이다.
+   */
+  advisory?: boolean;
 }
 
 // 방호장비 수동 체크리스트
