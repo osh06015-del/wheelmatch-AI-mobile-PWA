@@ -13,6 +13,7 @@ import {
   type FieldSpec,
 } from '@/components/FieldConfirm';
 import { ManualConfirmToggle } from '@/components/ManualConfirmToggle';
+import { RequirementBanner } from '@/components/RequirementBanner';
 import { ScanHeader } from '@/components/ScanHeader';
 import { WHEEL_FIELD_GUIDE } from '@/lib/guide/fieldGuide';
 import { optimizeForUpload } from '@/lib/image/optimize';
@@ -31,7 +32,7 @@ interface FormState {
 
 export default function WheelScanPage() {
   const router = useRouter();
-  const { grinder, hydrating, setWheel } = useInspection();
+  const { declaredPurpose, grinder, hydrating, setWheel } = useInspection();
 
   const [phase, setPhase] = useState<Phase>('capture');
   const [photo, setPhoto] = useState<Blob | null>(null);
@@ -135,6 +136,15 @@ export default function WheelScanPage() {
     return (
       <main className="flex flex-1 flex-col">
         <ScanHeader step="2 / 2" title="숫돌 라벨 촬영" />
+        {/* 찍기 전에 무엇을 골라야 하는지 먼저 알려준다.
+            숫돌 걸이 앞에서 바로 쓰이는 정보다. */}
+        {grinder && (
+          <RequirementBanner
+            grinder={grinder}
+            declaredPurpose={declaredPurpose}
+            compact
+          />
+        )}
         <CameraView
           guideLabel="라벨을 사각형 안에 맞추세요"
           onCapture={(blob) => void analyze(blob)}
@@ -189,6 +199,12 @@ export default function WheelScanPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 px-6 py-6">
       <ScanHeader step="2 / 2" title="숫돌 라벨 촬영" bare />
+      {grinder && (
+        <RequirementBanner
+          grinder={grinder}
+          declaredPurpose={declaredPurpose}
+        />
+      )}
       <FieldConfirm
         title="읽어낸 값을 확인하세요"
         fields={fields}

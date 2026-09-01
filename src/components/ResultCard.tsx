@@ -3,7 +3,15 @@
 // 적합 / 부적합 / 판정불가 결과 카드.
 // 야외 눈부심을 고려해 배경은 어둡게, 판정은 큰 글씨와 색으로 즉시 구분되게 한다.
 
-import type { CheckItem, MatchResult, Verdict } from '@/lib/rules/types';
+import { RULE } from '@/lib/rules/engine';
+import { grinderSummary, margins } from '@/lib/rules/requirement';
+import type {
+  CheckItem,
+  GrinderSpec,
+  MatchResult,
+  Verdict,
+  WheelSpec,
+} from '@/lib/rules/types';
 
 const VERDICT_TEXT: Record<Verdict, string> = {
   COMPATIBLE: '적합',
@@ -37,7 +45,13 @@ function checkIcon(passed: boolean | null): string {
   return '⚠';
 }
 
-function CheckRow({ check }: { check: CheckItem }) {
+function CheckRow({
+  check,
+  margin,
+}: {
+  check: CheckItem;
+  margin?: string | null;
+}) {
   const comparison =
     check.grinderValue || check.wheelValue
       ? `그라인더 ${check.grinderValue ?? '—'} / 숫돌 ${check.wheelValue ?? '—'}`
@@ -55,6 +69,18 @@ function CheckRow({ check }: { check: CheckItem }) {
         {comparison && (
           <span className="text-base text-slate-300">{comparison}</span>
         )}
+        {/* 얼마나 여유가 있는지. 판정을 바꾸지 않고 정도만 보여준다. */}
+        {margin && (
+          <span
+            className={`text-base font-bold ${
+              margin.startsWith('부족') || margin.startsWith('여유 없음')
+                ? 'text-yellow-200'
+                : 'text-slate-200'
+            }`}
+          >
+            {margin}
+          </span>
+        )}
         <span
           className={`text-base leading-relaxed ${
             check.passed === false ? 'font-bold text-red-300' : 'text-slate-400'
@@ -67,7 +93,22 @@ function CheckRow({ check }: { check: CheckItem }) {
   );
 }
 
-export function ResultCard({ result }: { result: MatchResult }) {
+interface ResultCardProps {
+  result: MatchResult;
+  /** 여유율과 규격 요약을 함께 보여주려면 넘긴다. */
+  grinder?: GrinderSpec;
+  wheel?: WheelSpec;
+}
+
+export function ResultCard({ result, grinder, wheel }: ResultCardProps) {
+  const gap = grinder && wheel ? margins(grinder, wheel) : null;
+  const marginFor = (rule: string): string | null => {
+    if (!gap) return null;
+    if (rule === RULE.RPM_SAFETY) return gap.rpm;
+    if (rule === RULE.DIAMETER_FIT) return gap.diameter;
+    return null;
+  };
+
   return (
     <section className="flex flex-col gap-4">
       <div
@@ -85,10 +126,21 @@ export function ResultCard({ result }: { result: MatchResult }) {
         {VERDICT_NOTE[result.verdict]}
       </p>
 
+      {/* 어떤 기계로 점검했는지. 이력에서 다시 볼 때도 필요하다. */}
+      {grinder && (
+        <p className="rounded-lg bg-slate-800 px-4 py-3 text-base text-slate-300">
+          {grinderSummary(grinder)}
+        </p>
+      )}
+
       <h2 className="text-xl font-bold text-slate-100">검사 항목별 결과</h2>
       <ul className="flex flex-col gap-3">
         {result.checks.map((check) => (
-          <CheckRow key={check.rule} check={check} />
+          <CheckRow
+            key={check.rule}
+            check={check}
+            margin={marginFor(check.rule)}
+          />
         ))}
       </ul>
     </section>

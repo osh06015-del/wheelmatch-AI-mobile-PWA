@@ -105,7 +105,7 @@ export default function ResultPage() {
         <h1 className="text-xl font-bold text-slate-100">규격 대조 결과</h1>
       </header>
 
-      <ResultCard result={result} />
+      <ResultCard result={result} grinder={grinder} wheel={wheel} />
 
       <ActionGuide failures={failures} />
 
