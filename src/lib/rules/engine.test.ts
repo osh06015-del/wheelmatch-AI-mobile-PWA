@@ -2,7 +2,14 @@
 // 판정 로직을 바꿀 때는 반드시 이 20개 시나리오를 먼저 확인한다.
 
 import { describe, expect, it } from 'vitest';
-import { RULE, failureReasons, matchSpecs, withParticle } from './engine';
+import {
+  RULE,
+  checkPeripheralSpeed,
+  failureReasons,
+  matchSpecs,
+  peripheralSpeedMps,
+  withParticle,
+} from './engine';
 import type { CheckItem, GrinderSpec, MatchResult, WheelSpec } from './types';
 
 /** 적합 조합을 기본값으로 두고, 각 시나리오는 필요한 필드만 덮어쓴다. */
@@ -410,5 +417,130 @@ describe('규칙엔진 — 결과 형식', () => {
     for (const check of result.checks) {
       expect(check.reason.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('원주속도 교차검증', () => {
+  function speedCheck(g: GrinderSpec, w: WheelSpec) {
+    const check = checkPeripheralSpeed(g, w);
+    if (check === null) throw new Error('검사 항목이 만들어지지 않았다');
+    return check;
+  }
+
+  it('v = π × 지름 × rpm / 60 을 계산한다', () => {
+    // Φ125 12,200rpm → 시중 절단날의 설계 속도 80m/s 근처
+    expect(peripheralSpeedMps(125, 12200)).toBeCloseTo(79.85, 1);
+  });
+
+  it.each([
+    ['Φ125 절단날', 125, 12200],
+    ['Φ100 절단날', 100, 15300],
+    ['Φ115 절단날', 115, 13300],
+    ['Φ180 절단날', 180, 8500],
+    ['Φ230 절단날', 230, 6600],
+    ['Φ150 탁상용 숫돌', 150, 4500],
+  ])('실제 제품 조합 %s 은 걸리지 않는다', (_label, diameter, maxRPM) => {
+    // 멀쩡한 숫돌이 막히면 작업자는 이 앱을 끄고 그냥 쓴다.
+    const check = speedCheck(grinder(), wheel({ diameter, maxRPM }));
+    expect(check.passed).toBe(true);
+  });
+
+  it('rpm에서 자리 하나가 빠지면 걸린다 (12200 → 1220)', () => {
+    const check = speedCheck(grinder(), wheel({ maxRPM: 1220 }));
+    expect(check.passed).toBeNull();
+    expect(check.reason).toContain('숫돌');
+  });
+
+  it('지름을 작게 읽으면 걸린다 (Φ125 → Φ12.5)', () => {
+    const check = speedCheck(grinder(), wheel({ diameter: 12.5 }));
+    expect(check.passed).toBeNull();
+  });
+
+  it('rpm을 크게 읽으면 걸린다 (12200 → 122000)', () => {
+    const check = speedCheck(grinder(), wheel({ maxRPM: 122000 }));
+    expect(check.passed).toBeNull();
+  });
+
+  it('그라인더 쪽 오독도 잡는다', () => {
+    const check = speedCheck(grinder({ noLoadRPM: 1100 }), wheel());
+    expect(check.passed).toBeNull();
+    expect(check.reason).toContain('그라인더');
+  });
+
+  it('양쪽 다 이상하면 둘 다 지목한다', () => {
+    const check = speedCheck(
+      grinder({ noLoadRPM: 1100 }),
+      wheel({ maxRPM: 1220 }),
+    );
+    expect(check.reason).toContain('그라인더와 숫돌');
+  });
+
+  it('조사를 올바르게 붙인다', () => {
+    const check = speedCheck(grinder(), wheel({ maxRPM: 1220 }));
+    expect(check.reason).not.toContain('은(는)');
+  });
+
+  it('상식 범위 경계 안쪽은 통과한다', () => {
+    // Φ125 2,300rpm ≈ 15.1m/s / Φ125 16,700rpm ≈ 109.3m/s
+    expect(speedCheck(grinder(), wheel({ maxRPM: 2300 })).passed).toBe(true);
+    expect(speedCheck(grinder(), wheel({ maxRPM: 16700 })).passed).toBe(true);
+  });
+
+  it('상식 범위 바깥은 걸린다', () => {
+    // Φ125 2,280rpm ≈ 14.9m/s / Φ125 16,900rpm ≈ 110.6m/s
+    expect(speedCheck(grinder(), wheel({ maxRPM: 2280 })).passed).toBeNull();
+    expect(speedCheck(grinder(), wheel({ maxRPM: 16900 })).passed).toBeNull();
+  });
+
+  it('양쪽 다 계산할 수 없으면 항목 자체를 만들지 않는다', () => {
+    // 값이 없는 것은 필수값 검사가 이미 잡는다. 같은 사유를 두 번 띄우지 않는다.
+    const check = checkPeripheralSpeed(
+      grinder({ noLoadRPM: null, maxWheelDiameter: null }),
+      wheel({ maxRPM: null, diameter: null }),
+    );
+    expect(check).toBeNull();
+  });
+
+  it('한쪽만 계산할 수 있으면 그쪽만 본다', () => {
+    const check = speedCheck(grinder({ noLoadRPM: null }), wheel());
+    expect(check.passed).toBe(true);
+    expect(check.grinderValue).toBeNull();
+    expect(check.wheelValue).toBe('80m/s');
+  });
+});
+
+describe('원주속도 검증이 조용한 오판정을 막는다', () => {
+  it('그라인더 rpm을 낮게 읽으면 RPM 검사는 통과하지만 판정불가가 된다', () => {
+    // 11,000 → 1,100 으로 읽으면 어떤 숫돌이든 "숫돌이 더 빠름"이 되어
+    // 그냥 적합으로 나가버린다. 가장 위험한 오독 방향이다.
+    const misread = grinder({ noLoadRPM: 1100 });
+    const result = matchSpecs(misread, wheel());
+
+    const rpm = result.checks.find((c) => c.rule === RULE.RPM_SAFETY);
+    expect(rpm?.passed).toBe(true);
+    expect(result.verdict).toBe('UNDETERMINED');
+  });
+
+  it('숫돌 지름을 작게 읽으면 지름 검사는 통과하지만 판정불가가 된다', () => {
+    const result = matchSpecs(grinder(), wheel({ diameter: 12.5 }));
+
+    const fit = result.checks.find((c) => c.rule === RULE.DIAMETER_FIT);
+    expect(fit?.passed).toBe(true);
+    expect(result.verdict).toBe('UNDETERMINED');
+  });
+
+  it('경고 항목이 아니므로 판정을 실제로 끌어내린다', () => {
+    const result = matchSpecs(grinder(), wheel({ maxRPM: 1220 }));
+    const check = result.checks.find((c) => c.rule === RULE.PERIPHERAL_SPEED);
+    expect(check?.advisory).toBeUndefined();
+  });
+
+  it('명백한 부적합은 판정불가로 덮이지 않는다', () => {
+    // 부적합이 판정불가보다 우선한다. 값이 의심스러워도 위반은 위반이다.
+    const result = matchSpecs(
+      grinder(),
+      wheel({ maxRPM: 1220, diameter: 200 }),
+    );
+    expect(result.verdict).toBe('INCOMPATIBLE');
   });
 });

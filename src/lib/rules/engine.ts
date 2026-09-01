@@ -24,6 +24,7 @@ export const RULE = {
   WORK_PURPOSE: '작업 목적 일치',
   WHEEL_TYPE: '숫돌 종류',
   VISIBLE_DAMAGE: '외관 손상',
+  PERIPHERAL_SPEED: '원주속도 교차검증',
   CONFIDENCE: '신뢰도 검증',
 } as const;
 
@@ -379,6 +380,101 @@ export function checkConfidence(
 }
 
 /**
+ * 상식 범위(m/s).
+ *
+ * **안전 한계가 아니다.** OCR이 숫자를 잘못 읽었는지 거르기 위한 범위일 뿐이다.
+ * 실제 안전 상한(KS/EN 12413 등)을 규칙으로 쓰려면 원문 확인이 먼저다.
+ * 이 숫자를 안전 기준으로 인용하지 마라.
+ *
+ * 시중 제품은 35~80 m/s에 몰려 있다. 위아래로 넉넉히 잡아 자리수 오류만
+ * 걸리게 했다. 범위를 좁히면 멀쩡한 숫돌이 판정불가로 막힌다.
+ */
+const PLAUSIBLE_MIN_MPS = 15;
+const PLAUSIBLE_MAX_MPS = 110;
+
+/**
+ * 가장자리가 실제로 도는 속도.
+ *
+ *   v(m/s) = π × 지름(m) × 회전속도(rpm) / 60
+ */
+export function peripheralSpeedMps(
+  diameterMm: number | null,
+  rpm: number | null,
+): number | null {
+  if (diameterMm === null || rpm === null) return null;
+  if (diameterMm <= 0 || rpm <= 0) return null;
+  return (Math.PI * (diameterMm / 1000) * rpm) / 60;
+}
+
+function speedText(mps: number | null): string | null {
+  return mps === null ? null : `${Math.round(mps)}m/s`;
+}
+
+/**
+ * Rule 9 — 원주속도 교차검증
+ *
+ * 지름과 회전속도는 따로 정해지는 값이 아니다. 제조사는 가장자리 속도를
+ * 맞춰 두 값을 함께 정한다(같은 80 m/s를 내려고 Φ125는 12,200rpm,
+ * Φ180은 8,500rpm). 그래서 둘 중 하나만 잘못 읽으면 계산값이 상식 밖으로 튄다.
+ *
+ *   12,200 → 1,220 으로 읽음   →   8m/s   (자리 하나 빠짐)
+ *   Φ125  → Φ12.5 로 읽음      →   8m/s
+ *   12,200 → 122,000 으로 읽음 → 798m/s
+ *
+ * 왜 경고가 아니라 판정불가(차단)인가:
+ * 이 오류들은 안전한 쪽으로만 틀리지 않는다. 그라인더 rpm을 낮게 읽으면
+ * RPM 검사가 그냥 통과하고, 숫돌 지름을 작게 읽으면 지름 검사가 통과한다.
+ * 즉 조용히 "적합"을 만들어낼 수 있다. 값을 믿을 수 없으면 통과가 아니라
+ * 판정불가다 — 이 앱의 기본 원칙 그대로다.
+ *
+ * 양쪽 다 계산할 수 없으면 이 항목 자체를 만들지 않는다. 값이 없는 것은
+ * checkRequiredValues가 이미 잡는다. 같은 사유를 두 번 띄우지 않는다.
+ */
+export function checkPeripheralSpeed(
+  grinder: GrinderSpec,
+  wheel: WheelSpec,
+): CheckItem | null {
+  const grinderSpeed = peripheralSpeedMps(
+    grinder.maxWheelDiameter,
+    grinder.noLoadRPM,
+  );
+  const wheelSpeed = peripheralSpeedMps(wheel.diameter, wheel.maxRPM);
+
+  if (grinderSpeed === null && wheelSpeed === null) return null;
+
+  const base = {
+    rule: RULE.PERIPHERAL_SPEED,
+    grinderValue: speedText(grinderSpeed),
+    wheelValue: speedText(wheelSpeed),
+  };
+
+  const odd = (mps: number | null): boolean =>
+    mps !== null && (mps < PLAUSIBLE_MIN_MPS || mps > PLAUSIBLE_MAX_MPS);
+
+  const suspects: string[] = [];
+  if (odd(grinderSpeed)) suspects.push('그라인더');
+  if (odd(wheelSpeed)) suspects.push('숫돌');
+
+  if (suspects.length > 0) {
+    const who = suspects.join('와 ');
+    return {
+      ...base,
+      passed: null,
+      reason:
+        `${who} 값으로 계산한 가장자리 속도가 상식 범위를 벗어납니다. ` +
+        `지름이나 회전속도를 잘못 읽었을 수 있습니다. ` +
+        `${withParticle(who, '은', '는')} 라벨의 숫자를 다시 확인하세요.`,
+    };
+  }
+
+  return {
+    ...base,
+    passed: true,
+    reason: '지름과 회전속도가 서로 어울리는 값입니다.',
+  };
+}
+
+/**
  * 개별 검사 결과들로부터 최종 판정을 정한다.
  *
  *   1) 하나라도 명시적으로 부적합(false)이면 → INCOMPATIBLE
@@ -418,6 +514,7 @@ export function matchSpecs(
   const { declaredPurpose = null, now = new Date() } = options;
 
   const workPurpose = checkWorkPurpose(wheel, declaredPurpose);
+  const peripheralSpeed = checkPeripheralSpeed(grinder, wheel);
 
   const checks: CheckItem[] = [
     checkRequiredValues(grinder, wheel),
@@ -428,6 +525,8 @@ export function matchSpecs(
     ...(workPurpose ? [workPurpose] : []),
     checkWheelType(wheel),
     checkVisibleDamage(wheel),
+    // 양쪽 다 계산할 수 없으면 항목 자체가 없다.
+    ...(peripheralSpeed ? [peripheralSpeed] : []),
     checkConfidence(grinder, wheel),
   ];
 
