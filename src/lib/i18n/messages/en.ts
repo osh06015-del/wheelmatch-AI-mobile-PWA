@@ -44,7 +44,7 @@ export const en: Messages = {
 
   'checks.title': 'Results for each check',
   'rule.requiredValues': 'Required values',
-  'rule.rpmSafety': 'Speed rating',
+  'rule.rpmSafety': 'Max operating speed',
   'rule.diameterFit': 'Diameter fit',
   'rule.purpose': 'Wheel use',
   'rule.workPurpose': 'Job match',
@@ -65,7 +65,7 @@ export const en: Messages = {
 
   'checklist.title': 'Safety checklist',
   'checklist.note': 'Check these yourself. The spec check does not cover them.',
-  'checklist.guardCover': 'Guard fitted',
+  'checklist.guardCover': 'Safety guard fitted',
   'checklist.guardCoverHint':
     'Check that the wheel is covered at the required angle',
   'checklist.auxiliaryHandle': 'Side handle fitted',

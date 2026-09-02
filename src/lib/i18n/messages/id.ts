@@ -1,6 +1,10 @@
 // Bahasa Indonesia (인도네시아어).
 //
 // 검수 전이다. 현장 투입 전 원어민 확인이 필요하다 (docs/i18n.md 참고).
+//
+// 용어는 인도네시아 K3(산업안전) 자료와 대조해 골랐다.
+//   gerinda tangan · batu gerinda · kap pelindung · hentakan balik · APD
+// 확인하지 못한 것은 docs/i18n.md의 검수 질문 목록에 남겼다.
 
 import type { Messages } from './ko';
 
@@ -16,7 +20,7 @@ export const id: Messages = {
   'home.cutting': 'Memotong',
   'home.cuttingHint': 'Pekerjaan potong',
   'home.grinding': 'Menggerinda',
-  'home.grindingHint': 'Menggerinda dan mengamplas',
+  'home.grindingHint': 'Pekerjaan gerinda',
   'home.afterChoice':
     'Setelah memilih, foto pelat nama gerinda lebih dulu, lalu label batu gerinda.',
   'home.history': 'Lihat riwayat pemeriksaan →',
@@ -66,7 +70,7 @@ export const id: Messages = {
   'checklist.title': 'Daftar periksa keselamatan',
   'checklist.note':
     'Periksa sendiri hal-hal ini. Pencocokan spesifikasi tidak mencakupnya.',
-  'checklist.guardCover': 'Pelindung terpasang',
+  'checklist.guardCover': 'Kap pelindung terpasang',
   'checklist.guardCoverHint':
     'Pastikan batu gerinda tertutup pada sudut yang diwajibkan',
   'checklist.auxiliaryHandle': 'Gagang samping terpasang',

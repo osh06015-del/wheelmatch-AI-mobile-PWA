@@ -69,7 +69,7 @@ describe('LanguagePicker', () => {
     );
 
     await choose('English');
-    expect(screen.getByText('Speed rating')).toBeInTheDocument();
+    expect(screen.getByText('Max operating speed')).toBeInTheDocument();
     expect(screen.queryByText('RPM 안전')).not.toBeInTheDocument();
   });
 

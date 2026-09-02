@@ -1,6 +1,10 @@
 // 简体中文 (중국어 간체).
 //
 // 검수 전이다. 현장 투입 전 원어민 확인이 필요하다 (docs/i18n.md 참고).
+//
+// 용어는 중국어권 산업안전 자료와 대조해 골랐다.
+//   角磨机 · 砂轮 · 防护罩 · 回弹 · 裂纹
+// 확인하지 못한 것은 docs/i18n.md의 검수 질문 목록에 남겼다.
 
 import type { Messages } from './ko';
 
@@ -16,7 +20,7 @@ export const zh: Messages = {
   'home.cutting': '切割',
   'home.cuttingHint': '切断作业',
   'home.grinding': '打磨',
-  'home.grindingHint': '打磨与抛光',
+  'home.grindingHint': '打磨作业',
   'home.afterChoice': '选择后，先拍角磨机铭牌，再拍砂轮标签。',
   'home.history': '查看检查记录 →',
 
@@ -60,7 +64,7 @@ export const zh: Messages = {
   'checklist.guardCover': '已安装防护罩',
   'checklist.guardCoverHint': '确认砂轮外露角度是否按规定遮挡',
   'checklist.auxiliaryHandle': '已安装辅助手柄',
-  'checklist.auxiliaryHandleHint': '确认能否双手握持以应对反弹',
+  'checklist.auxiliaryHandleHint': '确认能否双手握持以应对回弹',
   'checklist.wheelDamage': '砂轮无损伤',
   'checklist.wheelDamageHint': '确认有无裂纹、缺口、变形（若有请立即更换）',
   'checklist.ppe': '已穿戴防护用品',
