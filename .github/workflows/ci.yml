@@ -43,8 +43,11 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Test
-        run: npm test
+      # 로컬 pre-commit은 빠른 `npm test`를 쓴다. CI는 커버리지까지 돌려
+      # 판정 엔진(src/lib/rules) 100% 임계값을 강제한다. 같은 테스트에
+      # 계측만 얹는 것이라 걸리는 시간 차이는 크지 않다.
+      - name: Test (coverage thresholds enforced)
+        run: npm run test:coverage
 
       # 빌드는 앞 단계가 못 잡는 Next 고유 오류(라우트 타입, 정적 생성 등)를 잡는다.
       # 이 앱은 API 키를 요청 시점에만 읽으므로 빌드에 secret이 필요 없다.

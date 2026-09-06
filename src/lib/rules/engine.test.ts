@@ -7,6 +7,7 @@ import {
   checkPeripheralSpeed,
   failureReasons,
   matchSpecs,
+  undeterminedReasons,
   peripheralSpeedMps,
   withParticle,
 } from './engine';
@@ -432,6 +433,15 @@ describe('원주속도 교차검증', () => {
     expect(peripheralSpeedMps(125, 12200)).toBeCloseTo(79.85, 1);
   });
 
+  it('0 이하 값은 계산하지 않는다', () => {
+    // 0rpm·Φ0 오독을 "가장자리 속도 0m/s"로 계산해버리면 원주속도 검증이
+    // 먼저 걸려서, 진짜 원인(회전속도가 0)이 가려진다. 계산 불가로 두면
+    // RPM 검사가 제 이름으로 부적합을 낸다.
+    expect(peripheralSpeedMps(125, 0)).toBeNull();
+    expect(peripheralSpeedMps(0, 12200)).toBeNull();
+    expect(peripheralSpeedMps(-125, 12200)).toBeNull();
+  });
+
   it.each([
     ['Φ125 절단날', 125, 12200],
     ['Φ100 절단날', 100, 15300],
@@ -542,5 +552,35 @@ describe('원주속도 검증이 조용한 오판정을 막는다', () => {
       wheel({ maxRPM: 1220, diameter: 200 }),
     );
     expect(result.verdict).toBe('INCOMPATIBLE');
+  });
+});
+
+describe('undeterminedReasons', () => {
+  it('판정불가 사유를 모은다', () => {
+    const result = matchSpecs(grinder({ noLoadRPM: null }), wheel());
+    const reasons = undeterminedReasons(result);
+
+    expect(reasons.length).toBeGreaterThan(0);
+    expect(reasons.join(' ')).toContain('회전속도');
+  });
+
+  it('경고 수준 항목도 빠뜨리지 않는다', () => {
+    // 경고 항목(advisory)은 전체 판정을 끌어내리지 않지만, 사용자에게는
+    // 반드시 보여야 한다. 여기서 걸러버리면 "사진으로는 미세균열을 확인할 수
+    // 없다"는 안내가 화면에서 사라진다.
+    const result = matchSpecs(grinder(), wheel({ visibleDamage: 'unknown' }));
+    const damage = result.checks.find((c) => c.rule === RULE.VISIBLE_DAMAGE);
+
+    expect(damage?.passed).toBeNull();
+    expect(damage?.advisory).toBe(true);
+    expect(undeterminedReasons(result)).toContain(damage?.reason);
+  });
+
+  it('통과한 항목은 넣지 않는다', () => {
+    const result = matchSpecs(grinder(), wheel());
+    for (const reason of undeterminedReasons(result)) {
+      const check = result.checks.find((c) => c.reason === reason);
+      expect(check?.passed).toBeNull();
+    }
   });
 });

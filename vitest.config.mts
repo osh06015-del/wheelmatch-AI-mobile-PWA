@@ -20,5 +20,37 @@ export default defineConfig({
 
     // toBeInTheDocument 같은 DOM matcher 등록
     setupFiles: ['./src/test/setup.ts'],
+
+    coverage: {
+      provider: 'v8',
+      // json-summary는 사람이 아니라 스크립트가 읽는다. 논문에 넣을 수치를
+      // 화면에서 옮겨 적지 않고 coverage/coverage-summary.json에서 뽑기 위해서다.
+      reporter: ['text-summary', 'text', 'html', 'json-summary'],
+
+      // 로직 계층만 잰다. UI는 재지 않는다.
+      //
+      // 화면까지 재기 시작하면 숫자를 올리려고 의미 없는 렌더 테스트를 쓰게 된다.
+      // 이 앱에서 커버리지가 뜻이 있는 곳은 "판정이 지나가는 길"이다.
+      // 컴포넌트 테스트를 쓰지 말라는 뜻이 아니다 — ResultCard.test.tsx처럼
+      // 오표시를 막는 테스트는 계속 쓴다. 숫자로 관리하지 않을 뿐이다.
+      include: ['src/lib/**/*.ts'],
+
+      // 임계값은 판정 엔진에만 건다.
+      //
+      // 전체 목표치를 두면 숫자를 맞추려고 브라우저 API 감싸는 코드에
+      // 억지 테스트를 쓰게 된다. 그런 테스트는 회귀를 못 잡으면서 통과만 한다.
+      // 반면 판정 엔진은 분기 하나가 곧 "적합이냐 부적합이냐"라서
+      // 100%가 실제로 의미가 있고, 실제로 도달해 있다.
+      //
+      // 나머지 파일 수치는 참고용으로 출력만 한다. 목표치가 아니다.
+      thresholds: {
+        'src/lib/rules/**': {
+          statements: 100,
+          branches: 100,
+          functions: 100,
+          lines: 100,
+        },
+      },
+    },
   },
 });

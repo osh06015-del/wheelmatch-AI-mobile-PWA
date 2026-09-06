@@ -72,6 +72,14 @@ describe('grinderSummary', () => {
     ).toBe('11,000rpm');
   });
 
+  it('흔치 않은 규격이어도 지름은 반드시 보여준다', () => {
+    // 인치 등급을 못 붙인다고 지름까지 빠지면, 작업자는 자기 기계가 몇 mm까지
+    // 되는지 화면에서 알 수 없게 된다. 등급은 거들 뿐이고 지름이 본체다.
+    expect(grinderSummary(grinder({ maxWheelDiameter: 137 }))).toBe(
+      'GWS 750-125 · 최대 Φ137mm · 11,000rpm',
+    );
+  });
+
   it('아무 값도 없으면 읽지 못했다고 알린다', () => {
     const empty = grinder({
       model: null,
@@ -145,6 +153,14 @@ describe('여유율', () => {
     expect(rpmMarginPercent(0, 12200)).toBeNull();
   });
 
+  it('지름도 값이 없거나 0이면 계산하지 않는다', () => {
+    // 회전속도 쪽과 같은 가드다. 한쪽만 막아두면 Φ0 오독이 -Infinity%가 되어
+    // 화면에 그대로 나간다.
+    expect(diameterMarginPercent(null, 100)).toBeNull();
+    expect(diameterMarginPercent(125, null)).toBeNull();
+    expect(diameterMarginPercent(0, 100)).toBeNull();
+  });
+
   it('지름은 남은 여유를 본다', () => {
     // (125 - 100) / 125 = 20%
     expect(diameterMarginPercent(125, 100)).toBe(20);
@@ -169,6 +185,12 @@ describe('formatMargin', () => {
   it('소수점 한 자리까지만 쓴다', () => {
     // OCR로 읽은 값의 정밀도를 넘어서는 자리는 의미가 없다.
     expect(formatMargin(10.98765)).toBe('여유 +11%');
+  });
+
+  it('계산할 수 없으면 문구를 만들지 않는다', () => {
+    // null을 그대로 돌려줘야 결과 화면이 여유율 줄을 통째로 감춘다.
+    // 여기서 '여유 없음 (0%)'을 내면 재지도 않은 값을 0%로 단정하게 된다.
+    expect(formatMargin(null)).toBeNull();
   });
 });
 
