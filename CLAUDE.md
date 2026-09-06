@@ -9,15 +9,16 @@
 
 패키지 매니저는 **npm**이다. yarn/pnpm/bun을 쓰지 않는다.
 
-| 목적          | 명령                                         |
-| ------------- | -------------------------------------------- |
-| 개발 서버     | `npm run dev`                                |
-| 빌드          | `npm run build`                              |
-| 테스트        | `npm test` (Vitest + happy-dom, 235개 통과)  |
-| 타입 검사     | `npm run typecheck`                          |
-| lint          | `npm run lint` (ESLint 9 flat config)        |
-| 포맷          | `npm run format` / `npm run format:check`    |
-| **전체 검증** | `npm run verify` ← 작업을 끝냈다고 말하기 전 |
+| 목적          | 명령                                          |
+| ------------- | --------------------------------------------- |
+| 개발 서버     | `npm run dev`                                 |
+| 빌드          | `npm run build`                               |
+| 테스트        | `npm test` (Vitest + happy-dom, 243개 통과)   |
+| 타입 검사     | `npm run typecheck`                           |
+| lint          | `npm run lint` (ESLint 9 flat config)         |
+| 커버리지      | `npm run test:coverage` (판정 엔진 100% 강제) |
+| 포맷          | `npm run format` / `npm run format:check`     |
+| **전체 검증** | `npm run verify` ← 작업을 끝냈다고 말하기 전  |
 
 `npm run verify` = format:check → lint → typecheck → test. 약 40초 걸린다.
 
@@ -33,14 +34,31 @@ Node는 `.nvmrc`로 24에 맞춰져 있다 (`engines`: >=20.9.0).
 ```
 
 읽지 못한 값은 `null`로 남기고, `null`은 통과가 아니라 판정불가다.
-자세한 불변조건은 `src/lib/rules/`, `src/lib/ocr/`, `src/app/api/`를 열면
-`.claude/rules/safety-invariants.md`가 자동으로 로드된다.
+
+**이 앱은 규격이 서로 맞는지만 본다. 안전을 승인하지 않는다.**
+쓰면 안 되는 표현과 넣지 않기로 한 기능은 `docs/safety-boundaries.md`에 있다.
+
+| 알아야 할 때                | 문서                                 |
+| --------------------------- | ------------------------------------ |
+| 안전 앱 공통 8원칙          | `.claude/rules/safety-critical.md`   |
+| 이 앱의 경계값·불변조건     | `.claude/rules/safety-invariants.md` |
+| OCR·이미지 계층             | `.claude/rules/vision-ocr.md`        |
+| 표현 경계 (쓰면 안 되는 말) | `docs/safety-boundaries.md`          |
+| 법령·표준 출처              | `docs/regulatory-sources.md`         |
+| 무엇을 어떻게 재는가        | `docs/validation-plan.md`            |
+| 비밀값·키 노출 대응         | `SECURITY.md`                        |
+
+`.claude/rules/*`는 해당 경로를 열면 자동으로 로드된다. 미리 읽지 않아도 된다.
 
 ## 구조
 
 ```
 src/lib/rules/engine.ts   ★ 판정 로직. 여기서만 판정한다. 순수 함수 유지
 src/lib/ocr/              OCR 추출기(Claude/Tesseract 교체 가능) + 정규식 파서
+src/lib/image/            업로드 전 축소 (Vercel 4.5MB 한도)
+src/lib/i18n/             문구 5개 언어. messages/ko.ts가 원본
+src/lib/record/           소요시간·CSV·연구모드
+src/lib/guide/            작업자용 설명·작업별 위험사항 (고정 문구)
 src/lib/state/            화면 간 값 전달 (useSyncExternalStore + sessionStorage)
 src/lib/db/               IndexedDB (Dexie). 기록은 기기 안에만 남는다
 src/app/api/extract/      서버 전용 OCR 라우트. API 키는 여기서만 읽는다
@@ -68,6 +86,9 @@ src/components/           UI. page 파일에서 컴포넌트를 export 하지 �
 - 사용자에게 보이는 문구는 한국어. 조사(을/를)는 `withParticle()`을 쓴다.
 - TypeScript strict. `any`와 `@ts-ignore`를 쓰지 않는다.
 - 값이 없을 수 있으면 `null`로 표현한다. 빈 문자열이나 0으로 얼버무리지 않는다.
+- **판정 로직을 바꾸면 테스트를 같은 커밋에 넣는다.** 판정 회귀는 화면에 안 보인다.
+- 법령·표준의 숫자를 코드에 넣을 때는 `docs/regulatory-sources.md`에 출처를 남긴다.
+  확인하지 못한 근거는 인용하지 않는다.
 
 ## 편집하면 안 되는 파일
 
