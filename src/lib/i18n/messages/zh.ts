@@ -41,6 +41,13 @@ export const zh: Messages = {
   'result.saving': '正在保存...',
   'result.saveError': '保存失败。请检查存储空间后重试。',
 
+  'group.confirmed': '已核对',
+  'group.conflicting': '不相符',
+  'group.unreadable': '未能读取',
+  'group.manual': '需你亲自确认',
+  'notVerifiable.title': '本应用无法确认的项目',
+  'notVerifiable.note': '以下项目不包含在判定结果中。照片和标签无法得知。',
+
   'checks.title': '各检查项结果',
   'rule.requiredValues': '必需数值',
   'rule.rpmSafety': '转速上限',

@@ -6,6 +6,7 @@
 import { useLocale, type MessageKey, type Translate } from '@/lib/i18n';
 import { RULE_MESSAGE_KEY } from '@/lib/i18n/ruleLabel';
 import { RULE } from '@/lib/rules/engine';
+import { groupChecks, type GroupedChecks } from '@/lib/rules/grouping';
 import { grinderSummary, margins } from '@/lib/rules/requirement';
 import type {
   CheckItem,
@@ -48,6 +49,23 @@ function ruleLabel(rule: string, t: Translate): string {
   const key = RULE_MESSAGE_KEY[rule];
   return key ? t(key) : rule;
 }
+
+/**
+ * 보여주는 순서.
+ *
+ * 맞지 않는 것 → 읽지 못한 것 → 직접 확인할 것 → 확인된 것.
+ * 손을 써야 하는 것을 위에 둔다. 확인된 항목은 읽을 필요가 가장 적으므로 맨 아래다.
+ */
+const GROUP_ORDER: ReadonlyArray<{
+  key: keyof GroupedChecks;
+  labelKey: MessageKey;
+  tone: string;
+}> = [
+  { key: 'conflicting', labelKey: 'group.conflicting', tone: 'text-red-300' },
+  { key: 'unreadable', labelKey: 'group.unreadable', tone: 'text-yellow-200' },
+  { key: 'manual', labelKey: 'group.manual', tone: 'text-slate-200' },
+  { key: 'confirmed', labelKey: 'group.confirmed', tone: 'text-slate-400' },
+];
 
 function checkIcon(passed: boolean | null): string {
   if (passed === true) return '✅';
@@ -114,6 +132,7 @@ interface ResultCardProps {
 
 export function ResultCard({ result, grinder, wheel }: ResultCardProps) {
   const { t } = useLocale();
+  const groups = groupChecks(result.checks);
   const gap = grinder && wheel ? margins(grinder, wheel) : null;
   const marginFor = (rule: string): string | null => {
     if (!gap) return null;
@@ -147,16 +166,31 @@ export function ResultCard({ result, grinder, wheel }: ResultCardProps) {
       )}
 
       <h2 className="text-xl font-bold text-slate-100">{t('checks.title')}</h2>
-      <ul className="flex flex-col gap-3">
-        {result.checks.map((check) => (
-          <CheckRow
-            key={check.rule}
-            check={check}
-            margin={marginFor(check.rule)}
-            t={t}
-          />
-        ))}
-      </ul>
+
+      {/* 성격이 다른 것을 섞지 않는다.
+          한 줄로 늘어놓으면 ✅와 ⚠가 뒤섞여 "대체로 괜찮구나"로 읽힌다.
+          확인한 것과 확인하지 못한 것은 사용자가 할 일이 다르다. */}
+      {GROUP_ORDER.map(({ key, labelKey, tone }) => {
+        const items = groups[key];
+        if (items.length === 0) return null;
+        return (
+          <section key={key} className="flex flex-col gap-2">
+            <h3 className={`text-base font-bold ${tone}`}>
+              {t(labelKey)} {items.length}
+            </h3>
+            <ul className="flex flex-col gap-3">
+              {items.map((check) => (
+                <CheckRow
+                  key={check.rule}
+                  check={check}
+                  margin={marginFor(check.rule)}
+                  t={t}
+                />
+              ))}
+            </ul>
+          </section>
+        );
+      })}
     </section>
   );
 }

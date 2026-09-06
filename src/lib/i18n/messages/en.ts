@@ -42,6 +42,14 @@ export const en: Messages = {
   'result.saving': 'Saving...',
   'result.saveError': 'Saving failed. Check your storage space and try again.',
 
+  'group.confirmed': 'Confirmed',
+  'group.conflicting': 'Does not match',
+  'group.unreadable': 'Could not read',
+  'group.manual': 'Check these yourself',
+  'notVerifiable.title': 'What this app cannot check',
+  'notVerifiable.note':
+    'These were not part of the result. They cannot be known from a photo and a label.',
+
   'checks.title': 'Results for each check',
   'rule.requiredValues': 'Required values',
   'rule.rpmSafety': 'Max operating speed',

@@ -43,6 +43,14 @@ export const ko = {
   'result.saveError':
     '저장에 실패했습니다. 저장 공간을 확인한 뒤 다시 시도하세요.',
 
+  'group.confirmed': '확인된 정보',
+  'group.conflicting': '맞지 않는 정보',
+  'group.unreadable': '읽지 못한 정보',
+  'group.manual': '직접 확인할 항목',
+  'notVerifiable.title': '이 앱이 확인하지 못하는 것',
+  'notVerifiable.note':
+    '아래 항목은 판정에 들어가지 않았습니다. 사진과 라벨로는 알 수 없습니다.',
+
   'checks.title': '검사 항목별 결과',
   'rule.requiredValues': '필수값 존재',
   'rule.rpmSafety': 'RPM 안전',

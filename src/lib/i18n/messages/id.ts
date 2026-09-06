@@ -46,6 +46,14 @@ export const id: Messages = {
   'result.saveError':
     'Gagal menyimpan. Periksa ruang penyimpanan lalu coba lagi.',
 
+  'group.confirmed': 'Sudah dicocokkan',
+  'group.conflicting': 'Tidak cocok',
+  'group.unreadable': 'Tidak terbaca',
+  'group.manual': 'Periksa sendiri',
+  'notVerifiable.title': 'Yang tidak dapat diperiksa aplikasi ini',
+  'notVerifiable.note':
+    'Hal-hal berikut tidak termasuk dalam hasil. Foto dan label tidak dapat menunjukkannya.',
+
   'checks.title': 'Hasil tiap pemeriksaan',
   'rule.requiredValues': 'Nilai wajib',
   'rule.rpmSafety': 'Batas kecepatan',

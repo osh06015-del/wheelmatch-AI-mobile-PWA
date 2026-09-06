@@ -19,6 +19,7 @@ import {
 import { Disclaimer } from '@/components/Disclaimer';
 import { HazardList } from '@/components/HazardList';
 import { LanguagePicker } from '@/components/LanguagePicker';
+import { NotVerifiablePanel } from '@/components/NotVerifiablePanel';
 import { ResultCard } from '@/components/ResultCard';
 import { useLocale } from '@/lib/i18n';
 import { saveInspection } from '@/lib/db';
@@ -142,6 +143,8 @@ export default function ResultPage() {
           </div>
         </div>
       )}
+
+      <NotVerifiablePanel />
 
       <HazardList purpose={declaredPurpose} />
 

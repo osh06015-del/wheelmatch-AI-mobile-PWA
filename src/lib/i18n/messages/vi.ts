@@ -46,6 +46,14 @@ export const vi: Messages = {
   'result.saveError':
     'Lưu không thành công. Hãy kiểm tra dung lượng lưu trữ rồi thử lại.',
 
+  'group.confirmed': 'Đã đối chiếu',
+  'group.conflicting': 'Không khớp',
+  'group.unreadable': 'Không đọc được',
+  'group.manual': 'Bạn phải tự kiểm tra',
+  'notVerifiable.title': 'Những điều ứng dụng này không kiểm tra được',
+  'notVerifiable.note':
+    'Các mục dưới đây không nằm trong kết quả. Ảnh và nhãn không cho biết được.',
+
   'checks.title': 'Kết quả từng mục kiểm tra',
   'rule.requiredValues': 'Giá trị bắt buộc',
   'rule.rpmSafety': 'Tốc độ cho phép',
