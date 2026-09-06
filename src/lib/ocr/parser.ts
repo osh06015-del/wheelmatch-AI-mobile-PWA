@@ -82,6 +82,18 @@ export function parseDimensions(text: string): {
 }
 
 /**
+ * 장착 구멍 지름(내경, mm)을 읽는다. D×T×H 표기의 마지막 값이다.
+ * 세 값이 다 있을 때만 확정한다 — D×T만 있는 표기에서 두께를 내경으로
+ * 잘못 읽으면 화면에 엉뚱한 값이 나간다.
+ */
+export function parseBore(text: string): number | null {
+  const triple = text.match(
+    /(\d{2,3})\s*[×xX*]\s*(\d{1,2}(?:\.\d{1,2})?)\s*[×xX*]\s*(\d{1,2}(?:\.\d{1,2})?)/,
+  );
+  return triple ? toNumber(triple[3]) : null;
+}
+
+/**
  * 지름(mm)을 읽는다. 치수 표기를 먼저 시도하고, 없으면 "Φ125mm" 형태를 찾는다.
  */
 export function parseDiameter(text: string): number | null {
@@ -162,17 +174,29 @@ export function parseWheelText(text: string): WheelSpec {
   const { diameter, thickness } = parseDimensions(text);
   const resolvedDiameter = diameter ?? parseDiameter(text);
   const directRPM = parseRPM(text);
+  const labeledMps = parsePeripheralSpeed(text);
 
   // rpm 표기가 없으면 원주속도에서 환산한다. 환산도 실패하면 null로 남긴다.
+  // 환산해도 원본 표시는 markings에 그대로 남긴다 (route.ts와 같은 원칙).
   const maxRPM =
-    directRPM ??
-    rpmFromPeripheralSpeed(parsePeripheralSpeed(text), resolvedDiameter);
+    directRPM ?? rpmFromPeripheralSpeed(labeledMps, resolvedDiameter);
 
   return {
     maxRPM,
     diameter: resolvedDiameter,
     thickness: thickness ?? parseThickness(text),
     purpose: parsePurpose(text),
+    markings: {
+      labeledRPM: directRPM,
+      peripheralSpeedMps: labeledMps,
+      boreDiameter: parseBore(text),
+    },
+    ...(maxRPM === null
+      ? {}
+      : {
+          rpmSource:
+            directRPM !== null ? ('label' as const) : ('converted' as const),
+        }),
     // Tesseract는 글자만 읽는다. 숫돌 생김새는 판별할 수 없으므로 unknown이다.
     // 규칙엔진이 이를 판정불가로 처리한다.
     wheelType: 'unknown',

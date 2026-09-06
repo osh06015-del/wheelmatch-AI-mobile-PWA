@@ -51,6 +51,8 @@ export const ko = {
   'rule.workPurpose': '작업 목적 일치',
   'rule.wheelType': '숫돌 종류',
   'rule.visibleDamage': '외관 손상',
+  'rule.unitConsistency': '표기 일치',
+  'rule.mountingSpec': '장착 규격',
   'rule.peripheralSpeed': '원주속도 교차검증',
   'rule.confidence': '신뢰도 검증',
 

@@ -49,6 +49,8 @@ export const zh: Messages = {
   'rule.workPurpose': '与作业相符',
   'rule.wheelType': '砂轮种类',
   'rule.visibleDamage': '外观损伤',
+  'rule.unitConsistency': '标注一致性',
+  'rule.mountingSpec': '安装孔径',
   'rule.peripheralSpeed': '线速度交叉核对',
   'rule.confidence': '识别可信度',
 

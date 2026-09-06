@@ -11,13 +11,45 @@ export interface GrinderSpec {
 }
 
 // 숫돌 라벨에서 추출하는 값
+/**
+ * 라벨에 **인쇄된 그대로**의 표시. 정규화 전 값이다.
+ *
+ * 정규화된 값(WheelSpec.maxRPM)과 반드시 따로 보관한다. 환산해서 덮어쓰면
+ * 두 가지를 잃는다 — 라벨이 원래 무엇으로 적혀 있었는지, 그리고 두 표기가
+ * 서로 어긋났는지. 뒤엣것은 OCR 오독의 신호라 판정에 필요하다.
+ */
+export interface WheelMarkings {
+  /** rpm 단위로 라벨에 직접 적혀 있던 값 */
+  labeledRPM: number | null;
+  /** m/s 단위로 라벨에 적혀 있던 원주속도 */
+  peripheralSpeedMps: number | null;
+  /**
+   * 장착 구멍 지름(내경, mm). D×T×H 표기의 H.
+   *
+   * 그라인더 명판에는 스핀들 규격이 적히지 않는다. 그래서 이 값은
+   * **대조할 상대가 없다.** 읽어서 보여줄 뿐 판정에 쓰지 않는다.
+   * 통용 규격(22.23mm 등)을 규칙으로 만들지 않는다 — 규격 대조가 아니라
+   * 관행 추정이 되기 때문이다.
+   */
+  boreDiameter: number | null;
+}
+
+/** maxRPM이 어디서 왔는지. 단위 정규화 오류를 재려면 출처를 알아야 한다. */
+export type RpmSource =
+  | 'label' // 라벨에 rpm으로 적혀 있었다
+  | 'converted'; // m/s에서 환산했다
+
 export interface WheelSpec {
-  maxRPM: number | null; // 최고사용회전속도 (rpm)
+  maxRPM: number | null; // 최고사용회전속도 (rpm) — 정규화된 값
   diameter: number | null; // 지름 (mm)
   thickness: number | null; // 두께 (mm)
   purpose: WheelPurpose; // 라벨이 말하는 용도
   wheelType: WheelType; // 숫돌 자체의 생김새로 판별한 종류
   visibleDamage: VisibleDamage; // 눈에 띄는 큰 손상만
+  /** 정규화 전 원본 표시. 이 기능 도입 전 기록에는 없다. */
+  markings?: WheelMarkings;
+  /** maxRPM의 출처. maxRPM이 null이면 없다. */
+  rpmSource?: RpmSource;
   rawText: string;
   confidence: 'high' | 'medium' | 'low';
 }

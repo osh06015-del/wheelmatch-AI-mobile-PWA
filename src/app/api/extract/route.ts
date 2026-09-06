@@ -144,10 +144,17 @@ export async function POST(request: Request) {
     }
 
     const value = parsed as import('@/lib/ocr/schema').WheelExtraction;
+
     // rpm 표기가 없으면 원주속도(m/s)에서 환산한다. 환산은 검증된 순수 함수가 한다.
-    const maxRPM =
-      value.maxRPM ??
-      rpmFromPeripheralSpeed(value.peripheralSpeedMps, value.diameter);
+    //
+    // 환산해도 **원본 표시는 버리지 않는다.** markings에 그대로 남긴다.
+    // 두 표기가 서로 어긋나는 경우가 OCR 오독의 신호인데, 덮어쓰면 그 신호가
+    // 사라진다. 어긋났는지 보는 것은 규칙엔진의 일이다.
+    const converted = rpmFromPeripheralSpeed(
+      value.peripheralSpeedMps,
+      value.diameter,
+    );
+    const maxRPM = value.maxRPM ?? converted;
 
     const spec: WheelSpec = {
       maxRPM,
@@ -156,6 +163,14 @@ export async function POST(request: Request) {
       purpose: value.purpose,
       wheelType: value.wheelType,
       visibleDamage: value.visibleDamage,
+      markings: {
+        labeledRPM: value.maxRPM,
+        peripheralSpeedMps: value.peripheralSpeedMps,
+        boreDiameter: value.boreDiameter,
+      },
+      ...(maxRPM === null
+        ? {}
+        : { rpmSource: value.maxRPM !== null ? 'label' : 'converted' }),
       rawText: value.rawText,
       confidence: value.confidence,
     };

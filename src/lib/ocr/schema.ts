@@ -22,6 +22,10 @@ export const wheelExtractionSchema = z.object({
   peripheralSpeedMps: z.number().nullable(),
   diameter: z.number().nullable(),
   thickness: z.number().nullable(),
+  // D×T×H 표기의 H. 장착 구멍 지름이다.
+  // 그라인더 명판에는 스핀들 규격이 없어 대조할 상대가 없다. 읽어서 보여줄
+  // 뿐 판정에 쓰지 않는다 (types.ts의 WheelMarkings 주석 참고).
+  boreDiameter: z.number().nullable(),
   purpose: z.enum(['cutting', 'grinding', 'unknown']),
 
   // 라벨 글자가 아니라 숫돌 자체의 생김새로 판별하는 종류.
@@ -75,7 +79,10 @@ const WHEEL_RULES = `이번 이미지는 연삭·절단 숫돌 라벨입니다. 
 - maxRPM: 라벨에 rpm 단위로 적힌 최고사용회전속도. 없으면 null.
 - peripheralSpeedMps: 라벨에 원주속도가 m/s로 적혀 있으면 그 숫자(예: 80m/s → 80). 없으면 null.
 - diameter: 숫돌 지름(mm). 없으면 null.
-- thickness: 숫돌 두께(mm). D×T×H 표기라면 가운데 값입니다. 없으면 null.
+- thickness: 숫돌 두께(mm). D×T×H 표기라면 **가운데** 값입니다. 없으면 null.
+- boreDiameter: 장착 구멍 지름(내경, mm). D×T×H 표기라면 **마지막** 값입니다.
+  예: "125 × 1.6 × 22.23" → diameter 125, thickness 1.6, boreDiameter 22.23.
+  세 값 중 어느 것이 무엇인지 확정할 수 없으면 null로 둡니다.
 - purpose: "절단", "cutting", "cut-off"가 보이면 "cutting".
   "연삭", "grinding", "depressed center"가 보이면 "grinding".
   둘 다 확실하지 않으면 "unknown".

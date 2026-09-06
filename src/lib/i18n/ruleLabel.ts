@@ -19,6 +19,8 @@ export const RULE_MESSAGE_KEY: Readonly<Record<string, MessageKey>> = {
   [RULE.WORK_PURPOSE]: 'rule.workPurpose',
   [RULE.WHEEL_TYPE]: 'rule.wheelType',
   [RULE.VISIBLE_DAMAGE]: 'rule.visibleDamage',
+  [RULE.UNIT_CONSISTENCY]: 'rule.unitConsistency',
+  [RULE.MOUNTING_SPEC]: 'rule.mountingSpec',
   [RULE.PERIPHERAL_SPEED]: 'rule.peripheralSpeed',
   [RULE.CONFIDENCE]: 'rule.confidence',
 };

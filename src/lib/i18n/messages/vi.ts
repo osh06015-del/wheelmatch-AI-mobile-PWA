@@ -54,6 +54,8 @@ export const vi: Messages = {
   'rule.workPurpose': 'Đúng với công việc',
   'rule.wheelType': 'Loại đá mài',
   'rule.visibleDamage': 'Hư hỏng bên ngoài',
+  'rule.unitConsistency': 'Nhãn khớp nhau',
+  'rule.mountingSpec': 'Đường kính lỗ lắp',
   'rule.peripheralSpeed': 'Đối chiếu tốc độ vòng ngoài',
   'rule.confidence': 'Độ tin cậy khi đọc nhãn',
 

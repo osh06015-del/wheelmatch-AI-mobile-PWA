@@ -4,7 +4,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   RULE,
+  checkMountingSpec,
   checkPeripheralSpeed,
+  checkUnitConsistency,
   failureReasons,
   matchSpecs,
   undeterminedReasons,
@@ -582,5 +584,229 @@ describe('undeterminedReasons', () => {
       const check = result.checks.find((c) => c.reason === reason);
       expect(check?.passed).toBeNull();
     }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// 안전 판독 계층 시나리오
+//
+// 라벨을 잘못 읽었을 때 앱이 어떻게 행동하는지 고정한다.
+// 원칙: 값을 믿을 수 없으면 통과가 아니라 판정불가.
+// ─────────────────────────────────────────────────────────────
+
+/** 원본 표시까지 갖춘 숫돌. markings가 있어야 표기 검사가 돈다. */
+function marked(
+  overrides: Partial<WheelSpec> = {},
+  markings: Partial<WheelSpec['markings']> = {},
+): WheelSpec {
+  return wheel({
+    markings: {
+      labeledRPM: 12200,
+      peripheralSpeedMps: null,
+      boreDiameter: 22.23,
+      ...markings,
+    },
+    rpmSource: 'label',
+    ...overrides,
+  });
+}
+
+describe('1. 공구와 숫돌의 회전수가 맞지 않는 경우', () => {
+  it('숫돌이 더 느리면 부적합이다', () => {
+    const result = matchSpecs(grinder(), marked({ maxRPM: 8500 }));
+    expect(result.verdict).toBe('INCOMPATIBLE');
+  });
+
+  it('같은 값은 통과한다 — 경계에 여유를 주지 않는다', () => {
+    const result = matchSpecs(grinder({ noLoadRPM: 12200 }), marked());
+    expect(result.verdict).toBe('COMPATIBLE');
+  });
+
+  it('1rpm 부족해도 부적합이다', () => {
+    const result = matchSpecs(grinder({ noLoadRPM: 12201 }), marked());
+    expect(result.verdict).toBe('INCOMPATIBLE');
+  });
+});
+
+describe('2. 회전수 단위가 다르거나 숫자가 애매한 경우', () => {
+  it('rpm과 m/s 표기가 서로 맞으면 통과한다', () => {
+    // Φ125 12,200rpm = 79.85m/s. 라벨의 "80m/s"는 반올림이다.
+    const w = marked({}, { peripheralSpeedMps: 80 });
+    const check = checkUnitConsistency(w);
+    expect(check?.passed).toBe(true);
+  });
+
+  it('두 표기가 어긋나면 판정불가로 막는다', () => {
+    // 회전수 자체는 그라인더보다 높아 RPM 검사를 통과한다. 그런데 라벨의
+    // m/s 표기(8)가 rpm 표기(12,200 ≈ 80m/s)와 10배 어긋난다. 둘 중 하나를
+    // 잘못 읽은 것이고 어느 쪽인지 알 수 없으므로 통과시키지 않는다.
+    const w = marked({}, { peripheralSpeedMps: 8 });
+    const check = checkUnitConsistency(w);
+    expect(check?.passed).toBeNull();
+    expect(check?.advisory).toBeUndefined(); // 경고가 아니라 차단이다
+    expect(matchSpecs(grinder(), w).verdict).toBe('UNDETERMINED');
+  });
+
+  it('표기가 하나뿐이면 대조하지 않는다 — 항목 자체가 없다', () => {
+    expect(checkUnitConsistency(marked())).toBeNull();
+  });
+
+  it('지름을 모르면 두 표기를 견줄 수 없다', () => {
+    // rpm ↔ m/s 환산에는 지름이 필요하다. 없으면 비교 자체가 성립하지 않는다.
+    const w = marked({ diameter: null }, { peripheralSpeedMps: 80 });
+    expect(checkUnitConsistency(w)).toBeNull();
+  });
+
+  it('m/s가 0이면 나눗셈을 하지 않는다', () => {
+    // 0으로 나누면 Infinity%가 나와 그대로 화면에 나간다.
+    const w = marked({}, { peripheralSpeedMps: 0 });
+    expect(checkUnitConsistency(w)).toBeNull();
+  });
+
+  it('rpm이 0이면 환산이 성립하지 않아 대조하지 않는다', () => {
+    const w = marked({}, { labeledRPM: 0, peripheralSpeedMps: 80 });
+    expect(checkUnitConsistency(w)).toBeNull();
+  });
+
+  it('m/s에서 환산했으면 출처를 남긴다', () => {
+    const w = marked(
+      { rpmSource: 'converted' },
+      { labeledRPM: null, peripheralSpeedMps: 80 },
+    );
+    expect(w.rpmSource).toBe('converted');
+    expect(w.markings?.peripheralSpeedMps).toBe(80);
+  });
+});
+
+describe('3. 지름·장착 규격·종류가 누락된 경우', () => {
+  it('지름이 없으면 판정불가다', () => {
+    const result = matchSpecs(grinder(), marked({ diameter: null }));
+    expect(result.verdict).toBe('UNDETERMINED');
+  });
+
+  it('내경을 못 읽으면 알리되 판정을 막지는 않는다', () => {
+    // 그라인더 명판에 축 규격이 없어 대조할 상대가 없다. 막으면 모든 숫돌이 막힌다.
+    const w = marked({}, { boreDiameter: null });
+    const check = checkMountingSpec(w);
+    expect(check?.passed).toBeNull();
+    expect(check?.advisory).toBe(true);
+    expect(matchSpecs(grinder(), w).verdict).toBe('COMPATIBLE');
+  });
+
+  it('내경을 읽어도 판정에 쓰지 않는다 — 통용 규격을 기준으로 삼지 않는다', () => {
+    const check = checkMountingSpec(marked({}, { boreDiameter: 16 }));
+    expect(check?.advisory).toBe(true);
+    expect(check?.reason).toContain('직접 확인');
+  });
+
+  it('종류를 모르면 통과하고, 지원하지 않는 종류면 판정을 멈춘다', () => {
+    expect(
+      matchSpecs(grinder(), marked({ wheelType: 'unknown' })).verdict,
+    ).toBe('COMPATIBLE');
+    // 판정불가지 부적합이 아니다. 다이아몬드날이 '나쁜 숫돌'이라는 뜻이 아니라
+    // 이 앱의 규칙이 적용되지 않는다는 뜻이다. 부적합이라 하면 거짓말이 된다.
+    expect(
+      matchSpecs(grinder(), marked({ wheelType: 'diamond' })).verdict,
+    ).toBe('UNDETERMINED');
+  });
+});
+
+describe('4. 두 영역에서 서로 다른 값이 인식된 경우', () => {
+  it('rpm 표기와 원주속도 표기가 다르면 어느 쪽도 믿지 않는다', () => {
+    const w = marked(
+      { maxRPM: 12200 },
+      { labeledRPM: 12200, peripheralSpeedMps: 8 },
+    );
+    expect(matchSpecs(grinder(), w).verdict).toBe('UNDETERMINED');
+  });
+
+  it('RPM 검사는 통과해도 표기 충돌이 판정을 끌어내린다', () => {
+    const w = marked(
+      { maxRPM: 12200 },
+      { labeledRPM: 12200, peripheralSpeedMps: 8 },
+    );
+    const result = matchSpecs(grinder(), w);
+    expect(result.checks.find((c) => c.rule === RULE.RPM_SAFETY)?.passed).toBe(
+      true,
+    );
+    expect(result.verdict).toBe('UNDETERMINED');
+  });
+});
+
+describe('5. 라벨이 흐리거나 반사광·마모·가림이 있는 경우', () => {
+  it('값을 못 읽으면 통과가 아니라 판정불가다', () => {
+    const result = matchSpecs(
+      grinder(),
+      marked({ maxRPM: null, diameter: null, confidence: 'low' }),
+    );
+    expect(result.verdict).toBe('UNDETERMINED');
+  });
+
+  it('일부만 읽혀도 빠진 값을 채워 통과시키지 않는다', () => {
+    const result = matchSpecs(grinder(), marked({ maxRPM: null }));
+    expect(result.verdict).toBe('UNDETERMINED');
+  });
+});
+
+describe('6. 신뢰도가 낮지만 그럴듯한 숫자가 나온 경우', () => {
+  it('값이 다 있고 규칙을 다 통과해도 신뢰도가 낮으면 판정불가다', () => {
+    // 가장 위험한 경우다. 숫자가 그럴듯해서 사람이 의심하지 않는다.
+    const w = marked({ confidence: 'low' });
+    const result = matchSpecs(grinder(), w);
+
+    expect(result.checks.find((c) => c.rule === RULE.RPM_SAFETY)?.passed).toBe(
+      true,
+    );
+    expect(
+      result.checks.find((c) => c.rule === RULE.DIAMETER_FIT)?.passed,
+    ).toBe(true);
+    expect(result.verdict).toBe('UNDETERMINED');
+  });
+
+  it('그라인더 쪽 신뢰도가 낮아도 마찬가지다', () => {
+    const result = matchSpecs(grinder({ confidence: 'low' }), marked());
+    expect(result.verdict).toBe('UNDETERMINED');
+  });
+});
+
+describe('7. 지원하지 않는 숫돌 형식', () => {
+  it.each([
+    ['flap_disc'],
+    ['cup_wheel'],
+    ['diamond'],
+    ['wire_brush'],
+    ['other'],
+  ] as const)('%s 는 이 앱이 다루지 않으므로 판정하지 않는다', (type) => {
+    // 부적합이 아니라 판정불가다. 이 앱의 대조 규칙(회전속도·지름·용도)이
+    // 이 형식들에는 그대로 적용되지 않는다. 모르면 모른다고 해야 한다.
+    const result = matchSpecs(grinder(), marked({ wheelType: type }));
+    expect(result.verdict).toBe('UNDETERMINED');
+  });
+
+  it('형태를 못 본 경우(unknown)는 막지 않고 경고로 남긴다', () => {
+    // 사진에 형태가 안 보이는 것과, 보고 나서 다른 종류인 것은 다르다.
+    const check = matchSpecs(
+      grinder(),
+      marked({ wheelType: 'unknown' }),
+    ).checks;
+    expect(check.find((c) => c.rule === RULE.WHEEL_TYPE)?.advisory).toBe(true);
+  });
+});
+
+describe('8. 정상 fixture 회귀', () => {
+  it('멀쩡한 조합은 계속 적합으로 나온다', () => {
+    const result = matchSpecs(grinder(), marked(), {
+      declaredPurpose: 'cutting',
+    });
+    expect(result.verdict).toBe('COMPATIBLE');
+  });
+
+  it('원본 표시가 없는 옛 기록도 깨지지 않는다', () => {
+    // markings 도입 전에 저장된 기록이다. 새 검사는 항목 자체를 만들지 않는다.
+    const old = wheel();
+    expect(old.markings).toBeUndefined();
+    expect(checkUnitConsistency(old)).toBeNull();
+    expect(checkMountingSpec(old)).toBeNull();
+    expect(matchSpecs(grinder(), old).verdict).toBe('COMPATIBLE');
   });
 });

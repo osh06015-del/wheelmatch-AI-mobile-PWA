@@ -164,6 +164,12 @@ describe('parseWheelText', () => {
       // Tesseract는 글자만 읽으므로 숫돌 형태와 손상은 판별할 수 없다.
       wheelType: 'unknown',
       visibleDamage: 'unknown',
+      markings: {
+        labeledRPM: 12200,
+        peripheralSpeedMps: null,
+        boreDiameter: null,
+      },
+      rpmSource: 'label',
       rawText: WHEEL_LABEL,
       confidence: 'high',
     });
@@ -176,6 +182,26 @@ describe('parseWheelText', () => {
     expect(spec.thickness).toBe(1.0);
     // 용도 키워드가 없으므로 확정하지 않는다.
     expect(spec.purpose).toBe('unknown');
+  });
+
+  it('환산해도 라벨 원본 표시를 버리지 않는다', () => {
+    // 덮어쓰면 "라벨에 뭐라고 적혀 있었는지"와 "두 표기가 어긋났는지"를
+    // 둘 다 잃는다. 뒤엣것은 OCR 오독의 신호다.
+    const spec = parseWheelText(WHEEL_LABEL_MPS);
+    expect(spec.markings?.peripheralSpeedMps).toBe(80);
+    expect(spec.markings?.labeledRPM).toBeNull();
+    expect(spec.rpmSource).toBe('converted');
+  });
+
+  it('D×T×H 표기에서 내경을 읽는다', () => {
+    const spec = parseWheelText(WHEEL_LABEL_MPS);
+    expect(spec.markings?.boreDiameter).toBe(22.23);
+  });
+
+  it('D×T 표기에서는 두께를 내경으로 잘못 읽지 않는다', () => {
+    // 값이 두 개뿐인데 마지막을 내경으로 집으면 두께가 내경으로 둔갑한다.
+    const spec = parseWheelText(WHEEL_LABEL);
+    expect(spec.markings?.boreDiameter).toBeNull();
   });
 
   it('회전속도를 어느 방법으로도 못 구하면 null로 남긴다', () => {

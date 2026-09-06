@@ -24,6 +24,8 @@ export const RULE = {
   WORK_PURPOSE: '작업 목적 일치',
   WHEEL_TYPE: '숫돌 종류',
   VISIBLE_DAMAGE: '외관 손상',
+  UNIT_CONSISTENCY: '표기 일치',
+  MOUNTING_SPEC: '장착 규격',
   PERIPHERAL_SPEED: '원주속도 교차검증',
   CONFIDENCE: '신뢰도 검증',
 } as const;
@@ -380,6 +382,113 @@ export function checkConfidence(
 }
 
 /**
+ * 라벨의 두 표기가 서로 어긋나는 허용 폭(%).
+ *
+ * 라벨은 반올림해서 인쇄된다. Φ125 12,200rpm은 79.85m/s인데 라벨에는 "80m/s"로
+ * 찍힌다 — 0.2% 차이다. 실제 오독은 자릿수가 통째로 어긋나므로 훨씬 크게 벌어진다.
+ * 10%면 반올림은 넘어가고 오독만 걸린다.
+ */
+const MARKING_TOLERANCE_PERCENT = 10;
+
+/**
+ * Rule 10 — 표기 일치
+ *
+ * 라벨에 rpm과 m/s가 **둘 다** 적혀 있는 경우가 있다. 둘은 같은 것을 다른
+ * 단위로 말한 것이므로 서로 환산이 맞아야 한다. 맞지 않으면 둘 중 하나를
+ * 잘못 읽은 것이다.
+ *
+ * 왜 판정불가(차단)인가:
+ * 어느 쪽이 틀렸는지 알 수 없다. rpm 쪽이 높게 읽혔다면 그대로 통과해버리고,
+ * m/s 쪽이 틀렸다면 환산값이 오염된다. 어느 경우든 "적합"이 근거를 잃는다.
+ * 값을 믿을 수 없으면 통과가 아니라 판정불가다.
+ *
+ * 표기가 하나뿐이면 대조할 상대가 없으므로 이 항목을 만들지 않는다.
+ * 원본 표시가 없는(기능 도입 전) 기록도 마찬가지다.
+ */
+export function checkUnitConsistency(wheel: WheelSpec): CheckItem | null {
+  const markings = wheel.markings;
+  if (!markings) return null;
+
+  // 구조분해 이름을 함수와 겹치지 않게 둔다. peripheralSpeedMps로 받으면
+  // 아래에서 부르는 동명의 함수를 가려버린다 (실제로 한 번 그렇게 만들었다).
+  const { labeledRPM, peripheralSpeedMps: labeledMps } = markings;
+  if (labeledRPM === null || labeledMps === null) return null;
+  if (wheel.diameter === null || labeledMps <= 0) return null;
+
+  // rpm 쪽을 m/s로 옮겨 같은 단위에서 견준다.
+  const fromRpm = peripheralSpeedMps(wheel.diameter, labeledRPM);
+  if (fromRpm === null) return null;
+
+  const gapPercent = (Math.abs(fromRpm - labeledMps) / labeledMps) * 100;
+
+  const base = {
+    rule: RULE.UNIT_CONSISTENCY,
+    grinderValue: null,
+    wheelValue: `${labeledRPM}rpm = ${Math.round(fromRpm)}m/s / 라벨 ${labeledMps}m/s`,
+  };
+
+  if (gapPercent > MARKING_TOLERANCE_PERCENT) {
+    return {
+      ...base,
+      passed: null,
+      reason:
+        '라벨의 회전속도 표기와 원주속도 표기가 서로 맞지 않습니다. ' +
+        '둘 중 하나를 잘못 읽었을 수 있습니다. 라벨의 숫자를 다시 확인하세요.',
+    };
+  }
+
+  return {
+    ...base,
+    passed: true,
+    reason: '라벨의 두 표기가 서로 맞습니다.',
+  };
+}
+
+/**
+ * Rule 11 — 장착 규격 (내경)
+ *
+ * **이 항목은 판정하지 않는다.** 읽은 값을 보여주고 사용자가 직접 확인하게 한다.
+ *
+ * 이유: 그라인더 명판에는 스핀들 규격이 적히지 않는다. 대조할 상대가 없다.
+ * 통용 규격(앵글그라인더 22.23mm 등)을 기준으로 만들면 그건 규격 대조가 아니라
+ * 관행 추정이다. 이 앱은 라벨에 적힌 값끼리만 대조한다.
+ *
+ * 그래서 항상 경고 수준(advisory)이다. 값을 읽었든 못 읽었든 전체 판정을
+ * 끌어내리지 않는다. 대신 "사용자가 직접 확인할 항목"으로 화면에 남는다.
+ */
+export function checkMountingSpec(wheel: WheelSpec): CheckItem | null {
+  const markings = wheel.markings;
+  if (!markings) return null;
+
+  const bore = markings.boreDiameter;
+  const base = {
+    rule: RULE.MOUNTING_SPEC,
+    grinderValue: null,
+    wheelValue: bore === null ? null : `내경 Φ${bore}mm`,
+    advisory: true,
+  };
+
+  if (bore === null) {
+    return {
+      ...base,
+      passed: null,
+      reason:
+        '라벨에서 장착 구멍 지름(내경)을 읽지 못했습니다. ' +
+        '숫돌이 축에 제대로 맞는지 장착 전에 직접 확인하세요.',
+    };
+  }
+
+  return {
+    ...base,
+    passed: null,
+    reason:
+      `라벨에 적힌 내경은 Φ${bore}mm입니다. ` +
+      '그라인더 명판에는 축 규격이 적혀 있지 않아 이 앱이 대조할 수 없습니다. ' +
+      '축에 맞는지 직접 확인하세요.',
+  };
+}
+
+/**
  * 상식 범위(m/s).
  *
  * **안전 한계가 아니다.** OCR이 숫자를 잘못 읽었는지 거르기 위한 범위일 뿐이다.
@@ -515,6 +624,9 @@ export function matchSpecs(
 
   const workPurpose = checkWorkPurpose(wheel, declaredPurpose);
   const peripheralSpeed = checkPeripheralSpeed(grinder, wheel);
+  // 원본 표시가 없는(기능 도입 전) 기록에서는 둘 다 null이라 항목이 생기지 않는다.
+  const unitConsistency = checkUnitConsistency(wheel);
+  const mountingSpec = checkMountingSpec(wheel);
 
   const checks: CheckItem[] = [
     checkRequiredValues(grinder, wheel),
@@ -527,6 +639,8 @@ export function matchSpecs(
     checkVisibleDamage(wheel),
     // 양쪽 다 계산할 수 없으면 항목 자체가 없다.
     ...(peripheralSpeed ? [peripheralSpeed] : []),
+    ...(unitConsistency ? [unitConsistency] : []),
+    ...(mountingSpec ? [mountingSpec] : []),
     checkConfidence(grinder, wheel),
   ];
 

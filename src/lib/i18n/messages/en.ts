@@ -50,6 +50,8 @@ export const en: Messages = {
   'rule.workPurpose': 'Job match',
   'rule.wheelType': 'Wheel type',
   'rule.visibleDamage': 'Visible damage',
+  'rule.unitConsistency': 'Label consistency',
+  'rule.mountingSpec': 'Mounting bore',
   'rule.peripheralSpeed': 'Speed cross-check',
   'rule.confidence': 'Reading confidence',
 

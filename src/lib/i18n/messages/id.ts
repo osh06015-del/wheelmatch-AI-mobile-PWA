@@ -54,6 +54,8 @@ export const id: Messages = {
   'rule.workPurpose': 'Sesuai pekerjaan Anda',
   'rule.wheelType': 'Jenis batu gerinda',
   'rule.visibleDamage': 'Kerusakan yang terlihat',
+  'rule.unitConsistency': 'Konsistensi label',
+  'rule.mountingSpec': 'Diameter lubang pemasangan',
   'rule.peripheralSpeed': 'Pemeriksaan silang kecepatan keliling',
   'rule.confidence': 'Keyakinan pembacaan',
 
