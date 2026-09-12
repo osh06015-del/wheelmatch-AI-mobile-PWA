@@ -29,6 +29,27 @@ describe('안전 체크리스트 구성', () => {
     expect(CHECKLIST_ITEMS.map((i) => i.key)).not.toContain('wheelDamage');
   });
 
+  it('방호덮개·보조손잡이는 Grinder Condition Gate로 옮겨 중복 확인하지 않는다', () => {
+    // 같은 것을 두 번 물으면 두 번째는 읽지 않고 누르게 된다.
+    const keys = CHECKLIST_ITEMS.map((item) => item.key);
+    expect(keys).not.toContain('guardCover');
+    expect(keys).not.toContain('auxiliaryHandle');
+  });
+
+  it('사람에 대한 항목인 보호구만 최종 체크리스트에 남는다', () => {
+    // 기계는 Grinder Gate, 숫돌은 Wheel Gate가 맡는다. 어느 Gate에도
+    // 속하지 않는 것은 작업자 본인의 보호구뿐이다.
+    expect(CHECKLIST_ITEMS.map((item) => item.key)).toEqual(['ppe']);
+  });
+
+  it('과거 기록을 읽을 수 있도록 체크리스트 타입 필드는 남겨둔다', () => {
+    // 화면에서 뺀 것과 저장 구조에서 지우는 것은 다르다.
+    // 지우면 Gate 도입 전 IndexedDB 기록을 해석할 수 없다.
+    expect(EMPTY_CHECKLIST).toHaveProperty('guardCover');
+    expect(EMPTY_CHECKLIST).toHaveProperty('auxiliaryHandle');
+    expect(EMPTY_CHECKLIST).toHaveProperty('wheelDamage');
+  });
+
   it('불꽃 방향은 체크박스에서 뺀다', () => {
     // 장착 전에 예/아니오로 답할 수 있는 항목이 아니다.
     // 작업 직전 안내(PRE_WORK_REMINDER_KEY)로 따로 띄운다.
@@ -82,9 +103,11 @@ describe('ChecklistForm', () => {
     const onToggle = vi.fn();
     render(<ChecklistForm checklist={EMPTY_CHECKLIST} onToggle={onToggle} />);
 
-    await user.click(screen.getByRole('checkbox', { name: /방호덮개 장착/ }));
+    // 방호덮개·보조손잡이는 Grinder Condition Gate로, 숫돌 손상은 Wheel
+    // Condition Gate로 옮겼다. 여기 남은 것은 보호구뿐이다.
+    await user.click(screen.getByRole('checkbox', { name: /보호구 착용/ }));
 
-    expect(onToggle).toHaveBeenCalledWith('guardCover', true);
+    expect(onToggle).toHaveBeenCalledWith('ppe', true);
   });
 
   it('이미 체크된 항목은 checked 상태로 보인다', () => {

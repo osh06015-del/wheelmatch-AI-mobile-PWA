@@ -70,6 +70,36 @@ export const id: Messages = {
   'expiry.source':
     'Dasar kedaluwarsa: hanya bulan/tahun yang tercetak pada label yang dipakai. Tidak pernah dihitung dari tanggal produksi. Format penandaan mengikuti oSa "Product marking requirements for bonded abrasives" (2020-04, berdasarkan EN 12413:2019). Naskah EN 12413 sendiri belum dibaca. Menganggap bulan yang tertera masih berlaku sampai hari terakhirnya adalah tafsiran aplikasi ini, bukan peraturan. Pasal 122 Peraturan Standar Keselamatan dan Kesehatan Kerja Korea tidak memuat ketentuan kedaluwarsa.',
 
+  'grinderCondition.title': 'Periksa kondisi gerinda sendiri',
+  'grinderCondition.note':
+    'Sebelum memasang batu gerinda, lihat seluruh mesin dan jawab lima hal berikut.',
+  'grinderCondition.aiBoundary':
+    'AI hanya membaca data spesifikasi pada pelat nama. Kondisi mesin gerinda dan keselamatan kerja harus diperiksa sendiri oleh pekerja.',
+  'grinderCondition.cordAndPlug': 'Apakah kabel dan steker tidak rusak?',
+  'grinderCondition.cordAndPlugHint':
+    'Raba sepanjang kabel — isolasi terkelupas, bagian terjepit, steker retak',
+  'grinderCondition.body': 'Apakah bodi bebas dari retak dan kerusakan berat?',
+  'grinderCondition.bodyHint':
+    'Bekas terjatuh, rumahan mesin retak, bagian yang longgar',
+  'grinderCondition.guard': 'Apakah pelindung terpasang dan terkunci kuat?',
+  'grinderCondition.guardHint':
+    'Tidak boleh bergeser saat diputar dengan tangan, dan harus menutup batu gerinda sesuai sudut yang ditentukan',
+  'grinderCondition.auxiliaryHandle':
+    'Apakah gagang samping terpasang dan dikencangkan?',
+  'grinderCondition.auxiliaryHandleHint':
+    'Harus bisa dipegang dua tangan untuk menahan hentakan balik. Jika goyang, pilih Ada masalah',
+  'grinderCondition.spindle':
+    'Apakah spindel, flensa, dan mur pengunci bebas kerusakan?',
+  'grinderCondition.spindleHint':
+    'Ulir aus, flensa bengkok atau kotor, mur yang sudah termakan',
+  'grinderCondition.confirmed': 'Sudah diperiksa',
+  'grinderCondition.issue': 'Ada masalah',
+  'grinderCondition.incomplete':
+    'Anda harus memeriksa sendiri {count} butir yang tersisa sebelum lanjut memotret batu gerinda.',
+  'grinderCondition.stopTitle': 'Jangan gunakan gerinda ini',
+  'grinderCondition.stopBody':
+    'Ditemukan masalah pada kondisi peralatan. Jangan digunakan. Periksakan dan perbaiki dahulu, lalu cek ulang.',
+
   'wheelCondition.title': 'Periksa kondisi batu gerinda sendiri',
   'wheelCondition.note':
     'Sebelum dipasang, periksa sendiri kedua sisi, tepi, dan area pemasangan batu gerinda.',
@@ -122,12 +152,6 @@ export const id: Messages = {
   'checklist.title': 'Daftar periksa keselamatan',
   'checklist.note':
     'Periksa sendiri hal-hal ini. Pencocokan spesifikasi tidak mencakupnya.',
-  'checklist.guardCover': 'Kap pelindung terpasang',
-  'checklist.guardCoverHint':
-    'Pastikan batu gerinda tertutup pada sudut yang diwajibkan',
-  'checklist.auxiliaryHandle': 'Gagang samping terpasang',
-  'checklist.auxiliaryHandleHint':
-    'Pastikan Anda bisa memegang dengan dua tangan untuk menahan hentakan balik',
   'checklist.ppe': 'APD dipakai',
   'checklist.ppeHint':
     'Periksa kacamata pengaman, sarung tangan, dan pelindung wajah',

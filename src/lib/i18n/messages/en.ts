@@ -66,6 +66,36 @@ export const en: Messages = {
   'expiry.source':
     'Expiry basis: only the month/year printed on the label is used. It is never calculated from the manufacturing date. The marking format follows oSa "Product marking requirements for bonded abrasives" (2020-04, based on EN 12413:2019). The EN 12413 text itself was not read. Treating the marked month as valid through its last day is this app\'s reading, not a regulation. Korea\'s Rules on Occupational Safety and Health Standards Article 122 has no expiry clause.',
 
+  'grinderCondition.title': 'Check the grinder yourself',
+  'grinderCondition.note':
+    'Before fitting a wheel, look over the whole grinder and answer these five.',
+  'grinderCondition.aiBoundary':
+    'The AI only reads the specification data on the nameplate. The condition of the grinder and the safety of the work must be checked by the operator.',
+  'grinderCondition.cordAndPlug': 'Is the power cord and plug undamaged?',
+  'grinderCondition.cordAndPlugHint':
+    'Run your hand along the whole cord — stripped insulation, crushed spots, a cracked plug',
+  'grinderCondition.body': 'Is the body free of cracks and heavy damage?',
+  'grinderCondition.bodyHint':
+    'Drop marks, a split housing, parts that have worked loose',
+  'grinderCondition.guard': 'Is the guard fitted and firmly locked?',
+  'grinderCondition.guardHint':
+    'It must not move when you twist it by hand, and it must cover the wheel at the required angle',
+  'grinderCondition.auxiliaryHandle':
+    'Is the side handle fitted and firmly tightened?',
+  'grinderCondition.auxiliaryHandleHint':
+    'You must be able to hold the tool with both hands against kickback. If it moves, pick Problem found',
+  'grinderCondition.spindle':
+    'Is the spindle, flange and lock nut free of visible damage?',
+  'grinderCondition.spindleHint':
+    'Stripped threads, a bent or dirty flange, a worn nut',
+  'grinderCondition.confirmed': 'Checked',
+  'grinderCondition.issue': 'Problem found',
+  'grinderCondition.incomplete':
+    'You must check the remaining {count} item(s) yourself before moving on to the wheel.',
+  'grinderCondition.stopTitle': 'Do not use this grinder',
+  'grinderCondition.stopBody':
+    'A problem with the equipment has been found. Do not use it. Have it inspected and repaired, then check again.',
+
   'wheelCondition.title': 'Check the wheel yourself',
   'wheelCondition.note':
     'Before mounting, inspect the actual wheel on both sides, around the edge, and at the mounting area.',
@@ -117,12 +147,6 @@ export const en: Messages = {
 
   'checklist.title': 'Safety checklist',
   'checklist.note': 'Check these yourself. The spec check does not cover them.',
-  'checklist.guardCover': 'Safety guard fitted',
-  'checklist.guardCoverHint':
-    'Check that the wheel is covered at the required angle',
-  'checklist.auxiliaryHandle': 'Side handle fitted',
-  'checklist.auxiliaryHandleHint':
-    'Check that you can hold it with both hands against kickback',
   'checklist.ppe': 'PPE worn',
   'checklist.ppeHint': 'Check safety glasses, gloves and face shield',
   'checklist.preWork':

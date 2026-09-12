@@ -25,6 +25,7 @@ import { useLocale } from '@/lib/i18n';
 import { saveInspection } from '@/lib/db';
 import { elapsedSince } from '@/lib/record/elapsed';
 import { matchSpecs, toDateOnly } from '@/lib/rules/engine';
+import { isGrinderConditionComplete } from '@/lib/safety/grinderCondition';
 import { isWheelConditionComplete } from '@/lib/safety/wheelCondition';
 import { useInspection } from '@/lib/state/inspection';
 import type { SafetyChecklist } from '@/lib/rules/types';
@@ -39,6 +40,7 @@ export default function ResultPage() {
     wheel,
     grinderOcr,
     wheelOcr,
+    grinderCondition,
     wheelCondition,
     grinderImage,
     wheelImage,
@@ -59,10 +61,21 @@ export default function ResultPage() {
     if (saved) return;
     if (hydrating) return;
     if (!grinder) router.replace('/');
-    else if (!wheel || !isWheelConditionComplete(wheelCondition)) {
+    else if (!isGrinderConditionComplete(grinderCondition)) {
+      // 장비 상태를 확인하지 않았으면 숫돌이 아니라 1단계로 되돌린다.
+      router.replace('/scan/grinder');
+    } else if (!wheel || !isWheelConditionComplete(wheelCondition)) {
       router.replace('/scan/wheel');
     }
-  }, [saved, hydrating, grinder, wheel, wheelCondition, router]);
+  }, [
+    saved,
+    hydrating,
+    grinder,
+    wheel,
+    grinderCondition,
+    wheelCondition,
+    router,
+  ]);
 
   // 유효기한 만료 판정의 기준일. 엔진은 시계를 읽지 않으므로 여기서 넣는다.
   // 로컬 날짜를 쓴다 — UTC로 바꾸면 오전 9시 이전에 하루가 어긋난다.
@@ -81,6 +94,7 @@ export default function ResultPage() {
     !grinder ||
     !wheel ||
     !result ||
+    !isGrinderConditionComplete(grinderCondition) ||
     !isWheelConditionComplete(wheelCondition)
   ) {
     return (
@@ -98,6 +112,7 @@ export default function ResultPage() {
       !grinder ||
       !wheel ||
       !result ||
+      !isGrinderConditionComplete(grinderCondition) ||
       !isWheelConditionComplete(wheelCondition)
     ) {
       return;
@@ -108,6 +123,7 @@ export default function ResultPage() {
       await saveInspection({
         grinder,
         wheel,
+        grinderCondition,
         wheelCondition,
         result,
         checklist,

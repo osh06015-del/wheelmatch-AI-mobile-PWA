@@ -231,6 +231,74 @@ describe('toCsv', () => {
     }
   });
 
+  it('숫돌 상태 열 뒤에 그라인더 장비 상태 열이 붙는다', () => {
+    // 순서가 바뀌면 이미 뽑아둔 분석 파일과 열이 어긋난다.
+    const wheelColumns = [
+      'conditionDamageFree',
+      'conditionNotDeformed',
+      'conditionMountingAreaUndamaged',
+      'conditionLabelLegible',
+      'conditionExpiryValid',
+    ];
+    const grinderColumns = [
+      'conditionCordAndPlugUndamaged',
+      'conditionBodyUndamaged',
+      'conditionGuardSecure',
+      'conditionAuxiliaryHandleSecure',
+      'conditionSpindleAssemblyUndamaged',
+    ];
+    expect([...CSV_COLUMNS]).toEqual([
+      ...LEGACY_COLUMNS,
+      ...wheelColumns,
+      ...grinderColumns,
+    ]);
+  });
+
+  it('그라인더 장비 상태를 Y/N/빈 칸으로 구분해 적는다', () => {
+    const csv = toCsv([
+      record({
+        grinderCondition: {
+          cordAndPlugUndamaged: true,
+          bodyUndamaged: false,
+          guardSecure: true,
+          auxiliaryHandleSecure: true,
+          spindleAssemblyUndamaged: null,
+        },
+      }),
+    ]);
+    const [, row] = parse(csv);
+
+    expect(row[CSV_COLUMNS.indexOf('conditionCordAndPlugUndamaged')]).toBe('Y');
+    expect(row[CSV_COLUMNS.indexOf('conditionBodyUndamaged')]).toBe('N');
+    expect(row[CSV_COLUMNS.indexOf('conditionGuardSecure')]).toBe('Y');
+    expect(row[CSV_COLUMNS.indexOf('conditionAuxiliaryHandleSecure')]).toBe(
+      'Y',
+    );
+    expect(row[CSV_COLUMNS.indexOf('conditionSpindleAssemblyUndamaged')]).toBe(
+      '',
+    );
+  });
+
+  it('두 Gate 기록이 서로의 열을 덮지 않는다', () => {
+    const [, row] = parse(
+      toCsv([
+        record({
+          wheelCondition: {
+            damageFree: true,
+            notDeformed: true,
+            mountingAreaUndamaged: true,
+            labelLegible: true,
+            expiryValid: true,
+          },
+        }),
+      ]),
+    );
+
+    expect(row[CSV_COLUMNS.indexOf('conditionDamageFree')]).toBe('Y');
+    // 그라인더 Gate를 거치지 않은 기록이면 그쪽은 비어 있어야 한다.
+    expect(row[CSV_COLUMNS.indexOf('conditionCordAndPlugUndamaged')]).toBe('');
+  });
+
   it('Excel이 한글을 깨뜨리지 않게 BOM을 붙인다', () => {
     expect(toCsv([])).toMatch(/^\uFEFF/);
   });

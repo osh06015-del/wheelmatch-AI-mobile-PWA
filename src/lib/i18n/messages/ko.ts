@@ -67,6 +67,35 @@ export const ko = {
   'expiry.source':
     '유효기한 근거: 라벨에 표시된 월/연 표기만 씁니다. 제조일에서 계산하지 않습니다. 표시 형식은 oSa 「Product marking requirements for bonded abrasives」(2020-04, EN 12413:2019 기준)를 따랐습니다. EN 12413 원문은 확인하지 못했습니다. 표시된 달의 말일까지 유효로 보는 것은 이 앱의 해석이며 규정이 아닙니다. 한국 산업안전보건기준에 관한 규칙 제122조에는 유효기한 조항이 없습니다.',
 
+  'grinderCondition.title': '그라인더 상태 직접 확인',
+  'grinderCondition.note':
+    '숫돌을 끼우기 전에 그라인더 전체를 직접 보고 다섯 가지를 확인하세요.',
+  'grinderCondition.aiBoundary':
+    'AI는 명판의 규격 정보만 읽습니다. 그라인더 상태와 작업 안전은 작업자가 직접 확인해야 합니다.',
+  'grinderCondition.cordAndPlug': '전원선과 플러그에 손상이 없는가?',
+  'grinderCondition.cordAndPlugHint':
+    '피복 벗겨짐·눌린 자국·깨진 플러그를 전선 끝까지 훑어 확인',
+  'grinderCondition.body': '본체에 균열·파손·심한 손상이 없는가?',
+  'grinderCondition.bodyHint': '떨어뜨린 자국, 갈라진 하우징, 헐거운 부품 확인',
+  'grinderCondition.guard': '방호덮개가 장착되어 있고 단단히 고정되어 있는가?',
+  'grinderCondition.guardHint':
+    '손으로 돌려봐도 움직이지 않아야 하고, 숫돌 노출 각도가 규정대로 덮여 있어야 함',
+  'grinderCondition.auxiliaryHandle':
+    '보조손잡이가 장착되어 있고 단단히 고정되어 있는가?',
+  'grinderCondition.auxiliaryHandleHint':
+    '반동에 대비해 양손으로 잡을 수 있어야 함. 흔들리면 문제 있음 선택',
+  'grinderCondition.spindle':
+    '스핀들·플랜지·고정너트에 눈에 띄는 손상이 없는가?',
+  'grinderCondition.spindleHint':
+    '나사산 뭉개짐, 플랜지 휨·이물질, 너트 마모를 확인',
+  'grinderCondition.confirmed': '확인함',
+  'grinderCondition.issue': '문제 있음',
+  'grinderCondition.incomplete':
+    '남은 {count}개 항목을 작업자가 직접 확인해야 숫돌 촬영으로 넘어갈 수 있습니다.',
+  'grinderCondition.stopTitle': '그라인더를 사용하지 마십시오',
+  'grinderCondition.stopBody':
+    '장비 상태에 문제가 확인되었습니다. 사용하지 말고 점검·정비를 받은 뒤 다시 확인하세요.',
+
   'wheelCondition.title': '숫돌 상태 직접 확인',
   'wheelCondition.note':
     '숫돌을 장착하기 전에 실제 숫돌의 앞·뒤·가장자리와 장착부를 직접 확인하세요.',
@@ -115,10 +144,6 @@ export const ko = {
 
   'checklist.title': '안전 체크리스트',
   'checklist.note': '규격 대조와 별개로 직접 확인해야 하는 항목입니다.',
-  'checklist.guardCover': '방호덮개 장착',
-  'checklist.guardCoverHint': '숫돌 노출 각도가 규정대로 덮여 있는지 확인',
-  'checklist.auxiliaryHandle': '보조손잡이 장착',
-  'checklist.auxiliaryHandleHint': '반동에 대비해 양손으로 잡을 수 있는지 확인',
   'checklist.ppe': '보호구 착용',
   'checklist.ppeHint': '보안경·장갑·안면보호구 착용 여부 확인',
   'checklist.preWork':

@@ -45,6 +45,13 @@ export const CSV_COLUMNS = [
   'conditionMountingAreaUndamaged',
   'conditionLabelLegible',
   'conditionExpiryValid',
+  // 그라인더 장비 상태는 숫돌 상태 열보다도 뒤에 붙인다. 앞선 열의 위치가
+  // 한 칸이라도 밀리면 이미 뽑아둔 분석 파일과 대조할 수 없다.
+  'conditionCordAndPlugUndamaged',
+  'conditionBodyUndamaged',
+  'conditionGuardSecure',
+  'conditionAuxiliaryHandleSecure',
+  'conditionSpindleAssemblyUndamaged',
 ] as const;
 
 /**
@@ -130,6 +137,11 @@ function row(record: InspectionRecord): string {
     tick(record.wheelCondition?.mountingAreaUndamaged),
     tick(record.wheelCondition?.labelLegible),
     tick(record.wheelCondition?.expiryValid),
+    tick(record.grinderCondition?.cordAndPlugUndamaged),
+    tick(record.grinderCondition?.bodyUndamaged),
+    tick(record.grinderCondition?.guardSecure),
+    tick(record.grinderCondition?.auxiliaryHandleSecure),
+    tick(record.grinderCondition?.spindleAssemblyUndamaged),
   ];
 
   return values.map(cell).join(',');

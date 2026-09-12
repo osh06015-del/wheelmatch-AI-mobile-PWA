@@ -38,7 +38,12 @@ vi.mock('@/lib/db', () => ({ saveInspection: vi.fn() }));
 
 import ResultPage from './page';
 import { useInspection } from '@/lib/state/inspection';
-import type { GrinderSpec, WheelCondition, WheelSpec } from '@/lib/rules/types';
+import type {
+  GrinderCondition,
+  GrinderSpec,
+  WheelCondition,
+  WheelSpec,
+} from '@/lib/rules/types';
 
 const GRINDER: GrinderSpec = {
   model: 'GWS 750-125',
@@ -68,6 +73,14 @@ const CONFIRMED: WheelCondition = {
   expiryValid: true,
 };
 
+const GRINDER_OK: GrinderCondition = {
+  cordAndPlugUndamaged: true,
+  bodyUndamaged: true,
+  guardSecure: true,
+  auxiliaryHandleSecure: true,
+  spindleAssemblyUndamaged: true,
+};
+
 const LOADING = '결과를 불러오는 중입니다...';
 
 function store() {
@@ -95,6 +108,7 @@ describe('결과 화면 — Wheel Condition Gate 우회 차단', () => {
     const result = store();
     act(() => {
       result.current.setGrinder(GRINDER);
+      result.current.setGrinderCondition(GRINDER_OK);
       result.current.setWheel(WHEEL);
     });
 
@@ -109,6 +123,7 @@ describe('결과 화면 — Wheel Condition Gate 우회 차단', () => {
     const result = store();
     act(() => {
       result.current.setGrinder(GRINDER);
+      result.current.setGrinderCondition(GRINDER_OK);
       result.current.setWheel(WHEEL);
       result.current.setWheelCondition({ ...CONFIRMED, expiryValid: null });
     });
@@ -123,6 +138,7 @@ describe('결과 화면 — Wheel Condition Gate 우회 차단', () => {
     const result = store();
     act(() => {
       result.current.setGrinder(GRINDER);
+      result.current.setGrinderCondition(GRINDER_OK);
       result.current.setWheel(WHEEL);
       result.current.setWheelCondition({ ...CONFIRMED, damageFree: false });
     });
@@ -138,6 +154,7 @@ describe('결과 화면 — Wheel Condition Gate 우회 차단', () => {
     const result = store();
     act(() => {
       result.current.setGrinder(GRINDER);
+      result.current.setGrinderCondition(GRINDER_OK);
       result.current.setWheel(WHEEL);
       result.current.setWheelCondition(CONFIRMED);
     });
@@ -154,6 +171,7 @@ describe('결과 화면 — Wheel Condition Gate 우회 차단', () => {
     const result = store();
     act(() => {
       result.current.setGrinder(GRINDER);
+      result.current.setGrinderCondition(GRINDER_OK);
       result.current.setWheel(WHEEL);
       result.current.setWheelCondition(CONFIRMED);
     });
@@ -163,5 +181,72 @@ describe('결과 화면 — Wheel Condition Gate 우회 차단', () => {
 
     expect(screen.getByText(LOADING)).toBeInTheDocument();
     expect(replace).toHaveBeenCalledWith('/scan/wheel');
+  });
+});
+
+describe('결과 화면 — Grinder Condition Gate 우회 차단', () => {
+  beforeEach(() => {
+    replace.mockClear();
+    push.mockClear();
+    const result = store();
+    act(() => result.current.reset());
+  });
+
+  /** 숫돌 쪽은 전부 통과시키고 그라인더 상태만 바꿔 가며 본다. */
+  function seed(grinderCondition: GrinderCondition | null) {
+    const result = store();
+    act(() => {
+      result.current.setGrinder(GRINDER);
+      if (grinderCondition) {
+        result.current.setGrinderCondition(grinderCondition);
+      }
+      result.current.setWheel(WHEEL);
+      result.current.setWheelCondition(CONFIRMED);
+    });
+  }
+
+  it('장비 상태를 확인하지 않았으면 숫돌이 다 돼 있어도 막는다', () => {
+    seed(null);
+    render(<ResultPage />);
+
+    expect(screen.getByText(LOADING)).toBeInTheDocument();
+    expect(screen.queryByText('규격 대조 결과')).not.toBeInTheDocument();
+    // 숫돌이 아니라 1단계로 되돌린다. 고쳐야 할 곳이 거기이기 때문이다.
+    expect(replace).toHaveBeenCalledWith('/scan/grinder');
+  });
+
+  it('장비 상태 한 항목이 미확인이면 막는다', () => {
+    seed({ ...GRINDER_OK, guardSecure: null });
+    render(<ResultPage />);
+
+    expect(screen.getByText(LOADING)).toBeInTheDocument();
+    expect(replace).toHaveBeenCalledWith('/scan/grinder');
+  });
+
+  it('장비 상태 한 항목이 문제 있음이면 막는다', () => {
+    seed({ ...GRINDER_OK, cordAndPlugUndamaged: false });
+    render(<ResultPage />);
+
+    expect(screen.getByText(LOADING)).toBeInTheDocument();
+    expect(replace).toHaveBeenCalledWith('/scan/grinder');
+  });
+
+  it('두 Gate를 모두 통과해야 결과가 열린다', () => {
+    seed(GRINDER_OK);
+    render(<ResultPage />);
+
+    expect(screen.getByText('규격 대조 결과')).toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('새 그라인더를 잡으면 두 Gate가 함께 무효가 되어 막힌다', () => {
+    seed(GRINDER_OK);
+    const result = store();
+    act(() => result.current.setGrinder({ ...GRINDER, noLoadRPM: 8500 }));
+
+    render(<ResultPage />);
+
+    expect(screen.getByText(LOADING)).toBeInTheDocument();
+    expect(replace).toHaveBeenCalledWith('/scan/grinder');
   });
 });

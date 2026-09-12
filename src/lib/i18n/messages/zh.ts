@@ -64,6 +64,28 @@ export const zh: Messages = {
   'expiry.source':
     '有效期依据：只使用标签上印刷的月/年标示，不从生产日期推算。标示格式依据 oSa《Product marking requirements for bonded abrasives》（2020-04，以 EN 12413:2019 为准）。EN 12413 原文未查阅。将标示月份视为有效至该月最后一天，是本应用的解读，并非法规。韩国《产业安全保健基准规则》第122条没有有效期条款。',
 
+  'grinderCondition.title': '亲自检查角磨机状态',
+  'grinderCondition.note': '装砂轮之前，请查看整台角磨机并回答以下五项。',
+  'grinderCondition.aiBoundary':
+    'AI 只读取铭牌上的规格信息。角磨机状态和作业安全必须由作业人员亲自确认。',
+  'grinderCondition.cordAndPlug': '电源线和插头有无破损？',
+  'grinderCondition.cordAndPlugHint': '沿整根线摸查——绝缘破皮、压痕、插头裂损',
+  'grinderCondition.body': '机身有无裂纹或严重损坏？',
+  'grinderCondition.bodyHint': '跌落痕迹、外壳开裂、部件松动',
+  'grinderCondition.guard': '防护罩是否已安装并牢固锁紧？',
+  'grinderCondition.guardHint': '用手拧动不得移位，且须按规定角度遮住砂轮',
+  'grinderCondition.auxiliaryHandle': '辅助手柄是否已安装并拧紧？',
+  'grinderCondition.auxiliaryHandleHint':
+    '必须能双手握持以应对反弹。若晃动，请选择「有问题」',
+  'grinderCondition.spindle': '主轴、法兰和锁紧螺母有无明显损伤？',
+  'grinderCondition.spindleHint': '螺纹滑牙、法兰变形或有异物、螺母磨损',
+  'grinderCondition.confirmed': '已确认',
+  'grinderCondition.issue': '有问题',
+  'grinderCondition.incomplete': '还需亲自确认 {count} 项，才能进入砂轮拍摄。',
+  'grinderCondition.stopTitle': '请勿使用此角磨机',
+  'grinderCondition.stopBody':
+    '已发现设备状态问题。请勿使用，送检维修后重新确认。',
+
   'wheelCondition.title': '亲自检查砂轮状态',
   'wheelCondition.note': '安装前，请亲自检查实际砂轮的正反面、边缘和安装部位。',
   'wheelCondition.aiBoundary':
@@ -107,10 +129,6 @@ export const zh: Messages = {
 
   'checklist.title': '安全检查清单',
   'checklist.note': '这些项目需要亲自确认，规格核对不包含这些内容。',
-  'checklist.guardCover': '已安装防护罩',
-  'checklist.guardCoverHint': '确认砂轮外露角度是否按规定遮挡',
-  'checklist.auxiliaryHandle': '已安装辅助手柄',
-  'checklist.auxiliaryHandleHint': '确认能否双手握持以应对回弹',
   'checklist.ppe': '已穿戴防护用品',
   'checklist.ppeHint': '确认是否佩戴护目镜、手套和面罩',
   'checklist.preWork': '就在开始作业前，请确认火花不会朝向人员或易燃物。',

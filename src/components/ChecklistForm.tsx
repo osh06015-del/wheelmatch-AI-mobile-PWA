@@ -16,16 +16,6 @@ export const CHECKLIST_ITEMS: Array<{
   hintKey: MessageKey;
 }> = [
   {
-    key: 'guardCover',
-    labelKey: 'checklist.guardCover',
-    hintKey: 'checklist.guardCoverHint',
-  },
-  {
-    key: 'auxiliaryHandle',
-    labelKey: 'checklist.auxiliaryHandle',
-    hintKey: 'checklist.auxiliaryHandleHint',
-  },
-  {
     key: 'ppe',
     labelKey: 'checklist.ppe',
     hintKey: 'checklist.ppeHint',
@@ -38,6 +28,16 @@ export const EMPTY_CHECKLIST: SafetyChecklist = {
   wheelDamage: null,
   ppe: null,
 };
+
+/**
+ * 방호덮개·보조손잡이는 Grinder Condition Gate로, 숫돌 손상은 Wheel Condition
+ * Gate로 옮겼다. 같은 것을 두 번 묻지 않는다 — 두 번 물으면 두 번째는 읽지
+ * 않고 누르게 되고, 그 순간 체크는 확인이 아니라 절차가 된다.
+ *
+ * 남은 보호구 착용은 기계·숫돌이 아니라 **사람**에 대한 항목이라 어느 Gate에도
+ * 속하지 않는다. 그래서 여기 남는다. 과거 기록을 읽을 수 있도록 타입 필드와
+ * CSV 열은 그대로 둔다.
+ */
 
 /**
  * 불꽃 방향은 체크박스에서 뺐다.

@@ -6,7 +6,12 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { useInspection } from './inspection';
-import type { GrinderSpec, WheelCondition, WheelSpec } from '@/lib/rules/types';
+import type {
+  GrinderCondition,
+  GrinderSpec,
+  WheelCondition,
+  WheelSpec,
+} from '@/lib/rules/types';
 
 const GRINDER: GrinderSpec = {
   model: 'GWS 750-125',
@@ -25,6 +30,14 @@ const WHEEL: WheelSpec = {
   visibleDamage: 'none_visible',
   rawText: '',
   confidence: 'high',
+};
+
+const GRINDER_CONDITION: GrinderCondition = {
+  cordAndPlugUndamaged: true,
+  bodyUndamaged: true,
+  guardSecure: true,
+  auxiliaryHandleSecure: true,
+  spindleAssemblyUndamaged: true,
 };
 
 const WHEEL_CONDITION: WheelCondition = {
@@ -127,12 +140,63 @@ describe('useInspection', () => {
     expect(sessionStorage.getItem('wheelmatch.wheelCondition')).toBeNull();
   });
 
+  it('작업자가 직접 답한 그라인더 장비 상태를 별도로 저장한다', () => {
+    const { result } = renderHook(() => useInspection());
+
+    act(() => result.current.setGrinder(GRINDER));
+    act(() => result.current.setGrinderCondition(GRINDER_CONDITION));
+
+    expect(result.current.grinderCondition).toEqual(GRINDER_CONDITION);
+    expect(
+      JSON.parse(
+        sessionStorage.getItem('wheelmatch.grinderCondition') ?? 'null',
+      ),
+    ).toEqual(GRINDER_CONDITION);
+    // 숫돌 쪽 확인과 섞이지 않는다.
+    expect(result.current.wheelCondition).toBeNull();
+  });
+
+  it('새 그라인더가 들어오면 장비 상태와 그 뒤의 숫돌 값까지 전부 버린다', () => {
+    // 기계가 달라지면 그 기계로 본 장비 상태도, 그 기계 기준의 규격 대조도
+    // 근거를 잃는다. 남겨두면 다른 기계의 확인이 그대로 통과한다.
+    const { result } = renderHook(() => useInspection());
+    act(() => result.current.setGrinder(GRINDER));
+    act(() => {
+      result.current.setGrinderCondition(GRINDER_CONDITION);
+      result.current.setWheel(WHEEL, null, WHEEL);
+      result.current.setWheelCondition(WHEEL_CONDITION);
+    });
+
+    act(() => result.current.setGrinder({ ...GRINDER, noLoadRPM: 8500 }));
+
+    expect(result.current.grinderCondition).toBeNull();
+    expect(result.current.wheel).toBeNull();
+    expect(result.current.wheelOcr).toBeNull();
+    expect(result.current.wheelCondition).toBeNull();
+    expect(sessionStorage.getItem('wheelmatch.grinderCondition')).toBeNull();
+    expect(sessionStorage.getItem('wheelmatch.wheel')).toBeNull();
+    expect(sessionStorage.getItem('wheelmatch.wheelCondition')).toBeNull();
+    // 새 그라인더 값 자체는 남는다.
+    expect(result.current.grinder?.noLoadRPM).toBe(8500);
+  });
+
+  it('숫돌만 바뀔 때는 그라인더 장비 상태를 건드리지 않는다', () => {
+    const { result } = renderHook(() => useInspection());
+    act(() => result.current.setGrinder(GRINDER));
+    act(() => result.current.setGrinderCondition(GRINDER_CONDITION));
+
+    act(() => result.current.setWheel(WHEEL));
+
+    expect(result.current.grinderCondition).toEqual(GRINDER_CONDITION);
+  });
+
   it('reset은 OCR 원본과 시작 시각까지 모두 지운다', () => {
     // 지난 점검 값이 남아 다음 점검에 섞이면 엉뚱한 기록이 저장된다.
     const { result } = renderHook(() => useInspection());
     act(() => {
       result.current.setPurpose('grinding');
       result.current.setGrinder(GRINDER, null, GRINDER);
+      result.current.setGrinderCondition(GRINDER_CONDITION);
       result.current.setWheel(WHEEL, null, WHEEL);
       result.current.setWheelCondition(WHEEL_CONDITION);
     });
@@ -140,9 +204,11 @@ describe('useInspection', () => {
 
     expect(result.current.grinderOcr).toBeNull();
     expect(result.current.wheelOcr).toBeNull();
+    expect(result.current.grinderCondition).toBeNull();
     expect(result.current.wheelCondition).toBeNull();
     expect(result.current.startedAt).toBeNull();
     expect(sessionStorage.getItem('wheelmatch.wheelOcr')).toBeNull();
+    expect(sessionStorage.getItem('wheelmatch.grinderCondition')).toBeNull();
     expect(sessionStorage.getItem('wheelmatch.wheelCondition')).toBeNull();
   });
 

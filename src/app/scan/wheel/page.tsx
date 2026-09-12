@@ -21,6 +21,7 @@ import { optimizeForUpload } from '@/lib/image/optimize';
 import { confirmedWheelSpec } from '@/lib/ocr/confirm';
 import { getExtractor } from '@/lib/ocr/extractor';
 import { normalizeExpiry } from '@/lib/ocr/parser';
+import { isGrinderConditionComplete } from '@/lib/safety/grinderCondition';
 import {
   EMPTY_WHEEL_CONDITION,
   isWheelConditionComplete,
@@ -45,8 +46,14 @@ interface FormState {
 
 export default function WheelScanPage() {
   const router = useRouter();
-  const { declaredPurpose, grinder, hydrating, setWheel, setWheelCondition } =
-    useInspection();
+  const {
+    declaredPurpose,
+    grinder,
+    grinderCondition,
+    hydrating,
+    setWheel,
+    setWheelCondition,
+  } = useInspection();
 
   const [phase, setPhase] = useState<Phase>('capture');
   const [photo, setPhoto] = useState<Blob | null>(null);
@@ -64,10 +71,13 @@ export default function WheelScanPage() {
   });
   const [error, setError] = useState<string | null>(null);
 
-  // 그라인더를 먼저 찍지 않고 들어온 경우 1단계로 되돌린다.
+  // 그라인더를 찍지 않았거나 장비 상태를 직접 확인하지 않은 경우 1단계로 되돌린다.
+  // 화면 이동으로 Gate를 건너뛸 수 있으면 Gate가 아니다.
+  const grinderReady =
+    grinder !== null && isGrinderConditionComplete(grinderCondition);
   useEffect(() => {
-    if (!hydrating && !grinder) router.replace('/scan/grinder');
-  }, [hydrating, grinder, router]);
+    if (!hydrating && !grinderReady) router.replace('/scan/grinder');
+  }, [hydrating, grinderReady, router]);
 
   async function analyze(source: Blob) {
     setPhase('analyzing');
@@ -176,6 +186,18 @@ export default function WheelScanPage() {
       guide: WHEEL_FIELD_GUIDE.expiry,
     },
   ];
+
+  // 리다이렉트가 걸리는 동안에도 촬영 화면을 열어주지 않는다.
+  // effect만 믿으면 한 프레임 동안 Gate 뒤가 보이고, 그 사이에 촬영이 시작된다.
+  if (!grinderReady) {
+    return (
+      <main className="flex flex-1 items-center justify-center px-6">
+        <p className="text-lg text-slate-400">
+          그라인더 상태 확인이 먼저입니다.
+        </p>
+      </main>
+    );
+  }
 
   if (phase === 'capture') {
     return (

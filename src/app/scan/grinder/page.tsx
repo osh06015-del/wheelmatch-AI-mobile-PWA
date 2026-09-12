@@ -13,13 +13,18 @@ import {
   toTextOrNull,
   type FieldSpec,
 } from '@/components/FieldConfirm';
+import { GrinderConditionGate } from '@/components/GrinderConditionGate';
 import { ManualConfirmToggle } from '@/components/ManualConfirmToggle';
 import { ScanHeader } from '@/components/ScanHeader';
 import { GRINDER_FIELD_GUIDE } from '@/lib/guide/fieldGuide';
 import { optimizeForUpload } from '@/lib/image/optimize';
 import { getExtractor } from '@/lib/ocr/extractor';
+import {
+  EMPTY_GRINDER_CONDITION,
+  isGrinderConditionComplete,
+} from '@/lib/safety/grinderCondition';
 import { useInspection } from '@/lib/state/inspection';
-import type { GrinderSpec } from '@/lib/rules/types';
+import type { GrinderCondition, GrinderSpec } from '@/lib/rules/types';
 
 type Phase = 'capture' | 'analyzing' | 'confirm' | 'error';
 
@@ -31,7 +36,7 @@ interface FormState {
 
 export default function GrinderScanPage() {
   const router = useRouter();
-  const { setGrinder } = useInspection();
+  const { setGrinder, setGrinderCondition } = useInspection();
 
   const [phase, setPhase] = useState<Phase>('capture');
   const [photo, setPhoto] = useState<Blob | null>(null);
@@ -42,6 +47,9 @@ export default function GrinderScanPage() {
     maxWheelDiameter: '',
   });
   const [userConfirmed, setUserConfirmed] = useState(false);
+  const [condition, setCondition] = useState<GrinderCondition>({
+    ...EMPTY_GRINDER_CONDITION,
+  });
   const [error, setError] = useState<string | null>(null);
 
   async function analyze(source: Blob) {
@@ -59,6 +67,8 @@ export default function GrinderScanPage() {
         maxWheelDiameter: fromNumber(spec.maxWheelDiameter),
       });
       setUserConfirmed(false);
+      // 새 사진은 다른 기계일 수 있다. 이전 기계의 직접 확인을 이어 쓰지 않는다.
+      setCondition({ ...EMPTY_GRINDER_CONDITION });
       setPhase('confirm');
     } catch (caught) {
       setError(
@@ -72,9 +82,16 @@ export default function GrinderScanPage() {
     setForm((current) => ({ ...current, [key]: value }));
     // 값이 바뀌면 사용자 확인은 무효가 된다.
     setUserConfirmed(false);
+    // 장비 상태 확인은 지우지 않는다.
+    //
+    // 다섯 항목은 전원선·본체·덮개·손잡이·스핀들, 즉 **기계의 물리 상태**를
+    // 묻는다. 명판에 적힌 모델명·회전속도·최대지름을 고쳐도 작업자가 방금
+    // 눈으로 본 기계는 그대로다. 지우면 안전상 얻는 것 없이 다시 누르게만
+    // 만든다. 숫돌 쪽과 다른 이유는 그쪽 4·5번이 라벨 자체를 묻기 때문이다.
   }
 
   function proceed() {
+    if (!isGrinderConditionComplete(condition)) return;
     const spec: GrinderSpec = {
       model: toTextOrNull(form.model),
       noLoadRPM: toNumberOrNull(form.noLoadRPM),
@@ -83,7 +100,9 @@ export default function GrinderScanPage() {
       // 사용자가 직접 확인했으면 그 확인을 신뢰한다. 아니면 OCR 신뢰도를 그대로 쓴다.
       confidence: userConfirmed ? 'high' : (ocr?.confidence ?? 'low'),
     };
+    // setGrinder가 이전 장비 상태·숫돌 값을 모두 지운다. 그 뒤에 이번 확인을 넣는다.
     setGrinder(spec, photo, ocr);
+    setGrinderCondition(condition);
     router.push('/scan/wheel');
   }
 
@@ -182,11 +201,18 @@ export default function GrinderScanPage() {
         checked={userConfirmed}
         onChange={setUserConfirmed}
       />
+      <GrinderConditionGate
+        condition={condition}
+        onChange={(key, value) =>
+          setCondition((current) => ({ ...current, [key]: value }))
+        }
+      />
       <div className="flex flex-col gap-3">
         <button
           type="button"
           onClick={proceed}
-          className="min-h-14 rounded-lg bg-green-500 text-lg font-bold text-slate-950 active:bg-green-400"
+          disabled={!isGrinderConditionComplete(condition)}
+          className="min-h-14 rounded-lg bg-green-500 text-lg font-bold text-slate-950 active:bg-green-400 disabled:bg-slate-700 disabled:text-slate-400"
         >
           확인 후 숫돌 촬영
         </button>

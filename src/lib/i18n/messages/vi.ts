@@ -70,6 +70,34 @@ export const vi: Messages = {
   'expiry.source':
     'Căn cứ hạn sử dụng: chỉ dùng tháng/năm in trên nhãn. Không tính từ ngày sản xuất. Định dạng ghi nhãn theo oSa "Product marking requirements for bonded abrasives" (2020-04, dựa trên EN 12413:2019). Bản gốc EN 12413 chưa được đọc. Việc coi đá mài còn hạn đến ngày cuối của tháng ghi trên nhãn là cách hiểu của ứng dụng này, không phải quy định. Điều 122 Quy định về tiêu chuẩn an toàn vệ sinh lao động của Hàn Quốc không có điều khoản về hạn sử dụng.',
 
+  'grinderCondition.title': 'Tự kiểm tra tình trạng máy mài',
+  'grinderCondition.note':
+    'Trước khi lắp đá mài, hãy nhìn toàn bộ máy mài và trả lời năm mục sau.',
+  'grinderCondition.aiBoundary':
+    'AI chỉ đọc thông số ghi trên nhãn máy. Tình trạng máy mài và an toàn lao động phải do người lao động tự kiểm tra.',
+  'grinderCondition.cordAndPlug': 'Dây điện và phích cắm có nguyên vẹn không?',
+  'grinderCondition.cordAndPlugHint':
+    'Lần tay dọc toàn bộ dây — tróc vỏ, chỗ bị đè bẹp, phích cắm nứt vỡ',
+  'grinderCondition.body': 'Thân máy có bị nứt hay hư hỏng nặng không?',
+  'grinderCondition.bodyHint': 'Vết rơi va đập, vỏ máy nứt, bộ phận bị lỏng ra',
+  'grinderCondition.guard': 'Nắp bảo vệ đã lắp và siết chặt chưa?',
+  'grinderCondition.guardHint':
+    'Xoay bằng tay không được xê dịch, và phải che đá mài đúng góc quy định',
+  'grinderCondition.auxiliaryHandle': 'Tay cầm phụ đã lắp và siết chặt chưa?',
+  'grinderCondition.auxiliaryHandleHint':
+    'Phải cầm được bằng hai tay để chống giật ngược. Nếu lung lay, hãy chọn Có vấn đề',
+  'grinderCondition.spindle':
+    'Trục, mặt bích và đai ốc hãm có hư hỏng rõ rệt không?',
+  'grinderCondition.spindleHint':
+    'Ren bị trờn, mặt bích cong vênh hoặc dính bẩn, đai ốc mòn',
+  'grinderCondition.confirmed': 'Đã kiểm tra',
+  'grinderCondition.issue': 'Có vấn đề',
+  'grinderCondition.incomplete':
+    'Bạn phải tự kiểm tra {count} mục còn lại trước khi chuyển sang chụp đá mài.',
+  'grinderCondition.stopTitle': 'Không được sử dụng máy mài này',
+  'grinderCondition.stopBody':
+    'Đã phát hiện vấn đề về tình trạng thiết bị. Không sử dụng. Hãy cho kiểm tra, sửa chữa rồi kiểm tra lại.',
+
   'wheelCondition.title': 'Tự kiểm tra tình trạng đá mài',
   'wheelCondition.note':
     'Trước khi lắp, hãy tự kiểm tra hai mặt, cạnh và vùng lắp của đá mài thật.',
@@ -121,12 +149,6 @@ export const vi: Messages = {
   'checklist.title': 'Danh mục kiểm tra an toàn',
   'checklist.note':
     'Những mục này bạn phải tự kiểm tra. Việc đối chiếu thông số không bao gồm chúng.',
-  'checklist.guardCover': 'Đã lắp chụp bảo vệ',
-  'checklist.guardCoverHint':
-    'Kiểm tra đá mài đã được che đúng góc quy định chưa',
-  'checklist.auxiliaryHandle': 'Đã lắp tay cầm phụ',
-  'checklist.auxiliaryHandleHint':
-    'Kiểm tra có thể giữ bằng hai tay để chống giật ngược không',
   'checklist.ppe': 'Đã mang đồ bảo hộ',
   'checklist.ppeHint': 'Kiểm tra kính bảo hộ, găng tay và tấm che mặt',
   'checklist.preWork':

@@ -12,6 +12,7 @@
 
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import type {
+  GrinderCondition,
   GrinderSpec,
   WheelCondition,
   WheelSpec,
@@ -24,6 +25,7 @@ const PURPOSE_KEY = 'wheelmatch.purpose';
 const STARTED_KEY = 'wheelmatch.startedAt';
 const GRINDER_OCR_KEY = 'wheelmatch.grinderOcr';
 const WHEEL_OCR_KEY = 'wheelmatch.wheelOcr';
+const GRINDER_CONDITION_KEY = 'wheelmatch.grinderCondition';
 const WHEEL_CONDITION_KEY = 'wheelmatch.wheelCondition';
 
 interface InspectionState {
@@ -41,6 +43,8 @@ interface InspectionState {
    */
   grinderOcr: GrinderSpec | null;
   wheelOcr: WheelSpec | null;
+  /** 작업자가 직접 답한 그라인더 장비 상태. AI가 채우지 않는다. */
+  grinderCondition: GrinderCondition | null;
   /** 작업자가 직접 답한 숫돌 상태 확인. AI가 채우지 않는다. */
   wheelCondition: WheelCondition | null;
   grinderImage: Blob | null;
@@ -57,6 +61,7 @@ const SERVER_SNAPSHOT: InspectionState = {
   wheel: null,
   grinderOcr: null,
   wheelOcr: null,
+  grinderCondition: null,
   wheelCondition: null,
   grinderImage: null,
   wheelImage: null,
@@ -89,6 +94,7 @@ function initialClientState(): InspectionState {
     wheel: readStored<WheelSpec>(WHEEL_KEY),
     grinderOcr: readStored<GrinderSpec>(GRINDER_OCR_KEY),
     wheelOcr: readStored<WheelSpec>(WHEEL_OCR_KEY),
+    grinderCondition: readStored<GrinderCondition>(GRINDER_CONDITION_KEY),
     wheelCondition: readStored<WheelCondition>(WHEEL_CONDITION_KEY),
     grinderImage: null,
     wheelImage: null,
@@ -134,6 +140,7 @@ export interface InspectionStore extends InspectionState {
     image?: Blob | null,
     ocr?: WheelSpec | null,
   ) => void;
+  setGrinderCondition: (condition: GrinderCondition) => void;
   setWheelCondition: (condition: WheelCondition) => void;
   reset: () => void;
 }
@@ -159,8 +166,26 @@ export function useInspection(): InspectionStore {
     (spec: GrinderSpec, image?: Blob | null, ocr?: GrinderSpec | null) => {
       writeStored(GRINDER_KEY, spec);
       if (ocr !== undefined) writeStored(GRINDER_OCR_KEY, ocr);
+      // 그라인더가 바뀌면 그 뒤의 모든 것이 근거를 잃는다.
+      //
+      // 직접 확인한 장비 상태는 그 기계에 대한 답이고, 숫돌 규격 대조는
+      // 그 기계의 회전속도·허용 지름을 기준으로 한 것이다. 기계가 달라지면
+      // 둘 다 다시 해야 한다. 남겨두면 다른 기계의 확인이 그대로 통과한다.
+      try {
+        window.sessionStorage.removeItem(GRINDER_CONDITION_KEY);
+        window.sessionStorage.removeItem(WHEEL_KEY);
+        window.sessionStorage.removeItem(WHEEL_OCR_KEY);
+        window.sessionStorage.removeItem(WHEEL_CONDITION_KEY);
+      } catch {
+        // 메모리 상태는 아래에서 반드시 지운다.
+      }
       setState({
         grinder: spec,
+        grinderCondition: null,
+        wheel: null,
+        wheelOcr: null,
+        wheelCondition: null,
+        wheelImage: null,
         ...(image === undefined ? {} : { grinderImage: image }),
         ...(ocr === undefined ? {} : { grinderOcr: ocr }),
       });
@@ -188,6 +213,11 @@ export function useInspection(): InspectionStore {
     [],
   );
 
+  const setGrinderCondition = useCallback((condition: GrinderCondition) => {
+    writeStored(GRINDER_CONDITION_KEY, condition);
+    setState({ grinderCondition: condition });
+  }, []);
+
   const setWheelCondition = useCallback((condition: WheelCondition) => {
     writeStored(WHEEL_CONDITION_KEY, condition);
     setState({ wheelCondition: condition });
@@ -201,6 +231,7 @@ export function useInspection(): InspectionStore {
       window.sessionStorage.removeItem(WHEEL_KEY);
       window.sessionStorage.removeItem(GRINDER_OCR_KEY);
       window.sessionStorage.removeItem(WHEEL_OCR_KEY);
+      window.sessionStorage.removeItem(GRINDER_CONDITION_KEY);
       window.sessionStorage.removeItem(WHEEL_CONDITION_KEY);
     } catch {
       // 무시한다.
@@ -212,6 +243,7 @@ export function useInspection(): InspectionStore {
       wheel: null,
       grinderOcr: null,
       wheelOcr: null,
+      grinderCondition: null,
       wheelCondition: null,
       grinderImage: null,
       wheelImage: null,
@@ -225,9 +257,18 @@ export function useInspection(): InspectionStore {
       setPurpose,
       setGrinder,
       setWheel,
+      setGrinderCondition,
       setWheelCondition,
       reset,
     }),
-    [snapshot, setPurpose, setGrinder, setWheel, setWheelCondition, reset],
+    [
+      snapshot,
+      setPurpose,
+      setGrinder,
+      setWheel,
+      setGrinderCondition,
+      setWheelCondition,
+      reset,
+    ],
   );
 }

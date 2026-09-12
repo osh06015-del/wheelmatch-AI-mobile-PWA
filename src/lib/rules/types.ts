@@ -131,6 +131,32 @@ export type VisibleDamage = 'suspected' | 'none_visible' | 'unknown';
 export type WorkPurpose = 'cutting' | 'grinding';
 
 /**
+ * 명판을 확인한 뒤 작업자가 직접 보는 그라인더 장비 상태.
+ *
+ * WheelCondition과 같은 규칙이다 — true는 작업자가 직접 확인했다는 뜻,
+ * false는 문제를 발견했다는 뜻, null은 아직 답하지 않은 상태다.
+ * AI는 어느 값도 true로 만들 수 없다.
+ *
+ * 두 Gate를 하나의 타입으로 묶지 않는다. 항목이 뜻하는 바가 서로 다르고,
+ * 일반화하면 어느 쪽 안전 조건인지 코드에서 읽히지 않는다.
+ *
+ * **현재 촬영은 명판 중심이라 사진으로는 이 다섯 가지를 볼 수 없다.**
+ * 그래서 AI 의심 경고조차 붙이지 않았다. 전부 작업자의 눈으로만 채운다.
+ */
+export interface GrinderCondition {
+  /** 전원선·플러그 손상 없음 */
+  cordAndPlugUndamaged: boolean | null;
+  /** 본체 균열·파손 없음 */
+  bodyUndamaged: boolean | null;
+  /** 방호덮개 장착 + 단단히 고정 */
+  guardSecure: boolean | null;
+  /** 보조손잡이 장착 + 단단히 고정 */
+  auxiliaryHandleSecure: boolean | null;
+  /** 스핀들·플랜지·고정너트 손상 없음 */
+  spindleAssemblyUndamaged: boolean | null;
+}
+
+/**
  * 숫돌을 장착하기 전에 작업자가 직접 확인하는 상태 점검.
  *
  * true는 작업자가 해당 정상 조건을 직접 확인했다는 뜻이고, false는 문제를
@@ -199,6 +225,11 @@ export interface InspectionRecord {
   wheel: WheelSpec;
   result: MatchResult;
   checklist: SafetyChecklist;
+  /**
+   * 작업자가 그라인더를 직접 보고 답한 장비 상태. 기능 도입 전 기록에는 없다.
+   * 규격 판정과 섞지 않고 별도 증거로 보관한다.
+   */
+  grinderCondition?: GrinderCondition;
   /**
    * 작업자가 숫돌을 직접 보고 답한 상태 점검. 기능 도입 전 기록에는 없다.
    * 규격 판정과 섞지 않고 별도 증거로 보관한다.
