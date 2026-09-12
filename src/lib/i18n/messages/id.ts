@@ -45,6 +45,7 @@ export const id: Messages = {
   'result.saving': 'Menyimpan...',
   'result.saveError':
     'Gagal menyimpan. Periksa ruang penyimpanan lalu coba lagi.',
+  'result.saveStopped': 'Simpan hasil penghentian',
 
   'group.confirmed': 'Sudah dicocokkan',
   'group.conflicting': 'Tidak cocok',
@@ -69,6 +70,37 @@ export const id: Messages = {
   'rule.confidence': 'Keyakinan pembacaan',
   'expiry.source':
     'Dasar kedaluwarsa: hanya bulan/tahun yang tercetak pada label yang dipakai. Tidak pernah dihitung dari tanggal produksi. Format penandaan mengikuti oSa "Product marking requirements for bonded abrasives" (2020-04, berdasarkan EN 12413:2019). Naskah EN 12413 sendiri belum dibaca. Menganggap bulan yang tertera masih berlaku sampai hari terakhirnya adalah tafsiran aplikasi ini, bukan peraturan. Pasal 122 Peraturan Standar Keselamatan dan Kesehatan Kerja Korea tidak memuat ketentuan kedaluwarsa.',
+
+  'trialRun.title': 'Uji putar',
+  'trialRun.legalBasis':
+    'Pasal 122 ayat (2) Peraturan Standar Keselamatan dan Kesehatan Kerja Korea mewajibkan uji putar minimal 1 menit sebelum mulai bekerja dan minimal 3 menit setelah mengganti batu gerinda, sambil memeriksa apakah ada yang tidak wajar. Aplikasi ini hanya menghitung waktu dan mencatat jawaban Anda, bukan menggantikan prosedur itu.',
+  'trialRun.standClear':
+    'Selama uji putar, berdirilah menjauh dari muka batu gerinda dan arah putarannya.',
+  'trialRun.replacedQuestion': 'Apakah Anda baru saja mengganti batu gerinda?',
+  'trialRun.startReplaced': 'Ya — mulai uji putar {seconds} detik',
+  'trialRun.startBeforeWork': 'Tidak — mulai uji putar {seconds} detik',
+  'trialRun.modeReplaced': 'Uji putar setelah ganti batu gerinda',
+  'trialRun.modeBeforeWork': 'Uji putar sebelum mulai bekerja',
+  'trialRun.running': 'Berjalan minimal {seconds} detik. Sisa waktu',
+  'trialRun.elapsed':
+    'Waktu yang diwajibkan sudah terpenuhi. Laporkan hal tidak wajar di bawah.',
+  'trialRun.waitNotice':
+    'Anda baru dapat menjawab setelah waktu yang diwajibkan terpenuhi.',
+  'trialRun.findingsTitle': 'Apakah ada yang tidak wajar saat uji putar?',
+  'trialRun.findingsHint':
+    'Centang semua yang sesuai. Jika ada yang dicentang, Anda hanya bisa lanjut sebagai Ada masalah.',
+  'trialRun.finding.vibration': 'Getaran tidak wajar',
+  'trialRun.finding.noise': 'Suara tidak wajar',
+  'trialRun.finding.wobble': 'Batu gerinda goyang',
+  'trialRun.finding.wheelDamage': 'Tanda batu gerinda rusak atau longgar',
+  'trialRun.finding.equipment': 'Ada yang tidak beres pada mesin',
+  'trialRun.confirmNormal': 'Tidak ada yang tidak wajar — dikonfirmasi',
+  'trialRun.reportAbnormal': 'Ada masalah',
+  'trialRun.stopTitle': 'Jangan mulai bekerja',
+  'trialRun.stopBody':
+    'Ditemukan hal tidak wajar saat uji putar. Hentikan mesin, putuskan sumber listrik, lalu periksa pemasangan batu gerinda dan kondisi mesin.',
+  'trialRun.required':
+    'Pencocokan spesifikasi selesai. Anda dapat menyimpan setelah uji putar.',
 
   'grinderCondition.title': 'Periksa kondisi gerinda sendiri',
   'grinderCondition.note':

@@ -45,6 +45,7 @@ export const vi: Messages = {
   'result.saving': 'Đang lưu...',
   'result.saveError':
     'Lưu không thành công. Hãy kiểm tra dung lượng lưu trữ rồi thử lại.',
+  'result.saveStopped': 'Lưu kết quả dừng máy',
 
   'group.confirmed': 'Đã đối chiếu',
   'group.conflicting': 'Không khớp',
@@ -69,6 +70,36 @@ export const vi: Messages = {
   'rule.confidence': 'Độ tin cậy khi đọc nhãn',
   'expiry.source':
     'Căn cứ hạn sử dụng: chỉ dùng tháng/năm in trên nhãn. Không tính từ ngày sản xuất. Định dạng ghi nhãn theo oSa "Product marking requirements for bonded abrasives" (2020-04, dựa trên EN 12413:2019). Bản gốc EN 12413 chưa được đọc. Việc coi đá mài còn hạn đến ngày cuối của tháng ghi trên nhãn là cách hiểu của ứng dụng này, không phải quy định. Điều 122 Quy định về tiêu chuẩn an toàn vệ sinh lao động của Hàn Quốc không có điều khoản về hạn sử dụng.',
+
+  'trialRun.title': 'Chạy thử',
+  'trialRun.legalBasis':
+    'Điều 122 khoản 2 Quy định về tiêu chuẩn an toàn vệ sinh lao động Hàn Quốc yêu cầu chạy thử ít nhất 1 phút trước khi bắt đầu làm việc và ít nhất 3 phút sau khi thay đá mài, đồng thời kiểm tra máy có bất thường không. Ứng dụng chỉ bấm giờ và ghi lại câu trả lời, không thay thế thủ tục đó.',
+  'trialRun.standClear':
+    'Khi chạy thử, hãy đứng tránh mặt đá mài và hướng quay của nó.',
+  'trialRun.replacedQuestion': 'Bạn vừa thay đá mài phải không?',
+  'trialRun.startReplaced': 'Có — bắt đầu chạy thử {seconds} giây',
+  'trialRun.startBeforeWork': 'Không — bắt đầu chạy thử {seconds} giây',
+  'trialRun.modeReplaced': 'Chạy thử sau khi thay đá mài',
+  'trialRun.modeBeforeWork': 'Chạy thử trước khi bắt đầu làm việc',
+  'trialRun.running': 'Đang chạy tối thiểu {seconds} giây. Còn lại',
+  'trialRun.elapsed':
+    'Đã đủ thời gian yêu cầu. Hãy báo bất thường ở phía dưới.',
+  'trialRun.waitNotice': 'Bạn chỉ trả lời được sau khi đủ thời gian yêu cầu.',
+  'trialRun.findingsTitle': 'Có gì bất thường khi chạy thử không?',
+  'trialRun.findingsHint':
+    'Hãy chọn tất cả mục phù hợp. Nếu chọn bất kỳ mục nào, bạn chỉ có thể tiếp tục với Có vấn đề.',
+  'trialRun.finding.vibration': 'Rung bất thường',
+  'trialRun.finding.noise': 'Tiếng ồn bất thường',
+  'trialRun.finding.wobble': 'Đá mài bị đảo',
+  'trialRun.finding.wheelDamage': 'Dấu hiệu đá mài nứt vỡ hoặc bị lỏng',
+  'trialRun.finding.equipment': 'Máy có dấu hiệu bất thường',
+  'trialRun.confirmNormal': 'Xác nhận không có bất thường',
+  'trialRun.reportAbnormal': 'Có vấn đề',
+  'trialRun.stopTitle': 'Không được bắt đầu làm việc',
+  'trialRun.stopBody':
+    'Đã phát hiện bất thường khi chạy thử. Hãy dừng máy, ngắt nguồn điện, rồi kiểm tra cách lắp đá mài và tình trạng máy.',
+  'trialRun.required':
+    'Đã đối chiếu xong thông số. Bạn có thể lưu sau khi chạy thử.',
 
   'grinderCondition.title': 'Tự kiểm tra tình trạng máy mài',
   'grinderCondition.note':

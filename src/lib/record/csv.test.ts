@@ -247,11 +247,57 @@ describe('toCsv', () => {
       'conditionAuxiliaryHandleSecure',
       'conditionSpindleAssemblyUndamaged',
     ];
+    const trialRunColumns = [
+      'trialRunWheelReplaced',
+      'trialRunRequiredSeconds',
+      'trialRunElapsedSeconds',
+      'trialRunOutcome',
+      'trialRunFindings',
+    ];
     expect([...CSV_COLUMNS]).toEqual([
       ...LEGACY_COLUMNS,
       ...wheelColumns,
       ...grinderColumns,
+      ...trialRunColumns,
     ]);
+  });
+
+  it('시험운전 기록을 맨 뒤 열에 적는다', () => {
+    const [, row] = parse(
+      toCsv([
+        record({
+          trialRun: {
+            wheelReplaced: true,
+            requiredSeconds: 180,
+            startedAt: '2026-09-12T09:00:00.000Z',
+            finishedAt: '2026-09-12T09:03:10.000Z',
+            elapsedSeconds: 190,
+            outcome: 'abnormal',
+            findings: ['noise', 'wobble'],
+            completed: true,
+          },
+        }),
+      ]),
+    );
+
+    expect(row[CSV_COLUMNS.indexOf('trialRunWheelReplaced')]).toBe('Y');
+    expect(row[CSV_COLUMNS.indexOf('trialRunRequiredSeconds')]).toBe('180');
+    expect(row[CSV_COLUMNS.indexOf('trialRunElapsedSeconds')]).toBe('190');
+    expect(row[CSV_COLUMNS.indexOf('trialRunOutcome')]).toBe('abnormal');
+    expect(row[CSV_COLUMNS.indexOf('trialRunFindings')]).toBe('noise wobble');
+  });
+
+  it('시험운전을 하지 않은 기록은 그 열이 빈 칸이다', () => {
+    // 하지 않은 절차를 한 것처럼 남기지 않는다.
+    const [, row] = parse(toCsv([record()]));
+    for (const column of [
+      'trialRunWheelReplaced',
+      'trialRunRequiredSeconds',
+      'trialRunOutcome',
+      'trialRunFindings',
+    ] as const) {
+      expect(row[CSV_COLUMNS.indexOf(column)]).toBe('');
+    }
   });
 
   it('그라인더 장비 상태를 Y/N/빈 칸으로 구분해 적는다', () => {

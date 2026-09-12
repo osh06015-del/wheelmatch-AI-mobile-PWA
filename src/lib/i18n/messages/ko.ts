@@ -42,6 +42,7 @@ export const ko = {
   'result.saving': '저장 중...',
   'result.saveError':
     '저장에 실패했습니다. 저장 공간을 확인한 뒤 다시 시도하세요.',
+  'result.saveStopped': '중지 결과 저장',
 
   'group.confirmed': '확인된 정보',
   'group.conflicting': '맞지 않는 정보',
@@ -66,6 +67,36 @@ export const ko = {
   'rule.confidence': '신뢰도 검증',
   'expiry.source':
     '유효기한 근거: 라벨에 표시된 월/연 표기만 씁니다. 제조일에서 계산하지 않습니다. 표시 형식은 oSa 「Product marking requirements for bonded abrasives」(2020-04, EN 12413:2019 기준)를 따랐습니다. EN 12413 원문은 확인하지 못했습니다. 표시된 달의 말일까지 유효로 보는 것은 이 앱의 해석이며 규정이 아닙니다. 한국 산업안전보건기준에 관한 규칙 제122조에는 유효기한 조항이 없습니다.',
+
+  'trialRun.title': '시험운전',
+  'trialRun.legalBasis':
+    '산업안전보건기준에 관한 규칙 제122조 ②는 작업을 시작하기 전 1분 이상, 연삭숫돌을 교체한 후 3분 이상 시험운전을 하고 이상이 있는지 확인하도록 정합니다. 이 앱은 시간을 재고 답을 남길 뿐이며, 법정 절차를 대신하지 않습니다.',
+  'trialRun.standClear':
+    '시험운전 중에는 숫돌의 정면과 회전 방향 위험구역을 피해 서십시오.',
+  'trialRun.replacedQuestion': '숫돌을 방금 교체했습니까?',
+  'trialRun.startReplaced': '예 — 교체 후 시험운전 {seconds}초 시작',
+  'trialRun.startBeforeWork': '아니오 — 작업 시작 전 시험운전 {seconds}초 시작',
+  'trialRun.modeReplaced': '숫돌 교체 후 시험운전',
+  'trialRun.modeBeforeWork': '작업 시작 전 시험운전',
+  'trialRun.running': '{seconds}초 이상 돌리는 중입니다. 남은 시간',
+  'trialRun.elapsed':
+    '요구 시간을 채웠습니다. 아래에서 이상 여부를 확인하세요.',
+  'trialRun.waitNotice': '요구 시간을 채운 뒤에 답할 수 있습니다.',
+  'trialRun.findingsTitle': '시험운전 중 이상이 있었습니까?',
+  'trialRun.findingsHint':
+    '해당하는 것을 모두 고르세요. 하나라도 고르면 이상 있음으로만 넘어갈 수 있습니다.',
+  'trialRun.finding.vibration': '비정상 진동',
+  'trialRun.finding.noise': '비정상 소음',
+  'trialRun.finding.wobble': '숫돌 흔들림',
+  'trialRun.finding.wheelDamage': '숫돌 파손·이탈 징후',
+  'trialRun.finding.equipment': '장비 이상',
+  'trialRun.confirmNormal': '이상 없음 확인',
+  'trialRun.reportAbnormal': '이상 있음',
+  'trialRun.stopTitle': '작업하지 마십시오',
+  'trialRun.stopBody':
+    '시험운전 중 이상이 확인되었습니다. 장비를 정지하고 전원을 차단한 뒤 숫돌 장착 상태와 장비를 점검하십시오.',
+  'trialRun.required':
+    '규격 대조를 마쳤습니다. 시험운전 후 저장할 수 있습니다.',
 
   'grinderCondition.title': '그라인더 상태 직접 확인',
   'grinderCondition.note':

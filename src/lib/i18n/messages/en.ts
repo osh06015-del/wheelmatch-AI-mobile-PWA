@@ -41,6 +41,7 @@ export const en: Messages = {
   'result.save': 'Finish and save',
   'result.saving': 'Saving...',
   'result.saveError': 'Saving failed. Check your storage space and try again.',
+  'result.saveStopped': 'Save the stop result',
 
   'group.confirmed': 'Confirmed',
   'group.conflicting': 'Does not match',
@@ -65,6 +66,36 @@ export const en: Messages = {
   'rule.confidence': 'Reading confidence',
   'expiry.source':
     'Expiry basis: only the month/year printed on the label is used. It is never calculated from the manufacturing date. The marking format follows oSa "Product marking requirements for bonded abrasives" (2020-04, based on EN 12413:2019). The EN 12413 text itself was not read. Treating the marked month as valid through its last day is this app\'s reading, not a regulation. Korea\'s Rules on Occupational Safety and Health Standards Article 122 has no expiry clause.',
+
+  'trialRun.title': 'Trial run',
+  'trialRun.legalBasis':
+    "Korea's Rules on Occupational Safety and Health Standards, Article 122(2), require a trial run of at least 1 minute before starting work and at least 3 minutes after replacing a wheel, checking the machine for anything abnormal. This app only times it and records your answer. It does not replace the procedure.",
+  'trialRun.standClear':
+    'During the trial run, stand clear of the wheel face and the direction of rotation.',
+  'trialRun.replacedQuestion': 'Did you just replace the wheel?',
+  'trialRun.startReplaced': 'Yes — start the {seconds}s trial run',
+  'trialRun.startBeforeWork': 'No — start the {seconds}s trial run',
+  'trialRun.modeReplaced': 'Trial run after replacing the wheel',
+  'trialRun.modeBeforeWork': 'Trial run before starting work',
+  'trialRun.running': 'Running for at least {seconds}s. Time left',
+  'trialRun.elapsed':
+    'The required time has passed. Report anything abnormal below.',
+  'trialRun.waitNotice': 'You can answer once the required time has passed.',
+  'trialRun.findingsTitle': 'Was anything abnormal during the trial run?',
+  'trialRun.findingsHint':
+    'Tick everything that applies. If you tick any, you can only continue as Problem found.',
+  'trialRun.finding.vibration': 'Abnormal vibration',
+  'trialRun.finding.noise': 'Abnormal noise',
+  'trialRun.finding.wobble': 'Wheel wobble',
+  'trialRun.finding.wheelDamage': 'Signs of wheel damage or coming loose',
+  'trialRun.finding.equipment': 'Something wrong with the machine',
+  'trialRun.confirmNormal': 'Nothing abnormal — confirmed',
+  'trialRun.reportAbnormal': 'Problem found',
+  'trialRun.stopTitle': 'Do not start work',
+  'trialRun.stopBody':
+    'Something abnormal was found during the trial run. Stop the machine, disconnect the power, then inspect how the wheel is mounted and check the machine.',
+  'trialRun.required':
+    'The specification check is done. You can save after the trial run.',
 
   'grinderCondition.title': 'Check the grinder yourself',
   'grinderCondition.note':

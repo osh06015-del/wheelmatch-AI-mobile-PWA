@@ -52,6 +52,12 @@ export const CSV_COLUMNS = [
   'conditionGuardSecure',
   'conditionAuxiliaryHandleSecure',
   'conditionSpindleAssemblyUndamaged',
+  // 시험운전은 규격이 맞는 조합에서만 생긴다. 없는 기록은 빈 칸이다.
+  'trialRunWheelReplaced',
+  'trialRunRequiredSeconds',
+  'trialRunElapsedSeconds',
+  'trialRunOutcome',
+  'trialRunFindings',
 ] as const;
 
 /**
@@ -142,6 +148,11 @@ function row(record: InspectionRecord): string {
     tick(record.grinderCondition?.guardSecure),
     tick(record.grinderCondition?.auxiliaryHandleSecure),
     tick(record.grinderCondition?.spindleAssemblyUndamaged),
+    tick(record.trialRun?.wheelReplaced),
+    record.trialRun?.requiredSeconds,
+    record.trialRun?.elapsedSeconds,
+    record.trialRun?.outcome,
+    record.trialRun ? record.trialRun.findings.join(' ') : undefined,
   ];
 
   return values.map(cell).join(',');

@@ -7,7 +7,13 @@
 // 여기서만 잡을 수 있는 회귀다 — 순수 함수 테스트는 "화면이 그 함수를
 // 실제로 부르는지"를 증명하지 못한다.
 
-import { act, render, renderHook, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+} from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { replace, push } = vi.hoisted(() => ({
@@ -248,5 +254,187 @@ describe('결과 화면 — Grinder Condition Gate 우회 차단', () => {
 
     expect(screen.getByText(LOADING)).toBeInTheDocument();
     expect(replace).toHaveBeenCalledWith('/scan/grinder');
+  });
+});
+
+describe('결과 화면 — 시험운전 절차', () => {
+  beforeEach(() => {
+    replace.mockClear();
+    push.mockClear();
+    const result = store();
+    act(() => result.current.reset());
+  });
+
+  /** 두 Gate를 통과하고 규격도 맞는 상태까지 만든다. */
+  function ready(wheel: WheelSpec = WHEEL) {
+    const result = store();
+    act(() => {
+      result.current.setGrinder(GRINDER);
+      result.current.setGrinderCondition(GRINDER_OK);
+      result.current.setWheel(wheel);
+      result.current.setWheelCondition(CONFIRMED);
+    });
+    return result;
+  }
+
+  function checkAll() {
+    for (const box of screen.getAllByRole('checkbox')) {
+      if (!(box as HTMLInputElement).checked) fireEvent.click(box);
+    }
+  }
+
+  it('체크리스트를 끝내기 전에는 시험운전을 열지 않는다', () => {
+    ready();
+    render(<ResultPage />);
+
+    expect(screen.queryByText('시험운전')).not.toBeInTheDocument();
+  });
+
+  it('체크리스트를 마치면 숫돌 교체 여부를 묻는다', () => {
+    ready();
+    render(<ResultPage />);
+    checkAll();
+
+    expect(screen.getByText('시험운전')).toBeInTheDocument();
+    expect(screen.getByText('숫돌을 방금 교체했습니까?')).toBeInTheDocument();
+  });
+
+  it('부적합 조합에서는 시험운전을 열지 않는다', () => {
+    // 맞지 않는 조합으로 기계를 돌리게 유도하면 그 자체가 사고 경로다.
+    ready({ ...WHEEL, maxRPM: 8500 });
+    render(<ResultPage />);
+    checkAll();
+
+    expect(screen.getByText('부적합')).toBeInTheDocument();
+    expect(screen.queryByText('시험운전')).not.toBeInTheDocument();
+  });
+
+  it('판정불가에서도 시험운전을 열지 않는다', () => {
+    ready({ ...WHEEL, maxRPM: null });
+    render(<ResultPage />);
+    checkAll();
+
+    expect(screen.getByText('판정불가')).toBeInTheDocument();
+    expect(screen.queryByText('시험운전')).not.toBeInTheDocument();
+  });
+
+  it('적합인데 시험운전을 하지 않았으면 저장할 수 없다', () => {
+    ready();
+    render(<ResultPage />);
+    checkAll();
+
+    expect(
+      screen.getByRole('button', { name: /점검 완료 및 저장/ }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText(/시험운전 후 저장할 수 있습니다/),
+    ).toBeInTheDocument();
+  });
+
+  it('부적합·판정불가 기록은 시험운전 없이 그대로 저장할 수 있다', () => {
+    // 하지 않아야 하는 절차를 저장 조건으로 걸면 기록 자체를 못 남긴다.
+    ready({ ...WHEEL, maxRPM: 8500 });
+    render(<ResultPage />);
+    checkAll();
+
+    expect(
+      screen.getByRole('button', { name: /점검 완료 및 저장/ }),
+    ).toBeEnabled();
+  });
+
+  it('타이머가 남아 있으면 완료 버튼이 잠겨 있다', () => {
+    ready();
+    render(<ResultPage />);
+    checkAll();
+    fireEvent.click(screen.getByRole('button', { name: /60초/ }));
+
+    expect(
+      screen.getByRole('button', { name: /이상 없음 확인/ }),
+    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: /이상 있음/ })).toBeDisabled();
+    // 저장도 여전히 막혀 있다.
+    expect(
+      screen.getByRole('button', { name: /점검 완료 및 저장/ }),
+    ).toBeDisabled();
+  });
+
+  it('세션에 남은 시험운전은 새로고침 후에도 이어진다', () => {
+    // 절대 종료시각을 들고 있으므로 화면을 다시 그려도 남은 시간이 정확하다.
+    const result = ready();
+    act(() =>
+      result.current.setTrialRun({
+        wheelReplaced: true,
+        requiredSeconds: 180,
+        startedAt: new Date(Date.now() - 60_000).toISOString(),
+        endsAt: new Date(Date.now() + 120_000).toISOString(),
+      }),
+    );
+
+    render(<ResultPage />);
+    checkAll();
+
+    expect(screen.getByText('숫돌 교체 후 시험운전')).toBeInTheDocument();
+    expect(screen.getByText('02:00')).toBeInTheDocument();
+  });
+
+  it('숫돌을 다시 잡으면 진행 중이던 시험운전이 사라진다', () => {
+    const result = ready();
+    act(() =>
+      result.current.setTrialRun({
+        wheelReplaced: false,
+        requiredSeconds: 60,
+        startedAt: new Date().toISOString(),
+        endsAt: new Date(Date.now() + 60_000).toISOString(),
+      }),
+    );
+    act(() => result.current.setWheel({ ...WHEEL, diameter: 100 }));
+
+    expect(result.current.trialRun).toBeNull();
+    expect(sessionStorage.getItem('wheelmatch.trialRun')).toBeNull();
+  });
+
+  it('이상 없음으로 끝내면 저장이 열리고 문구가 점검 완료다', () => {
+    const result = ready();
+    act(() =>
+      result.current.setTrialRun({
+        wheelReplaced: false,
+        requiredSeconds: 60,
+        startedAt: new Date(Date.now() - 65_000).toISOString(),
+        endsAt: new Date(Date.now() - 5_000).toISOString(),
+      }),
+    );
+    render(<ResultPage />);
+    checkAll();
+    fireEvent.click(screen.getByRole('button', { name: /이상 없음 확인/ }));
+
+    expect(
+      screen.getByRole('button', { name: /점검 완료 및 저장/ }),
+    ).toBeEnabled();
+    expect(screen.queryByText('작업하지 마십시오')).not.toBeInTheDocument();
+  });
+
+  it('이상 있음이면 작업 중지 안내가 뜨고 저장 문구가 갈린다', () => {
+    const result = ready();
+    act(() =>
+      result.current.setTrialRun({
+        wheelReplaced: true,
+        requiredSeconds: 180,
+        startedAt: new Date(Date.now() - 200_000).toISOString(),
+        endsAt: new Date(Date.now() - 20_000).toISOString(),
+      }),
+    );
+    render(<ResultPage />);
+    checkAll();
+    fireEvent.click(screen.getAllByRole('checkbox').at(-1)!);
+    fireEvent.click(screen.getByRole('button', { name: /이상 있음/ }));
+
+    expect(screen.getByText('작업하지 마십시오')).toBeInTheDocument();
+    // 문제가 확인된 결과를 "점검 완료"로 부르지 않는다.
+    expect(
+      screen.getByRole('button', { name: /중지 결과 저장/ }),
+    ).toBeEnabled();
+    expect(
+      screen.queryByRole('button', { name: /점검 완료 및 저장/ }),
+    ).not.toBeInTheDocument();
   });
 });

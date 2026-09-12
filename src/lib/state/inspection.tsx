@@ -11,6 +11,7 @@
 // hydration 시점에 값이 한 박자 늦게 들어와 잘못된 화면 전환을 유발한다.
 
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
+import type { TrialRunProgress } from '@/lib/safety/trialRun';
 import type {
   GrinderCondition,
   GrinderSpec,
@@ -27,6 +28,7 @@ const GRINDER_OCR_KEY = 'wheelmatch.grinderOcr';
 const WHEEL_OCR_KEY = 'wheelmatch.wheelOcr';
 const GRINDER_CONDITION_KEY = 'wheelmatch.grinderCondition';
 const WHEEL_CONDITION_KEY = 'wheelmatch.wheelCondition';
+const TRIAL_RUN_KEY = 'wheelmatch.trialRun';
 
 interface InspectionState {
   /** 작업자가 시작할 때 고른 오늘의 작업 */
@@ -47,6 +49,8 @@ interface InspectionState {
   grinderCondition: GrinderCondition | null;
   /** 작업자가 직접 답한 숫돌 상태 확인. AI가 채우지 않는다. */
   wheelCondition: WheelCondition | null;
+  /** 진행 중인 시험운전. 절대 종료시각을 들고 있어 새로고침에도 이어진다. */
+  trialRun: TrialRunProgress | null;
   grinderImage: Blob | null;
   wheelImage: Blob | null;
   /** 서버 렌더 결과에서는 false. 브라우저 값이 반영된 뒤에만 true가 된다. */
@@ -63,6 +67,7 @@ const SERVER_SNAPSHOT: InspectionState = {
   wheelOcr: null,
   grinderCondition: null,
   wheelCondition: null,
+  trialRun: null,
   grinderImage: null,
   wheelImage: null,
   hydrated: false,
@@ -96,6 +101,7 @@ function initialClientState(): InspectionState {
     wheelOcr: readStored<WheelSpec>(WHEEL_OCR_KEY),
     grinderCondition: readStored<GrinderCondition>(GRINDER_CONDITION_KEY),
     wheelCondition: readStored<WheelCondition>(WHEEL_CONDITION_KEY),
+    trialRun: readStored<TrialRunProgress>(TRIAL_RUN_KEY),
     grinderImage: null,
     wheelImage: null,
     hydrated: true,
@@ -142,6 +148,7 @@ export interface InspectionStore extends InspectionState {
   ) => void;
   setGrinderCondition: (condition: GrinderCondition) => void;
   setWheelCondition: (condition: WheelCondition) => void;
+  setTrialRun: (progress: TrialRunProgress | null) => void;
   reset: () => void;
 }
 
@@ -176,6 +183,7 @@ export function useInspection(): InspectionStore {
         window.sessionStorage.removeItem(WHEEL_KEY);
         window.sessionStorage.removeItem(WHEEL_OCR_KEY);
         window.sessionStorage.removeItem(WHEEL_CONDITION_KEY);
+        window.sessionStorage.removeItem(TRIAL_RUN_KEY);
       } catch {
         // 메모리 상태는 아래에서 반드시 지운다.
       }
@@ -186,6 +194,7 @@ export function useInspection(): InspectionStore {
         wheelOcr: null,
         wheelCondition: null,
         wheelImage: null,
+        trialRun: null,
         ...(image === undefined ? {} : { grinderImage: image }),
         ...(ocr === undefined ? {} : { grinderOcr: ocr }),
       });
@@ -197,15 +206,18 @@ export function useInspection(): InspectionStore {
     (spec: WheelSpec, image?: Blob | null, ocr?: WheelSpec | null) => {
       writeStored(WHEEL_KEY, spec);
       if (ocr !== undefined) writeStored(WHEEL_OCR_KEY, ocr);
-      // 숫돌이 바뀌면 이전 숫돌에 대한 직접 확인은 재사용할 수 없다.
+      // 숫돌이 바뀌면 이전 숫돌에 대한 직접 확인도, 그 숫돌로 돌린
+      // 시험운전도 재사용할 수 없다.
       try {
         window.sessionStorage.removeItem(WHEEL_CONDITION_KEY);
+        window.sessionStorage.removeItem(TRIAL_RUN_KEY);
       } catch {
         // 메모리 상태는 아래에서 반드시 지운다.
       }
       setState({
         wheel: spec,
         wheelCondition: null,
+        trialRun: null,
         ...(image === undefined ? {} : { wheelImage: image }),
         ...(ocr === undefined ? {} : { wheelOcr: ocr }),
       });
@@ -223,6 +235,19 @@ export function useInspection(): InspectionStore {
     setState({ wheelCondition: condition });
   }, []);
 
+  /** 시험운전 시작·종료. null을 넣으면 진행 중인 것을 버린다. */
+  const setTrialRun = useCallback((progress: TrialRunProgress | null) => {
+    if (progress) writeStored(TRIAL_RUN_KEY, progress);
+    else {
+      try {
+        window.sessionStorage.removeItem(TRIAL_RUN_KEY);
+      } catch {
+        // 메모리 상태는 아래에서 지운다.
+      }
+    }
+    setState({ trialRun: progress });
+  }, []);
+
   const reset = useCallback(() => {
     try {
       window.sessionStorage.removeItem(PURPOSE_KEY);
@@ -233,6 +258,7 @@ export function useInspection(): InspectionStore {
       window.sessionStorage.removeItem(WHEEL_OCR_KEY);
       window.sessionStorage.removeItem(GRINDER_CONDITION_KEY);
       window.sessionStorage.removeItem(WHEEL_CONDITION_KEY);
+      window.sessionStorage.removeItem(TRIAL_RUN_KEY);
     } catch {
       // 무시한다.
     }
@@ -245,6 +271,7 @@ export function useInspection(): InspectionStore {
       wheelOcr: null,
       grinderCondition: null,
       wheelCondition: null,
+      trialRun: null,
       grinderImage: null,
       wheelImage: null,
     });
@@ -259,6 +286,7 @@ export function useInspection(): InspectionStore {
       setWheel,
       setGrinderCondition,
       setWheelCondition,
+      setTrialRun,
       reset,
     }),
     [
@@ -268,6 +296,7 @@ export function useInspection(): InspectionStore {
       setWheel,
       setGrinderCondition,
       setWheelCondition,
+      setTrialRun,
       reset,
     ],
   );

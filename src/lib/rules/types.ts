@@ -131,6 +131,46 @@ export type VisibleDamage = 'suspected' | 'none_visible' | 'unknown';
 export type WorkPurpose = 'cutting' | 'grinding';
 
 /**
+ * 시험운전에서 작업자가 확인하는 이상 징후.
+ *
+ * 항목은 작업자가 **직접 보고 듣는 것**만 담는다. 앱은 어느 것도 판별하지 못한다.
+ */
+export type TrialRunFinding =
+  | 'vibration' // 비정상 진동
+  | 'noise' // 비정상 소음
+  | 'wobble' // 숫돌 흔들림
+  | 'wheelDamage' // 숫돌 파손·이탈 징후
+  | 'equipment'; // 장비 이상
+
+export type TrialRunOutcome = 'normal' | 'abnormal';
+
+/**
+ * 시험운전 기록.
+ *
+ * 근거: 산업안전보건기준에 관한 규칙 제122조 ② — 작업을 시작하기 전에는
+ * 1분 이상, 연삭숫돌을 교체한 후에는 3분 이상 시험운전을 하고 이상이 있는지
+ * 확인해야 한다. **이 앱은 시간을 재고 답을 남길 뿐, 법정 절차를 대신하지 않는다.**
+ *
+ * 기능 도입 전 기록에는 없다. 시험운전을 해서는 안 되는 판정(부적합·판정불가)
+ * 기록에는 넣지 않는다 — 하지 않은 절차를 한 것처럼 남기지 않는다.
+ */
+export interface TrialRun {
+  /** 숫돌을 방금 교체했는가. 요구 시간이 갈린다 */
+  wheelReplaced: boolean;
+  /** 60 또는 180 */
+  requiredSeconds: number;
+  startedAt: string;
+  finishedAt: string;
+  /** 실제로 흐른 시간. 요구 시간보다 길 수 있다 */
+  elapsedSeconds: number;
+  outcome: TrialRunOutcome;
+  /** 작업자가 고른 이상 항목. 이상 없음이면 비어 있다 */
+  findings: TrialRunFinding[];
+  /** 타이머를 끝까지 돌리고 작업자가 답했는가 */
+  completed: boolean;
+}
+
+/**
  * 명판을 확인한 뒤 작업자가 직접 보는 그라인더 장비 상태.
  *
  * WheelCondition과 같은 규칙이다 — true는 작업자가 직접 확인했다는 뜻,
@@ -235,6 +275,11 @@ export interface InspectionRecord {
    * 규격 판정과 섞지 않고 별도 증거로 보관한다.
    */
   wheelCondition?: WheelCondition;
+  /**
+   * 시험운전 기록. 규격이 맞는 조합에서만 생긴다.
+   * 하지 않은 절차를 한 것처럼 남기지 않으므로 없을 수 있다.
+   */
+  trialRun?: TrialRun;
   /** 작업자가 고른 오늘의 작업. 이 기능 도입 전 기록에는 없다. */
   declaredPurpose?: WorkPurpose | null;
   /**
