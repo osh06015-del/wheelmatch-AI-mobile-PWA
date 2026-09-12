@@ -9,16 +9,17 @@
 
 패키지 매니저는 **npm**이다. yarn/pnpm/bun을 쓰지 않는다.
 
-| 목적          | 명령                                          |
-| ------------- | --------------------------------------------- |
-| 개발 서버     | `npm run dev`                                 |
-| 빌드          | `npm run build`                               |
-| 테스트        | `npm test` (Vitest + happy-dom, 243개 통과)   |
-| 타입 검사     | `npm run typecheck`                           |
-| lint          | `npm run lint` (ESLint 9 flat config)         |
-| 커버리지      | `npm run test:coverage` (판정 엔진 100% 강제) |
-| 포맷          | `npm run format` / `npm run format:check`     |
-| **전체 검증** | `npm run verify` ← 작업을 끝냈다고 말하기 전  |
+| 목적          | 명령                                           |
+| ------------- | ---------------------------------------------- |
+| 설치          | `npm ci` (lockfile 그대로. `npm install` 아님) |
+| 개발 서버     | `npm run dev`                                  |
+| 빌드          | `npm run build`                                |
+| 테스트        | `npm test` (Vitest + happy-dom, 422개 통과)    |
+| 타입 검사     | `npm run typecheck`                            |
+| lint          | `npm run lint` (ESLint 9 flat config)          |
+| 커버리지      | `npm run test:coverage` (판정 엔진 100% 강제)  |
+| 포맷          | `npm run format` / `npm run format:check`      |
+| **전체 검증** | `npm run verify` ← 작업을 끝냈다고 말하기 전   |
 
 `npm run verify` = format:check → lint → typecheck → test. 약 40초 걸린다.
 
