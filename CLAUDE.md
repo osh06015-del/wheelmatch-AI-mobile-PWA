@@ -14,7 +14,7 @@
 | 설치          | `npm ci` (lockfile 그대로. `npm install` 아님) |
 | 개발 서버     | `npm run dev`                                  |
 | 빌드          | `npm run build`                                |
-| 테스트        | `npm test` (Vitest + happy-dom, 422개 통과)    |
+| 테스트        | `npm test` (Vitest + happy-dom)                |
 | 타입 검사     | `npm run typecheck`                            |
 | lint          | `npm run lint` (ESLint 9 flat config)          |
 | 커버리지      | `npm run test:coverage` (판정 엔진 100% 강제)  |
