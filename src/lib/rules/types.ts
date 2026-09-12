@@ -248,6 +248,14 @@ export interface SafetyChecklist {
   ppe: boolean | null; // 보호구(보안경·장갑·안면보호구) 착용
 
   /**
+   * 작업물 고정 상태. 이 기능 도입 전 기록에는 없으므로 선택 필드다.
+   * 기계도 숫돌도 아닌 **작업 환경**이라 어느 Gate에도 속하지 않는다.
+   */
+  workpieceSecured?: boolean | null;
+  /** 주변 사람과 가연물 확인. 같은 이유로 선택 필드다. */
+  surroundingsClear?: boolean | null;
+
+  /**
    * 불꽃 방향 확인.
    *
    * 체크박스에서는 뺐다. 이것은 장착 전에 예/아니오로 답할 수 있는 상태가 아니라

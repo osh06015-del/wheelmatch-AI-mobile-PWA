@@ -22,6 +22,8 @@ const ALL_CHECKED: SafetyChecklist = {
   auxiliaryHandle: true,
   wheelDamage: true,
   ppe: true,
+  workpieceSecured: true,
+  surroundingsClear: true,
 };
 
 describe('안전 체크리스트 구성', () => {
@@ -36,10 +38,45 @@ describe('안전 체크리스트 구성', () => {
     expect(keys).not.toContain('auxiliaryHandle');
   });
 
-  it('사람에 대한 항목인 보호구만 최종 체크리스트에 남는다', () => {
-    // 기계는 Grinder Gate, 숫돌은 Wheel Gate가 맡는다. 어느 Gate에도
-    // 속하지 않는 것은 작업자 본인의 보호구뿐이다.
-    expect(CHECKLIST_ITEMS.map((item) => item.key)).toEqual(['ppe']);
+  it('기계·숫돌이 아닌 항목만 최종 체크리스트에 남는다', () => {
+    // 기계는 Grinder Gate, 숫돌은 Wheel Gate가 맡는다. 여기 남는 것은
+    // 작업자 본인(보호구)과 작업 환경(고정·주변)이다.
+    expect(CHECKLIST_ITEMS.map((item) => item.key)).toEqual([
+      'ppe',
+      'workpieceSecured',
+      'surroundingsClear',
+    ]);
+  });
+
+  it('세 항목을 모두 확인해야 완료다', () => {
+    for (const item of CHECKLIST_ITEMS) {
+      expect(isChecklistComplete({ ...ALL_CHECKED, [item.key]: null })).toBe(
+        false,
+      );
+      expect(isChecklistComplete({ ...ALL_CHECKED, [item.key]: false })).toBe(
+        false,
+      );
+    }
+    expect(isChecklistComplete(ALL_CHECKED)).toBe(true);
+  });
+
+  it('불꽃 방향은 여전히 체크박스가 아니라 작업 직전 안내다', () => {
+    expect(CHECKLIST_ITEMS.map((item) => item.key)).not.toContain(
+      'sparkDirection',
+    );
+    expect(PRE_WORK_REMINDER_KEY).toBe('checklist.preWork');
+  });
+
+  it('새 항목이 없는 과거 기록도 읽을 수 있다', () => {
+    // 선택 필드라 Gate 도입 전 기록에 없어도 타입이 성립한다.
+    const legacy: SafetyChecklist = {
+      guardCover: true,
+      auxiliaryHandle: true,
+      wheelDamage: true,
+      ppe: true,
+    };
+    // 새 항목이 없으므로 완료로 보지 않는다. 확인하지 않은 것을 통과시키지 않는다.
+    expect(isChecklistComplete(legacy)).toBe(false);
   });
 
   it('과거 기록을 읽을 수 있도록 체크리스트 타입 필드는 남겨둔다', () => {

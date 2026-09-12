@@ -20,6 +20,16 @@ export const CHECKLIST_ITEMS: Array<{
     labelKey: 'checklist.ppe',
     hintKey: 'checklist.ppeHint',
   },
+  {
+    key: 'workpieceSecured',
+    labelKey: 'checklist.workpiece',
+    hintKey: 'checklist.workpieceHint',
+  },
+  {
+    key: 'surroundingsClear',
+    labelKey: 'checklist.surroundings',
+    hintKey: 'checklist.surroundingsHint',
+  },
 ];
 
 export const EMPTY_CHECKLIST: SafetyChecklist = {
@@ -27,6 +37,8 @@ export const EMPTY_CHECKLIST: SafetyChecklist = {
   auxiliaryHandle: null,
   wheelDamage: null,
   ppe: null,
+  workpieceSecured: null,
+  surroundingsClear: null,
 };
 
 /**

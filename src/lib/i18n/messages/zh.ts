@@ -159,6 +159,10 @@ export const zh: Messages = {
   'checklist.note': '这些项目需要亲自确认，规格核对不包含这些内容。',
   'checklist.ppe': '已穿戴防护用品',
   'checklist.ppeHint': '确认是否佩戴护目镜、手套和面罩',
+  'checklist.workpiece': '确认工件已固定',
+  'checklist.workpieceHint': '用台钳或夹具夹紧。不得用手或脚按住',
+  'checklist.surroundings': '确认周围人员和可燃物',
+  'checklist.surroundingsHint': '确认火花可及范围内没有人员和易燃、可燃物',
   'checklist.preWork': '就在开始作业前，请确认火花不会朝向人员或易燃物。',
   'checklist.incomplete': '必须确认安全检查清单的全部 {count} 项后才能保存。',
 

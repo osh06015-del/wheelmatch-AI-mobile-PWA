@@ -254,12 +254,40 @@ describe('toCsv', () => {
       'trialRunOutcome',
       'trialRunFindings',
     ];
+    const environmentColumns = [
+      'checkWorkpieceSecured',
+      'checkSurroundingsClear',
+    ];
     expect([...CSV_COLUMNS]).toEqual([
       ...LEGACY_COLUMNS,
       ...wheelColumns,
       ...grinderColumns,
       ...trialRunColumns,
+      ...environmentColumns,
     ]);
+  });
+
+  it('작업 환경 체크도 Y/N/빈 칸으로 구분한다', () => {
+    const [, row] = parse(
+      toCsv([
+        record({
+          checklist: {
+            guardCover: null,
+            auxiliaryHandle: null,
+            wheelDamage: null,
+            ppe: true,
+            workpieceSecured: false,
+            surroundingsClear: null,
+          },
+        }),
+      ]),
+    );
+
+    expect(row[CSV_COLUMNS.indexOf('checkPPE')]).toBe('Y');
+    expect(row[CSV_COLUMNS.indexOf('checkWorkpieceSecured')]).toBe('N');
+    expect(row[CSV_COLUMNS.indexOf('checkSurroundingsClear')]).toBe('');
+    // 옛 열은 자리를 지키고 빈 칸으로 나간다.
+    expect(row[CSV_COLUMNS.indexOf('checkGuardCover')]).toBe('');
   });
 
   it('시험운전 기록을 맨 뒤 열에 적는다', () => {

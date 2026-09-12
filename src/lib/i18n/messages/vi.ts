@@ -182,6 +182,12 @@ export const vi: Messages = {
     'Những mục này bạn phải tự kiểm tra. Việc đối chiếu thông số không bao gồm chúng.',
   'checklist.ppe': 'Đã mang đồ bảo hộ',
   'checklist.ppeHint': 'Kiểm tra kính bảo hộ, găng tay và tấm che mặt',
+  'checklist.workpiece': 'Vật gia công đã được cố định',
+  'checklist.workpieceHint':
+    'Kẹp chặt bằng ê tô hoặc kẹp. Không giữ bằng tay hay chân',
+  'checklist.surroundings': 'Người và vật dễ cháy xung quanh',
+  'checklist.surroundingsHint':
+    'Kiểm tra không có người và vật dễ cháy trong tầm tia lửa bắn tới',
   'checklist.preWork':
     'Ngay trước khi làm, hãy kiểm tra tia lửa không hướng về phía người hoặc vật dễ cháy.',
   'checklist.incomplete':

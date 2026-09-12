@@ -58,6 +58,9 @@ export const CSV_COLUMNS = [
   'trialRunElapsedSeconds',
   'trialRunOutcome',
   'trialRunFindings',
+  // 작업 환경 체크는 나중에 붙었다. 앞선 열을 밀지 않도록 맨 뒤에 둔다.
+  'checkWorkpieceSecured',
+  'checkSurroundingsClear',
 ] as const;
 
 /**
@@ -153,6 +156,8 @@ function row(record: InspectionRecord): string {
     record.trialRun?.elapsedSeconds,
     record.trialRun?.outcome,
     record.trialRun ? record.trialRun.findings.join(' ') : undefined,
+    tick(checklist.workpieceSecured),
+    tick(checklist.surroundingsClear),
   ];
 
   return values.map(cell).join(',');

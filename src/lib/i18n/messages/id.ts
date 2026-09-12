@@ -187,6 +187,12 @@ export const id: Messages = {
   'checklist.ppe': 'APD dipakai',
   'checklist.ppeHint':
     'Periksa kacamata pengaman, sarung tangan, dan pelindung wajah',
+  'checklist.workpiece': 'Benda kerja sudah dijepit kuat',
+  'checklist.workpieceHint':
+    'Dijepit erat dengan ragum atau klem. Jangan ditahan dengan tangan atau kaki',
+  'checklist.surroundings': 'Orang dan bahan mudah terbakar di sekitar',
+  'checklist.surroundingsHint':
+    'Pastikan tidak ada orang dan bahan mudah terbakar dalam jangkauan percikan api',
   'checklist.preWork':
     'Tepat sebelum mulai, pastikan percikan api tidak mengarah ke orang atau bahan mudah terbakar.',
   'checklist.incomplete':

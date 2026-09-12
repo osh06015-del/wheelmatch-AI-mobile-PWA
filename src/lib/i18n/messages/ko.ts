@@ -177,6 +177,12 @@ export const ko = {
   'checklist.note': '규격 대조와 별개로 직접 확인해야 하는 항목입니다.',
   'checklist.ppe': '보호구 착용',
   'checklist.ppeHint': '보안경·장갑·안면보호구 착용 여부 확인',
+  'checklist.workpiece': '작업물 고정 상태 확인',
+  'checklist.workpieceHint':
+    '바이스·클램프로 단단히 고정됐는지 확인. 손발로 누르지 않는다',
+  'checklist.surroundings': '주변 사람과 가연물 확인',
+  'checklist.surroundingsHint':
+    '불티가 닿는 범위에 사람·인화물질·가연물이 없는지 확인',
   'checklist.preWork':
     '작업 직전, 불꽃이 사람·가연물 쪽으로 향하지 않는지 확인하세요.',
   'checklist.incomplete':

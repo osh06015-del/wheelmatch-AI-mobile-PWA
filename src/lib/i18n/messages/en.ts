@@ -180,6 +180,12 @@ export const en: Messages = {
   'checklist.note': 'Check these yourself. The spec check does not cover them.',
   'checklist.ppe': 'PPE worn',
   'checklist.ppeHint': 'Check safety glasses, gloves and face shield',
+  'checklist.workpiece': 'Workpiece is secured',
+  'checklist.workpieceHint':
+    'Held firmly in a vice or clamp. Never hold it with your hand or foot',
+  'checklist.surroundings': 'People and flammables around you',
+  'checklist.surroundingsHint':
+    'Check that no one and nothing flammable is within reach of the sparks',
   'checklist.preWork':
     'Just before you start, check that sparks are not aimed at people or flammable material.',
   'checklist.incomplete':
