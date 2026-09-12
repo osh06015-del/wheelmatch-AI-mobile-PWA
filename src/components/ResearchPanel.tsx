@@ -7,13 +7,33 @@
 
 import { useState } from 'react';
 
+import { MetricsPanel } from './MetricsPanel';
 import { csvFilename, toCsv } from '@/lib/record/csv';
+import { parseGroundTruth } from '@/lib/record/groundTruth';
+import type { GroundTruth } from '@/lib/record/metrics';
 import { useResearchMode } from '@/lib/record/researchMode';
 import type { InspectionRecord } from '@/lib/rules/types';
 
 export function ResearchPanel({ records }: { records: InspectionRecord[] }) {
   const [enabled, setEnabled] = useResearchMode();
   const [error, setError] = useState<string | null>(null);
+  const [truths, setTruths] = useState<GroundTruth[]>([]);
+  const [rejected, setRejected] = useState(0);
+
+  // 정답은 앱이 만들 수 없다. 촬영 전에 사람이 적어둔 것을 읽어 들이기만 한다.
+  async function loadTruth(file: File) {
+    setError(null);
+    try {
+      const parsed = parseGroundTruth(await file.text());
+      setTruths(parsed.truths);
+      setRejected(parsed.rejected);
+      if (parsed.truths.length === 0) {
+        setError('읽어낸 정답이 없습니다. JSON 배열 형식인지 확인하세요.');
+      }
+    } catch {
+      setError('정답 파일을 읽지 못했습니다.');
+    }
+  }
 
   function download() {
     setError(null);
@@ -66,6 +86,34 @@ export function ResearchPanel({ records }: { records: InspectionRecord[] }) {
           <p className="text-sm leading-relaxed text-slate-500">
             기록은 이 기기에만 있습니다. 내려받은 파일은 직접 옮겨야 합니다.
           </p>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-base font-semibold text-slate-200">
+              정답(Ground Truth) 파일
+            </span>
+            <span className="text-sm leading-relaxed text-slate-400">
+              촬영 전에 직접 읽어 적어둔 값입니다. 넣어야 지표를 계산할 수
+              있습니다. 앱이 정답을 만들지는 않습니다.
+            </span>
+            <input
+              type="file"
+              accept="application/json,.json"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void loadTruth(file);
+              }}
+              className="min-h-12 text-base text-slate-300"
+            />
+          </label>
+          {rejected > 0 && (
+            <p className="text-base text-yellow-200">
+              형식이 맞지 않아 {rejected}줄을 제외했습니다. 표본 수를
+              확인하세요.
+            </p>
+          )}
+
+          <MetricsPanel records={records} truths={truths} />
+
           {error && <p className="text-base text-red-300">{error}</p>}
         </>
       )}
