@@ -52,4 +52,9 @@ export const WHEEL_FIELD_GUIDE: Record<string, FieldGuide> = {
     where:
       '라벨의 절단용/연삭용 표기입니다. 영문은 CUT-OFF 또는 GRINDING, DEPRESSED CENTER로 적힙니다.',
   },
+  expiry: {
+    hint: '라벨에 적힌 유효기한입니다. 지난 숫돌은 제조사가 사용하지 말라고 안내합니다. 표기가 없는 숫돌도 있습니다.',
+    where:
+      '가운데 금속 링에 월/연으로 찍힙니다. 예: 04/2023. 앞에 V나 EXP가 붙기도 합니다. 제조일을 대신 넣지 마세요.',
+  },
 };

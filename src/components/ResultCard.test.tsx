@@ -11,6 +11,9 @@ import { ResultCard } from './ResultCard';
 import { matchSpecs } from '@/lib/rules/engine';
 import type { GrinderSpec, WheelSpec } from '@/lib/rules/types';
 
+/** 기준일을 고정한다. 엔진은 시계를 읽지 않는다. */
+const TODAY = '2026-09-08';
+
 function grinder(overrides: Partial<GrinderSpec> = {}): GrinderSpec {
   return {
     model: 'GWS 750-125',
@@ -30,6 +33,7 @@ function wheel(overrides: Partial<WheelSpec> = {}): WheelSpec {
     purpose: 'cutting',
     wheelType: 'bonded_abrasive',
     visibleDamage: 'none_visible',
+    expiry: { year: 2027, month: 4 },
     rawText: '',
     confidence: 'high',
     ...overrides,
@@ -38,7 +42,9 @@ function wheel(overrides: Partial<WheelSpec> = {}): WheelSpec {
 
 describe('ResultCard — 판정 표시', () => {
   it('적합이면 "적합"만 표시하고 "부적합"은 표시하지 않는다', () => {
-    render(<ResultCard result={matchSpecs(grinder(), wheel())} />);
+    render(
+      <ResultCard result={matchSpecs(grinder(), wheel(), { today: TODAY })} />,
+    );
 
     expect(screen.getByText('적합')).toBeInTheDocument();
     expect(screen.queryByText('부적합')).not.toBeInTheDocument();
@@ -47,7 +53,11 @@ describe('ResultCard — 판정 표시', () => {
 
   it('RPM 위반이면 "부적합"과 그 사유를 표시한다', () => {
     render(
-      <ResultCard result={matchSpecs(grinder(), wheel({ maxRPM: 8500 }))} />,
+      <ResultCard
+        result={matchSpecs(grinder(), wheel({ maxRPM: 8500 }), {
+          today: TODAY,
+        })}
+      />,
     );
 
     expect(screen.getByText('부적합')).toBeInTheDocument();
@@ -60,7 +70,11 @@ describe('ResultCard — 판정 표시', () => {
 
   it('값이 없으면 "판정불가"를 표시한다', () => {
     render(
-      <ResultCard result={matchSpecs(grinder({ noLoadRPM: null }), wheel())} />,
+      <ResultCard
+        result={matchSpecs(grinder({ noLoadRPM: null }), wheel(), {
+          today: TODAY,
+        })}
+      />,
     );
 
     expect(screen.getByText('판정불가')).toBeInTheDocument();
@@ -70,7 +84,9 @@ describe('ResultCard — 판정 표시', () => {
   it('지름 위반 사유에 두 값이 모두 나온다', () => {
     render(
       <ResultCard
-        result={matchSpecs(grinder({ maxWheelDiameter: 100 }), wheel())}
+        result={matchSpecs(grinder({ maxWheelDiameter: 100 }), wheel(), {
+          today: TODAY,
+        })}
       />,
     );
 
@@ -84,7 +100,9 @@ describe('ResultCard — 판정 표시', () => {
 
 describe('ResultCard — 검사 항목', () => {
   it('5개 검사 항목을 모두 보여준다', () => {
-    render(<ResultCard result={matchSpecs(grinder(), wheel())} />);
+    render(
+      <ResultCard result={matchSpecs(grinder(), wheel(), { today: TODAY })} />,
+    );
 
     for (const rule of [
       '필수값 존재',
@@ -98,7 +116,9 @@ describe('ResultCard — 검사 항목', () => {
   });
 
   it('그라인더와 숫돌 값을 나란히 보여준다', () => {
-    render(<ResultCard result={matchSpecs(grinder(), wheel())} />);
+    render(
+      <ResultCard result={matchSpecs(grinder(), wheel(), { today: TODAY })} />,
+    );
 
     expect(
       screen.getAllByText('그라인더 11000rpm / 숫돌 12200rpm').length,
@@ -107,7 +127,11 @@ describe('ResultCard — 검사 항목', () => {
 
   it('값이 없는 항목은 —로 표시한다', () => {
     render(
-      <ResultCard result={matchSpecs(grinder({ noLoadRPM: null }), wheel())} />,
+      <ResultCard
+        result={matchSpecs(grinder({ noLoadRPM: null }), wheel(), {
+          today: TODAY,
+        })}
+      />,
     );
 
     expect(

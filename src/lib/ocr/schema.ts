@@ -41,6 +41,11 @@ export const wheelExtractionSchema = z.object({
     'unknown',
   ]),
 
+  // 라벨에 인쇄된 유효기한. 월/연(MM/YYYY)으로 찍힌다.
+  // 보이는 문자열을 그대로 넣는다. 제조일에서 계산하지 않는다 —
+  // 규정은 "최장 3년"이라 제조사가 더 짧게 찍을 수 있다.
+  expiryDate: z.string().nullable(),
+
   // 눈에 띄는 파손만. 미세균열은 사진으로 판별할 수 없으므로 묻지 않는다.
   // 'none_visible'은 "손상이 없다"는 뜻이 아니라 "사진에서 보이지 않는다"는 뜻이다.
   // 규칙엔진은 이 값을 통과 근거로 쓰지 않는다. 'suspected'일 때만 경고한다.
@@ -83,6 +88,11 @@ const WHEEL_RULES = `이번 이미지는 연삭·절단 숫돌 라벨입니다. 
 - boreDiameter: 장착 구멍 지름(내경, mm). D×T×H 표기라면 **마지막** 값입니다.
   예: "125 × 1.6 × 22.23" → diameter 125, thickness 1.6, boreDiameter 22.23.
   세 값 중 어느 것이 무엇인지 확정할 수 없으면 null로 둡니다.
+- expiryDate: 라벨에 인쇄된 유효기한. 보통 금속 링에 월/연으로 찍힙니다.
+  보이는 그대로 "MM/YYYY" 형태로 적습니다. 예: "04/2023".
+  앞에 V, EXP, 유효기한 같은 글자가 붙어 있어도 숫자 표기만 적습니다.
+  **제조일이나 다른 날짜를 유효기한으로 적지 마세요.** 유효기한 표기가
+  보이지 않으면 null로 둡니다. 연도가 두 자리로만 보이면 null로 둡니다.
 - purpose: "절단", "cutting", "cut-off"가 보이면 "cutting".
   "연삭", "grinding", "depressed center"가 보이면 "grinding".
   둘 다 확실하지 않으면 "unknown".

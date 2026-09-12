@@ -8,6 +8,9 @@ import { matchSpecs } from './engine';
 import { groupChecks } from './grouping';
 import type { CheckItem, GrinderSpec, WheelSpec } from './types';
 
+/** 기준일을 고정한다. 엔진은 시계를 읽지 않는다. */
+const TODAY = '2026-09-08';
+
 function check(overrides: Partial<CheckItem> = {}): CheckItem {
   return {
     rule: '검사',
@@ -102,8 +105,10 @@ describe('실제 판정 결과를 나눈다', () => {
         labeledRPM: 12200,
         peripheralSpeedMps: null,
         boreDiameter: 22.23,
+        expiryRaw: '04/2027',
       },
       rpmSource: 'label',
+      expiry: { year: 2027, month: 4 },
       rawText: '',
       confidence: 'high',
       ...overrides,
@@ -112,7 +117,7 @@ describe('실제 판정 결과를 나눈다', () => {
 
   it('적합 판정에도 사용자 확인 항목이 남는다', () => {
     // 전부 통과했다고 해서 사람이 볼 것이 없어지지 않는다.
-    const result = matchSpecs(grinder(), wheel());
+    const result = matchSpecs(grinder(), wheel(), { today: TODAY });
     const g = groupChecks(result.checks);
 
     expect(result.verdict).toBe('COMPATIBLE');
@@ -121,7 +126,9 @@ describe('실제 판정 결과를 나눈다', () => {
   });
 
   it('부적합 판정은 불일치 칸에 이유가 담긴다', () => {
-    const result = matchSpecs(grinder(), wheel({ maxRPM: 8500 }));
+    const result = matchSpecs(grinder(), wheel({ maxRPM: 8500 }), {
+      today: TODAY,
+    });
     const g = groupChecks(result.checks);
 
     expect(result.verdict).toBe('INCOMPATIBLE');
@@ -129,7 +136,9 @@ describe('실제 판정 결과를 나눈다', () => {
   });
 
   it('판정불가는 판독불가 칸으로 간다', () => {
-    const result = matchSpecs(grinder(), wheel({ maxRPM: null }));
+    const result = matchSpecs(grinder(), wheel({ maxRPM: null }), {
+      today: TODAY,
+    });
     const g = groupChecks(result.checks);
 
     expect(result.verdict).toBe('UNDETERMINED');

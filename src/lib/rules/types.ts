@@ -32,12 +32,43 @@ export interface WheelMarkings {
    * 관행 추정이 되기 때문이다.
    */
   boreDiameter: number | null;
+  /**
+   * 라벨에 인쇄된 유효기한 문자열 **그대로**. 예: "04/2023".
+   *
+   * 정규화된 값(WheelSpec.expiry)과 따로 둔다. 사용자가 확인 화면에서 값을
+   * 고쳐도 이 값은 바뀌지 않는다 — 라벨에 무엇이 찍혀 있었는지가 사라지면
+   * 나중에 오독이었는지 되짚을 수 없다.
+   *
+   * 이 기능 도입 전 기록에는 없다.
+   */
+  expiryRaw?: string | null;
 }
 
-/** maxRPM이 어디서 왔는지. 단위 정규화 오류를 재려면 출처를 알아야 한다. */
+/**
+ * 라벨의 유효기한. **월 단위다.**
+ *
+ * oSa 「Product marking requirements for bonded abrasives」(2020-04)는
+ * 유효기한을 "expressed as month and year e.g. 04/2023"으로 정한다.
+ * 일(日)이 없으므로 여기에도 두지 않는다. 없는 자리를 만들면 채우고 싶어진다.
+ */
+export interface ExpiryMonth {
+  year: number;
+  /** 1~12 */
+  month: number;
+}
+
+/**
+ * maxRPM이 어디서 왔는지. 단위 정규화 오류를 재려면 출처를 알아야 한다.
+ *
+ * 'user'가 따로 있는 이유: 확인 화면에서 사람이 값을 고치면 그 값은 더 이상
+ * 라벨에서 읽은 것도, 코드가 환산한 것도 아니다. 그대로 'label'을 이어가면
+ * 사람이 넣은 값을 모델이 읽은 값으로 세게 된다 — 정정률과 환산 오류를
+ * 나눠 재려는 설계(validation-plan.md)가 무너진다.
+ */
 export type RpmSource =
   | 'label' // 라벨에 rpm으로 적혀 있었다
-  | 'converted'; // m/s에서 환산했다
+  | 'converted' // m/s에서 환산했다
+  | 'user'; // 확인 화면에서 사람이 직접 넣거나 고쳤다
 
 export interface WheelSpec {
   maxRPM: number | null; // 최고사용회전속도 (rpm) — 정규화된 값
@@ -50,6 +81,14 @@ export interface WheelSpec {
   markings?: WheelMarkings;
   /** maxRPM의 출처. maxRPM이 null이면 없다. */
   rpmSource?: RpmSource;
+  /**
+   * 정규화된 유효기한. **라벨에 표시된 것만** 담는다.
+   *
+   * 제조일에서 계산하지 않는다. oSa 규정은 "최장 3년"이라 제조사가 더 짧게
+   * 찍을 수 있고, 계산해 넣으면 실제보다 긴 기한을 주장하게 된다.
+   * 읽지 못했거나 형식이 모호하면 null이다. 이 기능 도입 전 기록에는 없다.
+   */
+  expiry?: ExpiryMonth | null;
   rawText: string;
   confidence: 'high' | 'medium' | 'low';
 }
@@ -90,6 +129,21 @@ export type VisibleDamage = 'suspected' | 'none_visible' | 'unknown';
  * 연삭 작업에 절단날을 쓰면 측면 하중이 걸려 숫돌이 깨진다.
  */
 export type WorkPurpose = 'cutting' | 'grinding';
+
+/**
+ * 숫돌을 장착하기 전에 작업자가 직접 확인하는 상태 점검.
+ *
+ * true는 작업자가 해당 정상 조건을 직접 확인했다는 뜻이고, false는 문제를
+ * 발견했다는 뜻이다. null은 아직 답하지 않은 상태다. AI는 어느 값도 true로
+ * 만들 수 없다.
+ */
+export interface WheelCondition {
+  damageFree: boolean | null;
+  notDeformed: boolean | null;
+  mountingAreaUndamaged: boolean | null;
+  labelLegible: boolean | null;
+  expiryValid: boolean | null;
+}
 
 // OCR 인식 신뢰도
 export type Confidence = 'high' | 'medium' | 'low';
@@ -145,6 +199,11 @@ export interface InspectionRecord {
   wheel: WheelSpec;
   result: MatchResult;
   checklist: SafetyChecklist;
+  /**
+   * 작업자가 숫돌을 직접 보고 답한 상태 점검. 기능 도입 전 기록에는 없다.
+   * 규격 판정과 섞지 않고 별도 증거로 보관한다.
+   */
+  wheelCondition?: WheelCondition;
   /** 작업자가 고른 오늘의 작업. 이 기능 도입 전 기록에는 없다. */
   declaredPurpose?: WorkPurpose | null;
   /**

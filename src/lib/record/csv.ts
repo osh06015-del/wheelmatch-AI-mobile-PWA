@@ -38,6 +38,13 @@ export const CSV_COLUMNS = [
   'checkAuxiliaryHandle',
   'checkWheelDamage',
   'checkPPE',
+  // 기존 27열의 순서는 유지한다. Gate 도입 전 분석 파일이 밀리지 않도록
+  // 작업자 직접 상태 확인은 뒤에만 추가한다.
+  'conditionDamageFree',
+  'conditionNotDeformed',
+  'conditionMountingAreaUndamaged',
+  'conditionLabelLegible',
+  'conditionExpiryValid',
 ] as const;
 
 /**
@@ -118,6 +125,11 @@ function row(record: InspectionRecord): string {
     tick(checklist.auxiliaryHandle),
     tick(checklist.wheelDamage),
     tick(checklist.ppe),
+    tick(record.wheelCondition?.damageFree),
+    tick(record.wheelCondition?.notDeformed),
+    tick(record.wheelCondition?.mountingAreaUndamaged),
+    tick(record.wheelCondition?.labelLegible),
+    tick(record.wheelCondition?.expiryValid),
   ];
 
   return values.map(cell).join(',');

@@ -25,6 +25,10 @@ const ALL_CHECKED: SafetyChecklist = {
 };
 
 describe('안전 체크리스트 구성', () => {
+  it('숫돌 손상은 별도 Wheel Condition Gate로 옮겨 중복 확인하지 않는다', () => {
+    expect(CHECKLIST_ITEMS.map((i) => i.key)).not.toContain('wheelDamage');
+  });
+
   it('불꽃 방향은 체크박스에서 뺀다', () => {
     // 장착 전에 예/아니오로 답할 수 있는 항목이 아니다.
     // 작업 직전 안내(PRE_WORK_REMINDER_KEY)로 따로 띄운다.

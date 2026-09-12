@@ -6,7 +6,7 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { useInspection } from './inspection';
-import type { GrinderSpec, WheelSpec } from '@/lib/rules/types';
+import type { GrinderSpec, WheelCondition, WheelSpec } from '@/lib/rules/types';
 
 const GRINDER: GrinderSpec = {
   model: 'GWS 750-125',
@@ -25,6 +25,14 @@ const WHEEL: WheelSpec = {
   visibleDamage: 'none_visible',
   rawText: '',
   confidence: 'high',
+};
+
+const WHEEL_CONDITION: WheelCondition = {
+  damageFree: true,
+  notDeformed: true,
+  mountingAreaUndamaged: true,
+  labelLegible: true,
+  expiryValid: true,
 };
 
 describe('useInspection', () => {
@@ -63,6 +71,62 @@ describe('useInspection', () => {
     ).toMatchObject({ noLoadRPM: 11000 });
   });
 
+  it('저장·복원 후에도 라벨 원문과 정규화된 유효기한이 함께 남는다', () => {
+    // sessionStorage를 거치면 JSON 직렬화를 한 번 통과한다. 여기서 선택
+    // 필드가 조용히 떨어지면 화면을 새로고침한 순간 유효기한 검사가 사라진다.
+    const { result } = renderHook(() => useInspection());
+    const ocr: WheelSpec = {
+      ...WHEEL,
+      markings: {
+        labeledRPM: 12200,
+        peripheralSpeedMps: null,
+        boreDiameter: 22.23,
+        expiryRaw: '04/2023',
+      },
+      rpmSource: 'label',
+      expiry: { year: 2023, month: 4 },
+    };
+    // 사용자가 라벨을 다시 보고 2027년으로 고친 경우.
+    const confirmed: WheelSpec = { ...ocr, expiry: { year: 2027, month: 4 } };
+
+    act(() => result.current.setWheel(confirmed, null, ocr));
+
+    const storedWheel = JSON.parse(
+      sessionStorage.getItem('wheelmatch.wheel') ?? 'null',
+    ) as WheelSpec;
+    const storedOcr = JSON.parse(
+      sessionStorage.getItem('wheelmatch.wheelOcr') ?? 'null',
+    ) as WheelSpec;
+
+    // 라벨 원문은 양쪽 모두 그대로다. 사용자 수정이 덮지 않는다.
+    expect(storedWheel.markings?.expiryRaw).toBe('04/2023');
+    expect(storedOcr.markings?.expiryRaw).toBe('04/2023');
+    // 정규화 값만 갈린다 — 무엇을 사람이 고쳤는지 되짚을 수 있다.
+    expect(storedWheel.expiry).toEqual({ year: 2027, month: 4 });
+    expect(storedOcr.expiry).toEqual({ year: 2023, month: 4 });
+  });
+
+  it('작업자가 직접 답한 숫돌 상태를 별도로 저장한다', () => {
+    const { result } = renderHook(() => useInspection());
+
+    act(() => result.current.setWheelCondition(WHEEL_CONDITION));
+
+    expect(result.current.wheelCondition).toEqual(WHEEL_CONDITION);
+    expect(
+      JSON.parse(sessionStorage.getItem('wheelmatch.wheelCondition') ?? 'null'),
+    ).toEqual(WHEEL_CONDITION);
+  });
+
+  it('새 숫돌 값이 들어오면 이전 숫돌의 상태 확인을 지운다', () => {
+    const { result } = renderHook(() => useInspection());
+    act(() => result.current.setWheelCondition(WHEEL_CONDITION));
+
+    act(() => result.current.setWheel(WHEEL));
+
+    expect(result.current.wheelCondition).toBeNull();
+    expect(sessionStorage.getItem('wheelmatch.wheelCondition')).toBeNull();
+  });
+
   it('reset은 OCR 원본과 시작 시각까지 모두 지운다', () => {
     // 지난 점검 값이 남아 다음 점검에 섞이면 엉뚱한 기록이 저장된다.
     const { result } = renderHook(() => useInspection());
@@ -70,13 +134,16 @@ describe('useInspection', () => {
       result.current.setPurpose('grinding');
       result.current.setGrinder(GRINDER, null, GRINDER);
       result.current.setWheel(WHEEL, null, WHEEL);
+      result.current.setWheelCondition(WHEEL_CONDITION);
     });
     act(() => result.current.reset());
 
     expect(result.current.grinderOcr).toBeNull();
     expect(result.current.wheelOcr).toBeNull();
+    expect(result.current.wheelCondition).toBeNull();
     expect(result.current.startedAt).toBeNull();
     expect(sessionStorage.getItem('wheelmatch.wheelOcr')).toBeNull();
+    expect(sessionStorage.getItem('wheelmatch.wheelCondition')).toBeNull();
   });
 
   it('사진 없이 값만 갱신해도 이전 사진을 지우지 않는다', () => {

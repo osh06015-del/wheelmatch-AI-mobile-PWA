@@ -191,6 +191,15 @@ export function ResultCard({ result, grinder, wheel }: ResultCardProps) {
           </section>
         );
       })}
+
+      {/* 유효기한은 근거를 함께 보여준다. 다른 규칙과 달리 한국 법령이 아니라
+          해외 표시 규격과 제조사 안내에서 왔고, "표시 월 말일까지"라는 해석은
+          이 앱이 정한 것이다. 근거를 숨기면 규정처럼 읽힌다. */}
+      {result.checks.some((check) => check.rule === RULE.EXPIRY) && (
+        <p className="rounded-lg bg-slate-800 px-4 py-3 text-sm leading-relaxed text-slate-400">
+          {t('expiry.source')}
+        </p>
+      )}
     </section>
   );
 }

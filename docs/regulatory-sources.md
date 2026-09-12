@@ -6,7 +6,7 @@
 확인하지 못한 항목은 `미확인`으로 남긴다. **지어내지 않는다.**
 (규칙 근거: `.claude/rules/safety-critical.md` 6번)
 
-갱신 2026-09-04.
+갱신 2026-09-08.
 
 ---
 
@@ -150,7 +150,133 @@ _"교체용 휠의 내경이 기계의 스핀들 사이즈와 정확히 맞아�
 
 ---
 
-## 6. 이 문서를 고칠 때
+## 6. 유효기한 판정의 근거 (2026-09-08 추가)
+
+**한국 법령에는 연삭숫돌 유효기한 조항이 없다.** 이 앱은 라벨에 **표시된**
+기한만 읽어 기준일과 비교한다. 제조일에서 계산하지 않는다.
+
+### 6-1. 한국
+
+| 문서                                 | 관할 | 종류           | 버전                      | 시행일          | 유효기한에 대해                        |
+| ------------------------------------ | ---- | -------------- | ------------------------- | --------------- | -------------------------------------- |
+| 산업안전보건기준에 관한 규칙 제122조 | KR   | 고용노동부령   | 제450호 (2025-09-01 개정) | **2026-03-02**  | **조항 없음** (전문 확인)              |
+| KOSHA GUIDE M-189-2015               | KR   | 기술지침(권고) | M-189-2015                | 공표 2015-12-07 | 제조일 기준 **2년**, 비트리파이드 제외 |
+
+제122조 전문을 열어 ①~⑤ 모두 확인했다. 회전속도·지름·측면사용·덮개·시험운전만
+규정하며 기한에 관한 문구는 없다. §1의 표에 있던 "시행일 미확인"이 이번에
+확정됐다.
+
+KOSHA 원문 — **9. 위험요인별 자체평가표 〈표 1〉** "열화에 의한 숫돌의 파괴":
+
+> 유통기한이 없는 비트리파이드 연삭숫돌을 제외하고 연삭숫돌이 언제
+> 제조되었는지 확인할 것. **2년 이상 된 연삭숫돌은 폐기할 것**
+
+**이 문구는 본문 조항이 아니라 자체평가표(체크리스트) 항목이고, KOSHA Guide는
+법적 강제력이 없는 기술지침이다.** 지침이 밝힌 관련규격은 HSG 17,
+고용노동부 고시 제2015-24호, IAPA 자료다. **이 2년을 코드에 넣지 않았다** —
+비트리파이드 예외가 붙는데 앱은 라벨에서 본드 종류를 확정할 수 없다.
+
+- <https://www.law.go.kr/lsLinkCommonInfo.do?lspttninfSeq=75618&chrClsCd=010202> (확인 2026-09-08)
+- <https://www.kosha.or.kr/extappKosha/kosha/guidance/fileDownload.do?sfhlhTchnlgyManualNo=M-189-2015&fileOrdrNo=3> (확인 2026-09-08)
+
+> **한계:** KOSHA 공식 다운로드 URL이 SPA로 바뀌어 HTML만 돌려준다. 미러에서
+> 받은 PDF의 자체 헤더가 `KOSHA GUIDE M-189-2015`임은 확인했으나 **공식 서버
+> 원본과 바이트 대조는 하지 않았다.** 개정판 존재 여부도 확정하지 못했다
+> (KOSHA 공식 지침 목록 PDF가 403).
+
+### 6-2. 유럽 (참고, 이 앱이 읽는 표기 형식의 근거)
+
+oSa 「Product marking requirements for bonded abrasives」 Issue 2, Form 1,
+**2020-04**. 문서 스스로 "according to **EN 12413:2019** and oSa"라고 적는다.
+
+**Additional inscriptions** 절 원문:
+
+> Abrasive products for hand-held machines with **type of bond B and BF**:
+> date of expiry. The date of expiry shall at the longest be **within 3 years
+> from the date of manufacture**. It is expressed as **month and year e.g. 04/2023**.
+>
+> **Magnesite bond**: date of expiry ... **within 1 year** from the date of manufacture.
+
+적용 제품 행: `Abrasive wheels Type 27, 28, 29, 41 and 42 for hand held application`
+
+| 항목 | 값                                                    |
+| ---- | ----------------------------------------------------- |
+| 관할 | EU (표준 적용은 제조사에게 자발적)                    |
+| 문서 | oSa Product marking requirements for bonded abrasives |
+| 버전 | Issue 2, Form 1, 2020-04 — EN 12413:2019 기준         |
+| 적용 | 수공구용 **B/BF 본드** · 마그네사이트 본드            |
+| 형식 | **MM/YYYY**                                           |
+
+- <https://www.osa-abrasives.org/wp-content/uploads/oSa-Product-marking-requirements-for-bonded-abrasives.pdf> (확인 2026-09-08)
+- <https://www.osa-abrasives.org/frequently-asked-questions-faq/> (확인 2026-09-08)
+
+> **한계: EN 12413:2019 원문은 유료라 읽지 못했다.** 위 3년·1년 수치는 전부
+> oSa 문서가 EN을 근거로 적은 것을 인용한 것이며, **EN 원문의 조항 번호와
+> 정확한 문언은 확인하지 못했다. 코드·논문에 EN 조항을 인용하지 않는다.**
+> 서지사항만 확인한 곳:
+> <https://www.en-standard.eu/bs-en-12413-2019-safety-requirements-for-bonded-abrasive-products/>
+> (Safety requirements for bonded abrasive products, 2019-10-31, 66쪽, ICS 25.100.70,
+> 적용범위 rotating bonded abrasive products — superabrasive·coated 제외)
+
+### 6-3. 제조사 (규정 아님)
+
+Klingspor, Kronenflex® cutting-off wheels — "Safety and storage":
+
+> Principally the following applies: **cutting-off wheels and grinding discs
+> may not be used past the expiry date!**
+
+<https://www.klingspor.co.uk/products/anwendung/kronenflex-trennscheiben> (확인 2026-09-08)
+
+같은 문단이 "This also applies **for legal reason**"이라고 적지만 **어느 법령인지
+특정하지 않는다.** 그래서 앱 문구는 "제조사는 ... 사용하지 말라고 안내합니다"로
+쓴다. "법적으로 무효"라는 표현은 쓰지 않는다 — 이를 뒷받침하는 원문을 찾지 못했다.
+
+### 6-4. 앱이 실제로 구현한 것
+
+`checkExpiry()` — `src/lib/rules/engine.ts`
+
+| 상황                         | 판정                      |
+| ---------------------------- | ------------------------- |
+| 기준일 없음·형식 오류        | 판정불가 (UNDETERMINED)   |
+| 표시 없음 · 모호 · 판독 실패 | 판정불가 (UNDETERMINED)   |
+| 표시된 기한이 지남           | **부적합 (INCOMPATIBLE)** |
+| 표시된 기한이 남음           | 통과                      |
+
+- **기준일은 호출자가 주입한다** (`MatchOptions.today`, `YYYY-MM-DD` 로컬 날짜).
+  엔진이 시계를 읽으면 같은 기록을 다시 열 때 판정이 달라져 근거가 되지 못한다.
+- 비교는 **date-only 문자열 비교**다. 시각·시간대가 들어가지 않는다.
+- **만료일 당일의 의미:** `04/2023` → `2023-04-30`까지 유효, `2023-05-01`부터 만료.
+  **확인된 원문은 월/연 표기까지만 정하고 그 달의 언제 만료되는지는 정하지
+  않는다.** 이 해석은 규정이 아니라 이 앱이 정한 것이다. 반대로 잡으면(그 달
+  1일 만료) 근거 없이 한 달을 앞당겨 멀쩡한 숫돌을 막는다.
+- 표시가 없을 때 **부적합으로 단정하지 않는다.** 표시 의무는 수공구용 B/BF
+  본드 제품에만 있어 표시 없는 숫돌이 정상일 수 있다. 다만 **적합으로도
+  통과시키지 않는다** — 확인하지 못한 것을 확인한 것처럼 넘기지 않는다.
+- 이 근거 요약은 결과 화면에도 `expiry.source` 문구로 표시한다.
+
+### 6-5. 넣지 않기로 한 것
+
+| 넣지 않는 것         | 이유                                                             |
+| -------------------- | ---------------------------------------------------------------- |
+| 제조일 + 3년 계산    | oSa는 "**최장** 3년". 계산하면 실제보다 긴 기한을 주장하게 된다  |
+| 제조일 + 2년 계산    | KOSHA는 권고이고 비트리파이드 예외가 있다. 본드를 확정할 수 없다 |
+| 제조일 필드 자체     | 읽어두면 계산하고 싶어진다. 판정에 못 쓸 값은 넣지 않는다        |
+| 표시 없음 → 부적합   | 표시 의무가 없는 제품이 정상이다                                 |
+| "법적으로 무효" 문구 | **이를 뒷받침하는 원문을 찾지 못했다**                           |
+| 두 자리 연도 해석    | `04/23`이 2023인지 1923인지 확정할 수 없다                       |
+
+### 6-6. 남은 확인
+
+- [ ] 「위험 기계·기구 자율안전확인 고시」 연삭숫돌 표시사항 원문
+- [ ] KS L 6505(레지노이드 오프셋 연삭숫돌) 표시 요구
+- [ ] EN 12413:2019 원문 (유료)
+- [ ] KOSHA M-189 개정판 존재 여부, 공식 서버 원본 대조
+- [ ] KOSHA "2년"의 출처가 HSG 17인지 IAPA 자료인지
+- [ ] 실물 라벨에서 MM/YYYY 인식률 (20세트 측정)
+
+---
+
+## 7. 이 문서를 고칠 때
 
 1. **표에 넣기 전에 원문을 연다.** 검색 결과 요약만 보고 적지 않는다.
 2. 확인하지 못한 칸은 `미확인`으로 둔다. 빈칸으로 두면 확인한 것처럼 보인다.

@@ -65,7 +65,46 @@ export const vi: Messages = {
   'rule.unitConsistency': 'Nhãn khớp nhau',
   'rule.mountingSpec': 'Đường kính lỗ lắp',
   'rule.peripheralSpeed': 'Đối chiếu tốc độ vòng ngoài',
+  'rule.expiry': 'Hạn sử dụng',
   'rule.confidence': 'Độ tin cậy khi đọc nhãn',
+  'expiry.source':
+    'Căn cứ hạn sử dụng: chỉ dùng tháng/năm in trên nhãn. Không tính từ ngày sản xuất. Định dạng ghi nhãn theo oSa "Product marking requirements for bonded abrasives" (2020-04, dựa trên EN 12413:2019). Bản gốc EN 12413 chưa được đọc. Việc coi đá mài còn hạn đến ngày cuối của tháng ghi trên nhãn là cách hiểu của ứng dụng này, không phải quy định. Điều 122 Quy định về tiêu chuẩn an toàn vệ sinh lao động của Hàn Quốc không có điều khoản về hạn sử dụng.',
+
+  'wheelCondition.title': 'Tự kiểm tra tình trạng đá mài',
+  'wheelCondition.note':
+    'Trước khi lắp, hãy tự kiểm tra hai mặt, cạnh và vùng lắp của đá mài thật.',
+  'wheelCondition.aiBoundary':
+    'AI chỉ có thể cảnh báo hư hỏng nhìn thấy đáng ngờ; AI không xác nhận đá mài không hư hỏng hoặc công việc an toàn.',
+  'wheelCondition.aiDamageWarning':
+    'AI nghi ngờ có dấu hiệu hư hỏng nhìn thấy trong ảnh. Hãy tự kiểm tra kỹ đá mài.',
+  'wheelCondition.labelWarning':
+    'AI không đọc đủ thông tin trên nhãn. Hãy kiểm tra nhãn thật và sửa các giá trị bên trên.',
+  'wheelCondition.expiryWarning':
+    'AI không đọc được hạn sử dụng. Hãy tự kiểm tra tháng/năm in trên nhãn.',
+  'wheelCondition.damageFree':
+    'Đá mài không bị vỡ, nứt, rạn nhỏ hoặc sứt cạnh?',
+  'wheelCondition.damageFreeHint':
+    'Không chỉ dựa vào ảnh; xoay và kiểm tra toàn bộ đá mài ở nơi đủ sáng',
+  'wheelCondition.notDeformed': 'Đá mài không bị cong vênh hoặc biến dạng?',
+  'wheelCondition.notDeformedHint':
+    'Chọn Có vấn đề nếu đá không phẳng, bị xoắn hoặc phồng',
+  'wheelCondition.mountingAreaUndamaged':
+    'Lỗ tâm và vùng lắp không có hư hỏng nhìn thấy?',
+  'wheelCondition.mountingAreaUndamagedHint':
+    'Kiểm tra cả hai mặt quanh lỗ tâm xem có sứt, mòn hoặc biến dạng không',
+  'wheelCondition.labelLegible': 'Có thể nhận biết nhãn và các thông số chính?',
+  'wheelCondition.labelLegibleHint':
+    'Xác nhận có thể đọc RPM, đường kính, công dụng và các dấu cần đối chiếu',
+  'wheelCondition.expiryValid': 'Hạn sử dụng in trên nhãn vẫn còn hiệu lực?',
+  'wheelCondition.expiryValidHint':
+    'Đọc trực tiếp tháng/năm trên nhãn; không ước tính từ ngày sản xuất',
+  'wheelCondition.confirmed': 'Đã xác nhận',
+  'wheelCondition.issue': 'Có vấn đề',
+  'wheelCondition.incomplete':
+    'Bạn phải tự kiểm tra {count} mục còn lại trước khi đối chiếu thông số.',
+  'wheelCondition.stopTitle': 'KHÔNG ĐƯỢC SỬ DỤNG ĐÁ MÀI NÀY',
+  'wheelCondition.stopBody':
+    'Đã phát hiện vấn đề với đá mài. Không được lắp. Hãy thay bằng đá mài khác còn dùng được và kiểm tra lại.',
 
   'action.title': 'KHÔNG ĐƯỢC SỬ DỤNG',
   'action.rpmSafety':
@@ -74,6 +113,8 @@ export const vi: Messages = {
     'Không lắp đá mài này. Hãy thay bằng đá mài có đường kính không vượt quá mức máy cho phép.',
   'action.workPurpose':
     'Hãy thay bằng đá mài đúng với công việc hôm nay. Đá mài sai công dụng rất dễ vỡ.',
+  'action.expiry':
+    'Không lắp đá mài này. Hạn sử dụng ghi trên nhãn đã hết. Hãy thay bằng đá mài còn hạn.',
   'action.generic':
     'Không lắp đá mài này. Hãy thay bằng đá mài đáp ứng đủ điều kiện.',
 
@@ -86,9 +127,6 @@ export const vi: Messages = {
   'checklist.auxiliaryHandle': 'Đã lắp tay cầm phụ',
   'checklist.auxiliaryHandleHint':
     'Kiểm tra có thể giữ bằng hai tay để chống giật ngược không',
-  'checklist.wheelDamage': 'Đá mài không hư hỏng',
-  'checklist.wheelDamageHint':
-    'Kiểm tra vết nứt, sứt mẻ, cong vênh (nếu có phải thay ngay)',
   'checklist.ppe': 'Đã mang đồ bảo hộ',
   'checklist.ppeHint': 'Kiểm tra kính bảo hộ, găng tay và tấm che mặt',
   'checklist.preWork':

@@ -61,7 +61,47 @@ export const en: Messages = {
   'rule.unitConsistency': 'Label consistency',
   'rule.mountingSpec': 'Mounting bore',
   'rule.peripheralSpeed': 'Speed cross-check',
+  'rule.expiry': 'Expiry date',
   'rule.confidence': 'Reading confidence',
+  'expiry.source':
+    'Expiry basis: only the month/year printed on the label is used. It is never calculated from the manufacturing date. The marking format follows oSa "Product marking requirements for bonded abrasives" (2020-04, based on EN 12413:2019). The EN 12413 text itself was not read. Treating the marked month as valid through its last day is this app\'s reading, not a regulation. Korea\'s Rules on Occupational Safety and Health Standards Article 122 has no expiry clause.',
+
+  'wheelCondition.title': 'Check the wheel yourself',
+  'wheelCondition.note':
+    'Before mounting, inspect the actual wheel on both sides, around the edge, and at the mounting area.',
+  'wheelCondition.aiBoundary':
+    'AI can only flag suspected visible damage. It never confirms that a wheel is undamaged or that the work is safe.',
+  'wheelCondition.aiDamageWarning':
+    'AI suspects a visible sign of damage in the photo. Inspect the wheel closely yourself.',
+  'wheelCondition.labelWarning':
+    'AI could not read enough label information. Check the actual label and correct the values above.',
+  'wheelCondition.expiryWarning':
+    'AI could not read the expiry date. Check the month/year printed on the label yourself.',
+  'wheelCondition.damageFree':
+    'Is it free from breaks, cracks, hairline cracks, and edge chips?',
+  'wheelCondition.damageFreeHint':
+    'Do not rely on the photo; rotate and inspect the whole wheel in good light',
+  'wheelCondition.notDeformed': 'Is the wheel free from warping or distortion?',
+  'wheelCondition.notDeformedHint':
+    'Choose Issue found if it is not flat or shows twisting or swelling',
+  'wheelCondition.mountingAreaUndamaged':
+    'Is the centre hole and mounting area visibly undamaged?',
+  'wheelCondition.mountingAreaUndamagedHint':
+    'Check both sides around the centre hole for chips, wear, or distortion',
+  'wheelCondition.labelLegible':
+    'Can you identify the label and essential specifications?',
+  'wheelCondition.labelLegibleHint':
+    'Confirm that you can read the markings needed for comparison, including RPM, diameter, and use',
+  'wheelCondition.expiryValid': 'Is the printed expiry date still valid?',
+  'wheelCondition.expiryValidHint':
+    'Read the printed month/year; do not estimate it from the manufacturing date',
+  'wheelCondition.confirmed': 'Confirmed',
+  'wheelCondition.issue': 'Issue found',
+  'wheelCondition.incomplete':
+    'You must personally check the remaining {count} items before comparing specifications.',
+  'wheelCondition.stopTitle': 'DO NOT USE THIS WHEEL',
+  'wheelCondition.stopBody':
+    'A problem was found with the wheel. Do not mount it. Replace it with another serviceable wheel and inspect again.',
 
   'action.title': 'DO NOT USE',
   'action.rpmSafety':
@@ -70,6 +110,8 @@ export const en: Messages = {
     'Do not mount this wheel. Replace it with one no larger than the grinder allows.',
   'action.workPurpose':
     "Fit a wheel made for today's job instead. A wheel made for other work can break.",
+  'action.expiry':
+    'Do not mount this wheel. The expiry date on its label has passed. Replace it with one still within date.',
   'action.generic':
     'Do not mount this wheel. Replace it with one that meets the conditions.',
 
@@ -81,9 +123,6 @@ export const en: Messages = {
   'checklist.auxiliaryHandle': 'Side handle fitted',
   'checklist.auxiliaryHandleHint':
     'Check that you can hold it with both hands against kickback',
-  'checklist.wheelDamage': 'Wheel undamaged',
-  'checklist.wheelDamageHint':
-    'Check for cracks, chips or warping (replace at once if found)',
   'checklist.ppe': 'PPE worn',
   'checklist.ppeHint': 'Check safety glasses, gloves and face shield',
   'checklist.preWork':

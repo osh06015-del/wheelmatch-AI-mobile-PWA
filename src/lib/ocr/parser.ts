@@ -6,6 +6,7 @@
 
 import type {
   Confidence,
+  ExpiryMonth,
   GrinderSpec,
   WheelPurpose,
   WheelSpec,
@@ -113,6 +114,44 @@ export function parseThickness(text: string): number | null {
   return match ? toNumber(match[1]) : null;
 }
 
+/**
+ * OCR 평문에서 유효기한 표기를 찾는다.
+ *
+ * 라벨 금속 링에 월/연으로 찍힌다. 앞에 V(Verfallsdatum)나 EXP 같은 글자가
+ * 붙는 경우가 있어 숫자 표기만 잡는다.
+ *
+ * 연도는 **네 자리만** 받는다. "04/23"은 2023인지 1923인지 확정할 수 없다.
+ * 확정할 수 없으면 null이다 — 이 앱은 모르는 값을 채우지 않는다.
+ */
+export function parseExpiry(text: string): string | null {
+  const match = text.match(/\b(\d{2})\s*\/\s*(\d{4})\b/);
+  return match ? `${match[1]}/${match[2]}` : null;
+}
+
+/**
+ * 라벨의 유효기한 표기를 정규화한다. 확정할 수 없으면 null이다.
+ *
+ * 확인된 표기 형식은 월/연뿐이다 — oSa 「Product marking requirements for
+ * bonded abrasives」(2020-04): "expressed as month and year e.g. 04/2023".
+ * 구분자는 라벨마다 `/`, `.`, `-`로 다르게 찍히므로 셋 다 받는다.
+ *
+ * 확정하지 못하는 예 — 전부 null이다.
+ *   "04/23"        두 자리 연도. 세기를 확정할 수 없다
+ *   "2023/04"      연/월인지 월/연인지 확정할 수 없다
+ *   "13/2023"      달력에 없는 달
+ *   "04/2023 이후"  잘렸거나 다른 글자가 섞였다
+ *
+ * 애매한 값을 통과시키면 그 값으로 만료 판정이 내려진다. 모르면 null이다.
+ */
+export function normalizeExpiry(raw: string | null): ExpiryMonth | null {
+  if (raw === null) return null;
+  const match = /^(\d{1,2})\s*[/.-]\s*(\d{4})$/.exec(raw.trim());
+  if (!match) return null;
+  const month = Number(match[1]);
+  if (month < 1 || month > 12) return null;
+  return { year: Number(match[2]), month };
+}
+
 /** 용도 키워드를 찾는다. 어느 쪽도 확실하지 않으면 unknown으로 남긴다. */
 export function parsePurpose(text: string): WheelPurpose {
   const lower = text.toLowerCase();
@@ -175,6 +214,7 @@ export function parseWheelText(text: string): WheelSpec {
   const resolvedDiameter = diameter ?? parseDiameter(text);
   const directRPM = parseRPM(text);
   const labeledMps = parsePeripheralSpeed(text);
+  const expiryRaw = parseExpiry(text);
 
   // rpm 표기가 없으면 원주속도에서 환산한다. 환산도 실패하면 null로 남긴다.
   // 환산해도 원본 표시는 markings에 그대로 남긴다 (route.ts와 같은 원칙).
@@ -190,7 +230,10 @@ export function parseWheelText(text: string): WheelSpec {
       labeledRPM: directRPM,
       peripheralSpeedMps: labeledMps,
       boreDiameter: parseBore(text),
+      expiryRaw,
     },
+    // 라벨에 찍힌 것만 담는다. 제조일에서 계산하지 않는다.
+    expiry: normalizeExpiry(expiryRaw),
     ...(maxRPM === null
       ? {}
       : {

@@ -26,11 +26,6 @@ export const CHECKLIST_ITEMS: Array<{
     hintKey: 'checklist.auxiliaryHandleHint',
   },
   {
-    key: 'wheelDamage',
-    labelKey: 'checklist.wheelDamage',
-    hintKey: 'checklist.wheelDamageHint',
-  },
-  {
     key: 'ppe',
     labelKey: 'checklist.ppe',
     hintKey: 'checklist.ppeHint',

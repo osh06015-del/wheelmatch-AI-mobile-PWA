@@ -15,11 +15,22 @@ import {
 import { ManualConfirmToggle } from '@/components/ManualConfirmToggle';
 import { RequirementBanner } from '@/components/RequirementBanner';
 import { ScanHeader } from '@/components/ScanHeader';
+import { WheelConditionGate } from '@/components/WheelConditionGate';
 import { WHEEL_FIELD_GUIDE } from '@/lib/guide/fieldGuide';
 import { optimizeForUpload } from '@/lib/image/optimize';
+import { confirmedWheelSpec } from '@/lib/ocr/confirm';
 import { getExtractor } from '@/lib/ocr/extractor';
+import { normalizeExpiry } from '@/lib/ocr/parser';
+import {
+  EMPTY_WHEEL_CONDITION,
+  isWheelConditionComplete,
+} from '@/lib/safety/wheelCondition';
 import { useInspection } from '@/lib/state/inspection';
-import type { WheelPurpose, WheelSpec } from '@/lib/rules/types';
+import type {
+  WheelCondition,
+  WheelPurpose,
+  WheelSpec,
+} from '@/lib/rules/types';
 
 type Phase = 'capture' | 'analyzing' | 'confirm' | 'error';
 
@@ -28,11 +39,14 @@ interface FormState {
   diameter: string;
   thickness: string;
   purpose: string;
+  /** 라벨의 유효기한 표기. 정규화는 confirmedWheelSpec이 한다. */
+  expiry: string;
 }
 
 export default function WheelScanPage() {
   const router = useRouter();
-  const { declaredPurpose, grinder, hydrating, setWheel } = useInspection();
+  const { declaredPurpose, grinder, hydrating, setWheel, setWheelCondition } =
+    useInspection();
 
   const [phase, setPhase] = useState<Phase>('capture');
   const [photo, setPhoto] = useState<Blob | null>(null);
@@ -42,8 +56,12 @@ export default function WheelScanPage() {
     diameter: '',
     thickness: '',
     purpose: 'unknown',
+    expiry: '',
   });
   const [userConfirmed, setUserConfirmed] = useState(false);
+  const [condition, setCondition] = useState<WheelCondition>({
+    ...EMPTY_WHEEL_CONDITION,
+  });
   const [error, setError] = useState<string | null>(null);
 
   // 그라인더를 먼저 찍지 않고 들어온 경우 1단계로 되돌린다.
@@ -65,8 +83,13 @@ export default function WheelScanPage() {
         diameter: fromNumber(spec.diameter),
         thickness: fromNumber(spec.thickness),
         purpose: spec.purpose,
+        // 모델이 읽은 문자열을 그대로 보여준다. 정규화한 값을 되돌려 보여주면
+        // 라벨에 무엇이 찍혀 있었는지 사용자가 대조할 수 없다.
+        expiry: spec.markings?.expiryRaw ?? '',
       });
       setUserConfirmed(false);
+      // 새 사진은 새 숫돌일 수 있다. 이전 숫돌의 직접 확인을 이어 쓰지 않는다.
+      setCondition({ ...EMPTY_WHEEL_CONDITION });
       setPhase('confirm');
     } catch (caught) {
       setError(
@@ -79,24 +102,38 @@ export default function WheelScanPage() {
   function updateField(key: string, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
     setUserConfirmed(false);
+    // 값을 고친 뒤에는 관련 직접 확인도 다시 받아야 한다.
+    setCondition((current) => ({
+      ...current,
+      ...(key === 'expiry' ? { expiryValid: null } : { labelLegible: null }),
+    }));
   }
 
   function proceed() {
-    const spec: WheelSpec = {
+    if (!isWheelConditionComplete(condition)) return;
+    // 화면이 가진 값만 넘기고, OCR 원본에서 무엇을 이어갈지는 confirmedWheelSpec이
+    // 정한다. 여기서 필드를 하나하나 옮겨 적으면 선택 필드(markings·rpmSource)가
+    // 조용히 빠진다 — 실제로 그렇게 빠져서 표기 일치 검사가 돌지 않았다.
+    const spec = confirmedWheelSpec(ocr, {
       maxRPM: toNumberOrNull(form.maxRPM),
       diameter: toNumberOrNull(form.diameter),
       thickness: toNumberOrNull(form.thickness),
       purpose: form.purpose as WheelPurpose,
-      // 종류와 외관 손상은 사진에서 판별한 값이다. 사용자가 숫자를 고쳐도
-      // 그대로 이어간다. 값이 없으면 'unknown'으로 두어 판정불가로 이어지게 한다.
-      wheelType: ocr?.wheelType ?? 'unknown',
-      visibleDamage: ocr?.visibleDamage ?? 'unknown',
-      rawText: ocr?.rawText ?? '',
-      confidence: userConfirmed ? 'high' : (ocr?.confidence ?? 'low'),
-    };
+      expiryText: form.expiry,
+      userConfirmed,
+    });
     setWheel(spec, photo, ocr);
+    setWheelCondition(condition);
     router.push('/result');
   }
+
+  const labelNeedsReview =
+    form.maxRPM.trim() === '' ||
+    form.diameter.trim() === '' ||
+    form.purpose === 'unknown' ||
+    (ocr?.confidence === 'low' && !userConfirmed);
+  const expiryNeedsReview =
+    normalizeExpiry(form.expiry.trim() === '' ? null : form.expiry) === null;
 
   const fields: FieldSpec[] = [
     {
@@ -129,6 +166,14 @@ export default function WheelScanPage() {
       kind: 'purpose',
       value: form.purpose,
       guide: WHEEL_FIELD_GUIDE.purpose,
+    },
+    {
+      key: 'expiry',
+      label: '유효기한',
+      unit: 'MM/YYYY',
+      kind: 'text',
+      value: form.expiry,
+      guide: WHEEL_FIELD_GUIDE.expiry,
     },
   ];
 
@@ -216,11 +261,21 @@ export default function WheelScanPage() {
         checked={userConfirmed}
         onChange={setUserConfirmed}
       />
+      <WheelConditionGate
+        condition={condition}
+        visibleDamage={ocr?.visibleDamage ?? 'unknown'}
+        labelNeedsReview={labelNeedsReview}
+        expiryNeedsReview={expiryNeedsReview}
+        onChange={(key, value) =>
+          setCondition((current) => ({ ...current, [key]: value }))
+        }
+      />
       <div className="flex flex-col gap-3">
         <button
           type="button"
           onClick={proceed}
-          className="min-h-14 rounded-lg bg-green-500 text-lg font-bold text-slate-950 active:bg-green-400"
+          disabled={!isWheelConditionComplete(condition)}
+          className="min-h-14 rounded-lg bg-green-500 text-lg font-bold text-slate-950 active:bg-green-400 disabled:bg-slate-700 disabled:text-slate-400"
         >
           확인 후 규격 대조
         </button>

@@ -6,6 +6,7 @@
 
 import type {
   CheckItem,
+  ExpiryMonth,
   GrinderSpec,
   MatchResult,
   Verdict,
@@ -27,6 +28,7 @@ export const RULE = {
   UNIT_CONSISTENCY: '표기 일치',
   MOUNTING_SPEC: '장착 규격',
   PERIPHERAL_SPEED: '원주속도 교차검증',
+  EXPIRY: '유효기한',
   CONFIDENCE: '신뢰도 검증',
 } as const;
 
@@ -583,6 +585,156 @@ export function checkPeripheralSpeed(
   };
 }
 
+// ─────────────────────────────────────────────────────────────
+// Rule 12 — 유효기한
+//
+// 근거와 한계는 docs/regulatory-sources.md §7에 있다. 요약하면:
+//   · 한국 법령(산업안전보건기준에 관한 규칙 제122조)에는 유효기한 조항이 없다.
+//   · oSa 표시 요구사항(2020-04, EN 12413:2019 기준)은 수공구용 B/BF 본드
+//     제품에 "date of expiry"를 월/연으로 표시하게 한다.
+//   · EN 12413 원문은 유료라 읽지 못했다. 조항 번호를 인용하지 않는다.
+//
+// 그래서 이 규칙은 **라벨에 표시된 기한만** 본다. 제조일에서 계산하지 않는다.
+// ─────────────────────────────────────────────────────────────
+
+/** 기준일 형식. 시간대 없이 날짜만 본다. */
+const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+const pad2 = (value: number): string => String(value).padStart(2, '0');
+const pad4 = (value: number): string => String(value).padStart(4, '0');
+
+/** 그레고리력 각 달의 마지막 날. 2월만 윤년을 본다. */
+function lastDayOfMonth(year: number, month: number): number {
+  if (month === 2) {
+    const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+    return leap ? 29 : 28;
+  }
+  return month === 4 || month === 6 || month === 9 || month === 11 ? 30 : 31;
+}
+
+/**
+ * YYYY-MM-DD 형식이면서 달력에 실재하는 날짜인지 본다.
+ *
+ * 형식만 보고 넘기면 2월 30일 같은 값이 그대로 비교에 들어간다.
+ */
+export function isValidDateOnly(value: string | null): value is string {
+  if (value === null) return false;
+  const match = DATE_ONLY_PATTERN.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (month < 1 || month > 12) return false;
+  return day >= 1 && day <= lastDayOfMonth(year, month);
+}
+
+/**
+ * Date를 기준일 문자열로 바꾼다. **로컬 날짜**를 쓴다.
+ *
+ * toISOString()을 쓰면 UTC로 변환되어 한국 시간 오전 9시 이전에는 전날이 된다.
+ * 하루가 통째로 어긋나면 만료 경계가 흔들린다.
+ *
+ * 엔진은 시계를 읽지 않는다. 이 함수도 넘겨받은 Date만 본다.
+ */
+export function toDateOnly(date: Date): string {
+  return `${pad4(date.getFullYear())}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+/** 라벨과 같은 표기로 되돌린다. 예: { year: 2023, month: 4 } → "04/2023" */
+export function formatExpiry(expiry: ExpiryMonth): string {
+  return `${pad2(expiry.month)}/${pad4(expiry.year)}`;
+}
+
+/**
+ * 표시된 유효기한의 **마지막 유효일**.
+ *
+ *   04/2023 → 2023-04-30까지 유효. 2023-05-01부터 만료.
+ *
+ * 확인된 원문은 "expressed as month and year e.g. 04/2023"까지만 정하고
+ * 그 달의 언제 만료되는지는 정하지 않는다(oSa 2020-04). EN 12413 원문은
+ * 읽지 못했다. **그러므로 아래 해석은 규정이 아니라 이 앱이 정한 것이다.**
+ *
+ * 월을 가리키는 표기이므로 그 달 전체를 유효로 본다. 반대로 잡으면(그 달 1일
+ * 만료) 근거 없이 한 달을 앞당겨 멀쩡한 숫돌을 막는다. 근거 없는 완화도,
+ * 근거 없는 강화도 하지 않는다.
+ */
+export function expiryLastValidDate(expiry: ExpiryMonth): string {
+  return `${pad4(expiry.year)}-${pad2(expiry.month)}-${pad2(
+    lastDayOfMonth(expiry.year, expiry.month),
+  )}`;
+}
+
+/**
+ * Rule 12 — 유효기한
+ *
+ * 기준일(today)은 호출자가 넣는다. 엔진이 시계를 읽으면 같은 기록을 다시 열
+ * 때마다 판정이 달라져 근거를 되짚을 수 없다.
+ *
+ *   기준일 없음/형식 오류  → 판정불가 (비교할 기준이 없다)
+ *   표시 없음/모호/판독실패 → 판정불가 (통과도 부적합도 아니다)
+ *   기한 지남              → **부적합**
+ *   기한 남음              → 통과
+ *
+ * 왜 기한 초과가 판정불가가 아니라 부적합인가:
+ * 날짜를 읽었고 비교도 끝났다. "판정하지 못했다"고 말하면 아는 것을 모른다고
+ * 하는 것이다. 화면에서도 판정불가는 "읽지 못한 정보"로 묶여 재촬영을
+ * 권하는데, 만료된 숫돌에는 쓸모없는 안내다.
+ *
+ * 왜 표시가 없을 때 부적합이 아닌가:
+ * 표시 의무는 수공구용 B/BF 본드 제품에만 있다(oSa 2020-04). 표시가 없는
+ * 숫돌이 정상일 수 있다. 다만 확인하지 못한 것을 확인한 것처럼 넘기지도
+ * 않으므로 경고(advisory)로 두지 않는다 — 판정은 적합까지 가지 못한다.
+ */
+export function checkExpiry(wheel: WheelSpec, today: string | null): CheckItem {
+  const expiry = wheel.expiry ?? null;
+  const base = {
+    rule: RULE.EXPIRY,
+    grinderValue: null,
+    wheelValue: expiry === null ? null : formatExpiry(expiry),
+  };
+
+  if (!isValidDateOnly(today)) {
+    return {
+      ...base,
+      passed: null,
+      reason:
+        '기준일이 없어 유효기한을 비교할 수 없습니다. 앱을 다시 열어 점검을 진행하세요.',
+    };
+  }
+
+  if (expiry === null) {
+    return {
+      ...base,
+      passed: null,
+      reason:
+        `라벨에서 유효기한을 읽지 못했습니다. 기준일 ${today}. ` +
+        '라벨 금속 링의 월/연 표기(예: 04/2023)를 직접 확인하세요. ' +
+        '표기가 없는 숫돌도 있습니다.',
+    };
+  }
+
+  const lastValid = expiryLastValidDate(expiry);
+
+  if (today > lastValid) {
+    return {
+      ...base,
+      passed: false,
+      reason:
+        `라벨에 표시된 유효기한이 지났습니다. 표시 ${formatExpiry(expiry)} ` +
+        `(${lastValid}까지), 기준일 ${today}. ` +
+        '제조사는 유효기한이 지난 숫돌을 사용하지 말라고 안내합니다.',
+    };
+  }
+
+  return {
+    ...base,
+    passed: true,
+    reason:
+      `라벨에 표시된 유효기한이 남아 있습니다. 표시 ${formatExpiry(expiry)} ` +
+      `(${lastValid}까지), 기준일 ${today}.`,
+  };
+}
+
 /**
  * 개별 검사 결과들로부터 최종 판정을 정한다.
  *
@@ -611,6 +763,14 @@ export function decideVerdict(checks: CheckItem[]): Verdict {
 export interface MatchOptions {
   /** 작업자가 고른 오늘의 작업. 고르지 않았으면 목적 대조를 건너뛴다. */
   declaredPurpose?: WorkPurpose | null;
+  /**
+   * 유효기한 만료 판정의 기준일. `YYYY-MM-DD` 로컬 날짜다.
+   *
+   * 엔진이 시계를 읽지 않는다. 같은 입력과 같은 기준일이면 언제 돌려도 같은
+   * 결과가 나와야 판정을 되짚을 수 있기 때문이다. 넣지 않으면 유효기한은
+   * 판정불가로 남는다 — 조용히 건너뛰지 않는다.
+   */
+  today?: string | null;
   /** 테스트에서 시각을 고정하기 위한 주입점 */
   now?: Date;
 }
@@ -620,7 +780,7 @@ export function matchSpecs(
   wheel: WheelSpec,
   options: MatchOptions = {},
 ): MatchResult {
-  const { declaredPurpose = null, now = new Date() } = options;
+  const { declaredPurpose = null, today = null, now = new Date() } = options;
 
   const workPurpose = checkWorkPurpose(wheel, declaredPurpose);
   const peripheralSpeed = checkPeripheralSpeed(grinder, wheel);
@@ -637,6 +797,9 @@ export function matchSpecs(
     ...(workPurpose ? [workPurpose] : []),
     checkWheelType(wheel),
     checkVisibleDamage(wheel),
+    // 기준일을 넣지 않으면 판정불가로 남는다. 항목 자체는 언제나 만든다 —
+    // 조건부로 만들면 호출자가 빠뜨렸을 때 화면에 아무 흔적이 남지 않는다.
+    checkExpiry(wheel, today),
     // 양쪽 다 계산할 수 없으면 항목 자체가 없다.
     ...(peripheralSpeed ? [peripheralSpeed] : []),
     ...(unitConsistency ? [unitConsistency] : []),

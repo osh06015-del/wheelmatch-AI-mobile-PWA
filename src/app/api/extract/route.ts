@@ -8,7 +8,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { NextResponse } from 'next/server';
 
-import { rpmFromPeripheralSpeed } from '@/lib/ocr/parser';
+import { normalizeExpiry, rpmFromPeripheralSpeed } from '@/lib/ocr/parser';
 import { resolveModel } from '@/lib/ocr/model';
 import {
   grinderExtractionSchema,
@@ -167,7 +167,11 @@ export async function POST(request: Request) {
         labeledRPM: value.maxRPM,
         peripheralSpeedMps: value.peripheralSpeedMps,
         boreDiameter: value.boreDiameter,
+        expiryRaw: value.expiryDate,
       },
+      // 모델이 읽은 문자열은 markings에 그대로 두고, 여기에는 정규화된 값만
+      // 넣는다. 형식이 모호하면 null이 되고 규칙엔진이 판정불가로 남긴다.
+      expiry: normalizeExpiry(value.expiryDate),
       ...(maxRPM === null
         ? {}
         : { rpmSource: value.maxRPM !== null ? 'label' : 'converted' }),

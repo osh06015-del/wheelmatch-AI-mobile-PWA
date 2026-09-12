@@ -3,8 +3,10 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  normalizeExpiry,
   parseDiameter,
   parseDimensions,
+  parseExpiry,
   parseGrinderText,
   parseModel,
   parsePeripheralSpeed,
@@ -168,8 +170,10 @@ describe('parseWheelText', () => {
         labeledRPM: 12200,
         peripheralSpeedMps: null,
         boreDiameter: null,
+        expiryRaw: null,
       },
       rpmSource: 'label',
+      expiry: null,
       rawText: WHEEL_LABEL,
       confidence: 'high',
     });
@@ -208,5 +212,60 @@ describe('parseWheelText', () => {
     const spec = parseWheelText('Φ125×1.6mm 절단용');
     expect(spec.maxRPM).toBeNull();
     expect(spec.confidence).toBe('medium');
+  });
+
+  it('라벨에 찍힌 유효기한을 읽고 정규화한다', () => {
+    const spec = parseWheelText('125x1.6 12200RPM 절단용 V 04/2027');
+    expect(spec.markings?.expiryRaw).toBe('04/2027');
+    expect(spec.expiry).toEqual({ year: 2027, month: 4 });
+  });
+
+  it('유효기한이 없으면 제조일이나 다른 숫자로 지어내지 않는다', () => {
+    const spec = parseWheelText(WHEEL_LABEL);
+    expect(spec.markings?.expiryRaw).toBeNull();
+    expect(spec.expiry).toBeNull();
+  });
+});
+
+describe('parseExpiry — 라벨 평문에서 찾기', () => {
+  it('MM/YYYY 표기를 찾는다', () => {
+    expect(parseExpiry('EXP 04/2027')).toBe('04/2027');
+    expect(parseExpiry('V 12/2025 A46KV')).toBe('12/2025');
+  });
+
+  it('연도가 두 자리면 찾지 않는다', () => {
+    // 04/23이 2023인지 1923인지 확정할 수 없다.
+    expect(parseExpiry('EXP 04/23')).toBeNull();
+  });
+
+  it('치수·속도 표기를 유효기한으로 잘못 읽지 않는다', () => {
+    expect(parseExpiry('125 × 1.6 × 22.23')).toBeNull();
+    expect(parseExpiry('80 m/s 12200 r/min')).toBeNull();
+  });
+});
+
+describe('normalizeExpiry — 정규화와 거부', () => {
+  it('구분자가 달라도 같은 값으로 읽는다', () => {
+    // 라벨마다 /, ., - 로 다르게 찍힌다.
+    expect(normalizeExpiry('04/2023')).toEqual({ year: 2023, month: 4 });
+    expect(normalizeExpiry('04.2023')).toEqual({ year: 2023, month: 4 });
+    expect(normalizeExpiry('04-2023')).toEqual({ year: 2023, month: 4 });
+    expect(normalizeExpiry(' 4 / 2023 ')).toEqual({ year: 2023, month: 4 });
+  });
+
+  it('존재하지 않는 달은 거부한다', () => {
+    expect(normalizeExpiry('13/2023')).toBeNull();
+    expect(normalizeExpiry('00/2023')).toBeNull();
+  });
+
+  it('형식이 모호하면 거부한다', () => {
+    // 확정할 수 없는 값을 통과시키면 그 값으로 만료가 판정된다.
+    expect(normalizeExpiry(null)).toBeNull();
+    expect(normalizeExpiry('')).toBeNull();
+    expect(normalizeExpiry('04/23')).toBeNull(); // 두 자리 연도
+    expect(normalizeExpiry('2023/04')).toBeNull(); // 연/월인지 월/연인지
+    expect(normalizeExpiry('04/2023 이후')).toBeNull(); // 잘리거나 섞임
+    expect(normalizeExpiry('2023')).toBeNull(); // 연도만
+    expect(normalizeExpiry('04/2023/15')).toBeNull();
   });
 });

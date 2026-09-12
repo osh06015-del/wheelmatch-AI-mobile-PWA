@@ -65,7 +65,47 @@ export const id: Messages = {
   'rule.unitConsistency': 'Konsistensi label',
   'rule.mountingSpec': 'Diameter lubang pemasangan',
   'rule.peripheralSpeed': 'Pemeriksaan silang kecepatan keliling',
+  'rule.expiry': 'Tanggal kedaluwarsa',
   'rule.confidence': 'Keyakinan pembacaan',
+  'expiry.source':
+    'Dasar kedaluwarsa: hanya bulan/tahun yang tercetak pada label yang dipakai. Tidak pernah dihitung dari tanggal produksi. Format penandaan mengikuti oSa "Product marking requirements for bonded abrasives" (2020-04, berdasarkan EN 12413:2019). Naskah EN 12413 sendiri belum dibaca. Menganggap bulan yang tertera masih berlaku sampai hari terakhirnya adalah tafsiran aplikasi ini, bukan peraturan. Pasal 122 Peraturan Standar Keselamatan dan Kesehatan Kerja Korea tidak memuat ketentuan kedaluwarsa.',
+
+  'wheelCondition.title': 'Periksa kondisi batu gerinda sendiri',
+  'wheelCondition.note':
+    'Sebelum dipasang, periksa sendiri kedua sisi, tepi, dan area pemasangan batu gerinda.',
+  'wheelCondition.aiBoundary':
+    'AI hanya dapat memperingatkan kerusakan terlihat yang dicurigai. AI tidak memastikan batu gerinda bebas kerusakan atau pekerjaan aman.',
+  'wheelCondition.aiDamageWarning':
+    'AI mencurigai tanda kerusakan yang terlihat pada foto. Periksa sendiri batu gerinda dengan teliti.',
+  'wheelCondition.labelWarning':
+    'AI tidak dapat membaca cukup informasi label. Periksa label asli dan koreksi nilai di atas.',
+  'wheelCondition.expiryWarning':
+    'AI tidak dapat membaca tanggal kedaluwarsa. Periksa sendiri bulan/tahun pada label.',
+  'wheelCondition.damageFree':
+    'Tidak ada pecah, retak, retak rambut, atau gompal pada tepi?',
+  'wheelCondition.damageFreeHint':
+    'Jangan hanya mengandalkan foto; putar dan periksa seluruh batu gerinda di tempat terang',
+  'wheelCondition.notDeformed':
+    'Batu gerinda tidak melengkung atau berubah bentuk?',
+  'wheelCondition.notDeformedHint':
+    'Pilih Ada masalah jika tidak rata, terpuntir, atau menggembung',
+  'wheelCondition.mountingAreaUndamaged':
+    'Lubang tengah dan area pemasangan tidak tampak rusak?',
+  'wheelCondition.mountingAreaUndamagedHint':
+    'Periksa kedua sisi sekitar lubang tengah dari gompal, aus, atau perubahan bentuk',
+  'wheelCondition.labelLegible': 'Label dan spesifikasi utama dapat dikenali?',
+  'wheelCondition.labelLegibleHint':
+    'Pastikan RPM, diameter, kegunaan, dan tanda lain yang perlu dibandingkan dapat dibaca',
+  'wheelCondition.expiryValid': 'Tanggal kedaluwarsa pada label masih berlaku?',
+  'wheelCondition.expiryValidHint':
+    'Baca bulan/tahun pada label; jangan memperkirakan dari tanggal produksi',
+  'wheelCondition.confirmed': 'Sudah diperiksa',
+  'wheelCondition.issue': 'Ada masalah',
+  'wheelCondition.incomplete':
+    'Anda harus memeriksa sendiri {count} butir yang tersisa sebelum membandingkan spesifikasi.',
+  'wheelCondition.stopTitle': 'JANGAN GUNAKAN BATU GERINDA INI',
+  'wheelCondition.stopBody':
+    'Ditemukan masalah pada batu gerinda. Jangan pasang. Ganti dengan batu gerinda lain yang layak dan periksa lagi.',
 
   'action.title': 'JANGAN DIGUNAKAN',
   'action.rpmSafety':
@@ -74,6 +114,8 @@ export const id: Messages = {
     'Jangan pasang batu gerinda ini. Ganti dengan yang diameternya tidak melebihi batas gerinda.',
   'action.workPurpose':
     'Ganti dengan batu gerinda yang sesuai pekerjaan hari ini. Batu gerinda dengan kegunaan lain mudah pecah.',
+  'action.expiry':
+    'Jangan pasang batu gerinda ini. Tanggal kedaluwarsa pada labelnya sudah lewat. Ganti dengan yang masih berlaku.',
   'action.generic':
     'Jangan pasang batu gerinda ini. Ganti dengan yang memenuhi syarat.',
 
@@ -86,9 +128,6 @@ export const id: Messages = {
   'checklist.auxiliaryHandle': 'Gagang samping terpasang',
   'checklist.auxiliaryHandleHint':
     'Pastikan Anda bisa memegang dengan dua tangan untuk menahan hentakan balik',
-  'checklist.wheelDamage': 'Batu gerinda tidak rusak',
-  'checklist.wheelDamageHint':
-    'Periksa retak, gompal, atau bengkok (jika ada, segera ganti)',
   'checklist.ppe': 'APD dipakai',
   'checklist.ppeHint':
     'Periksa kacamata pengaman, sarung tangan, dan pelindung wajah',

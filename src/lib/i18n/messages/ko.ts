@@ -62,7 +62,45 @@ export const ko = {
   'rule.unitConsistency': '표기 일치',
   'rule.mountingSpec': '장착 규격',
   'rule.peripheralSpeed': '원주속도 교차검증',
+  'rule.expiry': '유효기한',
   'rule.confidence': '신뢰도 검증',
+  'expiry.source':
+    '유효기한 근거: 라벨에 표시된 월/연 표기만 씁니다. 제조일에서 계산하지 않습니다. 표시 형식은 oSa 「Product marking requirements for bonded abrasives」(2020-04, EN 12413:2019 기준)를 따랐습니다. EN 12413 원문은 확인하지 못했습니다. 표시된 달의 말일까지 유효로 보는 것은 이 앱의 해석이며 규정이 아닙니다. 한국 산업안전보건기준에 관한 규칙 제122조에는 유효기한 조항이 없습니다.',
+
+  'wheelCondition.title': '숫돌 상태 직접 확인',
+  'wheelCondition.note':
+    '숫돌을 장착하기 전에 실제 숫돌의 앞·뒤·가장자리와 장착부를 직접 확인하세요.',
+  'wheelCondition.aiBoundary':
+    'AI는 사진에서 의심되는 손상만 알릴 수 있으며, 손상 없음이나 작업 안전을 정상으로 확정하지 않습니다.',
+  'wheelCondition.aiDamageWarning':
+    'AI가 사진에서 눈에 띄는 손상 징후를 의심했습니다. 숫돌을 직접 자세히 확인하세요.',
+  'wheelCondition.labelWarning':
+    'AI가 라벨 정보를 충분히 읽지 못했습니다. 실제 라벨을 직접 확인하고 위 값을 보정하세요.',
+  'wheelCondition.expiryWarning':
+    'AI가 유효기한을 읽지 못했습니다. 라벨의 월/연 표기를 직접 확인하세요.',
+  'wheelCondition.damageFree': '깨짐·갈라짐·잔금·모서리 파손이 없는가?',
+  'wheelCondition.damageFreeHint':
+    '사진만 믿지 말고 밝은 곳에서 숫돌 전체를 돌려 보며 확인',
+  'wheelCondition.notDeformed': '숫돌이 휘거나 변형되지 않았는가?',
+  'wheelCondition.notDeformedHint':
+    '평평하지 않거나 뒤틀림·부풀음이 보이면 문제 있음 선택',
+  'wheelCondition.mountingAreaUndamaged':
+    '중심구멍과 장착부에 눈에 띄는 손상이 없는가?',
+  'wheelCondition.mountingAreaUndamagedHint':
+    '중심구멍 주변의 깨짐·마모·변형을 앞뒤에서 확인',
+  'wheelCondition.labelLegible': '라벨과 핵심 규격을 식별할 수 있는가?',
+  'wheelCondition.labelLegibleHint':
+    'RPM·지름·용도 등 대조에 필요한 표기를 직접 읽을 수 있는지 확인',
+  'wheelCondition.expiryValid': '라벨의 유효기한이 남아 있는가?',
+  'wheelCondition.expiryValidHint':
+    '제조일로 추정하지 말고 라벨에 표시된 월/연을 직접 확인',
+  'wheelCondition.confirmed': '확인함',
+  'wheelCondition.issue': '문제 있음',
+  'wheelCondition.incomplete':
+    '남은 {count}개 항목을 작업자가 직접 확인해야 규격 대조로 진행할 수 있습니다.',
+  'wheelCondition.stopTitle': '이 숫돌을 사용하지 마십시오',
+  'wheelCondition.stopBody':
+    '숫돌 상태에 문제가 확인되었습니다. 장착하지 말고 사용 가능한 다른 숫돌로 교체한 뒤 다시 점검하세요.',
 
   'action.title': '사용하지 마십시오',
   'action.rpmSafety':
@@ -71,6 +109,8 @@ export const ko = {
     '이 숫돌을 장착하지 마세요. 그라인더가 허용하는 지름 이하의 숫돌로 교체해야 합니다.',
   'action.workPurpose':
     '오늘 작업에 맞는 용도의 숫돌로 교체하세요. 용도가 다른 숫돌은 파손 위험이 큽니다.',
+  'action.expiry':
+    '이 숫돌을 장착하지 마세요. 라벨의 유효기한이 지났습니다. 기한이 남은 숫돌로 교체하세요.',
   'action.generic': '이 숫돌을 장착하지 마세요. 조건에 맞는 숫돌로 교체하세요.',
 
   'checklist.title': '안전 체크리스트',
@@ -79,9 +119,6 @@ export const ko = {
   'checklist.guardCoverHint': '숫돌 노출 각도가 규정대로 덮여 있는지 확인',
   'checklist.auxiliaryHandle': '보조손잡이 장착',
   'checklist.auxiliaryHandleHint': '반동에 대비해 양손으로 잡을 수 있는지 확인',
-  'checklist.wheelDamage': '숫돌 손상 없음',
-  'checklist.wheelDamageHint':
-    '균열·깨짐·변형이 없는지 확인 (있으면 즉시 교체)',
   'checklist.ppe': '보호구 착용',
   'checklist.ppeHint': '보안경·장갑·안면보호구 착용 여부 확인',
   'checklist.preWork':

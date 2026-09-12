@@ -11,7 +11,12 @@
 // hydration 시점에 값이 한 박자 늦게 들어와 잘못된 화면 전환을 유발한다.
 
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
-import type { GrinderSpec, WheelSpec, WorkPurpose } from '@/lib/rules/types';
+import type {
+  GrinderSpec,
+  WheelCondition,
+  WheelSpec,
+  WorkPurpose,
+} from '@/lib/rules/types';
 
 const GRINDER_KEY = 'wheelmatch.grinder';
 const WHEEL_KEY = 'wheelmatch.wheel';
@@ -19,6 +24,7 @@ const PURPOSE_KEY = 'wheelmatch.purpose';
 const STARTED_KEY = 'wheelmatch.startedAt';
 const GRINDER_OCR_KEY = 'wheelmatch.grinderOcr';
 const WHEEL_OCR_KEY = 'wheelmatch.wheelOcr';
+const WHEEL_CONDITION_KEY = 'wheelmatch.wheelCondition';
 
 interface InspectionState {
   /** 작업자가 시작할 때 고른 오늘의 작업 */
@@ -35,6 +41,8 @@ interface InspectionState {
    */
   grinderOcr: GrinderSpec | null;
   wheelOcr: WheelSpec | null;
+  /** 작업자가 직접 답한 숫돌 상태 확인. AI가 채우지 않는다. */
+  wheelCondition: WheelCondition | null;
   grinderImage: Blob | null;
   wheelImage: Blob | null;
   /** 서버 렌더 결과에서는 false. 브라우저 값이 반영된 뒤에만 true가 된다. */
@@ -49,6 +57,7 @@ const SERVER_SNAPSHOT: InspectionState = {
   wheel: null,
   grinderOcr: null,
   wheelOcr: null,
+  wheelCondition: null,
   grinderImage: null,
   wheelImage: null,
   hydrated: false,
@@ -80,6 +89,7 @@ function initialClientState(): InspectionState {
     wheel: readStored<WheelSpec>(WHEEL_KEY),
     grinderOcr: readStored<GrinderSpec>(GRINDER_OCR_KEY),
     wheelOcr: readStored<WheelSpec>(WHEEL_OCR_KEY),
+    wheelCondition: readStored<WheelCondition>(WHEEL_CONDITION_KEY),
     grinderImage: null,
     wheelImage: null,
     hydrated: true,
@@ -124,6 +134,7 @@ export interface InspectionStore extends InspectionState {
     image?: Blob | null,
     ocr?: WheelSpec | null,
   ) => void;
+  setWheelCondition: (condition: WheelCondition) => void;
   reset: () => void;
 }
 
@@ -161,14 +172,26 @@ export function useInspection(): InspectionStore {
     (spec: WheelSpec, image?: Blob | null, ocr?: WheelSpec | null) => {
       writeStored(WHEEL_KEY, spec);
       if (ocr !== undefined) writeStored(WHEEL_OCR_KEY, ocr);
+      // 숫돌이 바뀌면 이전 숫돌에 대한 직접 확인은 재사용할 수 없다.
+      try {
+        window.sessionStorage.removeItem(WHEEL_CONDITION_KEY);
+      } catch {
+        // 메모리 상태는 아래에서 반드시 지운다.
+      }
       setState({
         wheel: spec,
+        wheelCondition: null,
         ...(image === undefined ? {} : { wheelImage: image }),
         ...(ocr === undefined ? {} : { wheelOcr: ocr }),
       });
     },
     [],
   );
+
+  const setWheelCondition = useCallback((condition: WheelCondition) => {
+    writeStored(WHEEL_CONDITION_KEY, condition);
+    setState({ wheelCondition: condition });
+  }, []);
 
   const reset = useCallback(() => {
     try {
@@ -178,6 +201,7 @@ export function useInspection(): InspectionStore {
       window.sessionStorage.removeItem(WHEEL_KEY);
       window.sessionStorage.removeItem(GRINDER_OCR_KEY);
       window.sessionStorage.removeItem(WHEEL_OCR_KEY);
+      window.sessionStorage.removeItem(WHEEL_CONDITION_KEY);
     } catch {
       // 무시한다.
     }
@@ -188,6 +212,7 @@ export function useInspection(): InspectionStore {
       wheel: null,
       grinderOcr: null,
       wheelOcr: null,
+      wheelCondition: null,
       grinderImage: null,
       wheelImage: null,
     });
@@ -200,8 +225,9 @@ export function useInspection(): InspectionStore {
       setPurpose,
       setGrinder,
       setWheel,
+      setWheelCondition,
       reset,
     }),
-    [snapshot, setPurpose, setGrinder, setWheel, reset],
+    [snapshot, setPurpose, setGrinder, setWheel, setWheelCondition, reset],
   );
 }

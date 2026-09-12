@@ -24,7 +24,8 @@ import { ResultCard } from '@/components/ResultCard';
 import { useLocale } from '@/lib/i18n';
 import { saveInspection } from '@/lib/db';
 import { elapsedSince } from '@/lib/record/elapsed';
-import { matchSpecs } from '@/lib/rules/engine';
+import { matchSpecs, toDateOnly } from '@/lib/rules/engine';
+import { isWheelConditionComplete } from '@/lib/safety/wheelCondition';
 import { useInspection } from '@/lib/state/inspection';
 import type { SafetyChecklist } from '@/lib/rules/types';
 
@@ -38,6 +39,7 @@ export default function ResultPage() {
     wheel,
     grinderOcr,
     wheelOcr,
+    wheelCondition,
     grinderImage,
     wheelImage,
     hydrating,
@@ -49,22 +51,38 @@ export default function ResultPage() {
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // 두 값이 모두 없으면 대조할 것이 없다. 처음으로 돌린다.
+  // 규격과 작업자 직접 상태 확인이 모두 없으면 대조 결과를 보여주지 않는다.
   //
   // 저장 직후에는 이 가드를 건너뛴다. 저장하면서 값을 비우는데,
   // 그 때문에 이력 화면으로 가기도 전에 메인으로 튕겨 나가면 안 된다.
   useEffect(() => {
     if (saved) return;
-    if (!hydrating && (!grinder || !wheel)) router.replace('/');
-  }, [saved, hydrating, grinder, wheel, router]);
+    if (hydrating) return;
+    if (!grinder) router.replace('/');
+    else if (!wheel || !isWheelConditionComplete(wheelCondition)) {
+      router.replace('/scan/wheel');
+    }
+  }, [saved, hydrating, grinder, wheel, wheelCondition, router]);
+
+  // 유효기한 만료 판정의 기준일. 엔진은 시계를 읽지 않으므로 여기서 넣는다.
+  // 로컬 날짜를 쓴다 — UTC로 바꾸면 오전 9시 이전에 하루가 어긋난다.
+  // 이 화면이 열려 있는 동안 기준일이 바뀌지 않도록 한 번만 계산한다.
+  const today = useMemo(() => toDateOnly(new Date()), []);
 
   const result = useMemo(
     () =>
-      grinder && wheel ? matchSpecs(grinder, wheel, { declaredPurpose }) : null,
-    [grinder, wheel, declaredPurpose],
+      grinder && wheel
+        ? matchSpecs(grinder, wheel, { declaredPurpose, today })
+        : null,
+    [grinder, wheel, declaredPurpose, today],
   );
 
-  if (!grinder || !wheel || !result) {
+  if (
+    !grinder ||
+    !wheel ||
+    !result ||
+    !isWheelConditionComplete(wheelCondition)
+  ) {
     return (
       <main className="flex flex-1 items-center justify-center px-6">
         <p className="text-lg text-slate-400">{t('result.loading')}</p>
@@ -76,13 +94,21 @@ export default function ResultPage() {
   const complete = isChecklistComplete(checklist);
 
   async function save() {
-    if (!grinder || !wheel || !result) return;
+    if (
+      !grinder ||
+      !wheel ||
+      !result ||
+      !isWheelConditionComplete(wheelCondition)
+    ) {
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     try {
       await saveInspection({
         grinder,
         wheel,
+        wheelCondition,
         result,
         checklist,
         declaredPurpose,

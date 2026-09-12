@@ -37,6 +37,7 @@ function wheel(overrides: Partial<WheelSpec> = {}): WheelSpec {
     purpose: 'cutting',
     wheelType: 'bonded_abrasive',
     visibleDamage: 'none_visible',
+    expiry: { year: 2027, month: 4 },
     rawText: '',
     confidence: 'high',
     ...overrides,
@@ -127,9 +128,12 @@ describe('wheelRequirements', () => {
       diameter: g.maxWheelDiameter!,
       purpose: 'cutting',
     });
-    expect(matchSpecs(g, exact, { declaredPurpose: 'cutting' }).verdict).toBe(
-      'COMPATIBLE',
-    );
+    expect(
+      matchSpecs(g, exact, {
+        declaredPurpose: 'cutting',
+        today: '2026-09-08',
+      }).verdict,
+    ).toBe('COMPATIBLE');
   });
 });
 

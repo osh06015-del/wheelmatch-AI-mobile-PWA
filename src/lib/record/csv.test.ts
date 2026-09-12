@@ -26,6 +26,36 @@ const WHEEL: WheelSpec = {
   confidence: 'high',
 };
 
+const LEGACY_COLUMNS = [
+  'id',
+  'createdAt',
+  'elapsedMs',
+  'declaredPurpose',
+  'verdict',
+  'failedRules',
+  'grinderModel',
+  'grinderRPM',
+  'grinderMaxDiameter',
+  'grinderConfidence',
+  'grinderRPM_ocr',
+  'grinderMaxDiameter_ocr',
+  'grinderEdited',
+  'wheelMaxRPM',
+  'wheelDiameter',
+  'wheelThickness',
+  'wheelPurpose',
+  'wheelType',
+  'visibleDamage',
+  'wheelConfidence',
+  'wheelMaxRPM_ocr',
+  'wheelDiameter_ocr',
+  'wheelEdited',
+  'checkGuardCover',
+  'checkAuxiliaryHandle',
+  'checkWheelDamage',
+  'checkPPE',
+] as const;
+
 function record(overrides: Partial<InspectionRecord> = {}): InspectionRecord {
   return {
     id: 1,
@@ -69,6 +99,10 @@ describe('toCsv', () => {
   it('첫 줄은 열 이름이다', () => {
     const [header] = parse(toCsv([]));
     expect(header).toEqual([...CSV_COLUMNS]);
+  });
+
+  it('기존 27열의 이름과 순서를 유지하고 상태 확인 열은 뒤에만 붙인다', () => {
+    expect(CSV_COLUMNS.slice(0, LEGACY_COLUMNS.length)).toEqual(LEGACY_COLUMNS);
   });
 
   it('모든 줄의 칸 수가 열 이름 수와 같다', () => {
@@ -165,6 +199,36 @@ describe('toCsv', () => {
     expect(row[CSV_COLUMNS.indexOf('checkGuardCover')]).toBe('Y');
     expect(row[CSV_COLUMNS.indexOf('checkAuxiliaryHandle')]).toBe('N');
     expect(row[CSV_COLUMNS.indexOf('checkWheelDamage')]).toBe('');
+  });
+
+  it('숫돌 상태 직접 확인을 별도 열에 기록한다', () => {
+    const csv = toCsv([
+      record({
+        wheelCondition: {
+          damageFree: true,
+          notDeformed: true,
+          mountingAreaUndamaged: false,
+          labelLegible: true,
+          expiryValid: null,
+        },
+      }),
+    ]);
+    const [, row] = parse(csv);
+
+    expect(row[CSV_COLUMNS.indexOf('conditionDamageFree')]).toBe('Y');
+    expect(row[CSV_COLUMNS.indexOf('conditionNotDeformed')]).toBe('Y');
+    expect(row[CSV_COLUMNS.indexOf('conditionMountingAreaUndamaged')]).toBe(
+      'N',
+    );
+    expect(row[CSV_COLUMNS.indexOf('conditionLabelLegible')]).toBe('Y');
+    expect(row[CSV_COLUMNS.indexOf('conditionExpiryValid')]).toBe('');
+  });
+
+  it('Gate 도입 전 기록의 새 열은 빈 칸으로 둔다', () => {
+    const [, row] = parse(toCsv([record()]));
+    for (const column of CSV_COLUMNS.slice(LEGACY_COLUMNS.length)) {
+      expect(row[CSV_COLUMNS.indexOf(column)]).toBe('');
+    }
   });
 
   it('Excel이 한글을 깨뜨리지 않게 BOM을 붙인다', () => {

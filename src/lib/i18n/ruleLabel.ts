@@ -22,6 +22,7 @@ export const RULE_MESSAGE_KEY: Readonly<Record<string, MessageKey>> = {
   [RULE.UNIT_CONSISTENCY]: 'rule.unitConsistency',
   [RULE.MOUNTING_SPEC]: 'rule.mountingSpec',
   [RULE.PERIPHERAL_SPEED]: 'rule.peripheralSpeed',
+  [RULE.EXPIRY]: 'rule.expiry',
   [RULE.CONFIDENCE]: 'rule.confidence',
 };
 
@@ -35,4 +36,5 @@ export const ACTION_MESSAGE_KEY: Readonly<Record<string, MessageKey>> = {
   [RULE.RPM_SAFETY]: 'action.rpmSafety',
   [RULE.DIAMETER_FIT]: 'action.diameterFit',
   [RULE.WORK_PURPOSE]: 'action.workPurpose',
+  [RULE.EXPIRY]: 'action.expiry',
 };
