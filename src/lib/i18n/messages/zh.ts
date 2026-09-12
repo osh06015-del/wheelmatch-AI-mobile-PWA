@@ -65,6 +65,10 @@ export const zh: Messages = {
   'expiry.source':
     '有效期依据：只使用标签上印刷的月/年标示，不从生产日期推算。标示格式依据 oSa《Product marking requirements for bonded abrasives》（2020-04，以 EN 12413:2019 为准）。EN 12413 原文未查阅。将标示月份视为有效至该月最后一天，是本应用的解读，并非法规。韩国《产业安全保健基准规则》第122条没有有效期条款。',
 
+  'ruleVersion.label': '规则版本',
+  'ruleVersion.note':
+    '本次判定所用规则的出处与适用范围。这不是法律认证，也不是法规符合性保证。',
+  'ruleVersion.missing': '未记录（该功能上线前的检查）',
   'trialRun.title': '试运转',
   'trialRun.legalBasis':
     '韩国《产业安全保健基准规则》第122条第2款要求：开始作业前试运转 1 分钟以上，更换砂轮后试运转 3 分钟以上，并确认机器有无异常。本应用只负责计时并记录你的回答，不能替代该法定程序。',

@@ -303,5 +303,10 @@ export interface InspectionRecord {
    * 이 기능 도입 전 기록과 시계가 뒤로 간 경우에는 없다.
    */
   elapsedMs?: number;
+  /**
+   * 이 판정에 쓰인 규칙 세트 버전. 기능 도입 전 기록에는 없다 —
+   * 없는 것을 특정 버전으로 채우면 어느 규칙으로 나온 판정인지 알 수 없게 된다.
+   */
+  ruleVersion?: string;
   createdAt: string;
 }

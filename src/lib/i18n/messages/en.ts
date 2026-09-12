@@ -67,6 +67,10 @@ export const en: Messages = {
   'expiry.source':
     'Expiry basis: only the month/year printed on the label is used. It is never calculated from the manufacturing date. The marking format follows oSa "Product marking requirements for bonded abrasives" (2020-04, based on EN 12413:2019). The EN 12413 text itself was not read. Treating the marked month as valid through its last day is this app\'s reading, not a regulation. Korea\'s Rules on Occupational Safety and Health Standards Article 122 has no expiry clause.',
 
+  'ruleVersion.label': 'Ruleset version',
+  'ruleVersion.note':
+    'Where the rules used for this result come from, and what each covers. This is not a legal certification or a guarantee of regulatory compliance.',
+  'ruleVersion.missing': 'Not recorded (inspection predates this feature)',
   'trialRun.title': 'Trial run',
   'trialRun.legalBasis':
     "Korea's Rules on Occupational Safety and Health Standards, Article 122(2), require a trial run of at least 1 minute before starting work and at least 3 minutes after replacing a wheel, checking the machine for anything abnormal. This app only times it and records your answer. It does not replace the procedure.",

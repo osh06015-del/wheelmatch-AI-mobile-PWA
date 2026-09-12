@@ -21,11 +21,13 @@ import { HazardList } from '@/components/HazardList';
 import { LanguagePicker } from '@/components/LanguagePicker';
 import { NotVerifiablePanel } from '@/components/NotVerifiablePanel';
 import { ResultCard } from '@/components/ResultCard';
+import { RuleVersionNote } from '@/components/RuleVersionNote';
 import { TrialRunPanel, TrialRunStopNotice } from '@/components/TrialRunPanel';
 import { useLocale } from '@/lib/i18n';
 import { saveInspection } from '@/lib/db';
 import { elapsedSince } from '@/lib/record/elapsed';
 import { matchSpecs, toDateOnly } from '@/lib/rules/engine';
+import { RULESET_VERSION } from '@/lib/rules/version';
 import { isGrinderConditionComplete } from '@/lib/safety/grinderCondition';
 import {
   canStartTrialRun,
@@ -174,6 +176,7 @@ export default function ResultPage() {
         wheelOcr: wheelOcr ?? undefined,
         grinderImage: grinderImage ?? undefined,
         wheelImage: wheelImage ?? undefined,
+        ruleVersion: RULESET_VERSION,
         createdAt: new Date().toISOString(),
       });
       setSaved(true);
@@ -225,6 +228,8 @@ export default function ResultPage() {
           </div>
         </div>
       )}
+
+      <RuleVersionNote />
 
       <NotVerifiablePanel />
 

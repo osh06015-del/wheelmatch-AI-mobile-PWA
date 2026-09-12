@@ -6,6 +6,7 @@
 // 기록이 증빙이 된다. 사진은 IndexedDB 안, 즉 이 기기에만 있다.
 
 import { useCallback, useState } from 'react';
+import { RuleVersionNote } from './RuleVersionNote';
 
 import { formatElapsed } from '@/lib/record/elapsed';
 import type { InspectionRecord, Verdict, WorkPurpose } from '@/lib/rules/types';
@@ -177,6 +178,10 @@ export function HistoryList({ records }: { records: InspectionRecord[] }) {
                     </li>
                   ))}
                 </ul>
+
+                {/* 저장 당시의 버전을 보여준다. 지금 버전으로 채우면
+                    어느 규칙으로 나온 판정인지 거짓으로 적게 된다. */}
+                <RuleVersionNote version={record.ruleVersion ?? null} />
               </div>
             )}
           </li>

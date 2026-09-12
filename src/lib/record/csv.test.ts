@@ -264,6 +264,7 @@ describe('toCsv', () => {
       ...grinderColumns,
       ...trialRunColumns,
       ...environmentColumns,
+      'ruleVersion',
     ]);
   });
 
@@ -383,5 +384,22 @@ describe('csvFilename', () => {
     expect(csvFilename(new Date(2026, 8, 1, 9, 5))).toBe(
       'wheelmatch-20260901-0905.csv',
     );
+  });
+});
+
+describe('규칙 버전 열', () => {
+  it('ruleVersion이 맨 마지막 열이다', () => {
+    expect(CSV_COLUMNS[CSV_COLUMNS.length - 1]).toBe('ruleVersion');
+  });
+
+  it('기록에 남은 버전을 그대로 적는다', () => {
+    const [, row] = parse(toCsv([record({ ruleVersion: '2026.09.12-r1' })]));
+    expect(row[CSV_COLUMNS.indexOf('ruleVersion')]).toBe('2026.09.12-r1');
+  });
+
+  it('기능 도입 전 기록은 빈 칸이다', () => {
+    // 지금 버전으로 채우면 어느 규칙으로 나온 판정인지 거짓으로 적게 된다.
+    const [, row] = parse(toCsv([record()]));
+    expect(row[CSV_COLUMNS.indexOf('ruleVersion')]).toBe('');
   });
 });

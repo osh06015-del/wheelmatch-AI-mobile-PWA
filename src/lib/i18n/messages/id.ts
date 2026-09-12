@@ -71,6 +71,10 @@ export const id: Messages = {
   'expiry.source':
     'Dasar kedaluwarsa: hanya bulan/tahun yang tercetak pada label yang dipakai. Tidak pernah dihitung dari tanggal produksi. Format penandaan mengikuti oSa "Product marking requirements for bonded abrasives" (2020-04, berdasarkan EN 12413:2019). Naskah EN 12413 sendiri belum dibaca. Menganggap bulan yang tertera masih berlaku sampai hari terakhirnya adalah tafsiran aplikasi ini, bukan peraturan. Pasal 122 Peraturan Standar Keselamatan dan Kesehatan Kerja Korea tidak memuat ketentuan kedaluwarsa.',
 
+  'ruleVersion.label': 'Versi set aturan',
+  'ruleVersion.note':
+    'Sumber dan cakupan aturan yang dipakai untuk hasil ini. Ini bukan sertifikasi hukum atau jaminan kepatuhan peraturan.',
+  'ruleVersion.missing': 'Tidak tercatat (pemeriksaan sebelum fitur ini ada)',
   'trialRun.title': 'Uji putar',
   'trialRun.legalBasis':
     'Pasal 122 ayat (2) Peraturan Standar Keselamatan dan Kesehatan Kerja Korea mewajibkan uji putar minimal 1 menit sebelum mulai bekerja dan minimal 3 menit setelah mengganti batu gerinda, sambil memeriksa apakah ada yang tidak wajar. Aplikasi ini hanya menghitung waktu dan mencatat jawaban Anda, bukan menggantikan prosedur itu.',

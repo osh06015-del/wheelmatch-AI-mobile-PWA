@@ -71,6 +71,10 @@ export const vi: Messages = {
   'expiry.source':
     'Căn cứ hạn sử dụng: chỉ dùng tháng/năm in trên nhãn. Không tính từ ngày sản xuất. Định dạng ghi nhãn theo oSa "Product marking requirements for bonded abrasives" (2020-04, dựa trên EN 12413:2019). Bản gốc EN 12413 chưa được đọc. Việc coi đá mài còn hạn đến ngày cuối của tháng ghi trên nhãn là cách hiểu của ứng dụng này, không phải quy định. Điều 122 Quy định về tiêu chuẩn an toàn vệ sinh lao động của Hàn Quốc không có điều khoản về hạn sử dụng.',
 
+  'ruleVersion.label': 'Phiên bản bộ quy tắc',
+  'ruleVersion.note':
+    'Nguồn và phạm vi áp dụng của các quy tắc dùng cho kết quả này. Đây không phải chứng nhận pháp lý hay bảo đảm tuân thủ quy định.',
+  'ruleVersion.missing': 'Chưa ghi (kiểm tra trước khi có tính năng này)',
   'trialRun.title': 'Chạy thử',
   'trialRun.legalBasis':
     'Điều 122 khoản 2 Quy định về tiêu chuẩn an toàn vệ sinh lao động Hàn Quốc yêu cầu chạy thử ít nhất 1 phút trước khi bắt đầu làm việc và ít nhất 3 phút sau khi thay đá mài, đồng thời kiểm tra máy có bất thường không. Ứng dụng chỉ bấm giờ và ghi lại câu trả lời, không thay thế thủ tục đó.',

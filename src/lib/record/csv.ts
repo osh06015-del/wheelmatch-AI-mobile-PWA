@@ -61,6 +61,8 @@ export const CSV_COLUMNS = [
   // 작업 환경 체크는 나중에 붙었다. 앞선 열을 밀지 않도록 맨 뒤에 둔다.
   'checkWorkpieceSecured',
   'checkSurroundingsClear',
+  // 어느 규칙으로 나온 판정인지. 기능 도입 전 기록은 빈 칸이다.
+  'ruleVersion',
 ] as const;
 
 /**
@@ -158,6 +160,7 @@ function row(record: InspectionRecord): string {
     record.trialRun ? record.trialRun.findings.join(' ') : undefined,
     tick(checklist.workpieceSecured),
     tick(checklist.surroundingsClear),
+    record.ruleVersion,
   ];
 
   return values.map(cell).join(',');
