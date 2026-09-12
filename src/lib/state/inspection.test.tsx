@@ -6,6 +6,7 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { useInspection } from './inspection';
+import type { TrialRunProgress } from '@/lib/safety/trialRun';
 import type {
   GrinderCondition,
   GrinderSpec,
@@ -38,6 +39,13 @@ const GRINDER_CONDITION: GrinderCondition = {
   guardSecure: true,
   auxiliaryHandleSecure: true,
   spindleAssemblyUndamaged: true,
+};
+
+const PROGRESS: TrialRunProgress = {
+  wheelReplaced: true,
+  requiredSeconds: 180,
+  startedAt: '2026-09-12T09:00:00.000Z',
+  endsAt: '2026-09-12T09:03:00.000Z',
 };
 
 const WHEEL_CONDITION: WheelCondition = {
@@ -178,6 +186,41 @@ describe('useInspection', () => {
     expect(sessionStorage.getItem('wheelmatch.wheelCondition')).toBeNull();
     // 새 그라인더 값 자체는 남는다.
     expect(result.current.grinder?.noLoadRPM).toBe(8500);
+  });
+
+  it('새 숫돌이 들어오면 진행 중인 시험운전을 버린다', () => {
+    // 제122조 ②의 시간은 그 숫돌을 달고 돌린 시간이다. 숫돌이 바뀌었는데
+    // 타이머가 이어지면 새 숫돌은 한 번도 돌려보지 않고 통과한다.
+    const { result } = renderHook(() => useInspection());
+    act(() => result.current.setWheel(WHEEL));
+    act(() => result.current.setTrialRun(PROGRESS));
+
+    act(() => result.current.setWheel({ ...WHEEL, maxRPM: 8500 }));
+
+    expect(result.current.trialRun).toBeNull();
+    expect(sessionStorage.getItem('wheelmatch.trialRun')).toBeNull();
+  });
+
+  it('새 그라인더가 들어오면 진행 중인 시험운전을 버린다', () => {
+    const { result } = renderHook(() => useInspection());
+    act(() => result.current.setGrinder(GRINDER));
+    act(() => result.current.setTrialRun(PROGRESS));
+
+    act(() => result.current.setGrinder({ ...GRINDER, noLoadRPM: 8500 }));
+
+    expect(result.current.trialRun).toBeNull();
+    expect(sessionStorage.getItem('wheelmatch.trialRun')).toBeNull();
+  });
+
+  it('시험운전은 종료시각째로 저장돼 새로고침에도 이어진다', () => {
+    // 남은 시간을 저장하면 화면이 꺼져 있던 만큼이 공짜가 된다.
+    const { result } = renderHook(() => useInspection());
+    act(() => result.current.setTrialRun(PROGRESS));
+
+    expect(
+      JSON.parse(sessionStorage.getItem('wheelmatch.trialRun') ?? 'null'),
+    ).toEqual(PROGRESS);
+    expect(result.current.trialRun?.endsAt).toBe(PROGRESS.endsAt);
   });
 
   it('숫돌만 바뀔 때는 그라인더 장비 상태를 건드리지 않는다', () => {
