@@ -12,6 +12,7 @@ import { useState } from 'react';
 import { HistoryList } from '@/components/HistoryList';
 import { ResearchPanel } from '@/components/ResearchPanel';
 import { clearInspections, listInspections } from '@/lib/db';
+import { researchToolsEnabled } from '@/lib/record/researchMode';
 
 export default function HistoryPage() {
   const records = useLiveQuery(() => listInspections(50), []);
@@ -76,7 +77,11 @@ export default function HistoryPage() {
         </div>
       )}
 
-      {records !== undefined && <ResearchPanel records={records} />}
+      {/* 연구 도구는 검증 빌드에서만 그린다. CSS로 숨기지 않고 문서에서 뺀다 —
+          숨긴 요소는 스크린리더와 인쇄로 새어 나온다. */}
+      {researchToolsEnabled() && records !== undefined && (
+        <ResearchPanel records={records} />
+      )}
 
       <Link
         href="/scan/grinder"

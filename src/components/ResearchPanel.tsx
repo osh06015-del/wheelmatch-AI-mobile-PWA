@@ -2,6 +2,10 @@
 
 // 연구·실험 모드 패널. 이력 화면 맨 아래에 둔다.
 //
+// 이 패널은 연구 도구를 넣은 검증 빌드에서만 그려진다
+// (NEXT_PUBLIC_ENABLE_RESEARCH_TOOLS=true — src/app/history/page.tsx).
+// 현장 배포판에는 없다.
+//
 // 평소에는 스위치만 보이고, 켜야 CSV 내려받기가 나온다.
 // 현장에서 쓰는 사람이 실수로 눌러도 데이터가 지워지지 않는 기능들이다.
 
@@ -56,6 +60,21 @@ export function ResearchPanel({ records }: { records: InspectionRecord[] }) {
 
   return (
     <section className="flex flex-col gap-3 rounded-xl border border-slate-700 px-4 py-4">
+      {/* 스위치를 켜기 전부터 여기가 현장 화면이 아니라는 것을 보여준다.
+          판정 3색(초록·빨강·노랑)과 겹치지 않는 색을 쓴다. */}
+      <div
+        role="note"
+        className="flex flex-col gap-1 rounded-lg border border-sky-500/50 bg-sky-500/10 px-4 py-3"
+      >
+        <p className="text-base font-bold leading-relaxed text-sky-100">
+          검증/연구용 기능이며 현장 판정을 변경하지 않습니다.
+        </p>
+        <p className="text-sm leading-relaxed text-sky-200">
+          검증 빌드에서만 보입니다. 기록을 내보내고 지표를 계산할 뿐, 판정·상태
+          확인·시험운전·저장 조건에는 관여하지 않습니다.
+        </p>
+      </div>
+
       <label className="flex min-h-12 items-center justify-between gap-3">
         <span className="flex flex-col">
           <span className="text-base font-semibold text-slate-200">

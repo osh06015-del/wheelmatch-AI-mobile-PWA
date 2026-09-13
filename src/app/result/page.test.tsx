@@ -14,7 +14,7 @@ import {
   renderHook,
   screen,
 } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { replace, push } = vi.hoisted(() => ({
   replace: vi.fn(),
@@ -43,6 +43,7 @@ vi.mock('next/link', () => ({
 vi.mock('@/lib/db', () => ({ saveInspection: vi.fn() }));
 
 import ResultPage from './page';
+import { useResearchMode } from '@/lib/record/researchMode';
 import { useInspection } from '@/lib/state/inspection';
 import type {
   GrinderCondition,
@@ -433,6 +434,103 @@ describe('결과 화면 — 시험운전 절차', () => {
     expect(
       screen.getByRole('button', { name: /중지 결과 저장/ }),
     ).toBeEnabled();
+    expect(
+      screen.queryByRole('button', { name: /점검 완료 및 저장/ }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe('결과 화면 — 연구 도구 설정은 안전 판정을 바꾸지 않는다', () => {
+  // 검증 빌드에서 표본을 빨리 모으려고 절차를 건너뛰는 코드가 들어오면, 그
+  // 빌드로 모은 데이터는 현장 앱이 아니라 다른 앱의 결과가 된다. 빌드 설정과
+  // 기기의 연구 모드 스위치를 모두 켠 채로 같은 차단이 그대로인지 본다.
+  beforeEach(() => {
+    replace.mockClear();
+    push.mockClear();
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_RESEARCH_TOOLS', 'true');
+    const researchSwitch = renderHook(() => useResearchMode()).result;
+    act(() => researchSwitch.current[1](true));
+    const result = store();
+    act(() => result.current.reset());
+  });
+
+  afterEach(() => {
+    const researchSwitch = renderHook(() => useResearchMode()).result;
+    act(() => researchSwitch.current[1](false));
+    vi.unstubAllEnvs();
+  });
+
+  function ready(wheel: WheelSpec = WHEEL) {
+    const result = store();
+    act(() => {
+      result.current.setGrinder(GRINDER);
+      result.current.setGrinderCondition(GRINDER_OK);
+      result.current.setWheel(wheel);
+      result.current.setWheelCondition(CONFIRMED);
+    });
+    return result;
+  }
+
+  function checkAll() {
+    for (const box of screen.getAllByRole('checkbox')) {
+      if (!(box as HTMLInputElement).checked) fireEvent.click(box);
+    }
+  }
+
+  it('숫돌 상태 확인을 하지 않았으면 결과를 보여주지 않는다', () => {
+    const result = store();
+    act(() => {
+      result.current.setGrinder(GRINDER);
+      result.current.setGrinderCondition(GRINDER_OK);
+      result.current.setWheel(WHEEL);
+    });
+
+    render(<ResultPage />);
+
+    expect(screen.getByText(LOADING)).toBeInTheDocument();
+    expect(screen.queryByText('규격 대조 결과')).not.toBeInTheDocument();
+    expect(replace).toHaveBeenCalledWith('/scan/wheel');
+  });
+
+  it('부적합 조합은 부적합이고 시험운전을 열지 않는다', () => {
+    ready({ ...WHEEL, maxRPM: 8500 });
+    render(<ResultPage />);
+    checkAll();
+
+    expect(screen.getByText('부적합')).toBeInTheDocument();
+    expect(screen.queryByText('시험운전')).not.toBeInTheDocument();
+  });
+
+  it('적합 조합도 시험운전을 마치기 전에는 저장할 수 없다', () => {
+    ready();
+    render(<ResultPage />);
+    checkAll();
+
+    expect(screen.getByText('숫돌을 방금 교체했습니까?')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /점검 완료 및 저장/ }),
+    ).toBeDisabled();
+  });
+
+  it('시험운전에서 이상 징후를 고르면 점검 완료로 저장할 수 없다', () => {
+    const result = ready();
+    act(() =>
+      result.current.setTrialRun({
+        wheelReplaced: false,
+        requiredSeconds: 60,
+        startedAt: new Date(Date.now() - 65_000).toISOString(),
+        endsAt: new Date(Date.now() - 5_000).toISOString(),
+      }),
+    );
+    render(<ResultPage />);
+    checkAll();
+    fireEvent.click(screen.getAllByRole('checkbox').at(-1)!);
+
+    expect(
+      screen.getByRole('button', { name: /이상 없음 확인/ }),
+    ).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: /이상 있음/ }));
+    expect(screen.getByText('작업하지 마십시오')).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /점검 완료 및 저장/ }),
     ).not.toBeInTheDocument();
