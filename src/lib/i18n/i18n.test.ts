@@ -115,7 +115,8 @@ describe('쓰이지 않는 문구', () => {
     for (const name of readdirSync(dir)) {
       const path = join(dir, name);
       if (statSync(path).isDirectory()) {
-        out += appSource(path);
+        // E2E 흐름 테스트 도구는 문구 키로 화면을 찾는다. 앱이 쓰는 것으로 세지 않는다.
+        if (name !== 'e2e') out += appSource(path);
       } else if (
         /\.tsx?$/.test(name) &&
         !name.includes('.test.') &&

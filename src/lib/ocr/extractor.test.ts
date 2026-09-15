@@ -8,7 +8,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ExtractError, failureFromResponse } from './errors';
-import { ClaudeExtractor } from './extractor';
+import {
+  ClaudeExtractor,
+  getExtractor,
+  setExtractorForTesting,
+  type OCRExtractor,
+} from './extractor';
 
 const PHOTO = new Blob(['x'], { type: 'image/jpeg' });
 
@@ -104,4 +109,49 @@ describe('failureFromResponse', () => {
   it('알려진 code는 상태 코드보다 앞선다', () => {
     expect(failureFromResponse(500, 'server_config')).toBe('server_config');
   });
+});
+
+describe('테스트 추출기 경계 — 테스트 밖에서는 켜지지 않는다', () => {
+  const fixture: OCRExtractor = {
+    extractGrinder: async () => {
+      throw new Error('fixture');
+    },
+    extractWheel: async () => {
+      throw new Error('fixture');
+    },
+  };
+
+  afterEach(() => {
+    // 환경을 먼저 되돌려야 테스트에서만 되는 해제를 부를 수 있다.
+    vi.unstubAllEnvs();
+    setExtractorForTesting(null);
+  });
+
+  it('테스트에서는 넣은 추출기를 쓴다', () => {
+    setExtractorForTesting(fixture);
+    expect(getExtractor()).toBe(fixture);
+  });
+
+  it('비워 두면 원래 추출기로 돌아간다', () => {
+    setExtractorForTesting(fixture);
+    setExtractorForTesting(null);
+    expect(getExtractor('claude')).toBeInstanceOf(ClaudeExtractor);
+  });
+
+  it.each(['production', 'development'])(
+    '%s에서는 넣을 수 없다 — 조용히 무시하지 않고 막는다',
+    (env) => {
+      vi.stubEnv('NODE_ENV', env);
+      expect(() => setExtractorForTesting(fixture)).toThrow();
+    },
+  );
+
+  it.each(['production', 'development'])(
+    '%s에서는 이미 넣어 둔 추출기도 쓰지 않는다',
+    (env) => {
+      setExtractorForTesting(fixture);
+      vi.stubEnv('NODE_ENV', env);
+      expect(getExtractor('claude')).toBeInstanceOf(ClaudeExtractor);
+    },
+  );
 });

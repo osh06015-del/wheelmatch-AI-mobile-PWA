@@ -100,8 +100,13 @@ expect(matchSpecs(g, w).verdict).toBe('UNDETERMINED'); // 여기까지
 - 순수 로직 → 해당 모듈 옆에 `*.test.ts`
 - 정규식 파서 → `src/lib/ocr/parser.test.ts`에 케이스 추가
 - 컴포넌트 → 컴포넌트 옆에 `*.test.tsx`
+- 점검 흐름 전체(작업 선택 → 촬영 → Gate → 결과 → 시험운전 → 저장 → 이력)
+  → `src/e2e/*.e2e.test.tsx`. 실제 페이지를 이어 붙이고 카메라·OCR·사진 디코딩·
+  IndexedDB·라우터만 `src/e2e/harness.tsx`의 경계로 바꾼다. 추출 결과는 앱의
+  `setExtractorForTesting`(NODE_ENV=test에서만 동작)으로 넣는다.
+  따로 돌리기: `npx vitest run src/e2e`
 - 실제 브라우저 동작(카메라, 라우팅, IndexedDB) → Browser pane으로 확인한다.
-  Playwright는 설치하지 않았다.
+  흐름 E2E는 happy-dom이라 이것들을 대신하지 못한다. Playwright는 설치하지 않았다.
 
 ## 컴포넌트 테스트
 

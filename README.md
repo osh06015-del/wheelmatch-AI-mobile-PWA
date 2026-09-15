@@ -86,7 +86,7 @@ npm run dev
 | --------------------------------- | ---------------------- |
 | `npm run dev`                     | 개발 서버              |
 | `npm run build`                   | 프로덕션 빌드          |
-| `npm test`                        | 단위·컴포넌트 테스트   |
+| `npm test`                        | 단위·컴포넌트·흐름 E2E |
 | `npm run test:watch`              | 테스트 watch 모드      |
 | `npm run typecheck`               | TypeScript strict 검사 |
 | `npm run lint`                    | ESLint                 |

@@ -68,12 +68,17 @@ npm run verify
 
 ## E2E
 
-**이 프로젝트에 E2E 프레임워크가 없다.** Playwright·Cypress 모두 미설치이며
+**브라우저 E2E 프레임워크는 없다.** Playwright·Cypress 모두 미설치이며
 의도적인 결정이다(`.claude/rules/testing.md`).
 
-실제 브라우저 동작은 Browser pane으로 확인한다. 카메라(`getUserMedia`)는
-pane에서 차단되므로 **촬영 경로는 실기기로만 확인할 수 있다.**
-확인하지 못한 것을 확인했다고 보고하지 않는다.
+점검 흐름 E2E는 Vitest 안에서 돈다 — `src/e2e/*.e2e.test.tsx`. 실제 페이지를
+작업 선택부터 저장·이력까지 이어 붙이고, 카메라·OCR·사진 디코딩·IndexedDB·
+라우터만 테스트 경계로 바꾼다(`src/e2e/harness.tsx`). `npm test`에 포함되며
+따로 돌리려면 `npx vitest run src/e2e`.
+
+이 E2E는 실제 브라우저가 아니다(happy-dom). 실제 브라우저 동작은 Browser pane으로
+확인한다. 카메라(`getUserMedia`)는 pane에서 차단되므로 **촬영 경로는 실기기로만
+확인할 수 있다.** 확인하지 못한 것을 확인했다고 보고하지 않는다.
 
 ## 기존 hook과의 관계
 

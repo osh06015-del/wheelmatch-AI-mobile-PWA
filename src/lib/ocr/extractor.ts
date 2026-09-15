@@ -99,7 +99,29 @@ export function getOCRMode(): OCRMode {
     : 'claude';
 }
 
+/**
+ * 테스트가 넣은 추출기. 카메라와 OCR 대신 정해 둔 결과를 돌려주는 경계다
+ * (점검 흐름 E2E — src/e2e).
+ *
+ * NODE_ENV가 'test'일 때만 쓰인다. next build와 next dev는 이 값을 각각
+ * 'production'·'development'로 바꿔 넣으므로 아래 분기는 번들에서 죽은 코드가
+ * 되어 빠진다. 현장 앱에서 이 경로로 가짜 추출 결과가 들어갈 방법은 없다.
+ */
+let testExtractor: OCRExtractor | null = null;
+
+export function setExtractorForTesting(extractor: OCRExtractor | null): void {
+  if (process.env.NODE_ENV !== 'test') {
+    // 조용히 무시하지 않는다. 테스트 밖에서 불렸다는 것 자체가 사고다.
+    throw new Error(
+      'setExtractorForTesting is only available when NODE_ENV is test',
+    );
+  }
+  testExtractor = extractor;
+}
+
 export function getExtractor(mode: OCRMode = getOCRMode()): OCRExtractor {
+  // 이미 넣어 둔 추출기가 있어도 테스트가 아니면 쓰지 않는다.
+  if (process.env.NODE_ENV === 'test' && testExtractor) return testExtractor;
   return mode === 'tesseract'
     ? new TesseractExtractor()
     : new ClaudeExtractor();
