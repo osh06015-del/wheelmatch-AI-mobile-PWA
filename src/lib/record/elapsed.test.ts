@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { elapsedSince, formatElapsed } from './elapsed';
+import { elapsedSince, formatElapsed, preTrialElapsed } from './elapsed';
 
 describe('elapsedSince', () => {
   it('시작 시각부터 지금까지를 잰다', () => {
@@ -41,5 +41,33 @@ describe('formatElapsed', () => {
     expect(formatElapsed(null)).toBeNull();
     expect(formatElapsed(-1)).toBeNull();
     expect(formatElapsed(Number.NaN)).toBeNull();
+  });
+});
+
+describe('preTrialElapsed — 사전점검 시간', () => {
+  const T0 = Date.parse('2026-09-15T09:00:00.000Z');
+
+  it('시험운전을 했으면 시작 직전까지만 잰다 — 법정 시험운전 시간은 빠진다', () => {
+    const trialStart = new Date(T0 + 22_000).toISOString();
+    expect(preTrialElapsed(T0, trialStart, T0 + 250_000)).toBe(22_000);
+  });
+
+  it('시험운전이 열리지 않았으면(부적합·판정불가) 저장 순간에서 끝난다', () => {
+    expect(preTrialElapsed(T0, null, T0 + 17_500)).toBe(17_500);
+  });
+
+  it('시작 시각을 모르면 재지 않는다', () => {
+    expect(preTrialElapsed(null, null, T0)).toBeNull();
+    expect(preTrialElapsed(null, new Date(T0).toISOString(), T0)).toBeNull();
+  });
+
+  it('시험운전 시작 시각을 읽을 수 없으면 저장 순간으로 대신하지 않는다', () => {
+    // 대신 끊으면 시험운전 시간이 사전점검에 섞인다.
+    expect(preTrialElapsed(T0, '시각 아님', T0 + 250_000)).toBeNull();
+  });
+
+  it('시험운전 시작이 점검 시작보다 앞서면(시계가 뒤로 감) null', () => {
+    const before = new Date(T0 - 1_000).toISOString();
+    expect(preTrialElapsed(T0, before, T0 + 5_000)).toBeNull();
   });
 });

@@ -80,6 +80,8 @@ export const id: Messages = {
     'Pasal 122 ayat (2) Peraturan Standar Keselamatan dan Kesehatan Kerja Korea mewajibkan uji putar minimal 1 menit sebelum mulai bekerja dan minimal 3 menit setelah mengganti batu gerinda, sambil memeriksa apakah ada yang tidak wajar. Aplikasi ini hanya menghitung waktu dan mencatat jawaban Anda, bukan menggantikan prosedur itu.',
   'trialRun.standClear':
     'Selama uji putar, berdirilah menjauh dari muka batu gerinda dan arah putarannya.',
+  'trialRun.separateFromTarget':
+    'Waktu uji putar dihitung terpisah dari target pemeriksaan awal 30 detik. Jangan mempersingkat waktu yang diwajibkan peraturan demi target itu.',
   'trialRun.replacedQuestion': 'Apakah Anda baru saja mengganti batu gerinda?',
   'trialRun.startReplaced': 'Ya — mulai uji putar {seconds} detik',
   'trialRun.startBeforeWork': 'Tidak — mulai uji putar {seconds} detik',

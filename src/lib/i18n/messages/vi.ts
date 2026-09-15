@@ -80,6 +80,8 @@ export const vi: Messages = {
     'Điều 122 khoản 2 Quy định về tiêu chuẩn an toàn vệ sinh lao động Hàn Quốc yêu cầu chạy thử ít nhất 1 phút trước khi bắt đầu làm việc và ít nhất 3 phút sau khi thay đá mài, đồng thời kiểm tra máy có bất thường không. Ứng dụng chỉ bấm giờ và ghi lại câu trả lời, không thay thế thủ tục đó.',
   'trialRun.standClear':
     'Khi chạy thử, hãy đứng tránh mặt đá mài và hướng quay của nó.',
+  'trialRun.separateFromTarget':
+    'Thời gian chạy thử được tính riêng, không nằm trong mục tiêu kiểm tra trước 30 giây. Không được rút ngắn thời gian bắt buộc theo luật vì mục tiêu này.',
   'trialRun.replacedQuestion': 'Bạn vừa thay đá mài phải không?',
   'trialRun.startReplaced': 'Có — bắt đầu chạy thử {seconds} giây',
   'trialRun.startBeforeWork': 'Không — bắt đầu chạy thử {seconds} giây',

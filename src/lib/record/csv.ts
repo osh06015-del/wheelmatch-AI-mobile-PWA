@@ -1,7 +1,8 @@
 // 점검 기록을 CSV로 뽑는다. 연구용 실측 데이터를 모으기 위한 것이다.
 //
 // 논문에 필요한 지표가 뭔지부터 정해서 열을 잡았다.
-//   · 소요시간   — "30초 안에 점검" 주장을 뒷받침하거나 반박한다
+//   · 소요시간   — 사전점검 시간(preTrialElapsedMs)으로 "30초 사전점검" 주장을 확인한다.
+//                  전체 흐름(elapsedMs)은 법정 시험운전을 포함하므로 목표와 견주지 않는다
 //   · OCR 원본 vs 최종값 — 둘이 다르면 사용자가 고친 것이다. 정정률이 곧 인식률의 뒷면이다
 //   · 판정과 걸린 규칙 — 어떤 규칙이 실제로 작동했는지
 //   · 신뢰도            — 모델이 스스로 낮다고 한 경우와 실제 오류가 겹치는지
@@ -63,6 +64,9 @@ export const CSV_COLUMNS = [
   'checkSurroundingsClear',
   // 어느 규칙으로 나온 판정인지. 기능 도입 전 기록은 빈 칸이다.
   'ruleVersion',
+  // 사전점검 시간(시험운전 시작 직전까지). elapsedMs는 시험운전을 포함한 전체다.
+  // 기능 도입 전 기록은 빈 칸이다. 앞선 열을 밀지 않도록 맨 뒤에 둔다.
+  'preTrialElapsedMs',
 ] as const;
 
 /**
@@ -163,6 +167,7 @@ function row(record: InspectionRecord): string {
     tick(checklist.workpieceSecured),
     tick(checklist.surroundingsClear),
     record.ruleVersion,
+    record.preTrialElapsedMs,
   ];
 
   return values.map(cell).join(',');

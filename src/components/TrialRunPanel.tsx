@@ -74,6 +74,10 @@ export function TrialRunPanel({
         >
           ⚠ {t('trialRun.standClear')}
         </p>
+        {/* 「30초」 목표 때문에 법정 시간을 줄이는 일이 없게, 시험운전 화면에서 바로 적는다. */}
+        <p className="text-base leading-relaxed text-slate-300">
+          {t('trialRun.separateFromTarget')}
+        </p>
       </div>
 
       {!progress ? (

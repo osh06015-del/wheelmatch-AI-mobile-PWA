@@ -73,6 +73,8 @@ export const zh: Messages = {
   'trialRun.legalBasis':
     '韩国《产业安全保健基准规则》第122条第2款要求：开始作业前试运转 1 分钟以上，更换砂轮后试运转 3 分钟以上，并确认机器有无异常。本应用只负责计时并记录你的回答，不能替代该法定程序。',
   'trialRun.standClear': '试运转时，请避开砂轮正面和旋转方向的危险区域。',
+  'trialRun.separateFromTarget':
+    '试运转时间与 30 秒预检目标分开计算。不要为了目标缩短法定时间。',
   'trialRun.replacedQuestion': '你刚刚更换过砂轮吗？',
   'trialRun.startReplaced': '是 — 开始 {seconds} 秒试运转',
   'trialRun.startBeforeWork': '否 — 开始 {seconds} 秒试运转',

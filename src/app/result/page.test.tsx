@@ -13,6 +13,7 @@ import {
   render,
   renderHook,
   screen,
+  waitFor,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -43,6 +44,7 @@ vi.mock('next/link', () => ({
 vi.mock('@/lib/db', () => ({ saveInspection: vi.fn() }));
 
 import ResultPage from './page';
+import { saveInspection } from '@/lib/db';
 import { useResearchMode } from '@/lib/record/researchMode';
 import { useInspection } from '@/lib/state/inspection';
 import type {
@@ -457,6 +459,105 @@ describe('결과 화면 — 시험운전 절차', () => {
     expect(
       screen.queryByRole('button', { name: /점검 완료 및 저장/ }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('결과 화면 — 사전점검 시간과 시험운전 시간 분리', () => {
+  // 「30초 사전점검」은 시험운전 전까지의 시간이다. 법정 시험운전을 섞어 재면
+  // 목표를 맞출 수 없고, 그러면 시험운전을 줄이는 쪽으로 압박이 생긴다.
+  const T0 = new Date('2026-09-15T09:00:00.000Z').getTime();
+
+  beforeEach(() => {
+    replace.mockClear();
+    push.mockClear();
+    vi.mocked(saveInspection).mockClear();
+    const result = store();
+    act(() => result.current.reset());
+    // 시계만 가짜로 둔다. 타이머까지 멈추면 화면 갱신이 멈춘다.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(T0);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** 작업을 고른 순간(T0)부터 두 Gate를 통과한 상태까지 만든다. */
+  function start(wheel: WheelSpec) {
+    const result = store();
+    act(() => {
+      result.current.setPurpose('cutting');
+      result.current.setGrinder(GRINDER);
+      result.current.setGrinderCondition(GRINDER_OK);
+      result.current.setWheel(wheel);
+      result.current.setWheelCondition(CONFIRMED);
+    });
+    return result;
+  }
+
+  function checkAll() {
+    for (const box of screen.getAllByRole('checkbox')) {
+      if (!(box as HTMLInputElement).checked) fireEvent.click(box);
+    }
+  }
+
+  it('적합 조합은 시험운전을 시작하기 직전까지만 사전점검 시간으로 남긴다', async () => {
+    const result = start(WHEEL);
+    act(() =>
+      result.current.setTrialRun({
+        wheelReplaced: false,
+        requiredSeconds: 60,
+        startedAt: new Date(T0 + 22_000).toISOString(),
+        endsAt: new Date(T0 + 82_000).toISOString(),
+      }),
+    );
+    vi.setSystemTime(T0 + 250_000);
+
+    render(<ResultPage />);
+    checkAll();
+    fireEvent.click(screen.getByRole('button', { name: /이상 없음 확인/ }));
+    fireEvent.click(screen.getByRole('button', { name: /점검 완료 및 저장/ }));
+
+    await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
+    const saved = vi.mocked(saveInspection).mock.calls[0][0];
+    expect(saved.preTrialElapsedMs).toBe(22_000);
+    expect(saved.elapsedMs).toBe(250_000);
+  });
+
+  it.each([
+    ['부적합', { ...WHEEL, maxRPM: 8500 }],
+    ['판정불가', { ...WHEEL, wheelType: 'unknown' as const }],
+  ])(
+    '%s 이면 시험운전이 열리지 않으므로 저장 순간에 사전점검이 끝난다',
+    async (label, wheel) => {
+      start(wheel);
+      vi.setSystemTime(T0 + 17_500);
+
+      render(<ResultPage />);
+      checkAll();
+      expect(screen.getByText(label)).toBeInTheDocument();
+      fireEvent.click(
+        screen.getByRole('button', { name: /점검 완료 및 저장/ }),
+      );
+
+      await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
+      const saved = vi.mocked(saveInspection).mock.calls[0][0];
+      expect(saved.preTrialElapsedMs).toBe(17_500);
+      expect(saved.elapsedMs).toBe(17_500);
+      expect(saved.trialRun).toBeUndefined();
+    },
+  );
+
+  it('시험운전 안내에 30초 사전점검 목표와 따로 잰다고 적는다', () => {
+    start(WHEEL);
+    render(<ResultPage />);
+    checkAll();
+
+    expect(
+      screen.getByText(
+        '시험운전 시간은 「30초 사전점검」 목표와 따로 잽니다. 목표 때문에 법정 시간을 줄이지 마십시오.',
+      ),
+    ).toBeInTheDocument();
   });
 });
 

@@ -278,6 +278,7 @@ describe('toCsv', () => {
       ...trialRunColumns,
       ...environmentColumns,
       'ruleVersion',
+      'preTrialElapsedMs',
     ]);
   });
 
@@ -401,8 +402,9 @@ describe('csvFilename', () => {
 });
 
 describe('규칙 버전 열', () => {
-  it('ruleVersion이 맨 마지막 열이다', () => {
-    expect(CSV_COLUMNS[CSV_COLUMNS.length - 1]).toBe('ruleVersion');
+  it('ruleVersion은 도입 당시 자리(45번째 열)를 지킨다', () => {
+    // 뒤에 열이 붙어도 앞선 열의 위치는 바뀌지 않는다. 뽑아둔 분석 파일과 맞아야 한다.
+    expect(CSV_COLUMNS.indexOf('ruleVersion')).toBe(44);
   });
 
   it('기록에 남은 버전을 그대로 적는다', () => {
@@ -414,5 +416,26 @@ describe('규칙 버전 열', () => {
     // 지금 버전으로 채우면 어느 규칙으로 나온 판정인지 거짓으로 적게 된다.
     const [, row] = parse(toCsv([record()]));
     expect(row[CSV_COLUMNS.indexOf('ruleVersion')]).toBe('');
+  });
+});
+
+describe('사전점검 시간 열', () => {
+  it('맨 마지막 열에 붙인다 — elapsedMs 열은 자리를 지킨다', () => {
+    expect(CSV_COLUMNS[CSV_COLUMNS.length - 1]).toBe('preTrialElapsedMs');
+    expect(CSV_COLUMNS.indexOf('elapsedMs')).toBe(2);
+  });
+
+  it('사전점검 시간과 전체 흐름 시간을 따로 적는다', () => {
+    const [, row] = parse(
+      toCsv([record({ elapsedMs: 250_000, preTrialElapsedMs: 22_000 })]),
+    );
+    expect(row[CSV_COLUMNS.indexOf('elapsedMs')]).toBe('250000');
+    expect(row[CSV_COLUMNS.indexOf('preTrialElapsedMs')]).toBe('22000');
+  });
+
+  it('기능 도입 전 기록은 빈 칸이다 — 전체 시간으로 채우지 않는다', () => {
+    // 옛 기록의 elapsedMs에는 시험운전이 섞였을 수 있다. 사전점검 시간으로 옮기지 않는다.
+    const [, row] = parse(toCsv([record({ elapsedMs: 250_000 })]));
+    expect(row[CSV_COLUMNS.indexOf('preTrialElapsedMs')]).toBe('');
   });
 });

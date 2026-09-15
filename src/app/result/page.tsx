@@ -25,7 +25,7 @@ import { RuleVersionNote } from '@/components/RuleVersionNote';
 import { TrialRunPanel, TrialRunStopNotice } from '@/components/TrialRunPanel';
 import { useLocale } from '@/lib/i18n';
 import { saveInspection } from '@/lib/db';
-import { elapsedSince } from '@/lib/record/elapsed';
+import { elapsedSince, preTrialElapsed } from '@/lib/record/elapsed';
 import { matchSpecs, toDateOnly } from '@/lib/rules/engine';
 import { RULESET_VERSION } from '@/lib/rules/version';
 import { isGrinderConditionComplete } from '@/lib/safety/grinderCondition';
@@ -160,6 +160,8 @@ export default function ResultPage() {
     setSaving(true);
     setSaveError(null);
     try {
+      // 두 시간이 같은 끝 시각을 쓰게 한다. 따로 읽으면 몇 ms씩 어긋난다.
+      const savedAt = Date.now();
       await saveInspection({
         grinder,
         wheel,
@@ -170,8 +172,16 @@ export default function ResultPage() {
         result,
         checklist,
         declaredPurpose,
-        // 저장 버튼을 누른 순간이 점검의 끝이다.
-        elapsedMs: elapsedSince(startedAt) ?? undefined,
+        // 저장 버튼을 누른 순간이 전체 흐름의 끝이다. 법정 시험운전이 들어 있다.
+        elapsedMs: elapsedSince(startedAt, savedAt) ?? undefined,
+        // 「30초 사전점검」 목표는 이 값으로 잰다. 시험운전을 했으면 시작 직전에서,
+        // 열리지 않았으면(부적합·판정불가) 저장 순간에서 끝난다.
+        preTrialElapsedMs:
+          preTrialElapsed(
+            startedAt,
+            trialRunRecord?.startedAt ?? null,
+            savedAt,
+          ) ?? undefined,
         grinderOcr: grinderOcr ?? undefined,
         wheelOcr: wheelOcr ?? undefined,
         grinderImage: grinderImage ?? undefined,

@@ -77,6 +77,8 @@ export const ko = {
     '산업안전보건기준에 관한 규칙 제122조 ②는 작업을 시작하기 전 1분 이상, 연삭숫돌을 교체한 후 3분 이상 시험운전을 하고 이상이 있는지 확인하도록 정합니다. 이 앱은 시간을 재고 답을 남길 뿐이며, 법정 절차를 대신하지 않습니다.',
   'trialRun.standClear':
     '시험운전 중에는 숫돌의 정면과 회전 방향 위험구역을 피해 서십시오.',
+  'trialRun.separateFromTarget':
+    '시험운전 시간은 「30초 사전점검」 목표와 따로 잽니다. 목표 때문에 법정 시간을 줄이지 마십시오.',
   'trialRun.replacedQuestion': '숫돌을 방금 교체했습니까?',
   'trialRun.startReplaced': '예 — 교체 후 시험운전 {seconds}초 시작',
   'trialRun.startBeforeWork': '아니오 — 작업 시작 전 시험운전 {seconds}초 시작',

@@ -59,6 +59,44 @@ describe('HistoryList', () => {
     expect(screen.getByText(/점검에 28초 걸림/)).toBeInTheDocument();
   });
 
+  it('사전점검 시간을 전체 시간과 따로 보여준다', () => {
+    render(
+      <HistoryList
+        records={[
+          record({
+            elapsedMs: 250_000,
+            preTrialElapsedMs: 22_000,
+            trialRun: {
+              wheelReplaced: false,
+              requiredSeconds: 60,
+              startedAt: '2026-09-01T09:00:22.000Z',
+              finishedAt: '2026-09-01T09:01:30.000Z',
+              elapsedSeconds: 68,
+              outcome: 'normal',
+              findings: [],
+              completed: true,
+            },
+          }),
+        ]}
+      />,
+    );
+    expect(
+      screen.getByText('점검에 4분 10초 걸림 (시험운전 포함)'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('사전점검 22초 (시험운전 전까지)'),
+    ).toBeInTheDocument();
+  });
+
+  it('30초는 사전점검 시간 목표이고 법정 시험운전은 별도라고 적는다', () => {
+    render(<HistoryList records={[record()]} />);
+    expect(
+      screen.getByText(
+        '「30초」는 사전점검 시간 목표입니다. 작업 선택부터 시험운전을 시작하기 직전까지를 잽니다. 법정 시험운전(1분·3분 이상)은 이 목표와 별도이며 줄이지 않습니다.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('이 기능 도입 전 기록에도 깨지지 않는다', () => {
     render(
       <HistoryList

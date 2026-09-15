@@ -76,6 +76,8 @@ export const en: Messages = {
     "Korea's Rules on Occupational Safety and Health Standards, Article 122(2), require a trial run of at least 1 minute before starting work and at least 3 minutes after replacing a wheel, checking the machine for anything abnormal. This app only times it and records your answer. It does not replace the procedure.",
   'trialRun.standClear':
     'During the trial run, stand clear of the wheel face and the direction of rotation.',
+  'trialRun.separateFromTarget':
+    'The trial run is timed separately from the 30-second pre-check target. Do not shorten the legally required time because of the target.',
   'trialRun.replacedQuestion': 'Did you just replace the wheel?',
   'trialRun.startReplaced': 'Yes — start the {seconds}s trial run',
   'trialRun.startBeforeWork': 'No — start the {seconds}s trial run',

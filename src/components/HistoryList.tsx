@@ -95,98 +95,116 @@ export function HistoryList({ records }: { records: InspectionRecord[] }) {
   }
 
   return (
-    <ul className="flex flex-col gap-3">
-      {records.map((record) => {
-        const open = openId === record.id;
-        const purpose = record.declaredPurpose
-          ? PURPOSE_TEXT[record.declaredPurpose]
-          : null;
-        const elapsed = formatElapsed(record.elapsedMs ?? null);
-        const hasPhoto = Boolean(record.grinderImage ?? record.wheelImage);
+    <div className="flex flex-col gap-3">
+      {/* 소요시간을 보는 기준을 한 번만 적는다. 기록마다 되풀이하면 읽지 않게 된다. */}
+      <p className="text-sm leading-relaxed text-slate-400">
+        「30초」는 사전점검 시간 목표입니다. 작업 선택부터 시험운전을 시작하기
+        직전까지를 잽니다. 법정 시험운전(1분·3분 이상)은 이 목표와 별도이며
+        줄이지 않습니다.
+      </p>
+      <ul className="flex flex-col gap-3">
+        {records.map((record) => {
+          const open = openId === record.id;
+          const purpose = record.declaredPurpose
+            ? PURPOSE_TEXT[record.declaredPurpose]
+            : null;
+          const elapsed = formatElapsed(record.elapsedMs ?? null);
+          const preTrial = formatElapsed(record.preTrialElapsedMs ?? null);
+          const hasPhoto = Boolean(record.grinderImage ?? record.wheelImage);
 
-        return (
-          <li key={record.id} className="rounded-lg bg-slate-800">
-            <button
-              type="button"
-              onClick={() => setOpenId(open ? null : (record.id ?? null))}
-              aria-expanded={open}
-              className="flex min-h-12 w-full items-start gap-3 px-4 py-4 text-left"
-            >
-              <span
-                className={`shrink-0 rounded-md px-3 py-1 text-base font-bold ${BADGE_STYLE[record.result.verdict]}`}
+          return (
+            <li key={record.id} className="rounded-lg bg-slate-800">
+              <button
+                type="button"
+                onClick={() => setOpenId(open ? null : (record.id ?? null))}
+                aria-expanded={open}
+                className="flex min-h-12 w-full items-start gap-3 px-4 py-4 text-left"
               >
-                {BADGE_TEXT[record.result.verdict]}
-              </span>
-              <span className="flex flex-1 flex-col gap-1">
-                {/* 한 줄에 다 넣으면 좁은 화면에서 접혀 읽기 나빠진다.
+                <span
+                  className={`shrink-0 rounded-md px-3 py-1 text-base font-bold ${BADGE_STYLE[record.result.verdict]}`}
+                >
+                  {BADGE_TEXT[record.result.verdict]}
+                </span>
+                <span className="flex flex-1 flex-col gap-1">
+                  {/* 한 줄에 다 넣으면 좁은 화면에서 접혀 읽기 나빠진다.
                     작업 구분·시각 / 규격 / 소요시간 순으로 줄을 나눈다. */}
-                <span className="flex items-center gap-2">
-                  {purpose && (
-                    <span className="rounded border border-slate-600 px-2 py-0.5 text-sm font-semibold text-slate-200">
-                      {purpose}
+                  <span className="flex items-center gap-2">
+                    {purpose && (
+                      <span className="rounded border border-slate-600 px-2 py-0.5 text-sm font-semibold text-slate-200">
+                        {purpose}
+                      </span>
+                    )}
+                    <span className="text-base text-slate-300">
+                      {formatDateTime(record.createdAt)}
+                    </span>
+                  </span>
+                  <span className="text-base text-slate-100">
+                    {summarize(record)}
+                  </span>
+                  {elapsed && (
+                    <span className="text-sm text-slate-400">
+                      점검에 {elapsed} 걸림
+                      {record.trialRun ? ' (시험운전 포함)' : ''}
                     </span>
                   )}
-                  <span className="text-base text-slate-300">
-                    {formatDateTime(record.createdAt)}
-                  </span>
+                  {preTrial && (
+                    <span className="text-sm text-slate-400">
+                      사전점검 {preTrial} (시험운전 전까지)
+                    </span>
+                  )}
                 </span>
-                <span className="text-base text-slate-100">
-                  {summarize(record)}
+                <span aria-hidden className="pt-1 text-slate-400">
+                  {open ? '▲' : '▼'}
                 </span>
-                {elapsed && (
-                  <span className="text-sm text-slate-400">
-                    점검에 {elapsed} 걸림
-                  </span>
-                )}
-              </span>
-              <span aria-hidden className="pt-1 text-slate-400">
-                {open ? '▲' : '▼'}
-              </span>
-            </button>
+              </button>
 
-            {open && (
-              <div className="flex flex-col gap-4 border-t border-slate-700 px-4 py-4">
-                {hasPhoto ? (
-                  <div className="flex gap-3">
-                    {record.grinderImage && (
-                      <Photo blob={record.grinderImage} label="그라인더 명판" />
-                    )}
-                    {record.wheelImage && (
-                      <Photo blob={record.wheelImage} label="숫돌 라벨" />
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-base text-slate-400">
-                    저장된 사진이 없습니다.
-                  </p>
-                )}
+              {open && (
+                <div className="flex flex-col gap-4 border-t border-slate-700 px-4 py-4">
+                  {hasPhoto ? (
+                    <div className="flex gap-3">
+                      {record.grinderImage && (
+                        <Photo
+                          blob={record.grinderImage}
+                          label="그라인더 명판"
+                        />
+                      )}
+                      {record.wheelImage && (
+                        <Photo blob={record.wheelImage} label="숫돌 라벨" />
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-base text-slate-400">
+                      저장된 사진이 없습니다.
+                    </p>
+                  )}
 
-                <ul className="flex flex-col gap-3">
-                  {record.result.checks.map((check) => (
-                    <li key={check.rule} className="flex flex-col gap-1">
-                      <span className="text-base font-semibold text-slate-200">
-                        {check.passed === true
-                          ? '✅'
-                          : check.passed === false
-                            ? '❌'
-                            : '⚠'}{' '}
-                        {check.rule}
-                      </span>
-                      <span className="text-base leading-relaxed text-slate-400">
-                        {check.reason}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                  <ul className="flex flex-col gap-3">
+                    {record.result.checks.map((check) => (
+                      <li key={check.rule} className="flex flex-col gap-1">
+                        <span className="text-base font-semibold text-slate-200">
+                          {check.passed === true
+                            ? '✅'
+                            : check.passed === false
+                              ? '❌'
+                              : '⚠'}{' '}
+                          {check.rule}
+                        </span>
+                        <span className="text-base leading-relaxed text-slate-400">
+                          {check.reason}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
 
-                {/* 저장 당시의 버전을 보여준다. 지금 버전으로 채우면
+                  {/* 저장 당시의 버전을 보여준다. 지금 버전으로 채우면
                     어느 규칙으로 나온 판정인지 거짓으로 적게 된다. */}
-                <RuleVersionNote version={record.ruleVersion ?? null} />
-              </div>
-            )}
-          </li>
-        );
-      })}
-    </ul>
+                  <RuleVersionNote version={record.ruleVersion ?? null} />
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
