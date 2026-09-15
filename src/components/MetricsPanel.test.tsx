@@ -92,7 +92,24 @@ describe('MetricsPanel — 분모가 없을 때', () => {
       />,
     );
 
-    expect(screen.getByText(/0 \/ 0건/)).toBeInTheDocument();
+    const item = screen.getByText('단위 정규화 오류').closest('li');
+    expect(item).toHaveTextContent('0 / 0건');
+    expect(item).toHaveTextContent('N/A — 계산할 데이터 없음');
+  });
+
+  it('부적합 정답이 없으면 적합 기록이 있어도 False-Safe Rate를 0%로 적지 않는다', () => {
+    // 위험 조합을 하나도 재지 않았다. 적합 표본만으로는 놓칠 것이 없다.
+    render(
+      <MetricsPanel
+        records={[record({ id: 1 }), record({ id: 2 })]}
+        truths={[truth({ recordId: 1 }), truth({ recordId: 2 })]}
+      />,
+    );
+
+    const item = screen.getByText('False-Safe Rate').closest('li');
+    expect(item).toHaveTextContent('0 / 0건');
+    expect(item).toHaveTextContent('N/A — 계산할 데이터 없음');
+    expect(item).not.toHaveTextContent('0.0%');
   });
 });
 
@@ -129,8 +146,10 @@ describe('MetricsPanel — 분자와 분모를 함께 보여준다', () => {
 
     render(<MetricsPanel records={records} truths={truths} />);
 
-    expect(screen.getByText(/1 \/ 2건/)).toBeInTheDocument();
-    expect(screen.getByText(/50\.0%/)).toBeInTheDocument();
+    // 분모는 정답이 부적합인 기록(1건)이다. 적합 기록은 넣지 않는다.
+    const item = screen.getByText('False-Safe Rate').closest('li');
+    expect(item).toHaveTextContent('1 / 1건');
+    expect(item).toHaveTextContent('100.0%');
     expect(screen.getByRole('alert')).toHaveTextContent(/id: 2/);
   });
 
@@ -146,12 +165,11 @@ describe('MetricsPanel — 분자와 분모를 함께 보여준다', () => {
     render(<MetricsPanel records={records} truths={truths} />);
 
     expect(report.falseSafe.count).toBe(1);
-    expect(report.scored).toBe(2);
-    expect(
-      screen.getByText(
-        new RegExp(`${report.falseSafe.count} / ${report.scored}건`),
-      ),
-    ).toBeInTheDocument();
+    expect(report.falseSafe.denominator).toBe(1);
+    const item = screen.getByText('False-Safe Rate').closest('li');
+    expect(item).toHaveTextContent(
+      `${report.falseSafe.count} / ${report.falseSafe.denominator}건`,
+    );
   });
 
   it('OCR 원본값으로 정확도를 잰다 — 사용자가 고친 값이 아니다', () => {

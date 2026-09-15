@@ -9,6 +9,9 @@
 // False-Safe Rate를 0%로 적으면 "0%를 달성했다"로 읽힌다. 아무것도 재지
 // 않았다는 사실이 그 순간 사라진다. 그래서 N/A로 둔다.
 //
+// False-Safe Rate의 분모는 정답이 부적합인 기록 수다(metrics.ts). 채점 기록
+// 전체가 아니다. 분모가 0이면 metrics.ts가 비율을 null로 내준다.
+//
 // 작업자 화면에는 나오지 않는다. 연구모드에서만 보인다.
 
 import { evaluate, formatRate, type GroundTruth } from '@/lib/record/metrics';
@@ -28,7 +31,7 @@ function Metric({
   definition: string;
   numerator: number;
   denominator: number;
-  rate: number;
+  rate: number | null;
   unit: string;
 }) {
   return (
@@ -41,7 +44,9 @@ function Metric({
         {numerator} / {denominator}
         {unit}{' '}
         <span className="font-bold">
-          {denominator === 0 ? NOT_AVAILABLE : formatRate(rate)}
+          {denominator === 0 || rate === null
+            ? NOT_AVAILABLE
+            : formatRate(rate)}
         </span>
       </span>
     </li>
@@ -77,9 +82,9 @@ export function MetricsPanel({ records, truths }: MetricsPanelProps) {
       <ul className="flex flex-col gap-2">
         <Metric
           name="False-Safe Rate"
-          definition="실제 부적합인데 앱이 적합으로 낸 비율. 0이 아니면 출시하지 않습니다."
+          definition="정답이 부적합인 기록 중 앱이 적합으로 낸 비율. 0이 아니면 출시하지 않습니다."
           numerator={report.falseSafe.count}
-          denominator={report.scored}
+          denominator={report.falseSafe.denominator}
           rate={report.falseSafe.rate}
           unit="건"
         />

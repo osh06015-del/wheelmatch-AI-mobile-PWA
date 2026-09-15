@@ -44,10 +44,23 @@ export interface EvaluationReport {
   /**
    * 실제 부적합인데 앱이 COMPATIBLE로 낸 건수와 비율.
    *
-   * **이 값이 0이 아니면 출시하지 않는다.** 다른 지표가 아무리 좋아도 그렇다.
-   * 판정불가로 막은 것은 여기 들어가지 않는다 — 그것은 설계된 동작이다.
+   * 분모는 **정답이 INCOMPATIBLE인 기록 수**다. 채점 기록 전체로 나누면 적합
+   * 표본을 더 찍기만 해도 같은 놓침의 비율이 작아진다. 이 지표가 답해야 하는
+   * 질문은 "위험 조합 몇 개 중에 몇 개를 놓쳤는가"다.
+   *
+   * **count가 0이 아니면 출시하지 않는다.** 다른 지표가 아무리 좋아도 그렇다.
+   * 판정불가로 막은 것은 분자에 들어가지 않는다 — 그것은 설계된 동작이다.
+   * 분모가 0이면 rate는 null이다. 부적합 표본을 하나도 재지 않았는데 0%로
+   * 적으면 "놓친 것이 없다"로 읽힌다.
    */
-  falseSafe: { count: number; rate: number; recordIds: number[] };
+  falseSafe: {
+    count: number;
+    /** 정답이 INCOMPATIBLE인 채점 기록 수 */
+    denominator: number;
+    /** count / denominator. 분모가 0이면 null — 0%가 아니다 */
+    rate: number | null;
+    recordIds: number[];
+  };
 
   /**
    * 판정하지 못한 비율.
@@ -118,7 +131,11 @@ export function evaluate(
   const total = scored.length;
 
   // ── false-safe ──────────────────────────────────────
-  // 판정불가는 여기 넣지 않는다. 막은 것은 놓친 것이 아니다.
+  // 분모는 정답이 부적합인 기록만이다. 적합 표본은 놓칠 위험 조합이 아니다.
+  // 판정불가는 분자에 넣지 않는다. 막은 것은 놓친 것이 아니다.
+  const incompatibleTruths = scored.filter(
+    ({ truth }) => truth.verdict === 'INCOMPATIBLE',
+  ).length;
   const falseSafeIds = scored
     .filter(
       ({ record, truth }) =>
@@ -191,7 +208,11 @@ export function evaluate(
     scored: total,
     falseSafe: {
       count: falseSafeIds.length,
-      rate: rate(falseSafeIds.length, total),
+      denominator: incompatibleTruths,
+      rate:
+        incompatibleTruths === 0
+          ? null
+          : falseSafeIds.length / incompatibleTruths,
       recordIds: falseSafeIds,
     },
     unreadable: { count: undetermined, rate: rate(undetermined, total) },

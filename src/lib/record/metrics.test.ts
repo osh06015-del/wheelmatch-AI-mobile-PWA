@@ -77,6 +77,7 @@ describe('false-safe', () => {
       [truth(1, 'INCOMPATIBLE')],
     );
     expect(report.falseSafe.count).toBe(1);
+    expect(report.falseSafe.denominator).toBe(1);
     expect(report.falseSafe.rate).toBe(1);
     expect(report.falseSafe.recordIds).toEqual([1]);
   });
@@ -106,6 +107,68 @@ describe('false-safe', () => {
       [truth(1, 'COMPATIBLE'), truth(7, 'INCOMPATIBLE')],
     );
     expect(report.falseSafe.recordIds).toEqual([7]);
+  });
+});
+
+describe('false-safe — 분모는 정답이 부적합인 기록이다', () => {
+  it('부적합 5건 중 1건을 적합으로 표시하면 20%다', () => {
+    const records = [
+      record(1, 'COMPATIBLE'),
+      record(2, 'INCOMPATIBLE'),
+      record(3, 'INCOMPATIBLE'),
+      record(4, 'INCOMPATIBLE'),
+      record(5, 'UNDETERMINED'),
+    ];
+    const truths = [1, 2, 3, 4, 5].map((id) => truth(id, 'INCOMPATIBLE'));
+    const report = evaluate(records, truths);
+
+    expect(report.falseSafe.count).toBe(1);
+    expect(report.falseSafe.denominator).toBe(5);
+    expect(report.falseSafe.rate).toBe(0.2);
+    expect(report.falseSafe.recordIds).toEqual([1]);
+  });
+
+  it('부적합 표본이 없으면 비율을 내지 않는다 — 0%가 아니다', () => {
+    // 위험 조합을 하나도 재지 않았다. 0%로 적으면 "놓친 것이 없다"로 읽힌다.
+    const report = evaluate(
+      [record(1, 'COMPATIBLE'), record(2, 'COMPATIBLE')],
+      [truth(1, 'COMPATIBLE'), truth(2, 'COMPATIBLE')],
+    );
+
+    expect(report.falseSafe.count).toBe(0);
+    expect(report.falseSafe.denominator).toBe(0);
+    expect(report.falseSafe.rate).toBeNull();
+  });
+
+  it('적합 표본을 더해도 비율이 낮아지지 않는다', () => {
+    // 적합 표본을 분모에 넣으면 더 찍기만 해도 성능이 좋아진 것처럼 보인다.
+    const missed = [record(1, 'COMPATIBLE')];
+    const missedTruth = [truth(1, 'INCOMPATIBLE')];
+    const before = evaluate(missed, missedTruth);
+
+    const extra = [2, 3, 4, 5, 6, 7, 8, 9, 10];
+    const after = evaluate(
+      [...missed, ...extra.map((id) => record(id, 'COMPATIBLE'))],
+      [...missedTruth, ...extra.map((id) => truth(id, 'COMPATIBLE'))],
+    );
+
+    expect(before.falseSafe.rate).toBe(1);
+    expect(after.falseSafe.rate).toBe(1);
+    expect(after.falseSafe.denominator).toBe(1);
+    expect(after.scored).toBe(10);
+  });
+
+  it('판정불가는 분자에 넣지 않지만 부적합 표본으로는 센다', () => {
+    // 막은 것은 놓친 것이 아니다. 그래도 위험 조합 하나를 잰 것은 맞다.
+    const report = evaluate(
+      [record(1, 'UNDETERMINED'), record(2, 'COMPATIBLE')],
+      [truth(1, 'INCOMPATIBLE'), truth(2, 'INCOMPATIBLE')],
+    );
+
+    expect(report.falseSafe.count).toBe(1);
+    expect(report.falseSafe.denominator).toBe(2);
+    expect(report.falseSafe.rate).toBe(0.5);
+    expect(report.falseSafe.recordIds).toEqual([2]);
   });
 });
 
@@ -221,10 +284,11 @@ describe('표본 처리', () => {
     expect(report.scored).toBe(1);
   });
 
-  it('표본이 없으면 비율을 0으로 둔다 — 나누지 않는다', () => {
+  it('표본이 없으면 나누지 않는다 — False-Safe Rate는 비율 자체를 내지 않는다', () => {
     const report = evaluate([], []);
     expect(report.scored).toBe(0);
-    expect(report.falseSafe.rate).toBe(0);
+    expect(report.falseSafe.denominator).toBe(0);
+    expect(report.falseSafe.rate).toBeNull();
     expect(report.unreadable.rate).toBe(0);
     expect(report.fieldAccuracy.overall).toBe(0);
     expect(report.unitNormalization.rate).toBe(0);
