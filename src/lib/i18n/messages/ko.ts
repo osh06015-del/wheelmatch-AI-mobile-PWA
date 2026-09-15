@@ -538,6 +538,18 @@ export const ko = {
   'validationBuild.commit': '커밋 {sha}',
   'validationBuild.commitUnknown': '커밋 정보 없음',
 
+  // 빌드 정보. 현장판·검증판 모두 정보 영역(면책 문구 옆)에서 보인다.
+  'build.commit': '빌드 {sha}',
+  'build.commitUnknown': '빌드 정보 없음',
+
+  // 서비스 워커 업데이트 안내. 감지되면 화면 맨 위에 뜬다.
+  // 점검·시험운전 중에는 적용 버튼을 잠근다 — 실제로 기계가 도는 중에
+  // 화면이 예고 없이 바뀌면 안 된다.
+  'update.available': '새 버전이 있습니다.',
+  'update.apply': '지금 업데이트',
+  'update.applying': '업데이트 적용 중...',
+  'update.blockedDuringInspection': '점검을 마치면 업데이트할 수 있습니다.',
+
   'meta.title': 'WheelMatch AI — 그라인더·숫돌 규격 대조',
 
   disclaimer:

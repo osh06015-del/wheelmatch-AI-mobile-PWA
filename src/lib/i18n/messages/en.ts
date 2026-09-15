@@ -549,6 +549,19 @@ export const en: Messages = {
   'validationBuild.commit': 'commit {sha}',
   'validationBuild.commitUnknown': 'no commit info',
 
+  // Build info. Shown on both builds, next to the disclaimer.
+  'build.commit': 'build {sha}',
+  'build.commitUnknown': 'no build info',
+
+  // Service worker update notice. Shown at the top of the screen when detected.
+  // The apply button is locked during an inspection or trial run — the screen
+  // must not change without warning while the machine is actually running.
+  'update.available': 'A new version is available.',
+  'update.apply': 'Update now',
+  'update.applying': 'Applying update...',
+  'update.blockedDuringInspection':
+    'You can update once the inspection is finished.',
+
   'meta.title': 'WheelMatch AI — Grinder and wheel specification check',
 
   disclaimer:

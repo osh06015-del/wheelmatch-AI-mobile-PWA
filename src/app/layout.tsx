@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { AppUpdateNotice } from '@/components/AppUpdateNotice';
 import { DocumentLocale } from '@/components/DocumentLocale';
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
 import { ValidationBuildBanner } from '@/components/ValidationBuildBanner';
@@ -56,6 +57,8 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
         {/* 검증 빌드에서만 그린다. 모든 화면 맨 위에 고정으로 둔다 — 어느 화면을
             보고 있어도 현장 배포판이 아니라는 것을 놓치지 않게 한다. */}
         <ValidationBuildBanner />
+        {/* 현장판·검증판 모두에서 그린다. 새 버전이 없으면 아무것도 렌더하지 않는다. */}
+        <AppUpdateNotice />
         {children}
         {/* 서버는 한국어로 그린다. 고른 언어로 문서 언어와 탭 제목을 바꾼다. */}
         <DocumentLocale />

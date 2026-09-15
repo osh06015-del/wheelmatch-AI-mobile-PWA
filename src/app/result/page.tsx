@@ -16,6 +16,7 @@ import {
   PRE_WORK_REMINDER_KEY,
   isChecklistComplete,
 } from '@/components/ChecklistForm';
+import { BuildInfo } from '@/components/BuildInfo';
 import { Disclaimer } from '@/components/Disclaimer';
 import { HazardList } from '@/components/HazardList';
 import { LanguagePicker } from '@/components/LanguagePicker';
@@ -314,6 +315,7 @@ export default function ResultPage() {
       <LanguagePicker />
 
       <Disclaimer />
+      <BuildInfo />
     </main>
   );
 }

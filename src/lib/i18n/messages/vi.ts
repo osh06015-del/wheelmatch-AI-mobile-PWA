@@ -547,6 +547,19 @@ export const vi: Messages = {
   'validationBuild.commit': 'commit {sha}',
   'validationBuild.commitUnknown': 'không có thông tin commit',
 
+  // Thông tin bản build. Hiển thị ở cả hai bản, cạnh phần miễn trừ trách nhiệm.
+  'build.commit': 'bản build {sha}',
+  'build.commitUnknown': 'không có thông tin bản build',
+
+  // Thông báo cập nhật service worker. Hiện ở đầu màn hình khi phát hiện.
+  // Nút áp dụng bị khóa trong lúc kiểm tra hoặc chạy thử — màn hình không được
+  // đổi bất ngờ khi máy đang thực sự chạy.
+  'update.available': 'Có phiên bản mới.',
+  'update.apply': 'Cập nhật ngay',
+  'update.applying': 'Đang áp dụng cập nhật...',
+  'update.blockedDuringInspection':
+    'Bạn có thể cập nhật sau khi hoàn tất kiểm tra.',
+
   'meta.title': 'WheelMatch AI — Đối chiếu thông số máy mài và đá mài',
 
   disclaimer:

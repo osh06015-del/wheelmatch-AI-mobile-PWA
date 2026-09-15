@@ -558,6 +558,19 @@ export const id: Messages = {
   'validationBuild.commit': 'commit {sha}',
   'validationBuild.commitUnknown': 'tidak ada info commit',
 
+  // Info build. Ditampilkan di kedua build, di sebelah pernyataan penyangkalan.
+  'build.commit': 'build {sha}',
+  'build.commitUnknown': 'tidak ada info build',
+
+  // Pemberitahuan pembaruan service worker. Muncul di atas layar saat terdeteksi.
+  // Tombol terapkan dikunci selama pemeriksaan atau uji putar — layar tidak boleh
+  // berubah tanpa peringatan saat mesin benar-benar sedang berjalan.
+  'update.available': 'Ada versi baru.',
+  'update.apply': 'Perbarui sekarang',
+  'update.applying': 'Menerapkan pembaruan...',
+  'update.blockedDuringInspection':
+    'Anda dapat memperbarui setelah pemeriksaan selesai.',
+
   'meta.title':
     'WheelMatch AI — Pencocokan spesifikasi gerinda dan batu gerinda',
 

@@ -488,6 +488,17 @@ export const zh: Messages = {
   'validationBuild.commit': 'commit {sha}',
   'validationBuild.commitUnknown': '无 commit 信息',
 
+  // 构建信息。现场版和验证版都会在免责声明旁的信息区显示。
+  'build.commit': '构建 {sha}',
+  'build.commitUnknown': '无构建信息',
+
+  // Service Worker 更新提示。检测到新版本时显示在屏幕最上方。
+  // 检查或试运转期间锁定应用按钮 —— 机器实际运转时画面不能毫无预警地改变。
+  'update.available': '有新版本。',
+  'update.apply': '立即更新',
+  'update.applying': '正在应用更新...',
+  'update.blockedDuringInspection': '完成检查后即可更新。',
+
   'meta.title': 'WheelMatch AI — 角磨机与砂轮规格核对',
 
   disclaimer:

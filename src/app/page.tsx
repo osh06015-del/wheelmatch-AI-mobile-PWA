@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
+import { BuildInfo } from '@/components/BuildInfo';
 import { Disclaimer } from '@/components/Disclaimer';
 import { LanguagePicker } from '@/components/LanguagePicker';
 import { useLocale, type MessageKey } from '@/lib/i18n';
@@ -104,6 +105,7 @@ export default function Home() {
       <LanguagePicker />
 
       <Disclaimer />
+      <BuildInfo />
     </main>
   );
 }

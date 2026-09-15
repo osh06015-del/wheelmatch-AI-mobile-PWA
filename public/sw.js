@@ -9,7 +9,10 @@
  *                         배포 후에도 항상 최신 화면을 먼저 시도한다.
  */
 
-const CACHE = 'wheelmatch-v1';
+// 이 파일을 고칠 때마다 버전을 올린다. activate가 예전 이름의 캐시를 지우는
+// 기준이 이 문자열이다 — 안 올리면 같은 캐시 객체에 새 항목이 덮어써질 뿐,
+// "새 버전이 이전 것을 대체했다"는 신호가 없어 정리 로직이 아무 일도 하지 않는다.
+const CACHE = 'wheelmatch-v2';
 const APP_SHELL = [
   '/',
   '/scan/grinder',
@@ -22,15 +25,25 @@ const APP_SHELL = [
 ];
 
 self.addEventListener('install', (event) => {
+  // self.skipWaiting()을 여기서 부르지 않는다. 새 버전을 설치해두기만 하고
+  // "대기(waiting)" 상태로 둔다 — 점검이나 시험운전 중에 조용히 갈아끼워지면
+  // 실제로 기계가 도는 순간 화면이 예고 없이 바뀔 수 있다. 언제 넘어갈지는
+  // 화면 쪽(lib/pwa/serviceWorkerUpdate.ts)이 사용자의 클릭을 받은 뒤에만 정한다.
   event.waitUntil(
     caches
       .open(CACHE)
       // 일부 경로가 실패해도 설치를 막지 않는다.
       .then((cache) =>
         Promise.allSettled(APP_SHELL.map((url) => cache.add(url))),
-      )
-      .then(() => self.skipWaiting()),
+      ),
   );
+});
+
+// 화면이 사용자의 업데이트 클릭을 받은 뒤에만 이 메시지를 보낸다
+// (lib/pwa/serviceWorkerUpdate.ts의 applyUpdate). 여기서 그 판단을 다시 하지
+// 않는다 — 점검·시험운전 여부를 아는 것은 화면 쪽 상태뿐이다.
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
