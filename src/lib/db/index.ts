@@ -4,7 +4,17 @@
 // 점검 기록은 이 기기 안에만 남는다. 서버로 올리지 않는다.
 
 import Dexie, { type EntityTable } from 'dexie';
+import { researchToolsEnabled } from '@/lib/record/researchMode';
 import type { InspectionRecord } from '@/lib/rules/types';
+
+/**
+ * 검증 빌드와 현장 배포판은 이름이 다른 IndexedDB를 쓴다.
+ *
+ * 같은 이름을 쓰면 한 기기에서 검증용으로 찍은 시험 기록과 현장에서 찍은 실제
+ * 점검 기록이 한 저장소에 섞인다. 검증 빌드가 CSV로 내보내는 순간 그 둘을
+ * 구분할 수 없게 된다. 빌드 시점에 박히는 값이라 배포 뒤에 바뀌지 않는다.
+ */
+const DB_NAME = researchToolsEnabled() ? 'wheelmatch-validation' : 'wheelmatch';
 
 /**
  * 저장된 기록은 id가 반드시 있다.
@@ -19,7 +29,7 @@ class WheelMatchDB extends Dexie {
   inspections!: EntityTable<StoredInspection, 'id'>;
 
   constructor() {
-    super('wheelmatch');
+    super(DB_NAME);
     // createdAt으로 최신순 정렬할 수 있게 인덱스를 잡는다.
     this.version(1).stores({
       inspections: '++id, createdAt',

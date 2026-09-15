@@ -550,6 +550,14 @@ export const id: Messages = {
   'metrics.falseSafeIds':
     'id catatan False-Safe: {ids} — analisis dan laporkan satu per satu. Jangan disembunyikan.',
 
+  // Spanduk build validasi. Ditampilkan dengan syarat yang sama dengan alat riset.
+  // Hanya tampilan — tidak memengaruhi hasil atau catatan yang tersimpan.
+  'validationBuild.label': 'Build validasi',
+  'validationBuild.note':
+    'Tidak untuk pemakaian lapangan. Catatan disimpan terpisah dari build lapangan.',
+  'validationBuild.commit': 'commit {sha}',
+  'validationBuild.commitUnknown': 'tidak ada info commit',
+
   'meta.title':
     'WheelMatch AI — Pencocokan spesifikasi gerinda dan batu gerinda',
 

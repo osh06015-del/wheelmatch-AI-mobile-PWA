@@ -530,6 +530,14 @@ export const ko = {
   'metrics.falseSafeIds':
     'False-Safe 기록 id: {ids} — 개별로 분석해 보고하세요. 숨기지 않습니다.',
 
+  // 검증 빌드 표시. 연구 도구와 같은 조건(researchToolsEnabled)으로 그려진다.
+  // 판정·기록에는 관여하지 않는다 — 화면에만 보인다.
+  'validationBuild.label': '검증용 빌드',
+  'validationBuild.note':
+    '현장 판정에는 쓰지 않습니다. 기록은 현장판과 다른 저장소에 남습니다.',
+  'validationBuild.commit': '커밋 {sha}',
+  'validationBuild.commitUnknown': '커밋 정보 없음',
+
   'meta.title': 'WheelMatch AI — 그라인더·숫돌 규격 대조',
 
   disclaimer:

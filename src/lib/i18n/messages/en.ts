@@ -541,6 +541,14 @@ export const en: Messages = {
   'metrics.falseSafeIds':
     'False-safe record ids: {ids} — analyse and report each one. Do not hide them.',
 
+  // Validation build banner. Rendered under the same condition as the research tools.
+  // Display only — it never affects verdicts or saved records.
+  'validationBuild.label': 'Validation build',
+  'validationBuild.note':
+    'Not for field use. Records are kept separately from the field build.',
+  'validationBuild.commit': 'commit {sha}',
+  'validationBuild.commitUnknown': 'no commit info',
+
   'meta.title': 'WheelMatch AI — Grinder and wheel specification check',
 
   disclaimer:

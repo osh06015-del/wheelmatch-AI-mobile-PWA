@@ -539,6 +539,14 @@ export const vi: Messages = {
   'metrics.falseSafeIds':
     'Mã hồ sơ False-Safe: {ids} — hãy phân tích và báo cáo từng hồ sơ. Không che giấu.',
 
+  // Biểu ngữ bản kiểm chứng. Hiển thị cùng điều kiện với công cụ nghiên cứu.
+  // Chỉ hiển thị — không ảnh hưởng đến kết quả hay hồ sơ đã lưu.
+  'validationBuild.label': 'Bản kiểm chứng',
+  'validationBuild.note':
+    'Không dùng cho hiện trường. Hồ sơ được lưu tách biệt với bản hiện trường.',
+  'validationBuild.commit': 'commit {sha}',
+  'validationBuild.commitUnknown': 'không có thông tin commit',
+
   'meta.title': 'WheelMatch AI — Đối chiếu thông số máy mài và đá mài',
 
   disclaimer:

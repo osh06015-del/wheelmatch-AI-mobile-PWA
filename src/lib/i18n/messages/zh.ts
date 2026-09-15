@@ -481,6 +481,13 @@ export const zh: Messages = {
   'metrics.falseSafeIds':
     'False-Safe 记录 id：{ids} — 请逐条分析并报告，不得隐瞒。',
 
+  // 验证版本标识。与研究工具相同的条件下显示。
+  // 仅用于显示 — 不影响判定或已保存的记录。
+  'validationBuild.label': '验证版本',
+  'validationBuild.note': '不用于现场判定。记录与现场版分开保存。',
+  'validationBuild.commit': 'commit {sha}',
+  'validationBuild.commitUnknown': '无 commit 信息',
+
   'meta.title': 'WheelMatch AI — 角磨机与砂轮规格核对',
 
   disclaimer:

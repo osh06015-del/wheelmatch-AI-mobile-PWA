@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { DocumentLocale } from '@/components/DocumentLocale';
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
+import { ValidationBuildBanner } from '@/components/ValidationBuildBanner';
 import { resolveSiteUrl } from '@/lib/siteUrl';
 
 const TITLE = 'WheelMatch AI — 그라인더·숫돌 규격 대조';
@@ -52,6 +53,9 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html lang="ko" className="h-full antialiased">
       <body className="flex min-h-full flex-col bg-slate-900 text-slate-100">
+        {/* 검증 빌드에서만 그린다. 모든 화면 맨 위에 고정으로 둔다 — 어느 화면을
+            보고 있어도 현장 배포판이 아니라는 것을 놓치지 않게 한다. */}
+        <ValidationBuildBanner />
         {children}
         {/* 서버는 한국어로 그린다. 고른 언어로 문서 언어와 탭 제목을 바꾼다. */}
         <DocumentLocale />
