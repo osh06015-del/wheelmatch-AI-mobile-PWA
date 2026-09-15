@@ -169,6 +169,29 @@ export const vi: Messages = {
   'wheelCondition.stopBody':
     'Đã phát hiện vấn đề với đá mài. Không được lắp. Hãy thay bằng đá mài khác còn dùng được và kiểm tra lại.',
 
+  'wheelType.bonded_abrasive': 'Đá mài liên kết thông thường',
+  'wheelType.flap_disc': 'Đĩa nhám xếp',
+  'wheelType.cup_wheel': 'Đá mài dạng chén',
+  'wheelType.diamond': 'Lưỡi kim cương',
+  'wheelType.wire_brush': 'Chổi cước sắt',
+  'wheelType.other': 'Loại khác',
+  'wheelType.unknown': 'Không rõ',
+  'wheelTypeConfirm.label': 'Loại đá mài',
+  'wheelTypeConfirm.hint':
+    'Chọn theo hình dạng của đá, không theo chữ trên nhãn. Hãy nhìn đá thật.',
+  'wheelTypeConfirm.aiSuggestion':
+    'AI gợi ý: {type} — đây chỉ là giá trị gợi ý ban đầu từ ảnh.',
+  'wheelTypeConfirm.supported':
+    'Ứng dụng chỉ đối chiếu thông số khi bạn tự xác nhận đây là đá mài liên kết thông thường.',
+  'wheelTypeConfirm.unknown':
+    'Nếu chưa xác nhận loại đá, kết quả đối chiếu thông số sẽ là KHÔNG THỂ XÁC ĐỊNH. Hãy nhìn đá thật rồi chọn.',
+  'wheelTypeConfirm.unsupported':
+    'Ứng dụng không đánh giá loại đá này. Kết quả đối chiếu thông số sẽ là KHÔNG THỂ XÁC ĐỊNH. Hãy làm theo hướng dẫn của nhà sản xuất.',
+  'wheelTypeConfirm.differs':
+    'Gợi ý của AI ({ai}) khác với loại bạn chọn ({selected}). Hãy kiểm tra lại đá thật và đánh dấu ô xác nhận trực tiếp bên dưới để tiếp tục.',
+  'wheelTypeConfirm.needsConfirm':
+    'Loại đá khác với gợi ý của AI. Cần đánh dấu ô xác nhận trực tiếp để tiếp tục.',
+
   'action.title': 'KHÔNG ĐƯỢC SỬ DỤNG',
   'action.rpmSafety':
     'Không lắp đá mài này. Hãy thay bằng đá mài chịu được tốc độ bằng hoặc cao hơn tốc độ của máy.',

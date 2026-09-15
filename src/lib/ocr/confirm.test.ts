@@ -5,7 +5,11 @@
 // 실제로 그렇게 새고 있었으므로, 이 파일은 회귀 방지용이다.
 
 import { describe, expect, it } from 'vitest';
-import { confirmedWheelSpec, type ConfirmedWheelFields } from './confirm';
+import {
+  confirmedWheelSpec,
+  wheelTypeDiffersFromSuggestion,
+  type ConfirmedWheelFields,
+} from './confirm';
 import { RULE, matchSpecs } from '@/lib/rules/engine';
 import type { GrinderSpec, WheelSpec } from '@/lib/rules/types';
 
@@ -60,6 +64,7 @@ function untouched(
     diameter: ocr.diameter,
     thickness: ocr.thickness,
     purpose: ocr.purpose,
+    wheelType: ocr.wheelType,
     expiryText: ocr.markings?.expiryRaw ?? '',
     userConfirmed: false,
     ...overrides,
@@ -138,6 +143,7 @@ describe('confirmedWheelSpec — 원본 표시 보존', () => {
       diameter: 125,
       thickness: 1.6,
       purpose: 'cutting',
+      wheelType: 'bonded_abrasive',
       expiryText: '',
       userConfirmed: true,
     });
@@ -153,11 +159,10 @@ describe('confirmedWheelSpec — 원본 표시 보존', () => {
     expect(rules).not.toContain(RULE.MOUNTING_SPEC);
   });
 
-  it('사진에서 판별한 종류와 손상은 숫자를 고쳐도 그대로 이어간다', () => {
-    const ocr = ocrWheel({ wheelType: 'diamond', visibleDamage: 'suspected' });
+  it('사진에서 판별한 외관 손상은 숫자를 고쳐도 그대로 이어간다', () => {
+    const ocr = ocrWheel({ visibleDamage: 'suspected' });
     const spec = confirmedWheelSpec(ocr, untouched(ocr, { maxRPM: 9000 }));
 
-    expect(spec.wheelType).toBe('diamond');
     expect(spec.visibleDamage).toBe('suspected');
   });
 
@@ -227,6 +232,106 @@ describe('confirmedWheelSpec — 원본 표시 보존', () => {
       confirmedWheelSpec(ocr, untouched(ocr, { userConfirmed: true }))
         .confidence,
     ).toBe('high');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// 숫돌 종류 — AI 제안과 작업자의 최종 선택
+//
+// 종류는 이 앱의 회전속도·지름 규칙이 성립하는지를 정한다. AI가 사진으로 본
+// 값은 제안일 뿐이고, 작업자가 실물을 보고 고른 값이 규칙엔진으로 간다.
+// ─────────────────────────────────────────────────────────────
+
+describe('confirmedWheelSpec — 숫돌 종류는 작업자가 고른다', () => {
+  it('AI가 일반 결합숫돌로 읽고 작업자가 그대로 두면 결합숫돌로 대조한다', () => {
+    const ocr = ocrWheel({ wheelType: 'bonded_abrasive' });
+    const spec = confirmedWheelSpec(ocr, untouched(ocr));
+
+    expect(spec.wheelType).toBe('bonded_abrasive');
+    expect(
+      matchSpecs(grinder(), spec, { declaredPurpose: 'cutting', today: TODAY })
+        .verdict,
+    ).toBe('COMPATIBLE');
+  });
+
+  it('AI가 플랩디스크로 읽고 작업자가 그대로 두면 판정불가로 막힌다', () => {
+    const ocr = ocrWheel({ wheelType: 'flap_disc' });
+    const spec = confirmedWheelSpec(ocr, untouched(ocr));
+
+    expect(spec.wheelType).toBe('flap_disc');
+    expect(
+      matchSpecs(grinder(), spec, { declaredPurpose: 'cutting', today: TODAY })
+        .verdict,
+    ).toBe('UNDETERMINED');
+  });
+
+  it('작업자가 다른 종류를 고르면 그 값이 최종값이 되고 OCR 원본은 그대로 남는다', () => {
+    // 최종값만 남기면 모델이 종류를 잘못 봤는지 되짚을 수 없다.
+    const ocr = ocrWheel({ wheelType: 'flap_disc' });
+    const spec = confirmedWheelSpec(
+      ocr,
+      untouched(ocr, { wheelType: 'bonded_abrasive', userConfirmed: true }),
+    );
+
+    expect(spec.wheelType).toBe('bonded_abrasive');
+    expect(ocr.wheelType).toBe('flap_disc');
+  });
+
+  it('Tesseract가 종류를 모르겠음으로 남겨도 작업자가 일반 결합숫돌을 고르면 대조가 이어진다', () => {
+    // 글자만 읽는 경로는 숫돌의 생김새를 볼 수 없어 항상 unknown이다. 작업자가
+    // 실물을 보고 고르고 직접 확인까지 해야 규격 대조로 이어진다.
+    const ocr = ocrWheel({ wheelType: 'unknown', confidence: 'low' });
+    const spec = confirmedWheelSpec(
+      ocr,
+      untouched(ocr, { wheelType: 'bonded_abrasive', userConfirmed: true }),
+    );
+
+    expect(spec.wheelType).toBe('bonded_abrasive');
+    expect(spec.confidence).toBe('high');
+    expect(ocr.wheelType).toBe('unknown');
+    expect(
+      matchSpecs(grinder(), spec, { declaredPurpose: 'cutting', today: TODAY })
+        .verdict,
+    ).toBe('COMPATIBLE');
+  });
+
+  it('작업자가 모르겠음으로 두면 규격이 다 맞아도 적합으로 끝나지 않는다', () => {
+    const ocr = ocrWheel();
+    const spec = confirmedWheelSpec(
+      ocr,
+      untouched(ocr, { wheelType: 'unknown', userConfirmed: true }),
+    );
+
+    expect(
+      matchSpecs(grinder(), spec, { declaredPurpose: 'cutting', today: TODAY })
+        .verdict,
+    ).toBe('UNDETERMINED');
+  });
+});
+
+describe('wheelTypeDiffersFromSuggestion', () => {
+  it('AI 제안과 같은 종류면 다르지 않다', () => {
+    expect(
+      wheelTypeDiffersFromSuggestion(
+        ocrWheel({ wheelType: 'flap_disc' }),
+        'flap_disc',
+      ),
+    ).toBe(false);
+  });
+
+  it('AI 제안과 다른 종류를 고르면 다르다', () => {
+    expect(
+      wheelTypeDiffersFromSuggestion(
+        ocrWheel({ wheelType: 'flap_disc' }),
+        'bonded_abrasive',
+      ),
+    ).toBe(true);
+  });
+
+  it('OCR이 없으면 모르겠음을 제안으로 보고 견준다', () => {
+    // 제안이 없는데 결합숫돌을 고르면 사람이 직접 확인해야 한다.
+    expect(wheelTypeDiffersFromSuggestion(null, 'bonded_abrasive')).toBe(true);
+    expect(wheelTypeDiffersFromSuggestion(null, 'unknown')).toBe(false);
   });
 });
 

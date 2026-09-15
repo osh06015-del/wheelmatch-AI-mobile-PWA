@@ -168,6 +168,29 @@ export const en: Messages = {
   'wheelCondition.stopBody':
     'A problem was found with the wheel. Do not mount it. Replace it with another serviceable wheel and inspect again.',
 
+  'wheelType.bonded_abrasive': 'Standard bonded abrasive wheel',
+  'wheelType.flap_disc': 'Flap disc',
+  'wheelType.cup_wheel': 'Cup wheel',
+  'wheelType.diamond': 'Diamond wheel',
+  'wheelType.wire_brush': 'Wire brush',
+  'wheelType.other': 'Other',
+  'wheelType.unknown': 'Not sure',
+  'wheelTypeConfirm.label': 'Wheel type',
+  'wheelTypeConfirm.hint':
+    'Choose by the shape of the wheel, not the label text. Look at the actual wheel.',
+  'wheelTypeConfirm.aiSuggestion':
+    'AI suggestion: {type} — only an initial guess from the photo.',
+  'wheelTypeConfirm.supported':
+    'Specifications are compared only when you confirm it is a standard bonded abrasive wheel.',
+  'wheelTypeConfirm.unknown':
+    'If the wheel type is not confirmed, the specification check ends as CANNOT DETERMINE. Look at the actual wheel and choose.',
+  'wheelTypeConfirm.unsupported':
+    'This app does not assess this type of wheel. The specification check ends as CANNOT DETERMINE. Follow the instructions from the manufacturer.',
+  'wheelTypeConfirm.differs':
+    'The AI suggestion ({ai}) and your choice ({selected}) differ. Check the actual wheel again and tick the manual confirmation below to continue.',
+  'wheelTypeConfirm.needsConfirm':
+    'The wheel type differs from the AI suggestion. Tick the manual confirmation to continue.',
+
   'action.title': 'DO NOT USE',
   'action.rpmSafety':
     'Do not mount this wheel. Replace it with one rated at or above the grinder speed.',

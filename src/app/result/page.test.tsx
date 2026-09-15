@@ -310,6 +310,26 @@ describe('결과 화면 — 시험운전 절차', () => {
     expect(screen.queryByText('시험운전')).not.toBeInTheDocument();
   });
 
+  it.each([
+    ['flap_disc'],
+    ['cup_wheel'],
+    ['diamond'],
+    ['wire_brush'],
+    ['other'],
+    ['unknown'],
+  ] as const)(
+    '숫돌 종류가 %s 이면 판정불가이고 시험운전을 열지 않는다',
+    (type) => {
+      // 일반 결합숫돌로 확인되지 않은 숫돌을 돌려 보게 유도하지 않는다.
+      ready({ ...WHEEL, wheelType: type });
+      render(<ResultPage />);
+      checkAll();
+
+      expect(screen.getByText('판정불가')).toBeInTheDocument();
+      expect(screen.queryByText('시험운전')).not.toBeInTheDocument();
+    },
+  );
+
   it('판정불가에서도 시험운전을 열지 않는다', () => {
     ready({ ...WHEEL, maxRPM: null });
     render(<ResultPage />);

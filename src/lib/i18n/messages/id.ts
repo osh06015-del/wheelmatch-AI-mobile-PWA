@@ -173,6 +173,29 @@ export const id: Messages = {
   'wheelCondition.stopBody':
     'Ditemukan masalah pada batu gerinda. Jangan pasang. Ganti dengan batu gerinda lain yang layak dan periksa lagi.',
 
+  'wheelType.bonded_abrasive': 'Batu gerinda bonded biasa',
+  'wheelType.flap_disc': 'Flap disc (amplas susun)',
+  'wheelType.cup_wheel': 'Batu gerinda mangkuk',
+  'wheelType.diamond': 'Mata potong berlian',
+  'wheelType.wire_brush': 'Sikat kawat',
+  'wheelType.other': 'Lainnya',
+  'wheelType.unknown': 'Tidak yakin',
+  'wheelTypeConfirm.label': 'Jenis batu gerinda',
+  'wheelTypeConfirm.hint':
+    'Pilih berdasarkan bentuk batu, bukan tulisan pada label. Lihat batu yang sebenarnya.',
+  'wheelTypeConfirm.aiSuggestion':
+    'Saran AI: {type} — hanya perkiraan awal dari foto.',
+  'wheelTypeConfirm.supported':
+    'Spesifikasi hanya dibandingkan bila Anda sendiri memastikan ini batu gerinda bonded biasa.',
+  'wheelTypeConfirm.unknown':
+    'Jika jenisnya belum dipastikan, hasil pencocokan spesifikasi akan TIDAK DAPAT DINILAI. Lihat batu yang sebenarnya lalu pilih.',
+  'wheelTypeConfirm.unsupported':
+    'Aplikasi ini tidak menilai jenis ini. Hasil pencocokan spesifikasi akan TIDAK DAPAT DINILAI. Ikuti petunjuk produsen.',
+  'wheelTypeConfirm.differs':
+    'Saran AI ({ai}) berbeda dengan pilihan Anda ({selected}). Periksa lagi batu yang sebenarnya dan centang konfirmasi langsung di bawah untuk melanjutkan.',
+  'wheelTypeConfirm.needsConfirm':
+    'Jenis batu berbeda dari saran AI. Centang konfirmasi langsung untuk melanjutkan.',
+
   'action.title': 'JANGAN DIGUNAKAN',
   'action.rpmSafety':
     'Jangan pasang batu gerinda ini. Ganti dengan yang tahan kecepatan sama atau lebih tinggi dari kecepatan gerinda.',

@@ -4,7 +4,7 @@
 //
 //   사용자의 확인은 **정규화 값만** 바꾼다. 라벨에서 읽은 원본 표시는 바꾸지 않는다.
 //
-// 확인 화면(FieldConfirm)이 보여주는 것은 최고사용회전속도·지름·두께·용도 넷뿐이다.
+// 확인 화면이 보여주는 것은 최고사용회전속도·지름·두께·용도·유효기한과 숫돌 종류다.
 // markings — 라벨에 인쇄된 rpm 표기, m/s 표기, 내경 — 는 화면에 없다. 사용자가
 // 확인한 적 없는 값이므로 사용자가 회전속도를 고쳤다고 해서 따라 바뀌면 안 된다.
 // 따라가면 두 가지를 잃는다.
@@ -19,14 +19,27 @@
 // 판정은 하지 않는다. 값을 옮기기만 한다.
 
 import { normalizeExpiry } from './parser';
-import type { RpmSource, WheelPurpose, WheelSpec } from '@/lib/rules/types';
+import type {
+  RpmSource,
+  WheelPurpose,
+  WheelSpec,
+  WheelType,
+} from '@/lib/rules/types';
 
-/** 확인 화면에서 사람이 확정한 값. FieldConfirm이 노출하는 필드가 전부다. */
+/** 확인 화면에서 사람이 확정한 값. 확인 화면이 노출하는 필드가 전부다. */
 export interface ConfirmedWheelFields {
   maxRPM: number | null;
   diameter: number | null;
   thickness: number | null;
   purpose: WheelPurpose;
+  /**
+   * 작업자가 실물을 보고 고른 숫돌 종류.
+   *
+   * AI가 사진으로 본 종류는 초기 제안값일 뿐이고 최종값은 이쪽이다. OCR 원본
+   * (wheelOcr.wheelType)은 이 값과 무관하게 그대로 남는다 — 둘을 견줘야
+   * 모델이 종류를 잘못 봤는지 되짚을 수 있다.
+   */
+  wheelType: WheelType;
   /**
    * 유효기한 입력칸의 문자열 그대로. 여기서 정규화한다.
    *
@@ -36,6 +49,20 @@ export interface ConfirmedWheelFields {
   expiryText: string;
   /** ManualConfirmToggle 상태. 사람이 직접 확인해야만 신뢰도가 올라간다. */
   userConfirmed: boolean;
+}
+
+/**
+ * 작업자가 고른 종류가 AI 제안과 다른가.
+ *
+ * 다르면 둘 중 하나가 틀렸다는 뜻이다. 어느 쪽인지 앱은 알 수 없으므로 차이를
+ * 숨기지 않고 작업자에게 실물을 다시 보게 한다. OCR이 없으면(수동 입력) 제안도
+ * 없으니 'unknown'과 견준다 — 결합숫돌을 고르려면 사람의 확인이 필요해진다.
+ */
+export function wheelTypeDiffersFromSuggestion(
+  ocr: WheelSpec | null,
+  selected: WheelType,
+): boolean {
+  return selected !== (ocr?.wheelType ?? 'unknown');
 }
 
 /**
@@ -70,10 +97,10 @@ export function confirmedWheelSpec(
     diameter: fields.diameter,
     thickness: fields.thickness,
     purpose: fields.purpose,
-    // 종류와 외관 손상은 사진에서 판별한 값이고 확인 화면에 없다. 사용자가
-    // 숫자를 고쳐도 그대로 이어간다. 값이 없으면 'unknown'으로 두어
-    // 판정불가로 이어지게 한다.
-    wheelType: ocr?.wheelType ?? 'unknown',
+    // 종류는 작업자가 실물을 보고 고른 값이다. AI 판별은 제안으로만 쓰였다.
+    wheelType: fields.wheelType,
+    // 외관 손상은 사진에서 판별한 값이고 확인 화면에 없다. 사용자가 숫자를
+    // 고쳐도 그대로 이어간다. 값이 없으면 'unknown'으로 둔다.
     visibleDamage: ocr?.visibleDamage ?? 'unknown',
     // 라벨 원본 표시. 사용자 수정으로 덮지 않는다 — 이 파일 맨 위 참고.
     //

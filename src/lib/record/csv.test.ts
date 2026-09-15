@@ -154,6 +154,19 @@ describe('toCsv', () => {
     expect(row[CSV_COLUMNS.indexOf('wheelEdited')]).toBe('N');
   });
 
+  it('숫돌 종류만 고쳐도 Y로 적는다', () => {
+    // AI가 본 종류를 작업자가 바꾼 기록이다. N으로 남기면 그 차이가 데이터에서 사라진다.
+    const csv = toCsv([
+      record({
+        wheelOcr: { ...WHEEL, wheelType: 'flap_disc' },
+        wheel: { ...WHEEL, wheelType: 'bonded_abrasive' },
+      }),
+    ]);
+    const [, row] = parse(csv);
+    expect(row[CSV_COLUMNS.indexOf('wheelEdited')]).toBe('Y');
+    expect(row[CSV_COLUMNS.indexOf('wheelType')]).toBe('bonded_abrasive');
+  });
+
   it('OCR 원본이 없는 기록은 정정 여부를 비워 둔다', () => {
     // 'N'으로 적으면 정정률이 실제보다 낮게 나온다.
     const [, row] = parse(toCsv([record()]));

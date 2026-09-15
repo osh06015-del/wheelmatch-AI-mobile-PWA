@@ -150,6 +150,29 @@ export const zh: Messages = {
   'wheelCondition.stopBody':
     '已确认砂轮状态存在问题。请勿安装，更换其他可用砂轮后重新检查。',
 
+  'wheelType.bonded_abrasive': '普通砂轮（固结磨具）',
+  'wheelType.flap_disc': '百叶片',
+  'wheelType.cup_wheel': '碗形砂轮',
+  'wheelType.diamond': '金刚石片',
+  'wheelType.wire_brush': '钢丝刷',
+  'wheelType.other': '其他',
+  'wheelType.unknown': '不确定',
+  'wheelTypeConfirm.label': '砂轮种类',
+  'wheelTypeConfirm.hint':
+    '按砂轮的外形选择，而不是按标签文字。请查看实物后选择。',
+  'wheelTypeConfirm.aiSuggestion':
+    'AI 建议：{type}——这只是根据照片给出的初始建议。',
+  'wheelTypeConfirm.supported':
+    '只有亲自确认是普通砂轮（固结磨具）时，本应用才核对规格。',
+  'wheelTypeConfirm.unknown':
+    '如果未确认砂轮种类，规格核对结果将是无法判定。请查看实物后选择。',
+  'wheelTypeConfirm.unsupported':
+    '本应用不判定这种砂轮。规格核对结果将是无法判定。请按照制造商说明书操作。',
+  'wheelTypeConfirm.differs':
+    'AI 建议（{ai}）与您选择的种类（{selected}）不同。请再次查看实物，并勾选下方的人工确认后才能继续。',
+  'wheelTypeConfirm.needsConfirm':
+    '砂轮种类与 AI 建议不同，需要勾选人工确认才能继续。',
+
   'action.title': '请勿使用',
   'action.rpmSafety': '请勿安装此砂轮。请更换为可承受角磨机转速及以上的砂轮。',
   'action.diameterFit': '请勿安装此砂轮。请更换为不超过角磨机允许直径的砂轮。',

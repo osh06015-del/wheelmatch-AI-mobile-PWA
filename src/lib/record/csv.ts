@@ -138,6 +138,8 @@ function row(record: InspectionRecord): string {
       'diameter',
       'thickness',
       'purpose',
+      // 종류도 작업자가 고친다. 빼면 AI가 본 종류를 바꾼 기록이 '안 고침'으로 남는다.
+      'wheelType',
     ]),
     tick(checklist.guardCover),
     tick(checklist.auxiliaryHandle),

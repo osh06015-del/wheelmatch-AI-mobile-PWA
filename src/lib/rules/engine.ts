@@ -43,14 +43,18 @@ const SUPPORTED_WHEEL_TYPES: ReadonlySet<WheelType> = new Set<WheelType>([
   'bonded_abrasive',
 ]);
 
+/**
+ * 확인 화면의 숫돌 종류 선택지와 같은 이름을 쓴다. 작업자가 고른 이름과 결과
+ * 화면의 이름이 다르면 무엇을 골랐는지 되짚기 어렵다.
+ */
 const WHEEL_TYPE_LABEL: Record<WheelType, string> = {
-  bonded_abrasive: '결합숫돌 (절단·연삭)',
+  bonded_abrasive: '일반 결합숫돌',
   flap_disc: '플랩디스크',
   cup_wheel: '컵휠',
-  diamond: '다이아몬드',
+  diamond: '다이아몬드 휠',
   wire_brush: '와이어 브러시',
   other: '기타',
-  unknown: '미확인',
+  unknown: '확인 안 됨',
 };
 
 const WORK_PURPOSE_LABEL: Record<WorkPurpose, string> = {
@@ -274,6 +278,9 @@ export function checkWorkPurpose(
  *
  * 지원하지 않는 종류는 부적합이 아니라 판정불가다.
  * 그 숫돌이 위험하다는 뜻이 아니라, 이 앱이 판단할 수 없다는 뜻이기 때문이다.
+ *
+ * wheel.wheelType은 작업자가 확인 화면에서 실물을 보고 고른 값이다. AI가 사진으로
+ * 본 종류는 제안으로만 쓰였고 wheelOcr에 따로 남는다(src/lib/ocr/confirm.ts).
  */
 export function checkWheelType(wheel: WheelSpec): CheckItem {
   const base = {
@@ -282,18 +289,18 @@ export function checkWheelType(wheel: WheelSpec): CheckItem {
     wheelValue: WHEEL_TYPE_LABEL[wheel.wheelType],
   };
 
-  // 확인하지 못한 것과 확인해보니 다른 종류인 것을 구분한다.
+  // 종류를 확인하지 못한 것도 막는다. 일반 결합숫돌임이 확인되지 않았는데
+  // 회전속도·지름 규칙이 성립한다고 가정하면 "규격이 맞습니다"가 근거 없이 나온다.
   //
-  // 종류를 못 봤다고 판정을 막으면, 글자만 읽는 Tesseract 경로에서는
-  // 항상 판정불가가 되어 오프라인 모드가 통째로 쓸모없어진다.
-  // 못 본 것은 알리기만 하고, 다른 종류임을 확인했을 때만 막는다.
+  // 예전에는 경고로만 두었다. 글자만 읽는 Tesseract 경로는 생김새를 볼 수 없어
+  // 항상 unknown이라, 막으면 오프라인 모드가 통째로 쓸모없어졌기 때문이다.
+  // 이제는 작업자가 확인 화면에서 종류를 직접 고르므로 그 이유가 사라졌다.
   if (wheel.wheelType === 'unknown') {
     return {
       ...base,
       passed: null,
-      advisory: true,
       reason:
-        '숫돌 종류를 사진으로 확인하지 못했습니다. 결합숫돌(일반 절단날·연삭석)이 맞는지 직접 확인하세요.',
+        '숫돌 종류가 확인되지 않았습니다. 일반 결합숫돌로 확인된 경우에만 규격을 대조합니다. 값 확인 화면에서 실물을 보고 종류를 고르세요.',
     };
   }
 
@@ -308,7 +315,8 @@ export function checkWheelType(wheel: WheelSpec): CheckItem {
   return {
     ...base,
     passed: true,
-    reason: '이 앱이 다루는 결합숫돌입니다.',
+    reason:
+      '일반 결합숫돌로 확인되었습니다. 이 앱이 규격을 대조하는 종류입니다.',
   };
 }
 

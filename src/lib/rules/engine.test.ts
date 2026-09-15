@@ -325,18 +325,24 @@ describe('규칙엔진 — 작업 목적 대조', () => {
   });
 });
 
-describe('규칙엔진 — 숫돌 종류 (사진으로 판별)', () => {
-  it('결합숫돌이면 통과한다', () => {
+describe('규칙엔진 — 숫돌 종류 (작업자가 확인한 종류)', () => {
+  it('일반 결합숫돌로 확인되면 통과한다', () => {
     const result = match(grinder(), wheel({ wheelType: 'bonded_abrasive' }));
-    expect(checkOf(result, RULE.WHEEL_TYPE).passed).toBe(true);
+    const check = checkOf(result, RULE.WHEEL_TYPE);
+    expect(check.passed).toBe(true);
+    expect(check.wheelValue).toBe('일반 결합숫돌');
+    expect(check.reason).toBe(
+      '일반 결합숫돌로 확인되었습니다. 이 앱이 규격을 대조하는 종류입니다.',
+    );
     expect(result.verdict).toBe('COMPATIBLE');
   });
 
   it.each([
-    ['diamond', '다이아몬드'],
+    ['diamond', '다이아몬드 휠'],
     ['cup_wheel', '컵휠'],
     ['flap_disc', '플랩디스크'],
     ['wire_brush', '와이어 브러시'],
+    ['other', '기타'],
   ] as const)('%s 는 이 앱이 다루지 않으므로 UNDETERMINED', (type, label) => {
     // 규격 체계가 달라 같은 규칙을 적용하면 조용히 틀린 답이 나온다.
     // 부적합이 아니라 판정불가다. 위험하다는 뜻이 아니라 판단할 수 없다는 뜻이다.
@@ -344,15 +350,23 @@ describe('규칙엔진 — 숫돌 종류 (사진으로 판별)', () => {
     expect(result.verdict).toBe('UNDETERMINED');
     const check = checkOf(result, RULE.WHEEL_TYPE);
     expect(check.passed).toBeNull();
+    expect(check.advisory).toBeUndefined(); // 경고가 아니라 차단이다
     expect(check.wheelValue).toBe(label);
   });
 
-  it('종류를 못 봤으면 경고만 하고 판정을 막지 않는다', () => {
-    // 글자만 읽는 Tesseract 경로는 형태를 볼 수 없어 항상 unknown이다.
-    // 이걸 차단하면 오프라인 모드가 통째로 쓸모없어진다.
+  it('종류를 확인하지 못했으면(모르겠음) 규격이 다 맞아도 적합으로 끝나지 않는다', () => {
+    // 일반 결합숫돌임이 확인되지 않은 상태다. 이 앱의 회전속도·지름 규칙이
+    // 성립하는지 모르는 채로 "규격이 맞습니다"를 낼 수 없다. 예전에는 Tesseract
+    // 경로 때문에 경고로만 두었지만, 이제 작업자가 확인 화면에서 종류를 직접 고른다.
     const result = match(grinder(), wheel({ wheelType: 'unknown' }));
-    expect(result.verdict).toBe('COMPATIBLE');
-    expect(checkOf(result, RULE.WHEEL_TYPE).advisory).toBe(true);
+    const check = checkOf(result, RULE.WHEEL_TYPE);
+    expect(check.passed).toBeNull();
+    expect(check.advisory).toBeUndefined();
+    expect(check.wheelValue).toBe('확인 안 됨');
+    expect(check.reason).toBe(
+      '숫돌 종류가 확인되지 않았습니다. 일반 결합숫돌로 확인된 경우에만 규격을 대조합니다. 값 확인 화면에서 실물을 보고 종류를 고르세요.',
+    );
+    expect(result.verdict).toBe('UNDETERMINED');
   });
 
   it('미지원 종류라도 RPM 위반이 있으면 부적합이 먼저다', () => {
@@ -704,9 +718,10 @@ describe('3. 지름·장착 규격·종류가 누락된 경우', () => {
     expect(check?.reason).toContain('직접 확인');
   });
 
-  it('종류를 모르면 통과하고, 지원하지 않는 종류면 판정을 멈춘다', () => {
+  it('종류를 확인하지 못해도, 지원하지 않는 종류여도 판정을 멈춘다', () => {
+    // 일반 결합숫돌로 확인되지 않은 숫돌은 이 앱의 규칙이 성립하는지 모른다.
     expect(match(grinder(), marked({ wheelType: 'unknown' })).verdict).toBe(
-      'COMPATIBLE',
+      'UNDETERMINED',
     );
     // 판정불가지 부적합이 아니다. 다이아몬드날이 '나쁜 숫돌'이라는 뜻이 아니라
     // 이 앱의 규칙이 적용되지 않는다는 뜻이다. 부적합이라 하면 거짓말이 된다.
@@ -788,10 +803,13 @@ describe('7. 지원하지 않는 숫돌 형식', () => {
     expect(result.verdict).toBe('UNDETERMINED');
   });
 
-  it('형태를 못 본 경우(unknown)는 막지 않고 경고로 남긴다', () => {
-    // 사진에 형태가 안 보이는 것과, 보고 나서 다른 종류인 것은 다르다.
-    const check = match(grinder(), marked({ wheelType: 'unknown' })).checks;
-    expect(check.find((c) => c.rule === RULE.WHEEL_TYPE)?.advisory).toBe(true);
+  it('종류를 확인하지 못한 경우(unknown)도 경고가 아니라 차단이다 — 부적합은 아니다', () => {
+    // 일반 결합숫돌로 확인되지 않았다. 판정을 막되, 나쁜 숫돌이라고 단정하지 않는다.
+    const result = match(grinder(), marked({ wheelType: 'unknown' }));
+    const check = result.checks.find((c) => c.rule === RULE.WHEEL_TYPE);
+    expect(check?.advisory).toBeUndefined();
+    expect(check?.passed).toBeNull();
+    expect(result.verdict).toBe('UNDETERMINED');
   });
 });
 

@@ -16,9 +16,14 @@ import { ManualConfirmToggle } from '@/components/ManualConfirmToggle';
 import { RequirementBanner } from '@/components/RequirementBanner';
 import { ScanHeader } from '@/components/ScanHeader';
 import { WheelConditionGate } from '@/components/WheelConditionGate';
+import { WheelTypeConfirm } from '@/components/WheelTypeConfirm';
 import { WHEEL_FIELD_GUIDE } from '@/lib/guide/fieldGuide';
+import { useLocale } from '@/lib/i18n';
 import { optimizeForUpload } from '@/lib/image/optimize';
-import { confirmedWheelSpec } from '@/lib/ocr/confirm';
+import {
+  confirmedWheelSpec,
+  wheelTypeDiffersFromSuggestion,
+} from '@/lib/ocr/confirm';
 import { getExtractor } from '@/lib/ocr/extractor';
 import { normalizeExpiry } from '@/lib/ocr/parser';
 import { isGrinderConditionComplete } from '@/lib/safety/grinderCondition';
@@ -31,6 +36,7 @@ import type {
   WheelCondition,
   WheelPurpose,
   WheelSpec,
+  WheelType,
 } from '@/lib/rules/types';
 
 type Phase = 'capture' | 'analyzing' | 'confirm' | 'error';
@@ -42,10 +48,13 @@ interface FormState {
   purpose: string;
   /** 라벨의 유효기한 표기. 정규화는 confirmedWheelSpec이 한다. */
   expiry: string;
+  /** 작업자가 실물을 보고 고른 종류. 처음에는 AI 제안값이 들어간다. */
+  wheelType: WheelType;
 }
 
 export default function WheelScanPage() {
   const router = useRouter();
+  const { t } = useLocale();
   const {
     declaredPurpose,
     grinder,
@@ -64,6 +73,7 @@ export default function WheelScanPage() {
     thickness: '',
     purpose: 'unknown',
     expiry: '',
+    wheelType: 'unknown',
   });
   const [userConfirmed, setUserConfirmed] = useState(false);
   const [condition, setCondition] = useState<WheelCondition>({
@@ -78,6 +88,11 @@ export default function WheelScanPage() {
   useEffect(() => {
     if (!hydrating && !grinderReady) router.replace('/scan/grinder');
   }, [hydrating, grinderReady, router]);
+
+  // AI가 본 종류와 작업자가 고른 종류가 다르면 둘 중 하나가 틀렸다. 어느 쪽인지
+  // 앱은 모르므로, 작업자가 실물을 다시 보고 직접 확인을 체크해야 넘어간다.
+  const typeNeedsConfirm =
+    wheelTypeDiffersFromSuggestion(ocr, form.wheelType) && !userConfirmed;
 
   async function analyze(source: Blob) {
     setPhase('analyzing');
@@ -96,6 +111,8 @@ export default function WheelScanPage() {
         // 모델이 읽은 문자열을 그대로 보여준다. 정규화한 값을 되돌려 보여주면
         // 라벨에 무엇이 찍혀 있었는지 사용자가 대조할 수 없다.
         expiry: spec.markings?.expiryRaw ?? '',
+        // AI 판별은 초기 제안값으로만 넣는다. 최종값은 작업자가 고른다.
+        wheelType: spec.wheelType,
       });
       setUserConfirmed(false);
       // 새 사진은 새 숫돌일 수 있다. 이전 숫돌의 직접 확인을 이어 쓰지 않는다.
@@ -119,8 +136,16 @@ export default function WheelScanPage() {
     }));
   }
 
+  function updateWheelType(next: WheelType) {
+    setForm((current) => ({ ...current, wheelType: next }));
+    // 앞서 한 직접 확인은 다른 종류를 두고 한 확인이었다. 다시 받는다.
+    setUserConfirmed(false);
+  }
+
   function proceed() {
     if (!isWheelConditionComplete(condition)) return;
+    // 버튼만 막으면 다른 경로로 불렸을 때 샌다. 여기서도 막는다.
+    if (typeNeedsConfirm) return;
     // 화면이 가진 값만 넘기고, OCR 원본에서 무엇을 이어갈지는 confirmedWheelSpec이
     // 정한다. 여기서 필드를 하나하나 옮겨 적으면 선택 필드(markings·rpmSource)가
     // 조용히 빠진다 — 실제로 그렇게 빠져서 표기 일치 검사가 돌지 않았다.
@@ -129,6 +154,7 @@ export default function WheelScanPage() {
       diameter: toNumberOrNull(form.diameter),
       thickness: toNumberOrNull(form.thickness),
       purpose: form.purpose as WheelPurpose,
+      wheelType: form.wheelType,
       expiryText: form.expiry,
       userConfirmed,
     });
@@ -279,6 +305,11 @@ export default function WheelScanPage() {
         rawText={ocr?.rawText ?? ''}
         onChange={updateField}
       />
+      <WheelTypeConfirm
+        value={form.wheelType}
+        suggested={ocr?.wheelType ?? 'unknown'}
+        onChange={updateWheelType}
+      />
       <ManualConfirmToggle
         checked={userConfirmed}
         onChange={setUserConfirmed}
@@ -293,10 +324,15 @@ export default function WheelScanPage() {
         }
       />
       <div className="flex flex-col gap-3">
+        {typeNeedsConfirm && (
+          <p className="text-base leading-relaxed text-yellow-200">
+            {t('wheelTypeConfirm.needsConfirm')}
+          </p>
+        )}
         <button
           type="button"
           onClick={proceed}
-          disabled={!isWheelConditionComplete(condition)}
+          disabled={!isWheelConditionComplete(condition) || typeNeedsConfirm}
           className="min-h-14 rounded-lg bg-green-500 text-lg font-bold text-slate-950 active:bg-green-400 disabled:bg-slate-700 disabled:text-slate-400"
         >
           확인 후 규격 대조

@@ -166,6 +166,29 @@ export const ko = {
   'wheelCondition.stopBody':
     '숫돌 상태에 문제가 확인되었습니다. 장착하지 말고 사용 가능한 다른 숫돌로 교체한 뒤 다시 점검하세요.',
 
+  'wheelType.bonded_abrasive': '일반 결합숫돌',
+  'wheelType.flap_disc': '플랩디스크',
+  'wheelType.cup_wheel': '컵휠',
+  'wheelType.diamond': '다이아몬드 휠',
+  'wheelType.wire_brush': '와이어 브러시',
+  'wheelType.other': '기타',
+  'wheelType.unknown': '모르겠음',
+  'wheelTypeConfirm.label': '숫돌 종류',
+  'wheelTypeConfirm.hint':
+    '라벨 글자가 아니라 숫돌의 생김새로 고릅니다. 실물을 보고 직접 고르세요.',
+  'wheelTypeConfirm.aiSuggestion':
+    'AI 제안: {type} — 사진으로 본 초기 제안값일 뿐입니다.',
+  'wheelTypeConfirm.supported':
+    '일반 결합숫돌로 직접 확인한 경우에만 이 앱이 규격을 대조합니다.',
+  'wheelTypeConfirm.unknown':
+    '종류를 확인하지 못하면 규격 대조가 판정불가로 끝납니다. 실물을 보고 고르세요.',
+  'wheelTypeConfirm.unsupported':
+    '이 앱이 판정하지 않는 종류입니다. 규격 대조는 판정불가로 끝납니다. 제조사 취급설명서를 확인하세요.',
+  'wheelTypeConfirm.differs':
+    'AI 제안({ai})과 선택한 종류({selected})가 다릅니다. 실물을 다시 보고 아래 직접 확인을 체크해야 진행할 수 있습니다.',
+  'wheelTypeConfirm.needsConfirm':
+    '숫돌 종류가 AI 제안과 달라 직접 확인 체크가 필요합니다.',
+
   'action.title': '사용하지 마십시오',
   'action.rpmSafety':
     '이 숫돌을 장착하지 마세요. 그라인더 회전속도 이상을 견디는 숫돌로 교체해야 합니다.',
