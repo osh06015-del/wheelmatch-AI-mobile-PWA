@@ -15,36 +15,34 @@
  */
 export const RULESET_VERSION = '2026.09.12-r1';
 
-/** 근거 한 건. 확인하지 못한 것은 넣지 않는다. */
-export interface RuleSource {
-  /** 화면에 보일 이름 */
-  label: string;
-  /** 조항·문서번호·판 같은 식별자 */
-  reference: string;
-  /** 이 앱에서 무엇의 근거인지 */
-  scope: string;
-}
-
 /**
- * 규칙이 실제로 기대고 있는 문서들.
+ * 규칙이 실제로 기대고 있는 문서들. 확인하지 못한 것은 넣지 않는다.
+ *
+ * 이름·식별자·적용 범위는 문구 키로 둔다. 법령 이름과 조항도 작업자가 고른
+ * 언어로 읽혀야 근거 구실을 한다. 이 폴더는 번역 모듈을 불러오지 않으므로
+ * 키 문자열만 두고, 키가 실제로 있는지는 화면(RuleVersionNote)의 타입 검사가
+ * 확인한다.
  *
  * 상세와 확인 날짜·URL은 docs/regulatory-sources.md에 있다. 여기에는
- * 화면에 띄울 최소한만 둔다 — 확인하지 못한 것을 적지 않는다.
+ * 화면에 띄울 최소한만 둔다.
  */
-export const RULE_SOURCES: ReadonlyArray<RuleSource> = [
+export const RULE_SOURCES = [
   {
-    label: '산업안전보건기준에 관한 규칙',
-    reference: '제122조 (고용노동부령 제450호, 시행 2026-03-02)',
-    scope: '최고사용회전속도·측면 사용·덮개·시험운전',
+    label: 'ruleSource.krOsh.label',
+    reference: 'ruleSource.krOsh.reference',
+    scope: 'ruleSource.krOsh.scope',
   },
   {
-    label: 'KOSHA GUIDE',
-    reference: 'M-189-2015 휴대형 연삭기 안전작업에 관한 기술지침',
-    scope: '보관·취급 권고 (법적 강제력 없음)',
+    label: 'ruleSource.kosha.label',
+    reference: 'ruleSource.kosha.reference',
+    scope: 'ruleSource.kosha.scope',
   },
   {
-    label: 'oSa Product marking requirements',
-    reference: 'Issue 2, 2020-04 (EN 12413:2019 기준)',
-    scope: '유효기한 표시 형식 참고. EN 원문은 확인하지 못함',
+    label: 'ruleSource.osa.label',
+    reference: 'ruleSource.osa.reference',
+    scope: 'ruleSource.osa.scope',
   },
-];
+] as const;
+
+/** 근거 한 건. 세 값 모두 문구 키다. */
+export type RuleSource = (typeof RULE_SOURCES)[number];

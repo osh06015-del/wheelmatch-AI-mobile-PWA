@@ -19,6 +19,7 @@ import { WheelConditionGate } from '@/components/WheelConditionGate';
 import { WheelTypeConfirm } from '@/components/WheelTypeConfirm';
 import { WHEEL_FIELD_GUIDE } from '@/lib/guide/fieldGuide';
 import { useLocale } from '@/lib/i18n';
+import { analysisErrorText } from '@/lib/i18n/errors';
 import { optimizeForUpload } from '@/lib/image/optimize';
 import {
   confirmedWheelSpec,
@@ -79,7 +80,8 @@ export default function WheelScanPage() {
   const [condition, setCondition] = useState<WheelCondition>({
     ...EMPTY_WHEEL_CONDITION,
   });
-  const [error, setError] = useState<string | null>(null);
+  // 문장이 아니라 오류 자체를 둔다. 문장은 그릴 때 작업자가 고른 언어로 만든다.
+  const [error, setError] = useState<unknown>(null);
 
   // 그라인더를 찍지 않았거나 장비 상태를 직접 확인하지 않은 경우 1단계로 되돌린다.
   // 화면 이동으로 Gate를 건너뛸 수 있으면 Gate가 아니다.
@@ -119,9 +121,7 @@ export default function WheelScanPage() {
       setCondition({ ...EMPTY_WHEEL_CONDITION });
       setPhase('confirm');
     } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : '라벨 분석에 실패했습니다.',
-      );
+      setError(caught);
       setPhase('error');
     }
   }
@@ -174,7 +174,7 @@ export default function WheelScanPage() {
   const fields: FieldSpec[] = [
     {
       key: 'maxRPM',
-      label: '최고사용회전속도',
+      label: t('field.maxRPM'),
       unit: 'rpm',
       kind: 'number',
       value: form.maxRPM,
@@ -182,7 +182,7 @@ export default function WheelScanPage() {
     },
     {
       key: 'diameter',
-      label: '지름',
+      label: t('field.diameter'),
       unit: 'mm',
       kind: 'number',
       value: form.diameter,
@@ -190,7 +190,7 @@ export default function WheelScanPage() {
     },
     {
       key: 'thickness',
-      label: '두께',
+      label: t('field.thickness'),
       unit: 'mm',
       kind: 'number',
       value: form.thickness,
@@ -198,14 +198,14 @@ export default function WheelScanPage() {
     },
     {
       key: 'purpose',
-      label: '용도',
+      label: t('field.purpose'),
       kind: 'purpose',
       value: form.purpose,
       guide: WHEEL_FIELD_GUIDE.purpose,
     },
     {
       key: 'expiry',
-      label: '유효기한',
+      label: t('field.expiry'),
       unit: 'MM/YYYY',
       kind: 'text',
       value: form.expiry,
@@ -218,9 +218,7 @@ export default function WheelScanPage() {
   if (!grinderReady) {
     return (
       <main className="flex flex-1 items-center justify-center px-6">
-        <p className="text-lg text-slate-400">
-          그라인더 상태 확인이 먼저입니다.
-        </p>
+        <p className="text-lg text-slate-400">{t('scan.wheel.grinderFirst')}</p>
       </main>
     );
   }
@@ -228,7 +226,7 @@ export default function WheelScanPage() {
   if (phase === 'capture') {
     return (
       <main className="flex flex-1 flex-col">
-        <ScanHeader step="2 / 2" title="숫돌 라벨 촬영" />
+        <ScanHeader step="2 / 2" title={t('scan.wheel.title')} />
         {/* 찍기 전에 무엇을 골라야 하는지 먼저 알려준다.
             숫돌 걸이 앞에서 바로 쓰이는 정보다. */}
         {grinder && (
@@ -239,7 +237,7 @@ export default function WheelScanPage() {
           />
         )}
         <CameraView
-          guideLabel="라벨을 사각형 안에 맞추세요"
+          guideLabel={t('scan.wheel.guide')}
           onCapture={(blob) => void analyze(blob)}
           onPickFile={(file) => void analyze(file)}
         />
@@ -250,13 +248,13 @@ export default function WheelScanPage() {
   if (phase === 'analyzing') {
     return (
       <main className="flex flex-1 flex-col">
-        <ScanHeader step="2 / 2" title="숫돌 라벨 촬영" />
+        <ScanHeader step="2 / 2" title={t('scan.wheel.title')} />
         <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6">
           <div
             aria-hidden
             className="h-14 w-14 animate-spin rounded-full border-4 border-slate-700 border-t-slate-200"
           />
-          <p className="text-lg text-slate-300">라벨을 분석하고 있습니다...</p>
+          <p className="text-lg text-slate-300">{t('scan.wheel.analyzing')}</p>
         </div>
       </main>
     );
@@ -265,24 +263,27 @@ export default function WheelScanPage() {
   if (phase === 'error') {
     return (
       <main className="flex flex-1 flex-col">
-        <ScanHeader step="2 / 2" title="숫돌 라벨 촬영" />
+        <ScanHeader step="2 / 2" title={t('scan.wheel.title')} />
         <div className="flex flex-1 flex-col justify-center gap-4 px-6">
-          <p className="rounded-lg border border-red-500/40 bg-red-500/15 px-4 py-4 text-lg leading-relaxed text-red-200">
-            {error}
+          <p
+            role="alert"
+            className="rounded-lg border border-red-500/40 bg-red-500/15 px-4 py-4 text-lg leading-relaxed text-red-200"
+          >
+            {analysisErrorText(error, 'scan.wheel.failed', t)}
           </p>
           <button
             type="button"
             onClick={() => photo && void analyze(photo)}
             className="min-h-14 rounded-lg bg-slate-700 text-lg font-semibold text-white active:bg-slate-600"
           >
-            같은 사진으로 다시 분석
+            {t('scan.retryAnalysis')}
           </button>
           <button
             type="button"
             onClick={() => setPhase('capture')}
             className="min-h-14 rounded-lg border border-slate-600 text-lg font-semibold text-slate-200 active:bg-slate-800"
           >
-            재촬영
+            {t('scan.retake')}
           </button>
         </div>
       </main>
@@ -291,7 +292,7 @@ export default function WheelScanPage() {
 
   return (
     <main className="flex flex-1 flex-col gap-6 px-6 py-6">
-      <ScanHeader step="2 / 2" title="숫돌 라벨 촬영" bare />
+      <ScanHeader step="2 / 2" title={t('scan.wheel.title')} bare />
       {grinder && (
         <RequirementBanner
           grinder={grinder}
@@ -299,7 +300,7 @@ export default function WheelScanPage() {
         />
       )}
       <FieldConfirm
-        title="읽어낸 값을 확인하세요"
+        title={t('scan.confirmTitle')}
         fields={fields}
         confidence={ocr?.confidence ?? 'low'}
         rawText={ocr?.rawText ?? ''}
@@ -335,14 +336,14 @@ export default function WheelScanPage() {
           disabled={!isWheelConditionComplete(condition) || typeNeedsConfirm}
           className="min-h-14 rounded-lg bg-green-500 text-lg font-bold text-slate-950 active:bg-green-400 disabled:bg-slate-700 disabled:text-slate-400"
         >
-          확인 후 규격 대조
+          {t('scan.wheel.proceed')}
         </button>
         <button
           type="button"
           onClick={() => setPhase('capture')}
           className="min-h-14 rounded-lg border border-slate-600 text-lg font-semibold text-slate-200 active:bg-slate-800"
         >
-          재촬영
+          {t('scan.retake')}
         </button>
       </div>
     </main>

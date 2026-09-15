@@ -3,16 +3,17 @@
 // 여기서 나오는 조건은 규칙엔진의 판정 기준을 뒤집은 것이다.
 // 둘이 어긋나면 "조건은 맞다는데 판정은 부적합"인 상황이 생긴다.
 // 그래서 engine과 방향이 같은지 함께 확인한다.
+//
+// 문장은 src/lib/i18n/format.test.ts가 맡는다. 여기서는 값만 본다.
 
 import { describe, expect, it } from 'vitest';
 
 import { matchSpecs } from './engine';
 import {
   diameterMarginPercent,
-  formatMargin,
   grinderSizeClass,
-  grinderSummary,
   margins,
+  roundMargin,
   rpmMarginPercent,
   wheelRequirements,
 } from './requirement';
@@ -46,9 +47,10 @@ function wheel(overrides: Partial<WheelSpec> = {}): WheelSpec {
 
 describe('grinderSizeClass', () => {
   it('현장에서 부르는 인치 등급을 붙인다', () => {
-    expect(grinderSizeClass(100)).toBe('4인치급');
-    expect(grinderSizeClass(125)).toBe('5인치급');
-    expect(grinderSizeClass(180)).toBe('7인치급');
+    expect(grinderSizeClass(100)).toBe('4');
+    expect(grinderSizeClass(115)).toBe('4.5');
+    expect(grinderSizeClass(125)).toBe('5');
+    expect(grinderSizeClass(180)).toBe('7');
   });
 
   it('흔히 쓰지 않는 규격에는 억지로 등급을 붙이지 않는다', () => {
@@ -60,52 +62,18 @@ describe('grinderSizeClass', () => {
   });
 });
 
-describe('grinderSummary', () => {
-  it('모델·등급·회전속도를 한 줄로 묶는다', () => {
-    expect(grinderSummary(grinder())).toBe(
-      'GWS 750-125 · 5인치급 (최대 Φ125mm) · 11,000rpm',
-    );
-  });
-
-  it('값이 없는 항목은 빼고 만든다', () => {
-    expect(
-      grinderSummary(grinder({ model: null, maxWheelDiameter: null })),
-    ).toBe('11,000rpm');
-  });
-
-  it('흔치 않은 규격이어도 지름은 반드시 보여준다', () => {
-    // 인치 등급을 못 붙인다고 지름까지 빠지면, 작업자는 자기 기계가 몇 mm까지
-    // 되는지 화면에서 알 수 없게 된다. 등급은 거들 뿐이고 지름이 본체다.
-    expect(grinderSummary(grinder({ maxWheelDiameter: 137 }))).toBe(
-      'GWS 750-125 · 최대 Φ137mm · 11,000rpm',
-    );
-  });
-
-  it('아무 값도 없으면 읽지 못했다고 알린다', () => {
-    const empty = grinder({
-      model: null,
-      noLoadRPM: null,
-      maxWheelDiameter: null,
-    });
-    expect(grinderSummary(empty)).toBe('명판 값을 읽지 못했습니다');
-  });
-});
-
 describe('wheelRequirements', () => {
   it('명판 값을 뒤집어 조건을 만든다', () => {
-    const req = wheelRequirements(grinder(), 'grinding');
-    expect(req.map((r) => r.condition)).toEqual([
-      '연삭용',
-      'Φ125mm 이하',
-      '11,000rpm 이상',
+    expect(wheelRequirements(grinder(), 'grinding')).toEqual([
+      { kind: 'purpose', value: 'grinding' },
+      { kind: 'diameter', value: 125 },
+      { kind: 'rpm', value: 11000 },
     ]);
   });
 
   it('작업을 고르지 않으면 용도 조건을 세우지 않는다', () => {
-    const req = wheelRequirements(grinder(), null);
-    const purpose = req.find((r) => r.label === '용도')!;
-    expect(purpose.condition).toBeNull();
-    expect(purpose.unknownReason).toContain('작업을 고르지 않아');
+    const [purpose] = wheelRequirements(grinder(), null);
+    expect(purpose).toEqual({ kind: 'purpose', value: null });
   });
 
   it('명판을 읽지 못한 항목은 조건을 지어내지 않는다', () => {
@@ -113,14 +81,14 @@ describe('wheelRequirements', () => {
       grinder({ noLoadRPM: null, maxWheelDiameter: null }),
       'cutting',
     );
-    expect(req.filter((r) => r.condition === null)).toHaveLength(2);
+    expect(req.filter((r) => r.value === null)).toHaveLength(2);
   });
 
   it('조건을 만족하는 숫돌은 규칙엔진에서도 적합이다', () => {
     // 조건과 판정이 어긋나면 "조건은 맞다는데 부적합" 상황이 생긴다.
     const g = grinder();
     const req = wheelRequirements(g, 'cutting');
-    expect(req.every((r) => r.condition !== null)).toBe(true);
+    expect(req.every((r) => r.value !== null)).toBe(true);
 
     // 조건을 딱 맞춘 숫돌 (경계값)
     const exact = wheel({
@@ -172,42 +140,36 @@ describe('여유율', () => {
   });
 });
 
-describe('formatMargin', () => {
-  it('여유가 있으면 +로 표시한다', () => {
-    expect(formatMargin(10.909)).toBe('여유 +10.9%');
-  });
-
-  it('모자라면 부족으로 표시한다', () => {
-    expect(formatMargin(-22.727)).toBe('부족 -22.7%');
-  });
-
-  it('0%는 통과지만 여유가 없다고 알린다', () => {
-    // 규칙상 적합이지만 작업자는 이 상태를 알아야 한다.
-    expect(formatMargin(0)).toBe('여유 없음 (0%)');
-  });
-
+describe('roundMargin', () => {
   it('소수점 한 자리까지만 쓴다', () => {
     // OCR로 읽은 값의 정밀도를 넘어서는 자리는 의미가 없다.
-    expect(formatMargin(10.98765)).toBe('여유 +11%');
+    expect(roundMargin(10.909)).toBe(10.9);
+    expect(roundMargin(10.98765)).toBe(11);
+    expect(roundMargin(-22.727)).toBe(-22.7);
   });
 
-  it('계산할 수 없으면 문구를 만들지 않는다', () => {
-    // null을 그대로 돌려줘야 결과 화면이 여유율 줄을 통째로 감춘다.
-    // 여기서 '여유 없음 (0%)'을 내면 재지도 않은 값을 0%로 단정하게 된다.
-    expect(formatMargin(null)).toBeNull();
+  it('반올림해서 0이 되면 부호 없는 0이다', () => {
+    // -0이 남으면 부호로 문구를 고르는 화면이 "부족 -0%"를 띄울 수 있다.
+    expect(roundMargin(-0.04)).toBe(0);
+    expect(roundMargin(0)).toBe(0);
+  });
+
+  it('계산할 수 없으면 null을 그대로 둔다', () => {
+    // 여기서 0을 내면 재지도 않은 값을 "여유 없음"으로 단정하게 된다.
+    expect(roundMargin(null)).toBeNull();
   });
 });
 
 describe('margins', () => {
   it('회전속도와 지름 여유를 함께 낸다', () => {
-    expect(margins(grinder(), wheel())).toEqual({
-      rpm: '여유 +10.9%',
-      diameter: '여유 없음 (0%)',
-    });
+    expect(margins(grinder(), wheel())).toEqual({ rpm: 10.9, diameter: 0 });
   });
 
-  it('부적합 조합은 부족으로 나온다', () => {
-    const m = margins(grinder(), wheel({ maxRPM: 8500 }));
-    expect(m.rpm).toBe('부족 -22.7%');
+  it('부적합 조합은 음수로 나온다', () => {
+    expect(margins(grinder(), wheel({ maxRPM: 8500 })).rpm).toBe(-22.7);
+  });
+
+  it('값이 없으면 계산하지 않는다', () => {
+    expect(margins(grinder({ noLoadRPM: null }), wheel()).rpm).toBeNull();
   });
 });

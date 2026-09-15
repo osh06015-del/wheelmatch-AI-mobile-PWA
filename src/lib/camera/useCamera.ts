@@ -8,33 +8,51 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type CameraStatus = 'idle' | 'starting' | 'ready' | 'error';
 
+/**
+ * 카메라를 열지 못한 이유.
+ *
+ * 문장이 아니라 종류로 돌려준다. 문장은 화면이 작업자가 고른 언어로 붙인다.
+ */
+export type CameraErrorCode =
+  | 'unsupported' // 브라우저에 getUserMedia가 없다 (HTTP로 열었을 때 등)
+  | 'permission'
+  | 'notFound'
+  | 'inUse'
+  | 'failed';
+
+export interface CameraError {
+  code: CameraErrorCode;
+  /** 분류하지 못한 DOMException의 이름. 원인을 되짚을 수 있게 화면에 함께 보인다 */
+  name?: string;
+}
+
 export interface UseCameraResult {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   status: CameraStatus;
-  error: string | null;
+  error: CameraError | null;
   /** 셔터 효과 표시 여부. 화면을 0.1초 동안 흰색으로 덮는다. */
   flashing: boolean;
   capturePhoto: () => Promise<Blob | null>;
   restart: () => void;
 }
 
-function describeError(error: unknown): string {
+function describeError(error: unknown): CameraError {
   if (error instanceof DOMException) {
     switch (error.name) {
       case 'NotAllowedError':
       case 'SecurityError':
-        return '카메라 권한이 거부되었습니다. 브라우저 설정에서 카메라를 허용한 뒤 다시 시도하세요.';
+        return { code: 'permission' };
       case 'NotFoundError':
       case 'OverconstrainedError':
-        return '사용할 수 있는 카메라를 찾지 못했습니다.';
+        return { code: 'notFound' };
       case 'NotReadableError':
-        return '다른 앱이 카메라를 사용 중입니다. 해당 앱을 닫고 다시 시도하세요.';
+        return { code: 'inUse' };
       default:
-        return `카메라를 열지 못했습니다. (${error.name})`;
+        return { code: 'failed', name: error.name };
     }
   }
-  return '카메라를 열지 못했습니다.';
+  return { code: 'failed' };
 }
 
 export function useCamera(): UseCameraResult {
@@ -43,7 +61,7 @@ export function useCamera(): UseCameraResult {
   const streamRef = useRef<MediaStream | null>(null);
 
   const [status, setStatus] = useState<CameraStatus>('idle');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<CameraError | null>(null);
   const [flashing, setFlashing] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
@@ -58,9 +76,7 @@ export function useCamera(): UseCameraResult {
     async function start() {
       if (!navigator.mediaDevices?.getUserMedia) {
         setStatus('error');
-        setError(
-          '이 브라우저는 카메라를 지원하지 않습니다. HTTPS 환경인지 확인하세요.',
-        );
+        setError({ code: 'unsupported' });
         return;
       }
 

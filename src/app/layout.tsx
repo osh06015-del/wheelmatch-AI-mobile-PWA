@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { DocumentLocale } from '@/components/DocumentLocale';
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
 import { resolveSiteUrl } from '@/lib/siteUrl';
 
@@ -52,6 +53,8 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
     <html lang="ko" className="h-full antialiased">
       <body className="flex min-h-full flex-col bg-slate-900 text-slate-100">
         {children}
+        {/* 서버는 한국어로 그린다. 고른 언어로 문서 언어와 탭 제목을 바꾼다. */}
+        <DocumentLocale />
         <ServiceWorkerRegister />
       </body>
     </html>

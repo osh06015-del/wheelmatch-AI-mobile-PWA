@@ -58,6 +58,14 @@ describe.each(LOCALES)('$label 번역', ({ code }) => {
     );
     expect(copied).toEqual([]);
   });
+
+  it('번역문에 한국어가 한 글자도 섞이지 않았다', () => {
+    // 문장 하나만 한국어로 남아도, 그 언어를 고른 작업자는 그 자리에서 막힌다.
+    // 베낀 것만 막아서는 일부만 번역하고 남긴 문장을 잡지 못한다.
+    if (code === 'ko') return;
+    const mixed = KEYS.filter((key) => /[가-힣]/.test(messages[key]));
+    expect(mixed).toEqual([]);
+  });
 });
 
 describe('translate', () => {
@@ -123,7 +131,10 @@ describe('쓰이지 않는 문구', () => {
     // 안 쓰는 키가 남아 있으면 번역이 실제보다 많이 된 것처럼 보인다.
     // 화면을 새로 번역할 때 키를 먼저 만들지 말고, 쓸 때 만든다.
     const source = appSource();
-    const unused = KEYS.filter((key) => !source.includes(`'${key}'`));
+    // JSX 속성(nameKey="…")은 큰따옴표로 쓰인다. 두 모양을 모두 쓰임으로 본다.
+    const unused = KEYS.filter(
+      (key) => !source.includes(`'${key}'`) && !source.includes(`"${key}"`),
+    );
     expect(unused).toEqual([]);
   });
 });

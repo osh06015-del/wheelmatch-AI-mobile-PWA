@@ -6,6 +6,8 @@
 // 값을 지어내는 것이 아니라, 사람이 라벨을 직접 보고 값을 확정하는 것뿐이다.
 // 값을 한 글자라도 고치면 확인은 자동으로 풀린다. 다시 확인해야 한다.
 
+import { useLocale } from '@/lib/i18n';
+
 interface ManualConfirmToggleProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
@@ -15,6 +17,8 @@ export function ManualConfirmToggle({
   checked,
   onChange,
 }: ManualConfirmToggleProps) {
+  const { t } = useLocale();
+
   return (
     <label className="flex min-h-12 cursor-pointer items-start gap-4 rounded-lg border border-slate-600 bg-slate-800 px-4 py-4 active:bg-slate-700">
       <input
@@ -25,10 +29,10 @@ export function ManualConfirmToggle({
       />
       <span className="flex flex-col gap-1">
         <span className="text-lg font-semibold text-slate-100">
-          라벨을 직접 보고 위 값을 확인했습니다
+          {t('manualConfirm.label')}
         </span>
         <span className="text-base leading-relaxed text-slate-400">
-          체크하면 인식 신뢰도 대신 사용자가 확인한 값으로 판정합니다.
+          {t('manualConfirm.hint')}
         </span>
       </span>
     </label>

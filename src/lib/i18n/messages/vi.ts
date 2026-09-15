@@ -117,7 +117,7 @@ export const vi: Messages = {
     'Lần tay dọc toàn bộ dây — tróc vỏ, chỗ bị đè bẹp, phích cắm nứt vỡ',
   'grinderCondition.body': 'Thân máy có bị nứt hay hư hỏng nặng không?',
   'grinderCondition.bodyHint': 'Vết rơi va đập, vỏ máy nứt, bộ phận bị lỏng ra',
-  'grinderCondition.guard': 'Nắp bảo vệ đã lắp và siết chặt chưa?',
+  'grinderCondition.guard': 'Chụp bảo vệ đã lắp và siết chặt chưa?',
   'grinderCondition.guardHint':
     'Xoay bằng tay không được xê dịch, và phải che đá mài đúng góc quy định',
   'grinderCondition.auxiliaryHandle': 'Tay cầm phụ đã lắp và siết chặt chưa?',
@@ -221,6 +221,325 @@ export const vi: Messages = {
     'Ngay trước khi làm, hãy kiểm tra tia lửa không hướng về phía người hoặc vật dễ cháy.',
   'checklist.incomplete':
     'Bạn phải xác nhận đủ {count} mục an toàn thì mới lưu được.',
+
+  'scan.retake': 'Chụp lại',
+  'scan.retryAnalysis': 'Phân tích lại ảnh này',
+  'scan.confirmTitle': 'Kiểm tra các giá trị đã đọc',
+  'scan.grinder.title': 'Chụp nhãn máy mài',
+  'scan.grinder.guide': 'Đặt nhãn máy vào trong khung',
+  'scan.grinder.analyzing': 'Đang phân tích nhãn máy...',
+  'scan.grinder.failed': 'Không phân tích được nhãn máy.',
+  'scan.grinder.proceed': 'Xác nhận và chụp đá mài',
+  'scan.wheel.title': 'Chụp nhãn đá mài',
+  'scan.wheel.guide': 'Đặt nhãn vào trong khung',
+  'scan.wheel.analyzing': 'Đang phân tích nhãn...',
+  'scan.wheel.failed': 'Không phân tích được nhãn đá mài.',
+  'scan.wheel.proceed': 'Xác nhận và đối chiếu thông số',
+  'scan.wheel.grinderFirst': 'Cần kiểm tra tình trạng máy mài trước.',
+
+  'camera.starting': 'Đang mở camera...',
+  'camera.pickFromGallery': 'Chọn từ thư viện',
+  'camera.pickPhoto': 'Chọn ảnh từ thư viện',
+  'camera.retry': 'Thử mở camera lại',
+  'camera.gallery': 'Thư viện',
+  'camera.shutter': 'Chụp',
+  'camera.error.unsupported':
+    'Trình duyệt này không hỗ trợ camera. Hãy kiểm tra trang có được mở bằng HTTPS không.',
+  'camera.error.permission':
+    'Quyền dùng camera đã bị từ chối. Hãy cho phép camera trong cài đặt trình duyệt rồi thử lại.',
+  'camera.error.notFound': 'Không tìm thấy camera dùng được.',
+  'camera.error.inUse':
+    'Một ứng dụng khác đang dùng camera. Hãy đóng ứng dụng đó rồi thử lại.',
+  'camera.error.failed': 'Không mở được camera.',
+  'camera.error.failedNamed': 'Không mở được camera. ({name})',
+
+  'error.imageDecode':
+    'Không đọc được định dạng ảnh này. Hãy chọn lại ảnh JPG hoặc PNG. (Ảnh HEIC của iPhone có thể không được hỗ trợ)',
+  'error.network':
+    'Không kết nối được máy chủ. Hãy kiểm tra mạng rồi phân tích lại ảnh này.',
+  'error.serverConfig':
+    'Không phân tích được nhãn do lỗi cài đặt máy chủ. Hãy báo cho người quản lý.',
+  'error.badRequest': 'Yêu cầu phân tích không hợp lệ. Hãy chụp lại.',
+  'error.imageTooLarge':
+    'Ảnh quá lớn. Hãy thử lại với ảnh có độ phân giải thấp hơn.',
+  'error.rateLimited': 'Có quá nhiều yêu cầu. Hãy chờ một lát rồi thử lại.',
+  'error.upstream':
+    'Dịch vụ phân tích không xử lý được yêu cầu. Hãy chờ một lát rồi thử lại. (lỗi {status})',
+
+  'field.model': 'Mã máy',
+  'field.noLoadRPM': 'Tốc độ không tải',
+  'field.maxWheelDiameter': 'Đường kính đá mài tối đa cho phép',
+  'field.maxRPM': 'Tốc độ làm việc tối đa',
+  'field.diameter': 'Đường kính',
+  'field.thickness': 'Độ dày',
+  'field.purpose': 'Công dụng',
+  'field.expiry': 'Hạn sử dụng',
+  'field.placeholder': 'Không đọc được — hãy tự nhập',
+  'field.purposeUnknown': 'Không rõ',
+  'field.confidence.high': 'Độ tin cậy khi đọc: cao',
+  'field.confidence.medium':
+    'Độ tin cậy khi đọc: trung bình — hãy kiểm tra các giá trị',
+  'field.confidence.low':
+    'Độ tin cậy khi đọc: thấp — hãy chụp lại hoặc tự nhập giá trị',
+  'field.rawShow': 'Xem văn bản đã đọc',
+  'field.rawHide': 'Ẩn văn bản đã đọc',
+  'manualConfirm.label': 'Tôi đã tự xem nhãn và xác nhận các giá trị ở trên',
+  'manualConfirm.hint':
+    'Khi đánh dấu, kết quả dùng giá trị bạn đã xác nhận thay cho độ tin cậy khi đọc.',
+
+  'guide.grinder.model.hint':
+    'Tên sản phẩm của máy mài. Chỉ được ghi lại, không dùng để xác định kết quả.',
+  'guide.grinder.model.where':
+    'In to ở phía trên cùng của nhãn máy. Ví dụ: GWS 750-125',
+  'guide.grinder.noLoadRPM.hint':
+    'Tốc độ quay của máy mài này. Đá mài phải chịu được tốc độ này.',
+  'guide.grinder.noLoadRPM.where':
+    'Con số cạnh n₀ hoặc "no load speed" trên nhãn máy. Ví dụ: 11000 r/min, 11000 min⁻¹',
+  'guide.grinder.maxWheelDiameter.hint':
+    'Đá mài lớn nhất máy này lắp được. Đá lớn hơn không vừa trong chụp bảo vệ.',
+  'guide.grinder.maxWheelDiameter.where':
+    'Đường kính cạnh các chữ như wheel, disc trên nhãn máy. Ví dụ: max Ø125mm',
+  'guide.wheel.maxRPM.hint':
+    'Tốc độ cao nhất đá mài này chịu được. Nếu thấp hơn tốc độ của máy, đá có thể vỡ và văng ra.',
+  'guide.wheel.maxRPM.where':
+    'Tốc độ in to trên nhãn. Nếu chỉ ghi m/s, ứng dụng tự quy đổi. Ví dụ: 12200 r/min, 80 m/s',
+  'guide.wheel.diameter.hint':
+    'Đường kính ngoài của đá mài. Không được vượt quá mức máy mài cho phép.',
+  'guide.wheel.diameter.where':
+    'Con số đầu tiên của kích thước. Ví dụ: 125 trong 125 × 1.6 × 22.23',
+  'guide.wheel.thickness.hint':
+    'Độ dày của đá mài. Đá mài dùng để cắt mỏng (1–3mm), đá mài dùng để mài dày (khoảng 6mm).',
+  'guide.wheel.thickness.where':
+    'Con số ở giữa của kích thước. Ví dụ: 1.6 trong 125 × 1.6 × 22.23',
+  'guide.wheel.purpose.hint':
+    'Đá dùng để cắt thì để cắt, đá dùng để mài thì để mài. Dùng sai công dụng, đá chịu lực ngang và có thể vỡ.',
+  'guide.wheel.purpose.where':
+    'Dấu công dụng cắt/mài trên nhãn, in là CUT-OFF, GRINDING hoặc DEPRESSED CENTER.',
+  'guide.wheel.expiry.hint':
+    'Hạn sử dụng in trên nhãn. Nhà sản xuất khuyên không dùng đá mài đã quá hạn. Có loại đá không ghi hạn.',
+  'guide.wheel.expiry.where':
+    'Dập theo tháng/năm trên vòng kim loại ở giữa. Ví dụ: 04/2023, đôi khi có V hoặc EXP phía trước. Không nhập ngày sản xuất thay vào.',
+
+  'requirement.compactTitle': 'Đá mài cần dùng',
+  'requirement.compactUnknown':
+    'Không đọc được nhãn máy nên không đặt được điều kiện',
+  'requirement.title': 'Điều kiện của đá mài',
+  'requirement.partial':
+    'Chưa đặt được đủ điều kiện. Hãy tự kiểm tra các giá trị còn thiếu trên nhãn máy.',
+  'requirement.notRecommendation':
+    'Đây không phải gợi ý sản phẩm, mà là điều kiện suy ra từ các giá trị ghi trên nhãn máy.',
+  'requirement.purposeUnknown':
+    'Chưa chọn công việc nên chưa xác định được công dụng.',
+  'requirement.diameterMax': 'Φ{diameter}mm trở xuống',
+  'requirement.diameterUnknown':
+    'Không đọc được đường kính tối đa cho phép trên nhãn máy.',
+  'requirement.rpmMin': '{rpm}rpm trở lên',
+  'requirement.rpmUnknown': 'Không đọc được tốc độ không tải trên nhãn máy.',
+  'summary.sizeClass': 'Loại {inch} inch (tối đa Φ{diameter}mm)',
+  'summary.maxDiameter': 'tối đa Φ{diameter}mm',
+  'summary.unreadable': 'Không đọc được giá trị trên nhãn máy',
+  'margin.surplus': 'Dư +{percent}%',
+  'margin.shortfall': 'Thiếu {percent}%',
+  'margin.none': 'Không còn dư (0%)',
+
+  'wheelPurpose.cutting': 'Dùng để cắt',
+  'wheelPurpose.grinding': 'Dùng để mài',
+  'wheelPurpose.unknown': 'Chưa xác định',
+  'wheelType.unconfirmed': 'Chưa xác nhận',
+  'confidence.high': 'Cao',
+  'confidence.medium': 'Trung bình',
+  'confidence.low': 'Thấp',
+  'value.bore': 'Lỗ lắp Φ{bore}mm',
+  'value.unitConsistency': '{rpm}rpm = {computed}m/s / nhãn {labeled}m/s',
+
+  'reason.requiredValues.ok': 'Đã đọc đủ các giá trị cần để so sánh tốc độ.',
+  'reason.requiredValues.missingGrinder':
+    'Không đọc được tốc độ không tải của máy mài. Hãy chụp lại hoặc tự nhập giá trị.',
+  'reason.requiredValues.missingWheel':
+    'Không đọc được tốc độ làm việc tối đa của đá mài. Hãy chụp lại hoặc tự nhập giá trị.',
+  'reason.requiredValues.missingBoth':
+    'Không đọc được tốc độ không tải của máy mài và tốc độ làm việc tối đa của đá mài. Hãy chụp lại hoặc tự nhập giá trị.',
+  'reason.rpmSafety.missing': 'Thiếu giá trị tốc độ nên không so sánh được.',
+  'reason.rpmSafety.fail':
+    'Tốc độ làm việc tối đa của đá mài ({wheel}rpm) thấp hơn tốc độ không tải của máy mài ({grinder}rpm). Đá có nguy cơ vỡ và văng ra.',
+  'reason.rpmSafety.pass':
+    'Tốc độ làm việc tối đa của đá mài ({wheel}rpm) bằng hoặc cao hơn tốc độ không tải của máy mài ({grinder}rpm).',
+  'reason.diameterFit.missing':
+    'Thiếu giá trị đường kính nên không so sánh được. Hãy tự kiểm tra đường kính trên nhãn máy mài và nhãn đá mài.',
+  'reason.diameterFit.fail':
+    'Đường kính đá mài ({wheel}mm) vượt quá đường kính tối đa máy mài cho phép ({grinder}mm).',
+  'reason.diameterFit.pass':
+    'Đường kính đá mài ({wheel}mm) nằm trong đường kính tối đa máy mài cho phép ({grinder}mm).',
+  'reason.purpose.unknown':
+    'Không nhận ra công dụng của đá mài (cắt/mài). Hãy tự kiểm tra nhãn.',
+  'reason.purpose.recognized': 'Đã nhận ra công dụng của đá mài: {purpose}.',
+  'reason.workPurpose.unknown':
+    'Công việc hôm nay: {work}. Không đọc được công dụng của đá mài. Hãy tự kiểm tra dấu công dụng trên nhãn.',
+  'reason.workPurpose.mismatch':
+    'Công việc hôm nay: {work}. Đá mài này: {purpose}. Đá mài sai công dụng có thể vỡ do chịu lực ngang.',
+  'reason.workPurpose.match':
+    'Công việc hôm nay ({work}) đúng với công dụng của đá mài.',
+  'reason.wheelType.unknown':
+    'Chưa xác nhận loại đá mài. Ứng dụng chỉ đối chiếu thông số khi đã xác nhận là đá mài liên kết thông thường. Hãy nhìn đá thật và chọn loại ở màn hình kiểm tra giá trị.',
+  'reason.wheelType.unsupported':
+    '{type}: ứng dụng không xử lý loại đá này. Hệ thông số khác nên không thể xác định. Hãy làm theo hướng dẫn của nhà sản xuất.',
+  'reason.wheelType.supported':
+    'Đã xác nhận là đá mài liên kết thông thường, loại mà ứng dụng này đối chiếu thông số.',
+  'reason.visibleDamage.suspected':
+    'Trong ảnh có chỗ trông như vỡ hoặc nứt. Không dùng đá mài này; hãy tự kiểm tra.',
+  'reason.visibleDamage.notVerifiable':
+    'Ảnh không cho thấy được vết nứt nhỏ. Trước khi lắp, hãy gõ thử (gõ nhẹ và nghe tiếng).',
+  'reason.confidence.low':
+    'Độ tin cậy khi đọc nhãn thấp. Hãy chụp lại hoặc tự nhập giá trị.',
+  'reason.confidence.ok': 'Độ tin cậy khi đọc nhãn đủ cao.',
+  'reason.unitConsistency.mismatch':
+    'Tốc độ ghi bằng rpm và tốc độ vòng ngoài ghi bằng m/s trên nhãn không khớp nhau. Có thể đã đọc sai một trong hai. Hãy kiểm tra lại các con số trên nhãn.',
+  'reason.unitConsistency.match': 'Hai cách ghi tốc độ trên nhãn khớp nhau.',
+  'reason.mountingSpec.missing':
+    'Không đọc được đường kính lỗ lắp trên nhãn. Trước khi lắp, hãy tự kiểm tra đá có vừa trục không.',
+  'reason.mountingSpec.shown':
+    'Đường kính lỗ lắp ghi trên nhãn là Φ{bore}mm. Nhãn máy mài không ghi kích thước trục nên ứng dụng không so sánh được. Hãy tự kiểm tra đá có vừa trục không.',
+  'reason.peripheralSpeed.oddGrinder':
+    'Tốc độ vòng ngoài tính từ giá trị của máy mài nằm ngoài phạm vi thông thường. Có thể đã đọc sai đường kính hoặc tốc độ. Hãy kiểm tra lại các con số của máy mài.',
+  'reason.peripheralSpeed.oddWheel':
+    'Tốc độ vòng ngoài tính từ giá trị của đá mài nằm ngoài phạm vi thông thường. Có thể đã đọc sai đường kính hoặc tốc độ. Hãy kiểm tra lại các con số trên nhãn đá mài.',
+  'reason.peripheralSpeed.oddBoth':
+    'Tốc độ vòng ngoài tính từ giá trị của máy mài và đá mài nằm ngoài phạm vi thông thường. Có thể đã đọc sai đường kính hoặc tốc độ. Hãy kiểm tra lại các con số của máy mài và đá mài.',
+  'reason.peripheralSpeed.ok': 'Đường kính và tốc độ phù hợp với nhau.',
+  'reason.expiry.noToday':
+    'Không có ngày tham chiếu nên không kiểm tra được hạn sử dụng. Hãy mở lại ứng dụng và kiểm tra lại.',
+  'reason.expiry.unreadable':
+    'Không đọc được hạn sử dụng trên nhãn. Ngày tham chiếu {today}. Hãy tự kiểm tra dấu tháng/năm trên vòng kim loại (ví dụ: 04/2023). Có loại đá không ghi hạn.',
+  'reason.expiry.expired':
+    'Hạn sử dụng ghi trên nhãn đã hết. Ghi {expiry} (còn hạn đến {lastValid}), ngày tham chiếu {today}. Nhà sản xuất khuyên không dùng đá mài đã quá hạn.',
+  'reason.expiry.valid':
+    'Hạn sử dụng ghi trên nhãn vẫn còn. Ghi {expiry} (còn hạn đến {lastValid}), ngày tham chiếu {today}.',
+
+  'ruleSource.krOsh.label':
+    'Quy định về tiêu chuẩn an toàn vệ sinh lao động (Hàn Quốc)',
+  'ruleSource.krOsh.reference':
+    'Điều 122 (Pháp lệnh số 450 của Bộ Việc làm và Lao động, hiệu lực từ 2026-03-02)',
+  'ruleSource.krOsh.scope':
+    'Tốc độ làm việc tối đa · dùng mặt bên · chụp bảo vệ · chạy thử',
+  'ruleSource.kosha.label': 'KOSHA GUIDE',
+  'ruleSource.kosha.reference':
+    'M-189-2015 Hướng dẫn kỹ thuật về làm việc an toàn với máy mài cầm tay',
+  'ruleSource.kosha.scope':
+    'Khuyến nghị về bảo quản và sử dụng (không bắt buộc về mặt pháp lý)',
+  'ruleSource.osa.label': 'oSa Product marking requirements',
+  'ruleSource.osa.reference': 'Issue 2, 2020-04 (dựa trên EN 12413:2019)',
+  'ruleSource.osa.scope':
+    'Tham khảo định dạng ghi hạn sử dụng. Chưa đọc được bản gốc EN',
+
+  'hazard.list.cutting': 'Nguy hiểm khi cắt',
+  'hazard.list.grinding': 'Nguy hiểm khi mài',
+  'hazard.list.common': 'Nguy hiểm chung',
+  'hazard.summary': '{title} ({count})',
+  'hazard.cuttingSide.title': 'Không mài bằng mặt bên của đá',
+  'hazard.cuttingSide.detail':
+    'Đá mài dùng để cắt chỉ được làm để cắt bằng mép ngoài. Nếu đẩy sang ngang, đá mỏng không chịu được lực bên và bị gãy.',
+  'hazard.cuttingPinch.title': 'Không vặn hoặc bẻ đá',
+  'hazard.cuttingPinch.detail':
+    'Khi rãnh cắt khép lại, đá bị kẹp và gây giật ngược. Hãy đỡ vật liệu ở hai bên để rãnh cắt mở ra.',
+  'hazard.cuttingForce.title': 'Không ấn mạnh khi cắt',
+  'hazard.cuttingForce.detail':
+    'Ấn mạnh làm đá quá nóng và biến dạng. Hãy để trọng lượng của máy đưa đá vào từ từ.',
+  'hazard.grindingAngle.title': 'Nghiêng đá khoảng 15–30° khi mài',
+  'hazard.grindingAngle.detail':
+    'Dựng đá quá đứng thì mép đá cắm vào vật liệu và máy bị giật. Nghiêng đá giúp mặt tiếp xúc rộng hơn và ổn định hơn.',
+  'hazard.grindingSide.title': 'Không tạo lực bên lên đá mài dùng để mài',
+  'hazard.grindingSide.detail':
+    'Chỉ đá mài dạng chén mới được làm để dùng mặt bên. Đẩy đá mài thông thường sang ngang có thể làm đá vỡ.',
+  'hazard.grindingIdle.title': 'Cho đá mới lắp chạy không tải trước',
+  'hazard.grindingIdle.detail':
+    'Lắp sai hoặc có vết nứt sẽ lộ ra trước khi có tải. Hướng máy về phía không có người và kiểm tra rung, tiếng ồn bất thường.',
+  'hazard.commonStop.title': 'Chỉ đặt máy xuống khi đá đã dừng hẳn',
+  'hazard.commonStop.detail':
+    'Tắt nguồn rồi đá vẫn quay theo quán tính. Nếu chạm đất khi còn quay, máy sẽ bật lên.',
+  'hazard.commonGuard.title': 'Xoay chụp bảo vệ về phía ngược với người làm',
+  'hazard.commonGuard.detail':
+    'Chụp bảo vệ chắn phía mảnh vỡ văng tới. Nếu góc bị lệch, người vẫn bị hở dù đã lắp chụp bảo vệ.',
+
+  'notVerifiable.internalCrack.title': 'Vết nứt bên trong',
+  'notVerifiable.internalCrack.detail':
+    'Vết nứt nhỏ không hiện trên ảnh bề mặt. Trước khi lắp, hãy gõ thử (gõ nhẹ và nghe tiếng).',
+  'notVerifiable.physicalDamage.title': 'Hư hỏng vật lý',
+  'notVerifiable.physicalDamage.detail':
+    'Ảnh chỉ cho thấy vỡ rõ rệt. Vết lõm, biến dạng hay ẩm ướt thì không nhận ra được. Hãy tự xem kỹ.',
+  'notVerifiable.mounting.title': 'Lắp đúng cách',
+  'notVerifiable.mounting.detail':
+    'Ảnh không cho biết mặt bích đã siết chưa, chiều quay có đúng không, đá đã ngồi đúng trên trục chưa. Hãy tự kiểm tra sau khi lắp.',
+  'notVerifiable.guard.title': 'Tình trạng chụp bảo vệ',
+  'notVerifiable.guard.detail':
+    'Ứng dụng không thấy được chụp bảo vệ đã lắp chưa, đúng góc chưa, có hư hỏng không. Hãy tự nhìn kiểm tra.',
+
+  'history.title': 'Lịch sử kiểm tra',
+  'history.loading': 'Đang tải hồ sơ...',
+  'history.clearConfirm':
+    'Sẽ xóa toàn bộ {count} hồ sơ kiểm tra đã lưu. Không thể hoàn tác.',
+  'history.clearConfirmButton': 'Xóa tất cả',
+  'history.cancel': 'Hủy',
+  'history.clearAll': 'Xóa toàn bộ hồ sơ',
+  'history.newInspection': 'Bắt đầu kiểm tra mới',
+  'history.empty': 'Chưa có hồ sơ kiểm tra nào được lưu.',
+  'history.timeNote':
+    '"30 giây" là mục tiêu cho thời gian kiểm tra trước: tính từ lúc chọn công việc đến ngay trước khi bắt đầu chạy thử. Thời gian chạy thử theo luật (ít nhất 1 phút hoặc 3 phút) tách riêng khỏi mục tiêu này và không được rút ngắn.',
+  'history.elapsed': 'Kiểm tra mất {time}',
+  'history.elapsedWithTrial': 'Kiểm tra mất {time} (gồm cả chạy thử)',
+  'history.preTrial': 'Kiểm tra trước {time} (đến trước khi chạy thử)',
+  'history.unknownModel': 'Không rõ mã máy',
+  'history.unknownDiameter': 'Không rõ đường kính',
+  'history.summary': '{model} {grinderRpm} · đá mài {wheelDiameter} {wheelRpm}',
+  'history.grinderPhoto': 'Nhãn máy mài',
+  'history.wheelPhoto': 'Nhãn đá mài',
+  'history.noPhoto': 'Không có ảnh được lưu.',
+  'elapsed.overHour': 'hơn 1 giờ',
+  'elapsed.seconds': '{seconds} giây',
+  'elapsed.minutes': '{minutes} phút',
+  'elapsed.minutesSeconds': '{minutes} phút {seconds} giây',
+
+  'research.notice':
+    'Đây là tính năng dùng cho kiểm chứng/nghiên cứu, không thay đổi kết quả tại hiện trường.',
+  'research.noticeDetail':
+    'Chỉ hiện trong bản dựng kiểm chứng. Tính năng này chỉ xuất hồ sơ và tính chỉ số, không can thiệp vào kết quả, kiểm tra tình trạng, chạy thử hay điều kiện lưu.',
+  'research.modeTitle': 'Chế độ nghiên cứu',
+  'research.modeHint':
+    'Xuất số đo ra tệp CSV. Không cần khi làm việc tại hiện trường.',
+  'research.download': 'Tải CSV ({count} hồ sơ)',
+  'research.deviceOnly':
+    'Hồ sơ chỉ nằm trên thiết bị này. Bạn phải tự chuyển tệp đã tải.',
+  'research.downloadFailed':
+    'Tải xuống không thành công. Hãy kiểm tra dung lượng lưu trữ.',
+  'research.truthTitle': 'Tệp giá trị đúng (Ground Truth)',
+  'research.truthHint':
+    'Là các giá trị bạn tự đọc và ghi lại trước khi chụp. Cần có để tính chỉ số. Ứng dụng không tự tạo giá trị đúng.',
+  'research.truthEmpty':
+    'Không đọc được giá trị đúng nào. Hãy kiểm tra tệp có phải mảng JSON không.',
+  'research.truthUnreadable': 'Không đọc được tệp giá trị đúng.',
+  'research.truthRejected':
+    'Đã loại {count} dòng vì sai định dạng. Hãy kiểm tra số mẫu.',
+  'metrics.title': 'Chỉ số đánh giá',
+  'metrics.note':
+    'Tính từ {count} hồ sơ có giá trị đúng. Độ chính xác khi đọc được đo bằng giá trị OCR gốc trước khi người dùng sửa.',
+  'metrics.notAvailable': 'N/A — không có dữ liệu để tính',
+  'metrics.records': '{numerator} / {denominator} hồ sơ',
+  'metrics.fields': '{numerator} / {denominator} trường',
+  'metrics.falseSafe.name': 'False-Safe Rate',
+  'metrics.falseSafe.definition':
+    'Trong các hồ sơ có giá trị đúng là THÔNG SỐ KHÔNG PHÙ HỢP, tỷ lệ ứng dụng báo THÔNG SỐ PHÙ HỢP. Nếu khác 0 thì không phát hành.',
+  'metrics.undetermined.name': 'Tỷ lệ không thể xác định',
+  'metrics.undetermined.definition':
+    'Tỷ lệ không xác định được kết quả. Đây là hành vi được thiết kế, không phải lỗi.',
+  'metrics.fieldAccuracy.name': 'Độ chính xác trích xuất trường',
+  'metrics.fieldAccuracy.definition':
+    'Trong các trường có giá trị đúng, tỷ lệ giá trị OCR gốc khớp với giá trị đúng.',
+  'metrics.unitNormalization.name': 'Lỗi quy đổi đơn vị',
+  'metrics.unitNormalization.definition':
+    'Trong các hồ sơ quy đổi từ m/s, tỷ lệ kết quả khác với giá trị đúng.',
+  'metrics.falseSafeIds':
+    'Mã hồ sơ False-Safe: {ids} — hãy phân tích và báo cáo từng hồ sơ. Không che giấu.',
+
+  'meta.title': 'WheelMatch AI — Đối chiếu thông số máy mài và đá mài',
 
   disclaimer:
     'Ứng dụng này chỉ đối chiếu các thông số in trên nhãn. Ứng dụng không bảo đảm an toàn lao động và không thay thế hướng dẫn của nhà sản xuất hay nội quy an toàn của nơi làm việc.',

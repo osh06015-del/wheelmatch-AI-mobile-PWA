@@ -14,38 +14,41 @@
 //
 // 작업자 화면에는 나오지 않는다. 연구모드에서만 보인다.
 
+import { useLocale, type MessageKey, type Translate } from '@/lib/i18n';
 import { evaluate, formatRate, type GroundTruth } from '@/lib/record/metrics';
 import type { InspectionRecord } from '@/lib/rules/types';
 
-const NOT_AVAILABLE = 'N/A — 계산할 데이터 없음';
-
 function Metric({
-  name,
-  definition,
+  t,
+  nameKey,
+  definitionKey,
+  countKey,
   numerator,
   denominator,
   rate,
-  unit,
 }: {
-  name: string;
-  definition: string;
+  t: Translate;
+  nameKey: MessageKey;
+  definitionKey: MessageKey;
+  /** 분자/분모를 무엇으로 셌는지(기록 또는 필드) */
+  countKey: MessageKey;
   numerator: number;
   denominator: number;
   rate: number | null;
-  unit: string;
 }) {
   return (
     <li className="flex flex-col gap-1 rounded-lg bg-slate-900 px-3 py-3">
-      <span className="text-base font-semibold text-slate-100">{name}</span>
+      <span className="text-base font-semibold text-slate-100">
+        {t(nameKey)}
+      </span>
       <span className="text-sm leading-relaxed text-slate-400">
-        {definition}
+        {t(definitionKey)}
       </span>
       <span className="text-base text-slate-200">
-        {numerator} / {denominator}
-        {unit}{' '}
+        {t(countKey, { numerator, denominator })}{' '}
         <span className="font-bold">
           {denominator === 0 || rate === null
-            ? NOT_AVAILABLE
+            ? t('metrics.notAvailable')
             : formatRate(rate)}
         </span>
       </span>
@@ -59,6 +62,7 @@ interface MetricsPanelProps {
 }
 
 export function MetricsPanel({ records, truths }: MetricsPanelProps) {
+  const { t } = useLocale();
   const report = evaluate(records, truths);
   const graded = report.fieldAccuracy.fields.reduce(
     (sum, field) => sum + field.correct + field.missed + field.wrong,
@@ -72,45 +76,50 @@ export function MetricsPanel({ records, truths }: MetricsPanelProps) {
   return (
     <section className="flex flex-col gap-3 rounded-lg bg-slate-800 px-4 py-4">
       <div className="flex flex-col gap-1">
-        <h3 className="text-base font-bold text-slate-100">평가 지표</h3>
+        <h3 className="text-base font-bold text-slate-100">
+          {t('metrics.title')}
+        </h3>
         <p className="text-sm leading-relaxed text-slate-400">
-          정답을 넣은 기록 {report.scored}건으로 계산했습니다. 인식 정확도는
-          사용자가 고치기 전의 OCR 원본값으로 잽니다.
+          {t('metrics.note', { count: report.scored })}
         </p>
       </div>
 
       <ul className="flex flex-col gap-2">
         <Metric
-          name="False-Safe Rate"
-          definition="정답이 부적합인 기록 중 앱이 적합으로 낸 비율. 0이 아니면 출시하지 않습니다."
+          t={t}
+          nameKey="metrics.falseSafe.name"
+          definitionKey="metrics.falseSafe.definition"
+          countKey="metrics.records"
           numerator={report.falseSafe.count}
           denominator={report.falseSafe.denominator}
           rate={report.falseSafe.rate}
-          unit="건"
         />
         <Metric
-          name="판정불가율"
-          definition="판정하지 못한 비율. 실패가 아니라 설계된 동작입니다."
+          t={t}
+          nameKey="metrics.undetermined.name"
+          definitionKey="metrics.undetermined.definition"
+          countKey="metrics.records"
           numerator={report.unreadable.count}
           denominator={report.scored}
           rate={report.unreadable.rate}
-          unit="건"
         />
         <Metric
-          name="필드 추출 정확도"
-          definition="정답이 있는 필드 중 OCR 원본값이 정답과 맞은 비율."
+          t={t}
+          nameKey="metrics.fieldAccuracy.name"
+          definitionKey="metrics.fieldAccuracy.definition"
+          countKey="metrics.fields"
           numerator={correct}
           denominator={graded}
           rate={report.fieldAccuracy.overall}
-          unit="필드"
         />
         <Metric
-          name="단위 정규화 오류"
-          definition="m/s에서 환산한 기록 중 결과가 정답과 다른 비율."
+          t={t}
+          nameKey="metrics.unitNormalization.name"
+          definitionKey="metrics.unitNormalization.definition"
+          countKey="metrics.records"
           numerator={report.unitNormalization.wrong}
           denominator={report.unitNormalization.converted}
           rate={report.unitNormalization.rate}
-          unit="건"
         />
       </ul>
 
@@ -119,8 +128,9 @@ export function MetricsPanel({ records, truths }: MetricsPanelProps) {
           role="alert"
           className="rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-2 text-base text-red-200"
         >
-          False-Safe 기록 id: {report.falseSafe.recordIds.join(', ')} — 개별로
-          분석해 보고하세요. 숨기지 않습니다.
+          {t('metrics.falseSafeIds', {
+            ids: report.falseSafe.recordIds.join(', '),
+          })}
         </p>
       )}
     </section>

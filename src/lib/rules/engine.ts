@@ -9,6 +9,7 @@ import type {
   ExpiryMonth,
   GrinderSpec,
   MatchResult,
+  ReasonCode,
   Verdict,
   WheelPurpose,
   WheelSpec,
@@ -104,9 +105,26 @@ export function checkRequiredValues(
       missing.length === 0
         ? '회전속도 비교에 필요한 값을 모두 읽었습니다.'
         : `${withParticle(missing.join(', '), '을', '를')} 읽지 못했습니다. 재촬영하거나 수동으로 값을 입력하세요.`,
+    detail: {
+      code: requiredValuesCode(
+        grinder.noLoadRPM === null,
+        wheel.maxRPM === null,
+      ),
+    },
     grinderValue: rpmText(grinder.noLoadRPM),
     wheelValue: rpmText(wheel.maxRPM),
   };
+}
+
+/** 어느 쪽 회전속도가 빠졌는지에 따라 사유 코드를 고른다. 문장이 셋으로 갈린다. */
+function requiredValuesCode(
+  grinderMissing: boolean,
+  wheelMissing: boolean,
+): ReasonCode {
+  if (grinderMissing && wheelMissing) return 'requiredValues.missingBoth';
+  if (grinderMissing) return 'requiredValues.missingGrinder';
+  if (wheelMissing) return 'requiredValues.missingWheel';
+  return 'requiredValues.ok';
 }
 
 /**
@@ -133,14 +151,18 @@ export function checkRpmSafety(
       ...base,
       passed: null,
       reason: '회전속도 값이 없어 비교할 수 없습니다.',
+      detail: { code: 'rpmSafety.missing' },
     };
   }
+
+  const params = { wheel: wheelMaxRPM, grinder: grinderRPM };
 
   if (wheelMaxRPM < grinderRPM) {
     return {
       ...base,
       passed: false,
       reason: `숫돌 최고사용회전속도(${wheelMaxRPM}rpm)가 그라인더 무부하 회전속도(${grinderRPM}rpm)보다 낮습니다. 파손·비산 위험이 있습니다.`,
+      detail: { code: 'rpmSafety.fail', params },
     };
   }
 
@@ -148,6 +170,7 @@ export function checkRpmSafety(
     ...base,
     passed: true,
     reason: `숫돌 최고사용회전속도(${wheelMaxRPM}rpm)가 그라인더 무부하 회전속도(${grinderRPM}rpm) 이상입니다.`,
+    detail: { code: 'rpmSafety.pass', params },
   };
 }
 
@@ -174,14 +197,18 @@ export function checkDiameterFit(
       passed: null,
       reason:
         '지름 값이 없어 비교할 수 없습니다. 그라인더 명판과 숫돌 라벨의 지름 표기를 직접 확인하세요.',
+      detail: { code: 'diameterFit.missing' },
     };
   }
+
+  const params = { wheel: wheelDia, grinder: grinderMaxDia };
 
   if (wheelDia > grinderMaxDia) {
     return {
       ...base,
       passed: false,
       reason: `숫돌 지름(${wheelDia}mm)이 그라인더 허용 최대 지름(${grinderMaxDia}mm)을 초과합니다.`,
+      detail: { code: 'diameterFit.fail', params },
     };
   }
 
@@ -189,6 +216,7 @@ export function checkDiameterFit(
     ...base,
     passed: true,
     reason: `숫돌 지름(${wheelDia}mm)이 그라인더 허용 최대 지름(${grinderMaxDia}mm) 이내입니다.`,
+    detail: { code: 'diameterFit.pass', params },
   };
 }
 
@@ -205,12 +233,16 @@ export function checkPurpose(wheel: WheelSpec): CheckItem {
     advisory: true,
   };
 
+  // 이름이 아니라 코드를 넘긴다. 화면이 고른 언어의 이름으로 바꾼다.
+  const params = { purpose: wheel.purpose };
+
   if (wheel.purpose === 'unknown') {
     return {
       ...base,
       passed: null,
       reason:
         '숫돌 용도(절단/연삭)를 인식하지 못했습니다. 라벨을 직접 확인하세요.',
+      detail: { code: 'purpose.unknown', params },
     };
   }
 
@@ -218,6 +250,7 @@ export function checkPurpose(wheel: WheelSpec): CheckItem {
     ...base,
     passed: true,
     reason: `숫돌 용도를 ${PURPOSE_LABEL[wheel.purpose]}으로 인식했습니다.`,
+    detail: { code: 'purpose.recognized', params },
   };
 }
 
@@ -246,11 +279,14 @@ export function checkWorkPurpose(
 
   // 라벨 용도를 읽지 못하면 대조가 성립하지 않는다.
   // 작업을 선언한 이상 "모르겠다"를 통과시키지 않는다.
+  const params = { work: declaredPurpose, purpose: wheel.purpose };
+
   if (wheel.purpose === 'unknown') {
     return {
       ...base,
       passed: null,
       reason: `오늘 작업은 ${WORK_PURPOSE_LABEL[declaredPurpose]}인데 숫돌 용도를 읽지 못했습니다. 라벨의 용도 표기를 직접 확인하세요.`,
+      detail: { code: 'workPurpose.unknown', params },
     };
   }
 
@@ -259,6 +295,7 @@ export function checkWorkPurpose(
       ...base,
       passed: false,
       reason: `오늘 작업은 ${WORK_PURPOSE_LABEL[declaredPurpose]}인데 이 숫돌은 ${PURPOSE_LABEL[wheel.purpose]}입니다. 용도에 맞지 않는 숫돌은 측면 하중으로 파손될 수 있습니다.`,
+      detail: { code: 'workPurpose.mismatch', params },
     };
   }
 
@@ -266,6 +303,7 @@ export function checkWorkPurpose(
     ...base,
     passed: true,
     reason: `오늘 작업(${WORK_PURPOSE_LABEL[declaredPurpose]})과 숫돌 용도가 일치합니다.`,
+    detail: { code: 'workPurpose.match', params },
   };
 }
 
@@ -295,12 +333,15 @@ export function checkWheelType(wheel: WheelSpec): CheckItem {
   // 예전에는 경고로만 두었다. 글자만 읽는 Tesseract 경로는 생김새를 볼 수 없어
   // 항상 unknown이라, 막으면 오프라인 모드가 통째로 쓸모없어졌기 때문이다.
   // 이제는 작업자가 확인 화면에서 종류를 직접 고르므로 그 이유가 사라졌다.
+  const params = { type: wheel.wheelType };
+
   if (wheel.wheelType === 'unknown') {
     return {
       ...base,
       passed: null,
       reason:
         '숫돌 종류가 확인되지 않았습니다. 일반 결합숫돌로 확인된 경우에만 규격을 대조합니다. 값 확인 화면에서 실물을 보고 종류를 고르세요.',
+      detail: { code: 'wheelType.unknown', params },
     };
   }
 
@@ -309,6 +350,7 @@ export function checkWheelType(wheel: WheelSpec): CheckItem {
       ...base,
       passed: null,
       reason: `${withParticle(WHEEL_TYPE_LABEL[wheel.wheelType], '은', '는')} 이 앱이 다루지 않는 종류입니다. 규격 체계가 달라 판정할 수 없으니 제조사 취급설명서를 확인하세요.`,
+      detail: { code: 'wheelType.unsupported', params },
     };
   }
 
@@ -317,6 +359,7 @@ export function checkWheelType(wheel: WheelSpec): CheckItem {
     passed: true,
     reason:
       '일반 결합숫돌로 확인되었습니다. 이 앱이 규격을 대조하는 종류입니다.',
+    detail: { code: 'wheelType.supported', params },
   };
 }
 
@@ -347,6 +390,7 @@ export function checkVisibleDamage(wheel: WheelSpec): CheckItem {
       passed: null,
       reason:
         '사진에서 깨짐·균열로 보이는 부분이 있습니다. 이 숫돌을 사용하지 말고 직접 확인하세요.',
+      detail: { code: 'visibleDamage.suspected' },
     };
   }
 
@@ -357,6 +401,7 @@ export function checkVisibleDamage(wheel: WheelSpec): CheckItem {
     passed: null,
     reason:
       '사진으로는 미세균열을 확인할 수 없습니다. 장착 전 타음검사(가볍게 두드려 소리 확인)를 하세요.',
+    detail: { code: 'visibleDamage.notVerifiable' },
   };
 }
 
@@ -375,12 +420,15 @@ export function checkConfidence(
     wheelValue: wheel.confidence,
   };
 
+  const params = { grinder: grinder.confidence, wheel: wheel.confidence };
+
   if (grinder.confidence === 'low' || wheel.confidence === 'low') {
     return {
       ...base,
       passed: null,
       reason:
         '라벨 인식 신뢰도가 낮습니다. 재촬영하거나 수동으로 값을 입력하세요.',
+      detail: { code: 'confidence.low', params },
     };
   }
 
@@ -388,6 +436,7 @@ export function checkConfidence(
     ...base,
     passed: true,
     reason: '라벨 인식 신뢰도가 충분합니다.',
+    detail: { code: 'confidence.ok', params },
   };
 }
 
@@ -437,6 +486,13 @@ export function checkUnitConsistency(wheel: WheelSpec): CheckItem | null {
     wheelValue: `${labeledRPM}rpm = ${Math.round(fromRpm)}m/s / 라벨 ${labeledMps}m/s`,
   };
 
+  // 화면이 비교 값을 고른 언어로 다시 적을 수 있게 숫자만 따로 넘긴다.
+  const params = {
+    rpm: labeledRPM,
+    computed: Math.round(fromRpm),
+    labeled: labeledMps,
+  };
+
   if (gapPercent > MARKING_TOLERANCE_PERCENT) {
     return {
       ...base,
@@ -444,6 +500,7 @@ export function checkUnitConsistency(wheel: WheelSpec): CheckItem | null {
       reason:
         '라벨의 회전속도 표기와 원주속도 표기가 서로 맞지 않습니다. ' +
         '둘 중 하나를 잘못 읽었을 수 있습니다. 라벨의 숫자를 다시 확인하세요.',
+      detail: { code: 'unitConsistency.mismatch', params },
     };
   }
 
@@ -451,6 +508,7 @@ export function checkUnitConsistency(wheel: WheelSpec): CheckItem | null {
     ...base,
     passed: true,
     reason: '라벨의 두 표기가 서로 맞습니다.',
+    detail: { code: 'unitConsistency.match', params },
   };
 }
 
@@ -485,6 +543,7 @@ export function checkMountingSpec(wheel: WheelSpec): CheckItem | null {
       reason:
         '라벨에서 장착 구멍 지름(내경)을 읽지 못했습니다. ' +
         '숫돌이 축에 제대로 맞는지 장착 전에 직접 확인하세요.',
+      detail: { code: 'mountingSpec.missing' },
     };
   }
 
@@ -495,6 +554,7 @@ export function checkMountingSpec(wheel: WheelSpec): CheckItem | null {
       `라벨에 적힌 내경은 Φ${bore}mm입니다. ` +
       '그라인더 명판에는 축 규격이 적혀 있지 않아 이 앱이 대조할 수 없습니다. ' +
       '축에 맞는지 직접 확인하세요.',
+    detail: { code: 'mountingSpec.shown', params: { bore } },
   };
 }
 
@@ -570,9 +630,11 @@ export function checkPeripheralSpeed(
   const odd = (mps: number | null): boolean =>
     mps !== null && (mps < PLAUSIBLE_MIN_MPS || mps > PLAUSIBLE_MAX_MPS);
 
+  const grinderOdd = odd(grinderSpeed);
+  const wheelOdd = odd(wheelSpeed);
   const suspects: string[] = [];
-  if (odd(grinderSpeed)) suspects.push('그라인더');
-  if (odd(wheelSpeed)) suspects.push('숫돌');
+  if (grinderOdd) suspects.push('그라인더');
+  if (wheelOdd) suspects.push('숫돌');
 
   if (suspects.length > 0) {
     const who = suspects.join('와 ');
@@ -583,6 +645,14 @@ export function checkPeripheralSpeed(
         `${who} 값으로 계산한 가장자리 속도가 상식 범위를 벗어납니다. ` +
         `지름이나 회전속도를 잘못 읽었을 수 있습니다. ` +
         `${withParticle(who, '은', '는')} 라벨의 숫자를 다시 확인하세요.`,
+      detail: {
+        code:
+          grinderOdd && wheelOdd
+            ? 'peripheralSpeed.oddBoth'
+            : grinderOdd
+              ? 'peripheralSpeed.oddGrinder'
+              : 'peripheralSpeed.oddWheel',
+      },
     };
   }
 
@@ -590,6 +660,7 @@ export function checkPeripheralSpeed(
     ...base,
     passed: true,
     reason: '지름과 회전속도가 서로 어울리는 값입니다.',
+    detail: { code: 'peripheralSpeed.ok' },
   };
 }
 
@@ -707,6 +778,7 @@ export function checkExpiry(wheel: WheelSpec, today: string | null): CheckItem {
       passed: null,
       reason:
         '기준일이 없어 유효기한을 비교할 수 없습니다. 앱을 다시 열어 점검을 진행하세요.',
+      detail: { code: 'expiry.noToday' },
     };
   }
 
@@ -718,10 +790,12 @@ export function checkExpiry(wheel: WheelSpec, today: string | null): CheckItem {
         `라벨에서 유효기한을 읽지 못했습니다. 기준일 ${today}. ` +
         '라벨 금속 링의 월/연 표기(예: 04/2023)를 직접 확인하세요. ' +
         '표기가 없는 숫돌도 있습니다.',
+      detail: { code: 'expiry.unreadable', params: { today } },
     };
   }
 
   const lastValid = expiryLastValidDate(expiry);
+  const params = { expiry: formatExpiry(expiry), lastValid, today };
 
   if (today > lastValid) {
     return {
@@ -731,6 +805,7 @@ export function checkExpiry(wheel: WheelSpec, today: string | null): CheckItem {
         `라벨에 표시된 유효기한이 지났습니다. 표시 ${formatExpiry(expiry)} ` +
         `(${lastValid}까지), 기준일 ${today}. ` +
         '제조사는 유효기한이 지난 숫돌을 사용하지 말라고 안내합니다.',
+      detail: { code: 'expiry.expired', params },
     };
   }
 
@@ -740,6 +815,7 @@ export function checkExpiry(wheel: WheelSpec, today: string | null): CheckItem {
     reason:
       `라벨에 표시된 유효기한이 남아 있습니다. 표시 ${formatExpiry(expiry)} ` +
       `(${lastValid}까지), 기준일 ${today}.`,
+    detail: { code: 'expiry.valid', params },
   };
 }
 

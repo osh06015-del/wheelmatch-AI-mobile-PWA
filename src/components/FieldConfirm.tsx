@@ -7,10 +7,12 @@
 
 import { useState } from 'react';
 import type { FieldGuide } from '@/lib/guide/fieldGuide';
+import { useLocale, type MessageKey } from '@/lib/i18n';
 import type { Confidence, WheelPurpose } from '@/lib/rules/types';
 
 export interface FieldSpec {
   key: string;
+  /** 항목 이름. 화면이 고른 언어로 이미 바꾼 문장이다 */
   label: string;
   unit?: string;
   kind: 'number' | 'text' | 'purpose';
@@ -27,10 +29,10 @@ interface FieldConfirmProps {
   onChange: (key: string, value: string) => void;
 }
 
-const CONFIDENCE_LABEL: Record<Confidence, string> = {
-  high: '인식 신뢰도 높음',
-  medium: '인식 신뢰도 보통 — 값을 확인하세요',
-  low: '인식 신뢰도 낮음 — 재촬영하거나 직접 입력하세요',
+const CONFIDENCE_LABEL: Record<Confidence, MessageKey> = {
+  high: 'field.confidence.high',
+  medium: 'field.confidence.medium',
+  low: 'field.confidence.low',
 };
 
 const CONFIDENCE_STYLE: Record<Confidence, string> = {
@@ -39,10 +41,13 @@ const CONFIDENCE_STYLE: Record<Confidence, string> = {
   low: 'bg-red-500/15 text-red-300 border-red-500/40',
 };
 
-export const PURPOSE_OPTIONS: Array<{ value: WheelPurpose; label: string }> = [
-  { value: 'cutting', label: '절단용' },
-  { value: 'grinding', label: '연삭용' },
-  { value: 'unknown', label: '모르겠음' },
+export const PURPOSE_OPTIONS: Array<{
+  value: WheelPurpose;
+  labelKey: MessageKey;
+}> = [
+  { value: 'cutting', labelKey: 'wheelPurpose.cutting' },
+  { value: 'grinding', labelKey: 'wheelPurpose.grinding' },
+  { value: 'unknown', labelKey: 'field.purposeUnknown' },
 ];
 
 export function FieldConfirm({
@@ -52,6 +57,7 @@ export function FieldConfirm({
   rawText,
   onChange,
 }: FieldConfirmProps) {
+  const { t } = useLocale();
   const [rawOpen, setRawOpen] = useState(false);
 
   return (
@@ -61,7 +67,7 @@ export function FieldConfirm({
       <p
         className={`rounded-lg border px-4 py-3 text-base leading-relaxed ${CONFIDENCE_STYLE[confidence]}`}
       >
-        {CONFIDENCE_LABEL[confidence]}
+        {t(CONFIDENCE_LABEL[confidence])}
       </p>
 
       <div className="flex flex-col gap-4">
@@ -75,7 +81,7 @@ export function FieldConfirm({
             {/* 이게 무엇이고 왜 중요한지. 항상 보여준다. */}
             {field.guide && (
               <span className="text-base leading-relaxed text-slate-400">
-                {field.guide.hint}
+                {t(field.guide.hint)}
               </span>
             )}
 
@@ -87,7 +93,7 @@ export function FieldConfirm({
               >
                 {PURPOSE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
-                    {option.label}
+                    {t(option.labelKey)}
                   </option>
                 ))}
               </select>
@@ -96,7 +102,7 @@ export function FieldConfirm({
                 type={field.kind === 'number' ? 'number' : 'text'}
                 inputMode={field.kind === 'number' ? 'numeric' : 'text'}
                 value={field.value}
-                placeholder="인식하지 못함 — 직접 입력"
+                placeholder={t('field.placeholder')}
                 onChange={(event) => onChange(field.key, event.target.value)}
                 className="min-h-12 rounded-lg border border-slate-600 bg-slate-800 px-4 text-lg text-slate-100 placeholder:text-slate-500"
               />
@@ -106,7 +112,7 @@ export function FieldConfirm({
                 직접 입력해야 하는 순간에 정확히 필요한 정보다. */}
             {field.guide && field.value.trim() === '' && (
               <span className="rounded-lg bg-slate-800 px-3 py-2 text-base leading-relaxed text-slate-300">
-                📍 {field.guide.where}
+                📍 {t(field.guide.where)}
               </span>
             )}
           </label>
@@ -120,7 +126,7 @@ export function FieldConfirm({
             onClick={() => setRawOpen((open) => !open)}
             className="min-h-12 text-base text-slate-400 underline underline-offset-4"
           >
-            {rawOpen ? '읽어낸 원문 접기' : '읽어낸 원문 보기'}
+            {rawOpen ? t('field.rawHide') : t('field.rawShow')}
           </button>
           {rawOpen && (
             <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-800 p-4 text-sm leading-relaxed text-slate-300">

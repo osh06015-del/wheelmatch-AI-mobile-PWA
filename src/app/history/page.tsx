@@ -12,9 +12,11 @@ import { useState } from 'react';
 import { HistoryList } from '@/components/HistoryList';
 import { ResearchPanel } from '@/components/ResearchPanel';
 import { clearInspections, listInspections } from '@/lib/db';
+import { useLocale } from '@/lib/i18n';
 import { researchToolsEnabled } from '@/lib/record/researchMode';
 
 export default function HistoryPage() {
+  const { t } = useLocale();
   const records = useLiveQuery(() => listInspections(50), []);
   const [confirmingClear, setConfirmingClear] = useState(false);
 
@@ -28,16 +30,18 @@ export default function HistoryPage() {
       <header className="flex items-center gap-3">
         <Link
           href="/"
-          aria-label="처음으로"
+          aria-label={t('common.home')}
           className="flex h-12 w-12 items-center justify-center rounded-lg text-2xl text-slate-300 active:bg-slate-800"
         >
           ←
         </Link>
-        <h1 className="text-xl font-bold text-slate-100">점검 이력</h1>
+        <h1 className="text-xl font-bold text-slate-100">
+          {t('history.title')}
+        </h1>
       </header>
 
       {records === undefined ? (
-        <p className="text-lg text-slate-400">기록을 불러오는 중입니다...</p>
+        <p className="text-lg text-slate-400">{t('history.loading')}</p>
       ) : (
         <HistoryList records={records} />
       )}
@@ -47,22 +51,21 @@ export default function HistoryPage() {
           {confirmingClear ? (
             <div className="flex flex-col gap-3 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-4">
               <p className="text-lg leading-relaxed text-red-100">
-                저장된 점검 기록 {records.length}건을 모두 삭제합니다. 되돌릴 수
-                없습니다.
+                {t('history.clearConfirm', { count: records.length })}
               </p>
               <button
                 type="button"
                 onClick={() => void handleClear()}
                 className="min-h-14 rounded-lg bg-red-500 text-lg font-bold text-white active:bg-red-400"
               >
-                모두 삭제
+                {t('history.clearConfirmButton')}
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmingClear(false)}
                 className="min-h-14 rounded-lg border border-slate-600 text-lg font-semibold text-slate-200 active:bg-slate-800"
               >
-                취소
+                {t('history.cancel')}
               </button>
             </div>
           ) : (
@@ -71,7 +74,7 @@ export default function HistoryPage() {
               onClick={() => setConfirmingClear(true)}
               className="min-h-14 rounded-lg border border-slate-600 text-lg font-semibold text-slate-300 active:bg-slate-800"
             >
-              전체 삭제
+              {t('history.clearAll')}
             </button>
           )}
         </div>
@@ -87,7 +90,7 @@ export default function HistoryPage() {
         href="/scan/grinder"
         className="flex min-h-14 items-center justify-center rounded-lg bg-slate-800 text-lg font-semibold text-slate-100 active:bg-slate-700"
       >
-        새 점검 시작
+        {t('history.newInspection')}
       </Link>
     </main>
   );

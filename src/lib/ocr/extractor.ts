@@ -4,6 +4,7 @@
 // 화면 코드는 이 인터페이스만 알면 되므로, 엔진을 갈아끼워도 UI는 건드릴 필요가 없다.
 
 import type { GrinderSpec, WheelSpec } from '@/lib/rules/types';
+import { ExtractError, failureFromResponse } from './errors';
 
 export interface OCRExtractor {
   extractGrinder(imageBlob: Blob): Promise<GrinderSpec>;
@@ -38,21 +39,37 @@ export class ClaudeExtractor implements OCRExtractor {
     type: 'grinder' | 'wheel',
   ): Promise<T> {
     const image = await blobToBase64(imageBlob);
-    const response = await fetch('/api/extract', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        image,
-        type,
-        mediaType: imageBlob.type || 'image/jpeg',
-      }),
-    });
+    let response: Response;
+    try {
+      response = await fetch('/api/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image,
+          type,
+          mediaType: imageBlob.type || 'image/jpeg',
+        }),
+      });
+    } catch {
+      // 서버에 닿지 못했다(오프라인·연결 끊김). 응답이 없으니 서버 문장도 없다.
+      throw new ExtractError('network');
+    }
 
     if (!response.ok) {
+      // 서버 문장(error)은 읽지 않는다. 한 언어로만 쓰여 있어 작업자에게
+      // 그대로 보일 수 없다. 실패 종류와 상태 코드만 넘기고 문장은 화면이 고른다.
       const detail = (await response.json().catch(() => null)) as {
-        error?: string;
+        code?: unknown;
+        upstreamStatus?: unknown;
       } | null;
-      throw new Error(detail?.error ?? '라벨 분석에 실패했습니다.');
+      const upstreamStatus =
+        typeof detail?.upstreamStatus === 'number'
+          ? detail.upstreamStatus
+          : null;
+      throw new ExtractError(
+        failureFromResponse(response.status, detail?.code),
+        upstreamStatus ?? response.status,
+      );
     }
 
     return (await response.json()) as T;

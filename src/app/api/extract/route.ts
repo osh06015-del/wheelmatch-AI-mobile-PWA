@@ -8,6 +8,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { NextResponse } from 'next/server';
 
+import type { ExtractFailure } from '@/lib/ocr/errors';
 import { normalizeExpiry, rpmFromPeripheralSpeed } from '@/lib/ocr/parser';
 import { resolveModel } from '@/lib/ocr/model';
 import {
@@ -42,20 +43,33 @@ interface ExtractRequestBody {
   mediaType?: unknown;
 }
 
-function badRequest(message: string) {
-  return NextResponse.json({ error: message }, { status: 400 });
+/**
+ * 오류 응답.
+ *
+ * error는 개발자와 로그를 위한 문장이다. 화면은 이것을 띄우지 않고 code로
+ * 작업자가 고른 언어의 문장을 찾는다(src/lib/i18n/errors.ts).
+ */
+function errorResponse(
+  status: number,
+  code: ExtractFailure,
+  message: string,
+  extra: Record<string, unknown> = {},
+) {
+  return NextResponse.json({ error: message, code, ...extra }, { status });
+}
+
+function badRequest(message: string, code: ExtractFailure = 'bad_request') {
+  return errorResponse(400, code, message);
 }
 
 export async function POST(request: Request) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     // 키가 없을 때 임의의 값을 지어내지 않는다. 실패를 그대로 알린다.
-    return NextResponse.json(
-      {
-        error:
-          'ANTHROPIC_API_KEY가 설정되지 않았습니다. 서버 환경변수를 확인하세요.',
-      },
-      { status: 500 },
+    return errorResponse(
+      500,
+      'server_config',
+      'ANTHROPIC_API_KEY가 설정되지 않았습니다. 서버 환경변수를 확인하세요.',
     );
   }
 
@@ -74,6 +88,7 @@ export async function POST(request: Request) {
   if (image.length > MAX_BASE64_LENGTH) {
     return badRequest(
       '이미지가 너무 큽니다. 해상도가 낮은 사진으로 다시 시도해 주세요.',
+      'image_too_large',
     );
   }
   if (type !== 'grinder' && type !== 'wheel') {
@@ -181,15 +196,13 @@ export async function POST(request: Request) {
     return NextResponse.json(spec, { status: 200 });
   } catch (error) {
     if (error instanceof Anthropic.AuthenticationError) {
-      return NextResponse.json(
-        { error: 'API 키가 올바르지 않습니다.' },
-        { status: 500 },
-      );
+      return errorResponse(500, 'server_config', 'API 키가 올바르지 않습니다.');
     }
     if (error instanceof Anthropic.RateLimitError) {
-      return NextResponse.json(
-        { error: '요청이 많아 잠시 후 다시 시도해야 합니다.' },
-        { status: 429 },
+      return errorResponse(
+        429,
+        'rate_limited',
+        '요청이 많아 잠시 후 다시 시도해야 합니다.',
       );
     }
     if (error instanceof Anthropic.APIError) {
@@ -201,18 +214,18 @@ export async function POST(request: Request) {
         error.status,
         error.message,
       );
-      return NextResponse.json(
-        {
-          error: `라벨 분석에 실패했습니다. (${error.status})`,
-          detail: error.message,
-        },
-        { status: 502 },
+      return errorResponse(
+        502,
+        'upstream',
+        `라벨 분석에 실패했습니다. (${error.status})`,
+        { detail: error.message, upstreamStatus: error.status },
       );
     }
     console.error('[extract] unknown error', error);
-    return NextResponse.json(
-      { error: '라벨 분석 중 알 수 없는 오류가 발생했습니다.' },
-      { status: 500 },
+    return errorResponse(
+      500,
+      'unknown',
+      '라벨 분석 중 알 수 없는 오류가 발생했습니다.',
     );
   }
 }

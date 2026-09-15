@@ -1,22 +1,29 @@
+'use client';
+
 // 촬영 화면 상단 헤더. 진행 단계와 뒤로가기를 함께 보여준다.
 
 import Link from 'next/link';
 
+import { useLocale } from '@/lib/i18n';
+
 interface ScanHeaderProps {
   step: string;
+  /** 고른 언어로 이미 바꾼 화면 제목 */
   title: string;
   /** 확인 화면처럼 이미 좌우 여백이 있는 곳에서는 테두리와 패딩을 뺀다. */
   bare?: boolean;
 }
 
 export function ScanHeader({ step, title, bare = false }: ScanHeaderProps) {
+  const { t } = useLocale();
+
   return (
     <header
       className={`flex items-center gap-3 ${bare ? '' : 'border-b border-slate-800 px-6 py-4'}`}
     >
       <Link
         href="/"
-        aria-label="처음으로"
+        aria-label={t('common.home')}
         className="flex h-12 w-12 items-center justify-center rounded-lg text-2xl text-slate-300 active:bg-slate-800"
       >
         ←

@@ -13,6 +13,8 @@
 //
 // 시작 시점은 메인에서 작업(절단/연삭)을 고른 순간이다. 그 행위가 곧 점검 시작이다.
 
+import type { Translate } from '@/lib/i18n';
+
 /** 시작 시각(epoch ms)부터 지금까지. 시작 시각을 모르면 null. */
 export function elapsedSince(
   startedAt: number | null,
@@ -52,16 +54,20 @@ export function preTrialElapsed(
  *
  * 1시간이 넘으면 실제 점검 시간이 아니라 화면을 켜둔 채 자리를 뜬 것이다.
  * "127분"처럼 적으면 평균을 왜곡하므로 그대로 쓰지 않는다.
+ *
+ * 분·초 표기는 언어마다 달라서 문구 조회 함수를 받는다.
  */
-export function formatElapsed(ms: number | null): string | null {
+export function formatElapsed(ms: number | null, t: Translate): string | null {
   if (ms === null) return null;
   if (!Number.isFinite(ms) || ms < 0) return null;
 
   const totalSeconds = Math.floor(ms / 1000);
-  if (totalSeconds >= 3600) return '1시간 이상';
+  if (totalSeconds >= 3600) return t('elapsed.overHour');
 
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-  if (minutes === 0) return `${seconds}초`;
-  return seconds === 0 ? `${minutes}분` : `${minutes}분 ${seconds}초`;
+  if (minutes === 0) return t('elapsed.seconds', { seconds });
+  return seconds === 0
+    ? t('elapsed.minutes', { minutes })
+    : t('elapsed.minutesSeconds', { minutes, seconds });
 }

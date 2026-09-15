@@ -44,8 +44,10 @@ describe('API 키가 없을 때', () => {
     const res = await post({ image: 'abc', type: 'grinder' });
     expect(res.status).toBe(500);
 
-    const json = (await res.json()) as { error: string };
+    const json = (await res.json()) as { error: string; code: string };
     expect(json.error).toContain('ANTHROPIC_API_KEY');
+    // 작업자가 고칠 수 없는 문제라는 것을 화면이 알 수 있어야 한다.
+    expect(json.code).toBe('server_config');
   });
 });
 
@@ -84,8 +86,10 @@ describe('요청 본문 검증', () => {
     const res = await post({ image: tooBig, type: 'grinder' });
     expect(res.status).toBe(400);
 
-    const json = (await res.json()) as { error: string };
+    const json = (await res.json()) as { error: string; code: string };
     expect(json.error).toContain('큽니다');
+    // 화면은 이 code로 "사진을 줄여서 다시" 안내를 고른다.
+    expect(json.code).toBe('image_too_large');
   });
 
   it('type이 없으면 400', async () => {
@@ -97,8 +101,9 @@ describe('요청 본문 검증', () => {
     const res = await post({ image: 'abc', type: 'nameplate' });
     expect(res.status).toBe(400);
 
-    const json = (await res.json()) as { error: string };
+    const json = (await res.json()) as { error: string; code: string };
     expect(json.error).toContain('type');
+    expect(json.code).toBe('bad_request');
   });
 
   // 'grinder'/'wheel'이 검증을 통과한다는 것은 여기서 확인하지 않는다.
@@ -117,13 +122,14 @@ describe('오류 응답 형태', () => {
     process.env.ANTHROPIC_API_KEY = DUMMY_KEY;
   });
 
-  it('오류는 항상 error 필드를 가진 JSON이다', async () => {
-    // 화면이 detail?.error로 읽는다. 형태가 깨지면 사용자에게 빈 오류가 뜬다.
+  it('오류는 항상 error와 code를 가진 JSON이다', async () => {
+    // 화면은 code로 작업자가 고른 언어의 문장을 찾는다. error는 로그와 개발자용이다.
     const res = await post({ type: 'grinder' });
     const json = (await res.json()) as Record<string, unknown>;
 
     expect(typeof json.error).toBe('string');
     expect((json.error as string).length).toBeGreaterThan(0);
+    expect(json.code).toBe('bad_request');
   });
 
   it('오류 메시지에 API 키가 새지 않는다', async () => {

@@ -217,6 +217,321 @@ export const ko = {
   'checklist.incomplete':
     '안전 체크리스트 {count}개 항목을 모두 확인해야 저장할 수 있습니다.',
 
+  // 촬영·분석·값 확인 화면
+  'scan.retake': '재촬영',
+  'scan.retryAnalysis': '같은 사진으로 다시 분석',
+  'scan.confirmTitle': '읽어낸 값을 확인하세요',
+  'scan.grinder.title': '그라인더 명판 촬영',
+  'scan.grinder.guide': '명판을 사각형 안에 맞추세요',
+  'scan.grinder.analyzing': '명판을 분석하고 있습니다...',
+  'scan.grinder.failed': '명판 분석에 실패했습니다.',
+  'scan.grinder.proceed': '확인 후 숫돌 촬영',
+  'scan.wheel.title': '숫돌 라벨 촬영',
+  'scan.wheel.guide': '라벨을 사각형 안에 맞추세요',
+  'scan.wheel.analyzing': '라벨을 분석하고 있습니다...',
+  'scan.wheel.failed': '라벨 분석에 실패했습니다.',
+  'scan.wheel.proceed': '확인 후 규격 대조',
+  'scan.wheel.grinderFirst': '그라인더 상태 확인이 먼저입니다.',
+
+  'camera.starting': '카메라를 여는 중입니다...',
+  'camera.pickFromGallery': '갤러리에서 선택',
+  'camera.pickPhoto': '갤러리에서 사진 선택',
+  'camera.retry': '카메라 다시 시도',
+  'camera.gallery': '갤러리',
+  'camera.shutter': '촬영',
+  'camera.error.unsupported':
+    '이 브라우저는 카메라를 지원하지 않습니다. HTTPS 환경인지 확인하세요.',
+  'camera.error.permission':
+    '카메라 권한이 거부되었습니다. 브라우저 설정에서 카메라를 허용한 뒤 다시 시도하세요.',
+  'camera.error.notFound': '사용할 수 있는 카메라를 찾지 못했습니다.',
+  'camera.error.inUse':
+    '다른 앱이 카메라를 사용 중입니다. 해당 앱을 닫고 다시 시도하세요.',
+  'camera.error.failed': '카메라를 열지 못했습니다.',
+  'camera.error.failedNamed': '카메라를 열지 못했습니다. ({name})',
+
+  // 분석 실패. 서버 문장을 그대로 띄우지 않고 실패 종류로 고른다.
+  'error.imageDecode':
+    '이 사진 형식을 읽지 못했습니다. JPG 또는 PNG로 다시 선택해 주세요. (아이폰 HEIC 사진은 지원되지 않을 수 있습니다)',
+  'error.network':
+    '서버에 연결하지 못했습니다. 네트워크를 확인한 뒤 같은 사진으로 다시 분석하세요.',
+  'error.serverConfig':
+    '서버 설정 문제로 라벨을 분석할 수 없습니다. 관리자에게 알리세요.',
+  'error.badRequest': '분석 요청이 올바르지 않습니다. 다시 촬영해 주세요.',
+  'error.imageTooLarge':
+    '이미지가 너무 큽니다. 해상도가 낮은 사진으로 다시 시도해 주세요.',
+  'error.rateLimited': '요청이 많아 잠시 후 다시 시도해야 합니다.',
+  'error.upstream':
+    '분석 서비스가 요청을 처리하지 못했습니다. 잠시 후 다시 시도하세요. (오류 {status})',
+
+  'field.model': '모델명',
+  'field.noLoadRPM': '무부하 회전속도',
+  'field.maxWheelDiameter': '허용 숫돌 최대 지름',
+  'field.maxRPM': '최고사용회전속도',
+  'field.diameter': '지름',
+  'field.thickness': '두께',
+  'field.purpose': '용도',
+  'field.expiry': '유효기한',
+  'field.placeholder': '인식하지 못함 — 직접 입력',
+  'field.purposeUnknown': '모르겠음',
+  'field.confidence.high': '인식 신뢰도 높음',
+  'field.confidence.medium': '인식 신뢰도 보통 — 값을 확인하세요',
+  'field.confidence.low': '인식 신뢰도 낮음 — 재촬영하거나 직접 입력하세요',
+  'field.rawShow': '읽어낸 원문 보기',
+  'field.rawHide': '읽어낸 원문 접기',
+  'manualConfirm.label': '라벨을 직접 보고 위 값을 확인했습니다',
+  'manualConfirm.hint':
+    '체크하면 인식 신뢰도 대신 사용자가 확인한 값으로 판정합니다.',
+
+  // 항목 설명. hint는 항상, where는 값을 읽지 못했을 때만 보인다.
+  'guide.grinder.model.hint':
+    '그라인더 제품 이름입니다. 판정에는 쓰지 않고 기록에만 남깁니다.',
+  'guide.grinder.model.where':
+    '명판 맨 위에 크게 적혀 있습니다. 예: GWS 750-125',
+  'guide.grinder.noLoadRPM.hint':
+    '이 그라인더가 도는 속도입니다. 숫돌이 이 속도를 견뎌야 합니다.',
+  'guide.grinder.noLoadRPM.where':
+    '명판에서 n₀ 또는 no load speed 옆의 숫자입니다. 예: 11000 r/min, 11000 min⁻¹',
+  'guide.grinder.maxWheelDiameter.hint':
+    '이 기계에 끼울 수 있는 가장 큰 숫돌입니다. 더 큰 숫돌은 방호덮개에 들어가지 않습니다.',
+  'guide.grinder.maxWheelDiameter.where':
+    '명판에서 wheel, disc, 숫돌 같은 단어 옆의 지름입니다. 예: max Ø125mm',
+  'guide.wheel.maxRPM.hint':
+    '이 숫돌이 견디는 최대 속도입니다. 그라인더 속도보다 낮으면 깨져서 날아갑니다.',
+  'guide.wheel.maxRPM.where':
+    '라벨에 크게 적힌 회전속도입니다. m/s로만 적혀 있으면 앱이 자동으로 바꿉니다. 예: 12200 r/min, 80 m/s',
+  'guide.wheel.diameter.hint':
+    '숫돌의 바깥 지름입니다. 그라인더가 허용하는 크기 이하여야 합니다.',
+  'guide.wheel.diameter.where':
+    '치수 표기의 첫 숫자입니다. 예: 125 × 1.6 × 22.23 에서 125',
+  'guide.wheel.thickness.hint':
+    '숫돌의 두께입니다. 절단날은 얇고(1~3mm) 연삭석은 두껍습니다(6mm 안팎).',
+  'guide.wheel.thickness.where':
+    '치수 표기의 가운데 숫자입니다. 예: 125 × 1.6 × 22.23 에서 1.6',
+  'guide.wheel.purpose.hint':
+    '절단용은 자르기, 연삭용은 갈기입니다. 바꿔 쓰면 옆으로 힘을 받아 깨질 수 있습니다.',
+  'guide.wheel.purpose.where':
+    '라벨의 절단용/연삭용 표기입니다. 영문은 CUT-OFF 또는 GRINDING, DEPRESSED CENTER로 적힙니다.',
+  'guide.wheel.expiry.hint':
+    '라벨에 적힌 유효기한입니다. 지난 숫돌은 제조사가 사용하지 말라고 안내합니다. 표기가 없는 숫돌도 있습니다.',
+  'guide.wheel.expiry.where':
+    '가운데 금속 링에 월/연으로 찍힙니다. 예: 04/2023. 앞에 V나 EXP가 붙기도 합니다. 제조일을 대신 넣지 마세요.',
+
+  'requirement.compactTitle': '필요한 숫돌',
+  'requirement.compactUnknown': '명판 값을 읽지 못해 조건을 세울 수 없습니다',
+  'requirement.title': '필요한 숫돌 조건',
+  'requirement.partial':
+    '조건을 다 세우지 못했습니다. 빠진 값은 명판에서 직접 확인하세요.',
+  'requirement.notRecommendation':
+    '제품을 추천하는 것이 아니라, 명판에 적힌 값에서 따라 나오는 조건입니다.',
+  'requirement.purposeUnknown': '작업을 고르지 않아 용도를 정할 수 없습니다.',
+  'requirement.diameterMax': 'Φ{diameter}mm 이하',
+  'requirement.diameterUnknown': '명판에서 허용 최대 지름을 읽지 못했습니다.',
+  'requirement.rpmMin': '{rpm}rpm 이상',
+  'requirement.rpmUnknown': '명판에서 무부하 회전속도를 읽지 못했습니다.',
+  'summary.sizeClass': '{inch}인치급 (최대 Φ{diameter}mm)',
+  'summary.maxDiameter': '최대 Φ{diameter}mm',
+  'summary.unreadable': '명판 값을 읽지 못했습니다',
+  'margin.surplus': '여유 +{percent}%',
+  'margin.shortfall': '부족 {percent}%',
+  'margin.none': '여유 없음 (0%)',
+
+  // 검사 항목 값에 들어가는 이름. 규칙엔진의 이름과 같은 한국어를 쓴다.
+  'wheelPurpose.cutting': '절단용',
+  'wheelPurpose.grinding': '연삭용',
+  'wheelPurpose.unknown': '미확인',
+  'wheelType.unconfirmed': '확인 안 됨',
+  'confidence.high': '높음',
+  'confidence.medium': '보통',
+  'confidence.low': '낮음',
+  'value.bore': '내경 Φ{bore}mm',
+  'value.unitConsistency': '{rpm}rpm = {computed}m/s / 라벨 {labeled}m/s',
+
+  // 검사 항목 사유. 한국어 문장은 규칙엔진이 기록에 남기는 문장과 글자까지 같아야
+  // 한다(checkText.test.ts가 지킨다). 「은(는)」은 앞 낱말에 맞춰 하나로 바뀐다.
+  'reason.requiredValues.ok': '회전속도 비교에 필요한 값을 모두 읽었습니다.',
+  'reason.requiredValues.missingGrinder':
+    '그라인더 무부하 회전속도를 읽지 못했습니다. 재촬영하거나 수동으로 값을 입력하세요.',
+  'reason.requiredValues.missingWheel':
+    '숫돌 최고사용회전속도를 읽지 못했습니다. 재촬영하거나 수동으로 값을 입력하세요.',
+  'reason.requiredValues.missingBoth':
+    '그라인더 무부하 회전속도, 숫돌 최고사용회전속도를 읽지 못했습니다. 재촬영하거나 수동으로 값을 입력하세요.',
+  'reason.rpmSafety.missing': '회전속도 값이 없어 비교할 수 없습니다.',
+  'reason.rpmSafety.fail':
+    '숫돌 최고사용회전속도({wheel}rpm)가 그라인더 무부하 회전속도({grinder}rpm)보다 낮습니다. 파손·비산 위험이 있습니다.',
+  'reason.rpmSafety.pass':
+    '숫돌 최고사용회전속도({wheel}rpm)가 그라인더 무부하 회전속도({grinder}rpm) 이상입니다.',
+  'reason.diameterFit.missing':
+    '지름 값이 없어 비교할 수 없습니다. 그라인더 명판과 숫돌 라벨의 지름 표기를 직접 확인하세요.',
+  'reason.diameterFit.fail':
+    '숫돌 지름({wheel}mm)이 그라인더 허용 최대 지름({grinder}mm)을 초과합니다.',
+  'reason.diameterFit.pass':
+    '숫돌 지름({wheel}mm)이 그라인더 허용 최대 지름({grinder}mm) 이내입니다.',
+  'reason.purpose.unknown':
+    '숫돌 용도(절단/연삭)를 인식하지 못했습니다. 라벨을 직접 확인하세요.',
+  'reason.purpose.recognized': '숫돌 용도를 {purpose}으로 인식했습니다.',
+  'reason.workPurpose.unknown':
+    '오늘 작업은 {work}인데 숫돌 용도를 읽지 못했습니다. 라벨의 용도 표기를 직접 확인하세요.',
+  'reason.workPurpose.mismatch':
+    '오늘 작업은 {work}인데 이 숫돌은 {purpose}입니다. 용도에 맞지 않는 숫돌은 측면 하중으로 파손될 수 있습니다.',
+  'reason.workPurpose.match': '오늘 작업({work})과 숫돌 용도가 일치합니다.',
+  'reason.wheelType.unknown':
+    '숫돌 종류가 확인되지 않았습니다. 일반 결합숫돌로 확인된 경우에만 규격을 대조합니다. 값 확인 화면에서 실물을 보고 종류를 고르세요.',
+  'reason.wheelType.unsupported':
+    '{type}은(는) 이 앱이 다루지 않는 종류입니다. 규격 체계가 달라 판정할 수 없으니 제조사 취급설명서를 확인하세요.',
+  'reason.wheelType.supported':
+    '일반 결합숫돌로 확인되었습니다. 이 앱이 규격을 대조하는 종류입니다.',
+  'reason.visibleDamage.suspected':
+    '사진에서 깨짐·균열로 보이는 부분이 있습니다. 이 숫돌을 사용하지 말고 직접 확인하세요.',
+  'reason.visibleDamage.notVerifiable':
+    '사진으로는 미세균열을 확인할 수 없습니다. 장착 전 타음검사(가볍게 두드려 소리 확인)를 하세요.',
+  'reason.confidence.low':
+    '라벨 인식 신뢰도가 낮습니다. 재촬영하거나 수동으로 값을 입력하세요.',
+  'reason.confidence.ok': '라벨 인식 신뢰도가 충분합니다.',
+  'reason.unitConsistency.mismatch':
+    '라벨의 회전속도 표기와 원주속도 표기가 서로 맞지 않습니다. 둘 중 하나를 잘못 읽었을 수 있습니다. 라벨의 숫자를 다시 확인하세요.',
+  'reason.unitConsistency.match': '라벨의 두 표기가 서로 맞습니다.',
+  'reason.mountingSpec.missing':
+    '라벨에서 장착 구멍 지름(내경)을 읽지 못했습니다. 숫돌이 축에 제대로 맞는지 장착 전에 직접 확인하세요.',
+  'reason.mountingSpec.shown':
+    '라벨에 적힌 내경은 Φ{bore}mm입니다. 그라인더 명판에는 축 규격이 적혀 있지 않아 이 앱이 대조할 수 없습니다. 축에 맞는지 직접 확인하세요.',
+  'reason.peripheralSpeed.oddGrinder':
+    '그라인더 값으로 계산한 가장자리 속도가 상식 범위를 벗어납니다. 지름이나 회전속도를 잘못 읽었을 수 있습니다. 그라인더는 라벨의 숫자를 다시 확인하세요.',
+  'reason.peripheralSpeed.oddWheel':
+    '숫돌 값으로 계산한 가장자리 속도가 상식 범위를 벗어납니다. 지름이나 회전속도를 잘못 읽었을 수 있습니다. 숫돌은 라벨의 숫자를 다시 확인하세요.',
+  'reason.peripheralSpeed.oddBoth':
+    '그라인더와 숫돌 값으로 계산한 가장자리 속도가 상식 범위를 벗어납니다. 지름이나 회전속도를 잘못 읽었을 수 있습니다. 그라인더와 숫돌은 라벨의 숫자를 다시 확인하세요.',
+  'reason.peripheralSpeed.ok': '지름과 회전속도가 서로 어울리는 값입니다.',
+  'reason.expiry.noToday':
+    '기준일이 없어 유효기한을 비교할 수 없습니다. 앱을 다시 열어 점검을 진행하세요.',
+  'reason.expiry.unreadable':
+    '라벨에서 유효기한을 읽지 못했습니다. 기준일 {today}. 라벨 금속 링의 월/연 표기(예: 04/2023)를 직접 확인하세요. 표기가 없는 숫돌도 있습니다.',
+  'reason.expiry.expired':
+    '라벨에 표시된 유효기한이 지났습니다. 표시 {expiry} ({lastValid}까지), 기준일 {today}. 제조사는 유효기한이 지난 숫돌을 사용하지 말라고 안내합니다.',
+  'reason.expiry.valid':
+    '라벨에 표시된 유효기한이 남아 있습니다. 표시 {expiry} ({lastValid}까지), 기준일 {today}.',
+
+  // 규칙 근거. 법령 이름과 조항도 번역한다 — 작업자가 읽을 수 있어야 근거다.
+  'ruleSource.krOsh.label': '산업안전보건기준에 관한 규칙',
+  'ruleSource.krOsh.reference':
+    '제122조 (고용노동부령 제450호, 시행 2026-03-02)',
+  'ruleSource.krOsh.scope': '최고사용회전속도·측면 사용·덮개·시험운전',
+  'ruleSource.kosha.label': 'KOSHA GUIDE',
+  'ruleSource.kosha.reference':
+    'M-189-2015 휴대형 연삭기 안전작업에 관한 기술지침',
+  'ruleSource.kosha.scope': '보관·취급 권고 (법적 강제력 없음)',
+  'ruleSource.osa.label': 'oSa Product marking requirements',
+  'ruleSource.osa.reference': 'Issue 2, 2020-04 (EN 12413:2019 기준)',
+  'ruleSource.osa.scope': '유효기한 표시 형식 참고. EN 원문은 확인하지 못함',
+
+  'hazard.list.cutting': '절단 작업 위험사항',
+  'hazard.list.grinding': '연삭 작업 위험사항',
+  'hazard.list.common': '공통 위험사항',
+  'hazard.summary': '{title} {count}가지',
+  'hazard.cuttingSide.title': '측면으로 갈지 않는다',
+  'hazard.cuttingSide.detail':
+    '절단날은 원주면으로만 자르도록 만들어졌습니다. 옆면으로 밀면 얇은 날이 측면 하중을 견디지 못하고 부러집니다.',
+  'hazard.cuttingPinch.title': '날을 비틀거나 꺾지 않는다',
+  'hazard.cuttingPinch.detail':
+    '자르던 홈이 닫히면 날이 물려 반동(킥백)이 납니다. 재료를 양쪽에서 받쳐 홈이 벌어지는 방향으로 두세요.',
+  'hazard.cuttingForce.title': '눌러서 자르지 않는다',
+  'hazard.cuttingForce.detail':
+    '힘으로 밀면 과열되어 날이 변형됩니다. 날 자체 무게로 천천히 들어가게 하세요.',
+  'hazard.grindingAngle.title': '15~30° 로 눕혀서 댄다',
+  'hazard.grindingAngle.detail':
+    '너무 세워서 대면 숫돌 모서리가 재료를 파고들어 공구가 튕깁니다. 눕혀 대면 접촉면이 넓어져 안정됩니다.',
+  'hazard.grindingSide.title': '연삭날에도 측면 하중을 주지 않는다',
+  'hazard.grindingSide.detail':
+    '옆면으로 밀어 쓰라고 만든 것은 컵형 숫돌뿐입니다. 일반 연삭날을 옆으로 밀면 파손 위험이 있습니다.',
+  'hazard.grindingIdle.title': '새로 끼운 숫돌은 공회전으로 먼저 확인한다',
+  'hazard.grindingIdle.detail':
+    '장착이 잘못되었거나 균열이 있으면 부하가 걸리기 전에 드러납니다. 사람이 없는 방향으로 두고 이상 진동·소리를 확인하세요.',
+  'hazard.commonStop.title': '완전히 멈춘 뒤 내려놓는다',
+  'hazard.commonStop.detail':
+    '전원을 끊어도 숫돌은 관성으로 계속 돕니다. 도는 상태로 바닥에 닿으면 공구가 튀어 오릅니다.',
+  'hazard.commonGuard.title': '덮개 각도를 작업자 반대쪽으로 맞춘다',
+  'hazard.commonGuard.detail':
+    '방호덮개는 파편이 날아오는 쪽을 막습니다. 각도가 틀어져 있으면 덮개가 있어도 몸 쪽이 열립니다.',
+
+  'notVerifiable.internalCrack.title': '내부 균열',
+  'notVerifiable.internalCrack.detail':
+    '미세균열은 표면 사진에 나타나지 않습니다. 장착 전 타음검사(가볍게 두드려 소리 확인)를 하세요.',
+  'notVerifiable.physicalDamage.title': '물리적 손상',
+  'notVerifiable.physicalDamage.detail':
+    '사진에서는 뚜렷한 파손만 보입니다. 눌린 자국·변형·젖음은 판별하지 못합니다. 직접 살펴보세요.',
+  'notVerifiable.mounting.title': '올바른 장착',
+  'notVerifiable.mounting.detail':
+    '플랜지 조임, 회전 방향, 축에 제대로 앉았는지는 사진으로 알 수 없습니다. 장착 후 직접 확인하세요.',
+  'notVerifiable.guard.title': '방호덮개 상태',
+  'notVerifiable.guard.detail':
+    '덮개가 달려 있는지, 각도가 맞는지, 파손되지 않았는지는 이 앱이 보지 못합니다. 눈으로 확인하세요.',
+
+  'history.title': '점검 이력',
+  'history.loading': '기록을 불러오는 중입니다...',
+  'history.clearConfirm':
+    '저장된 점검 기록 {count}건을 모두 삭제합니다. 되돌릴 수 없습니다.',
+  'history.clearConfirmButton': '모두 삭제',
+  'history.cancel': '취소',
+  'history.clearAll': '전체 삭제',
+  'history.newInspection': '새 점검 시작',
+  'history.empty': '저장된 점검 기록이 없습니다.',
+  'history.timeNote':
+    '「30초」는 사전점검 시간 목표입니다. 작업 선택부터 시험운전을 시작하기 직전까지를 잽니다. 법정 시험운전(1분·3분 이상)은 이 목표와 별도이며 줄이지 않습니다.',
+  'history.elapsed': '점검에 {time} 걸림',
+  'history.elapsedWithTrial': '점검에 {time} 걸림 (시험운전 포함)',
+  'history.preTrial': '사전점검 {time} (시험운전 전까지)',
+  'history.unknownModel': '모델 미상',
+  'history.unknownDiameter': '지름 미상',
+  'history.summary': '{model} {grinderRpm} · 숫돌 {wheelDiameter} {wheelRpm}',
+  'history.grinderPhoto': '그라인더 명판',
+  'history.wheelPhoto': '숫돌 라벨',
+  'history.noPhoto': '저장된 사진이 없습니다.',
+  'elapsed.overHour': '1시간 이상',
+  'elapsed.seconds': '{seconds}초',
+  'elapsed.minutes': '{minutes}분',
+  'elapsed.minutesSeconds': '{minutes}분 {seconds}초',
+
+  // 연구 도구. 검증 빌드에서만 그려진다.
+  'research.notice': '검증/연구용 기능이며 현장 판정을 변경하지 않습니다.',
+  'research.noticeDetail':
+    '검증 빌드에서만 보입니다. 기록을 내보내고 지표를 계산할 뿐, 판정·상태 확인·시험운전·저장 조건에는 관여하지 않습니다.',
+  'research.modeTitle': '연구·실험 모드',
+  'research.modeHint':
+    '측정값을 CSV로 내보냅니다. 현장 사용에는 필요하지 않습니다.',
+  'research.download': 'CSV 내려받기 ({count}건)',
+  'research.deviceOnly':
+    '기록은 이 기기에만 있습니다. 내려받은 파일은 직접 옮겨야 합니다.',
+  'research.downloadFailed': '내려받기에 실패했습니다. 저장 공간을 확인하세요.',
+  'research.truthTitle': '정답(Ground Truth) 파일',
+  'research.truthHint':
+    '촬영 전에 직접 읽어 적어둔 값입니다. 넣어야 지표를 계산할 수 있습니다. 앱이 정답을 만들지는 않습니다.',
+  'research.truthEmpty':
+    '읽어낸 정답이 없습니다. JSON 배열 형식인지 확인하세요.',
+  'research.truthUnreadable': '정답 파일을 읽지 못했습니다.',
+  'research.truthRejected':
+    '형식이 맞지 않아 {count}줄을 제외했습니다. 표본 수를 확인하세요.',
+  'metrics.title': '평가 지표',
+  'metrics.note':
+    '정답을 넣은 기록 {count}건으로 계산했습니다. 인식 정확도는 사용자가 고치기 전의 OCR 원본값으로 잽니다.',
+  'metrics.notAvailable': 'N/A — 계산할 데이터 없음',
+  'metrics.records': '{numerator} / {denominator}건',
+  'metrics.fields': '{numerator} / {denominator}필드',
+  'metrics.falseSafe.name': 'False-Safe Rate',
+  'metrics.falseSafe.definition':
+    '정답이 부적합인 기록 중 앱이 적합으로 낸 비율. 0이 아니면 출시하지 않습니다.',
+  'metrics.undetermined.name': '판정불가율',
+  'metrics.undetermined.definition':
+    '판정하지 못한 비율. 실패가 아니라 설계된 동작입니다.',
+  'metrics.fieldAccuracy.name': '필드 추출 정확도',
+  'metrics.fieldAccuracy.definition':
+    '정답이 있는 필드 중 OCR 원본값이 정답과 맞은 비율.',
+  'metrics.unitNormalization.name': '단위 정규화 오류',
+  'metrics.unitNormalization.definition':
+    'm/s에서 환산한 기록 중 결과가 정답과 다른 비율.',
+  'metrics.falseSafeIds':
+    'False-Safe 기록 id: {ids} — 개별로 분석해 보고하세요. 숨기지 않습니다.',
+
+  'meta.title': 'WheelMatch AI — 그라인더·숫돌 규격 대조',
+
   disclaimer:
     '이 앱은 라벨에 표시된 규격의 대조 결과만 제공합니다. 작업 안전성을 보증하지 않으며, 제조사 취급설명서와 사업장 안전수칙을 대체할 수 없습니다.',
 

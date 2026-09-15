@@ -220,6 +220,329 @@ export const en: Messages = {
   'checklist.incomplete':
     'You must confirm all {count} safety checklist items before saving.',
 
+  'scan.retake': 'Retake photo',
+  'scan.retryAnalysis': 'Analyse the same photo again',
+  'scan.confirmTitle': 'Check the values that were read',
+  'scan.grinder.title': 'Photograph the grinder nameplate',
+  'scan.grinder.guide': 'Fit the nameplate inside the frame',
+  'scan.grinder.analyzing': 'Reading the nameplate...',
+  'scan.grinder.failed': 'Could not read the nameplate.',
+  'scan.grinder.proceed': 'Confirm and photograph the wheel',
+  'scan.wheel.title': 'Photograph the wheel label',
+  'scan.wheel.guide': 'Fit the label inside the frame',
+  'scan.wheel.analyzing': 'Reading the label...',
+  'scan.wheel.failed': 'Could not read the label.',
+  'scan.wheel.proceed': 'Confirm and compare specifications',
+  'scan.wheel.grinderFirst': 'Check the grinder condition first.',
+
+  'camera.starting': 'Opening the camera...',
+  'camera.pickFromGallery': 'Choose from gallery',
+  'camera.pickPhoto': 'Choose a photo from the gallery',
+  'camera.retry': 'Try the camera again',
+  'camera.gallery': 'Gallery',
+  'camera.shutter': 'Take photo',
+  'camera.error.unsupported':
+    'This browser does not support the camera. Check that the page is opened over HTTPS.',
+  'camera.error.permission':
+    'Camera permission was denied. Allow the camera in your browser settings, then try again.',
+  'camera.error.notFound': 'No usable camera was found.',
+  'camera.error.inUse':
+    'Another app is using the camera. Close that app and try again.',
+  'camera.error.failed': 'Could not open the camera.',
+  'camera.error.failedNamed': 'Could not open the camera. ({name})',
+
+  'error.imageDecode':
+    'This photo format could not be read. Choose a JPG or PNG instead. (iPhone HEIC photos may not be supported)',
+  'error.network':
+    'Could not reach the server. Check your network connection, then analyse the same photo again.',
+  'error.serverConfig':
+    'The label cannot be analysed because of a server setup problem. Tell your administrator.',
+  'error.badRequest':
+    'The analysis request was not valid. Take the photo again.',
+  'error.imageTooLarge':
+    'The image is too large. Try again with a lower-resolution photo.',
+  'error.rateLimited':
+    'There are too many requests. Wait a moment and try again.',
+  'error.upstream':
+    'The analysis service could not process the request. Wait a moment and try again. (error {status})',
+
+  'field.model': 'Model',
+  'field.noLoadRPM': 'No-load speed',
+  'field.maxWheelDiameter': 'Max wheel diameter allowed',
+  'field.maxRPM': 'Max operating speed',
+  'field.diameter': 'Diameter',
+  'field.thickness': 'Thickness',
+  'field.purpose': 'Wheel use',
+  'field.expiry': 'Expiry date',
+  'field.placeholder': 'Not read — enter it yourself',
+  'field.purposeUnknown': 'Not sure',
+  'field.confidence.high': 'Reading confidence: high',
+  'field.confidence.medium': 'Reading confidence: medium — check the values',
+  'field.confidence.low':
+    'Reading confidence: low — retake the photo or enter the values yourself',
+  'field.rawShow': 'Show the text that was read',
+  'field.rawHide': 'Hide the text that was read',
+  'manualConfirm.label':
+    'I checked the label myself and confirmed the values above',
+  'manualConfirm.hint':
+    'When ticked, the result uses the values you confirmed instead of the reading confidence.',
+
+  'guide.grinder.model.hint':
+    'The product name of the grinder. It is only recorded, not used for the result.',
+  'guide.grinder.model.where':
+    'Printed large at the top of the nameplate. Example: GWS 750-125',
+  'guide.grinder.noLoadRPM.hint':
+    'How fast this grinder spins. The wheel must withstand this speed.',
+  'guide.grinder.noLoadRPM.where':
+    'The number next to n₀ or "no load speed" on the nameplate. Example: 11000 r/min, 11000 min⁻¹',
+  'guide.grinder.maxWheelDiameter.hint':
+    'The largest wheel this machine can take. A larger wheel does not fit inside the safety guard.',
+  'guide.grinder.maxWheelDiameter.where':
+    'The diameter next to words like wheel or disc on the nameplate. Example: max Ø125mm',
+  'guide.wheel.maxRPM.hint':
+    'The highest speed this wheel can withstand. If it is lower than the grinder speed, the wheel can burst and fly apart.',
+  'guide.wheel.maxRPM.where':
+    'The speed printed large on the label. If only m/s is printed, the app converts it. Example: 12200 r/min, 80 m/s',
+  'guide.wheel.diameter.hint':
+    'The outside diameter of the wheel. It must not exceed what the grinder allows.',
+  'guide.wheel.diameter.where':
+    'The first number of the size marking. Example: 125 in 125 × 1.6 × 22.23',
+  'guide.wheel.thickness.hint':
+    'The thickness of the wheel. Cutting wheels are thin (1–3mm); grinding wheels are thick (about 6mm).',
+  'guide.wheel.thickness.where':
+    'The middle number of the size marking. Example: 1.6 in 125 × 1.6 × 22.23',
+  'guide.wheel.purpose.hint':
+    'Cutting wheels are for cutting, grinding wheels for grinding. Used for the wrong job, a wheel takes side loads and can break.',
+  'guide.wheel.purpose.where':
+    'The cutting/grinding marking on the label, printed as CUT-OFF, GRINDING or DEPRESSED CENTER.',
+  'guide.wheel.expiry.hint':
+    'The expiry date printed on the label. Manufacturers say not to use a wheel past this date. Some wheels have no expiry marking.',
+  'guide.wheel.expiry.where':
+    'Stamped as month/year on the metal ring in the centre. Example: 04/2023, sometimes after V or EXP. Do not enter the manufacturing date instead.',
+
+  'requirement.compactTitle': 'Wheel needed',
+  'requirement.compactUnknown':
+    'The nameplate could not be read, so no conditions can be set',
+  'requirement.title': 'Conditions for the wheel',
+  'requirement.partial':
+    'Not every condition could be set. Check the missing values on the nameplate yourself.',
+  'requirement.notRecommendation':
+    'This is not a product recommendation. These conditions follow from the values on the nameplate.',
+  'requirement.purposeUnknown':
+    'No job was chosen, so the wheel use cannot be set.',
+  'requirement.diameterMax': 'Φ{diameter}mm or smaller',
+  'requirement.diameterUnknown':
+    'The max wheel diameter could not be read from the nameplate.',
+  'requirement.rpmMin': '{rpm}rpm or higher',
+  'requirement.rpmUnknown':
+    'The no-load speed could not be read from the nameplate.',
+  'summary.sizeClass': '{inch}-inch class (max Φ{diameter}mm)',
+  'summary.maxDiameter': 'max Φ{diameter}mm',
+  'summary.unreadable': 'The nameplate values could not be read',
+  'margin.surplus': 'Margin +{percent}%',
+  'margin.shortfall': 'Shortfall {percent}%',
+  'margin.none': 'No margin (0%)',
+
+  'wheelPurpose.cutting': 'Cutting wheel',
+  'wheelPurpose.grinding': 'Grinding wheel',
+  'wheelPurpose.unknown': 'Not identified',
+  'wheelType.unconfirmed': 'Not confirmed',
+  'confidence.high': 'High',
+  'confidence.medium': 'Medium',
+  'confidence.low': 'Low',
+  'value.bore': 'Bore Φ{bore}mm',
+  'value.unitConsistency': '{rpm}rpm = {computed}m/s / label {labeled}m/s',
+
+  'reason.requiredValues.ok':
+    'Both speeds needed for the comparison were read.',
+  'reason.requiredValues.missingGrinder':
+    'The grinder no-load speed could not be read. Retake the photo or enter the value yourself.',
+  'reason.requiredValues.missingWheel':
+    'The wheel max operating speed could not be read. Retake the photo or enter the value yourself.',
+  'reason.requiredValues.missingBoth':
+    'The grinder no-load speed and the wheel max operating speed could not be read. Retake the photos or enter the values yourself.',
+  'reason.rpmSafety.missing':
+    'A speed value is missing, so the speeds cannot be compared.',
+  'reason.rpmSafety.fail':
+    'The wheel max operating speed ({wheel}rpm) is lower than the grinder no-load speed ({grinder}rpm). The wheel can break and fly apart.',
+  'reason.rpmSafety.pass':
+    'The wheel max operating speed ({wheel}rpm) is at or above the grinder no-load speed ({grinder}rpm).',
+  'reason.diameterFit.missing':
+    'A diameter value is missing, so the diameters cannot be compared. Check the diameter on the grinder nameplate and the wheel label yourself.',
+  'reason.diameterFit.fail':
+    'The wheel diameter ({wheel}mm) is larger than the max diameter the grinder allows ({grinder}mm).',
+  'reason.diameterFit.pass':
+    'The wheel diameter ({wheel}mm) is within the max diameter the grinder allows ({grinder}mm).',
+  'reason.purpose.unknown':
+    'The wheel use (cutting/grinding) was not recognised. Check the label yourself.',
+  'reason.purpose.recognized': 'Wheel use recognised: {purpose}.',
+  'reason.workPurpose.unknown':
+    "Today's job: {work}. The wheel use could not be read. Check the use marking on the label yourself.",
+  'reason.workPurpose.mismatch':
+    "Today's job: {work}. This wheel: {purpose}. A wheel made for a different job can break under side loads.",
+  'reason.workPurpose.match': "Today's job ({work}) matches the wheel use.",
+  'reason.wheelType.unknown':
+    'The wheel type is not confirmed. Specifications are compared only for a confirmed standard bonded abrasive wheel. Look at the actual wheel and choose its type on the value check screen.',
+  'reason.wheelType.unsupported':
+    '{type}: this app does not handle this type of wheel. Its specification system is different, so no judgement can be made. Follow the manufacturer instructions.',
+  'reason.wheelType.supported':
+    'Confirmed as a standard bonded abrasive wheel, a type this app compares.',
+  'reason.visibleDamage.suspected':
+    'Part of the photo looks broken or cracked. Do not use this wheel; inspect it yourself.',
+  'reason.visibleDamage.notVerifiable':
+    'Hairline cracks cannot be seen in a photo. Do a ring test (tap it lightly and listen) before mounting.',
+  'reason.confidence.low':
+    'The label was read with low confidence. Retake the photo or enter the values yourself.',
+  'reason.confidence.ok': 'The label was read with enough confidence.',
+  'reason.unitConsistency.mismatch':
+    'The speed in rpm and the peripheral speed in m/s on the label do not agree. One of them may have been misread. Check the numbers on the label again.',
+  'reason.unitConsistency.match': 'The two speed markings on the label agree.',
+  'reason.mountingSpec.missing':
+    'The mounting bore (centre hole) could not be read from the label. Check that the wheel fits the spindle before mounting.',
+  'reason.mountingSpec.shown':
+    'The label gives a bore of Φ{bore}mm. The grinder nameplate does not show the spindle size, so this app cannot compare them. Check the fit on the spindle yourself.',
+  'reason.peripheralSpeed.oddGrinder':
+    'The edge speed calculated from the grinder values is outside the normal range. The diameter or speed may have been misread. Check the grinder numbers again.',
+  'reason.peripheralSpeed.oddWheel':
+    'The edge speed calculated from the wheel values is outside the normal range. The diameter or speed may have been misread. Check the wheel label numbers again.',
+  'reason.peripheralSpeed.oddBoth':
+    'The edge speeds calculated from the grinder and wheel values are outside the normal range. The diameter or speed may have been misread. Check the grinder and wheel numbers again.',
+  'reason.peripheralSpeed.ok':
+    'The diameter and speed values are consistent with each other.',
+  'reason.expiry.noToday':
+    'There is no reference date, so the expiry date cannot be checked. Reopen the app and run the inspection again.',
+  'reason.expiry.unreadable':
+    'The expiry date could not be read from the label. Reference date {today}. Check the month/year marking on the metal ring yourself (example: 04/2023). Some wheels have no marking.',
+  'reason.expiry.expired':
+    'The expiry date on the label has passed. Marked {expiry} (valid through {lastValid}), reference date {today}. Manufacturers say not to use a wheel past its expiry date.',
+  'reason.expiry.valid':
+    'The expiry date on the label has not passed. Marked {expiry} (valid through {lastValid}), reference date {today}.',
+
+  'ruleSource.krOsh.label':
+    "Korea's Rules on Occupational Safety and Health Standards",
+  'ruleSource.krOsh.reference':
+    'Article 122 (Ministry of Employment and Labor Ordinance No. 450, effective 2026-03-02)',
+  'ruleSource.krOsh.scope': 'Max operating speed, side use, guard, trial run',
+  'ruleSource.kosha.label': 'KOSHA GUIDE',
+  'ruleSource.kosha.reference':
+    'M-189-2015 Technical guideline on safe work with portable grinders',
+  'ruleSource.kosha.scope': 'Storage and handling advice (not legally binding)',
+  'ruleSource.osa.label': 'oSa Product marking requirements',
+  'ruleSource.osa.reference': 'Issue 2, 2020-04 (based on EN 12413:2019)',
+  'ruleSource.osa.scope':
+    'Reference for the expiry marking format. The EN text itself was not read',
+
+  'hazard.list.cutting': 'Cutting hazards',
+  'hazard.list.grinding': 'Grinding hazards',
+  'hazard.list.common': 'General hazards',
+  'hazard.summary': '{title} ({count})',
+  'hazard.cuttingSide.title': 'Do not grind with the side of a cutting wheel',
+  'hazard.cuttingSide.detail':
+    'Cutting wheels are made to cut with their edge only. Pushed sideways, the thin wheel cannot take the side load and breaks.',
+  'hazard.cuttingPinch.title': 'Do not twist or bend the wheel',
+  'hazard.cuttingPinch.detail':
+    'If the cut closes, it pinches the wheel and causes kickback. Support the material on both sides so the cut opens as you go.',
+  'hazard.cuttingForce.title': 'Do not force the cut',
+  'hazard.cuttingForce.detail':
+    'Forcing it overheats and warps the wheel. Let the weight of the tool feed it in slowly.',
+  'hazard.grindingAngle.title': 'Hold the wheel at 15–30°',
+  'hazard.grindingAngle.detail':
+    'Held too upright, the wheel edge digs into the material and the tool jumps. A flatter angle spreads the contact and keeps it stable.',
+  'hazard.grindingSide.title': 'Do not side-load a grinding wheel either',
+  'hazard.grindingSide.detail':
+    'Only cup wheels are made to be used on their side. Pushing an ordinary grinding wheel sideways can break it.',
+  'hazard.grindingIdle.title': 'Run a newly fitted wheel without load first',
+  'hazard.grindingIdle.detail':
+    'A bad fit or a crack shows up before any load is applied. Point it where no one is standing and check for abnormal vibration or noise.',
+  'hazard.commonStop.title':
+    'Put the tool down only after it has fully stopped',
+  'hazard.commonStop.detail':
+    'The wheel keeps spinning after the power is off. If it touches the floor while spinning, the tool jumps.',
+  'hazard.commonGuard.title': 'Set the guard to face away from you',
+  'hazard.commonGuard.detail':
+    'The safety guard blocks the side fragments fly towards. If it is turned the wrong way, your body is exposed even with the guard fitted.',
+
+  'notVerifiable.internalCrack.title': 'Internal cracks',
+  'notVerifiable.internalCrack.detail':
+    'Hairline cracks do not show in a surface photo. Do a ring test (tap it lightly and listen) before mounting.',
+  'notVerifiable.physicalDamage.title': 'Physical damage',
+  'notVerifiable.physicalDamage.detail':
+    'A photo only shows obvious breakage. Dents, distortion and dampness cannot be detected. Inspect it yourself.',
+  'notVerifiable.mounting.title': 'Correct mounting',
+  'notVerifiable.mounting.detail':
+    'Flange tightness, direction of rotation and seating on the spindle cannot be seen in a photo. Check them yourself after mounting.',
+  'notVerifiable.guard.title': 'Safety guard condition',
+  'notVerifiable.guard.detail':
+    'This app cannot see whether the guard is fitted, set at the right angle, or undamaged. Check it with your own eyes.',
+
+  'history.title': 'Inspection history',
+  'history.loading': 'Loading records...',
+  'history.clearConfirm':
+    'All {count} saved inspection records will be deleted. This cannot be undone.',
+  'history.clearConfirmButton': 'Delete all',
+  'history.cancel': 'Cancel',
+  'history.clearAll': 'Delete all records',
+  'history.newInspection': 'Start a new inspection',
+  'history.empty': 'No inspection records saved.',
+  'history.timeNote':
+    'The "30 seconds" is the target for the pre-check only: from choosing the job until just before the trial run starts. The legally required trial run (at least 1 or 3 minutes) is separate from this target and is never shortened.',
+  'history.elapsed': 'Inspection took {time}',
+  'history.elapsedWithTrial':
+    'Inspection took {time} (including the trial run)',
+  'history.preTrial': 'Pre-check {time} (until the trial run)',
+  'history.unknownModel': 'Unknown model',
+  'history.unknownDiameter': 'Unknown diameter',
+  'history.summary': '{model} {grinderRpm} · wheel {wheelDiameter} {wheelRpm}',
+  'history.grinderPhoto': 'Grinder nameplate',
+  'history.wheelPhoto': 'Wheel label',
+  'history.noPhoto': 'No photos saved.',
+  'elapsed.overHour': 'over 1 hour',
+  'elapsed.seconds': '{seconds} s',
+  'elapsed.minutes': '{minutes} min',
+  'elapsed.minutesSeconds': '{minutes} min {seconds} s',
+
+  'research.notice':
+    'Validation/research feature. It does not change on-site results.',
+  'research.noticeDetail':
+    'Visible only in validation builds. It only exports records and calculates metrics; it plays no part in results, condition checks, the trial run or save conditions.',
+  'research.modeTitle': 'Research mode',
+  'research.modeHint':
+    'Exports measurements as CSV. Not needed for on-site use.',
+  'research.download': 'Download CSV ({count} records)',
+  'research.deviceOnly':
+    'Records exist only on this device. Move the downloaded file yourself.',
+  'research.downloadFailed': 'Download failed. Check your storage space.',
+  'research.truthTitle': 'Ground truth file',
+  'research.truthHint':
+    'Values you read and wrote down yourself before taking the photos. They are required to calculate metrics. The app never creates ground truth.',
+  'research.truthEmpty':
+    'No ground truth entries were read. Check that the file is a JSON array.',
+  'research.truthUnreadable': 'The ground truth file could not be read.',
+  'research.truthRejected':
+    '{count} line(s) were excluded because of their format. Check the sample size.',
+  'metrics.title': 'Evaluation metrics',
+  'metrics.note':
+    'Calculated from {count} record(s) with ground truth. Reading accuracy uses the original OCR values before any user correction.',
+  'metrics.notAvailable': 'N/A — no data to calculate',
+  'metrics.records': '{numerator} / {denominator} records',
+  'metrics.fields': '{numerator} / {denominator} fields',
+  'metrics.falseSafe.name': 'False-Safe Rate',
+  'metrics.falseSafe.definition':
+    'Of the records whose ground truth is SPECS DO NOT MATCH, the share the app reported as SPECS MATCH. If it is not zero, do not release.',
+  'metrics.undetermined.name': 'Undetermined rate',
+  'metrics.undetermined.definition':
+    'The share of results that could not be determined. This is designed behaviour, not a failure.',
+  'metrics.fieldAccuracy.name': 'Field extraction accuracy',
+  'metrics.fieldAccuracy.definition':
+    'Of the fields with ground truth, the share where the original OCR value matched.',
+  'metrics.unitNormalization.name': 'Unit normalisation errors',
+  'metrics.unitNormalization.definition':
+    'Of the records converted from m/s, the share whose result differs from the ground truth.',
+  'metrics.falseSafeIds':
+    'False-safe record ids: {ids} — analyse and report each one. Do not hide them.',
+
+  'meta.title': 'WheelMatch AI — Grinder and wheel specification check',
+
   disclaimer:
     'This app only compares the specifications printed on the labels. It does not guarantee work safety and does not replace the manufacturer manual or your site safety rules.',
 

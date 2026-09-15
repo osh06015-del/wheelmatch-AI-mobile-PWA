@@ -61,7 +61,8 @@ React Context가 아니라 `useSyncExternalStore` + sessionStorage다.
 - 본문 최소 16px (`text-base`), 판정 숫자는 크게
 - 배경은 어두운 톤 고정. 라이트 모드로 전환하지 않는다 (`globals.css`)
 - 판정 색: 적합 `green-500` / 부적합 `red-500` / 판정불가 `yellow-500`
-- UI 문구는 한국어
+- UI 문구는 `messages/ko.ts`(원본 한국어)의 키로 쓰고 5개 언어를 함께 채운다.
+  컴포넌트에 한국어를 직접 쓰지 않는다 (`docs/i18n.md`)
 
 ## 검증
 

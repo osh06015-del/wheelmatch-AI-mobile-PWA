@@ -3,11 +3,18 @@
 // 적합 / 부적합 / 판정불가 결과 카드.
 // 야외 눈부심을 고려해 배경은 어둡게, 판정은 큰 글씨와 색으로 즉시 구분되게 한다.
 
-import { useLocale, type MessageKey, type Translate } from '@/lib/i18n';
-import { RULE_MESSAGE_KEY } from '@/lib/i18n/ruleLabel';
+import {
+  useLocale,
+  type Locale,
+  type MessageKey,
+  type Translate,
+} from '@/lib/i18n';
+import { checkReasonText, checkValueText } from '@/lib/i18n/checkText';
+import { formatGrinderSummary, formatMargin } from '@/lib/i18n/format';
+import { ruleLabelText } from '@/lib/i18n/ruleLabel';
 import { RULE } from '@/lib/rules/engine';
 import { groupChecks, type GroupedChecks } from '@/lib/rules/grouping';
-import { grinderSummary, margins } from '@/lib/rules/requirement';
+import { margins } from '@/lib/rules/requirement';
 import type {
   CheckItem,
   GrinderSpec,
@@ -41,16 +48,6 @@ const VERDICT_NOTE: Record<Verdict, MessageKey> = {
 };
 
 /**
- * 규칙 이름을 고른 언어로 바꾼다.
- *
- * 짝이 없으면 엔진이 낸 한국어 이름을 그대로 쓴다. 빈 칸이 되지 않게 하려는 것이다.
- */
-function ruleLabel(rule: string, t: Translate): string {
-  const key = RULE_MESSAGE_KEY[rule];
-  return key ? t(key) : rule;
-}
-
-/**
  * 보여주는 순서.
  *
  * 맞지 않는 것 → 읽지 못한 것 → 직접 확인할 것 → 확인된 것.
@@ -77,15 +74,20 @@ function CheckRow({
   check,
   margin,
   t,
+  locale,
 }: {
   check: CheckItem;
-  margin?: string | null;
+  margin: number | null;
   t: Translate;
+  locale: Locale;
 }) {
+  // 사유와 값은 엔진이 함께 낸 사유 코드로 고른 언어의 문장을 만든다.
+  const values = checkValueText(check, locale);
   const comparison =
-    check.grinderValue || check.wheelValue
-      ? `${t('common.grinder')} ${check.grinderValue ?? '—'} / ${t('common.wheel')} ${check.wheelValue ?? '—'}`
+    values.grinder || values.wheel
+      ? `${t('common.grinder')} ${values.grinder ?? '—'} / ${t('common.wheel')} ${values.wheel ?? '—'}`
       : null;
+  const marginText = formatMargin(margin, t);
 
   return (
     <li className="flex gap-3 rounded-lg bg-slate-800 px-4 py-3">
@@ -94,21 +96,21 @@ function CheckRow({
       </span>
       <div className="flex flex-col gap-1">
         <span className="text-base font-semibold text-slate-100">
-          {ruleLabel(check.rule, t)}
+          {ruleLabelText(check.rule, t)}
         </span>
         {comparison && (
           <span className="text-base text-slate-300">{comparison}</span>
         )}
-        {/* 얼마나 여유가 있는지. 판정을 바꾸지 않고 정도만 보여준다. */}
-        {margin && (
+        {/* 얼마나 여유가 있는지. 판정을 바꾸지 않고 정도만 보여준다.
+            여유가 없거나 모자라면 눈에 띄게 한다. 문구가 아니라 값의 부호로
+            고르므로 언어가 바뀌어도 강조가 사라지지 않는다. */}
+        {marginText && margin !== null && (
           <span
             className={`text-base font-bold ${
-              margin.startsWith('부족') || margin.startsWith('여유 없음')
-                ? 'text-yellow-200'
-                : 'text-slate-200'
+              margin <= 0 ? 'text-yellow-200' : 'text-slate-200'
             }`}
           >
-            {margin}
+            {marginText}
           </span>
         )}
         <span
@@ -116,7 +118,7 @@ function CheckRow({
             check.passed === false ? 'font-bold text-red-300' : 'text-slate-400'
           }`}
         >
-          {check.reason}
+          {checkReasonText(check, locale)}
         </span>
       </div>
     </li>
@@ -131,10 +133,10 @@ interface ResultCardProps {
 }
 
 export function ResultCard({ result, grinder, wheel }: ResultCardProps) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const groups = groupChecks(result.checks);
   const gap = grinder && wheel ? margins(grinder, wheel) : null;
-  const marginFor = (rule: string): string | null => {
+  const marginFor = (rule: string): number | null => {
     if (!gap) return null;
     if (rule === RULE.RPM_SAFETY) return gap.rpm;
     if (rule === RULE.DIAMETER_FIT) return gap.diameter;
@@ -161,7 +163,7 @@ export function ResultCard({ result, grinder, wheel }: ResultCardProps) {
       {/* 어떤 기계로 점검했는지. 이력에서 다시 볼 때도 필요하다. */}
       {grinder && (
         <p className="rounded-lg bg-slate-800 px-4 py-3 text-base text-slate-300">
-          {grinderSummary(grinder)}
+          {formatGrinderSummary(grinder, t)}
         </p>
       )}
 
@@ -185,6 +187,7 @@ export function ResultCard({ result, grinder, wheel }: ResultCardProps) {
                   check={check}
                   margin={marginFor(check.rule)}
                   t={t}
+                  locale={locale}
                 />
               ))}
             </ul>

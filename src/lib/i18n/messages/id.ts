@@ -119,7 +119,7 @@ export const id: Messages = {
   'grinderCondition.body': 'Apakah bodi bebas dari retak dan kerusakan berat?',
   'grinderCondition.bodyHint':
     'Bekas terjatuh, rumahan mesin retak, bagian yang longgar',
-  'grinderCondition.guard': 'Apakah pelindung terpasang dan terkunci kuat?',
+  'grinderCondition.guard': 'Apakah kap pelindung terpasang dan terkunci kuat?',
   'grinderCondition.guardHint':
     'Tidak boleh bergeser saat diputar dengan tangan, dan harus menutup batu gerinda sesuai sudut yang ditentukan',
   'grinderCondition.auxiliaryHandle':
@@ -226,6 +226,332 @@ export const id: Messages = {
     'Tepat sebelum mulai, pastikan percikan api tidak mengarah ke orang atau bahan mudah terbakar.',
   'checklist.incomplete':
     'Anda harus mengonfirmasi seluruh {count} butir keselamatan sebelum menyimpan.',
+
+  'scan.retake': 'Foto ulang',
+  'scan.retryAnalysis': 'Analisis ulang foto yang sama',
+  'scan.confirmTitle': 'Periksa nilai yang terbaca',
+  'scan.grinder.title': 'Foto pelat nama gerinda',
+  'scan.grinder.guide': 'Posisikan pelat nama di dalam bingkai',
+  'scan.grinder.analyzing': 'Menganalisis pelat nama...',
+  'scan.grinder.failed': 'Gagal menganalisis pelat nama.',
+  'scan.grinder.proceed': 'Konfirmasi lalu foto batu gerinda',
+  'scan.wheel.title': 'Foto label batu gerinda',
+  'scan.wheel.guide': 'Posisikan label di dalam bingkai',
+  'scan.wheel.analyzing': 'Menganalisis label...',
+  'scan.wheel.failed': 'Gagal menganalisis label.',
+  'scan.wheel.proceed': 'Konfirmasi lalu cocokkan spesifikasi',
+  'scan.wheel.grinderFirst': 'Periksa kondisi gerinda terlebih dahulu.',
+
+  'camera.starting': 'Membuka kamera...',
+  'camera.pickFromGallery': 'Pilih dari galeri',
+  'camera.pickPhoto': 'Pilih foto dari galeri',
+  'camera.retry': 'Coba buka kamera lagi',
+  'camera.gallery': 'Galeri',
+  'camera.shutter': 'Ambil foto',
+  'camera.error.unsupported':
+    'Browser ini tidak mendukung kamera. Pastikan halaman dibuka melalui HTTPS.',
+  'camera.error.permission':
+    'Izin kamera ditolak. Izinkan kamera di pengaturan browser, lalu coba lagi.',
+  'camera.error.notFound': 'Tidak ditemukan kamera yang dapat dipakai.',
+  'camera.error.inUse':
+    'Kamera sedang dipakai aplikasi lain. Tutup aplikasi itu, lalu coba lagi.',
+  'camera.error.failed': 'Kamera tidak dapat dibuka.',
+  'camera.error.failedNamed': 'Kamera tidak dapat dibuka. ({name})',
+
+  'error.imageDecode':
+    'Format foto ini tidak dapat dibaca. Pilih ulang foto JPG atau PNG. (Foto HEIC dari iPhone mungkin tidak didukung)',
+  'error.network':
+    'Tidak dapat terhubung ke server. Periksa jaringan, lalu analisis ulang foto yang sama.',
+  'error.serverConfig':
+    'Label tidak dapat dianalisis karena masalah pengaturan server. Beri tahu admin.',
+  'error.badRequest': 'Permintaan analisis tidak valid. Foto ulang.',
+  'error.imageTooLarge':
+    'Gambar terlalu besar. Coba lagi dengan foto beresolusi lebih rendah.',
+  'error.rateLimited':
+    'Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi.',
+  'error.upstream':
+    'Layanan analisis tidak dapat memproses permintaan. Tunggu sebentar lalu coba lagi. (galat {status})',
+
+  'field.model': 'Model',
+  'field.noLoadRPM': 'Kecepatan tanpa beban',
+  'field.maxWheelDiameter': 'Diameter batu gerinda maksimum yang diizinkan',
+  'field.maxRPM': 'Kecepatan kerja maksimum',
+  'field.diameter': 'Diameter',
+  'field.thickness': 'Ketebalan',
+  'field.purpose': 'Kegunaan',
+  'field.expiry': 'Tanggal kedaluwarsa',
+  'field.placeholder': 'Tidak terbaca — isi sendiri',
+  'field.purposeUnknown': 'Tidak yakin',
+  'field.confidence.high': 'Keyakinan pembacaan: tinggi',
+  'field.confidence.medium': 'Keyakinan pembacaan: sedang — periksa nilainya',
+  'field.confidence.low':
+    'Keyakinan pembacaan: rendah — foto ulang atau isi nilainya sendiri',
+  'field.rawShow': 'Tampilkan teks yang terbaca',
+  'field.rawHide': 'Sembunyikan teks yang terbaca',
+  'manualConfirm.label':
+    'Saya sudah melihat label sendiri dan memastikan nilai di atas',
+  'manualConfirm.hint':
+    'Jika dicentang, hasil memakai nilai yang Anda pastikan sebagai ganti keyakinan pembacaan.',
+
+  'guide.grinder.model.hint':
+    'Nama produk gerinda. Hanya dicatat, tidak dipakai untuk hasil.',
+  'guide.grinder.model.where':
+    'Tercetak besar di bagian atas pelat nama. Contoh: GWS 750-125',
+  'guide.grinder.noLoadRPM.hint':
+    'Kecepatan putar gerinda ini. Batu gerinda harus tahan terhadap kecepatan ini.',
+  'guide.grinder.noLoadRPM.where':
+    'Angka di samping n₀ atau "no load speed" pada pelat nama. Contoh: 11000 r/min, 11000 min⁻¹',
+  'guide.grinder.maxWheelDiameter.hint':
+    'Batu gerinda terbesar yang bisa dipasang di mesin ini. Batu yang lebih besar tidak muat di dalam kap pelindung.',
+  'guide.grinder.maxWheelDiameter.where':
+    'Diameter di samping kata seperti wheel atau disc pada pelat nama. Contoh: max Ø125mm',
+  'guide.wheel.maxRPM.hint':
+    'Kecepatan tertinggi yang dapat ditahan batu gerinda ini. Jika lebih rendah dari kecepatan gerinda, batu bisa pecah dan terlempar.',
+  'guide.wheel.maxRPM.where':
+    'Kecepatan yang tercetak besar pada label. Jika hanya tertulis m/s, aplikasi mengonversinya. Contoh: 12200 r/min, 80 m/s',
+  'guide.wheel.diameter.hint':
+    'Diameter luar batu gerinda. Tidak boleh melebihi batas yang diizinkan gerinda.',
+  'guide.wheel.diameter.where':
+    'Angka pertama pada ukuran. Contoh: 125 pada 125 × 1.6 × 22.23',
+  'guide.wheel.thickness.hint':
+    'Ketebalan batu gerinda. Batu gerinda potong tipis (1–3mm), batu gerinda untuk menggerinda tebal (sekitar 6mm).',
+  'guide.wheel.thickness.where':
+    'Angka tengah pada ukuran. Contoh: 1.6 pada 125 × 1.6 × 22.23',
+  'guide.wheel.purpose.hint':
+    'Batu untuk memotong dipakai memotong, batu untuk menggerinda dipakai menggerinda. Jika tertukar, batu menerima beban samping dan bisa pecah.',
+  'guide.wheel.purpose.where':
+    'Tanda kegunaan potong/gerinda pada label, tertulis CUT-OFF, GRINDING, atau DEPRESSED CENTER.',
+  'guide.wheel.expiry.hint':
+    'Tanggal kedaluwarsa pada label. Produsen melarang memakai batu gerinda yang sudah lewat tanggal. Ada batu yang tidak mencantumkannya.',
+  'guide.wheel.expiry.where':
+    'Dicap sebagai bulan/tahun pada cincin logam di tengah. Contoh: 04/2023, kadang diawali V atau EXP. Jangan isi dengan tanggal produksi.',
+
+  'requirement.compactTitle': 'Batu gerinda yang diperlukan',
+  'requirement.compactUnknown':
+    'Pelat nama tidak terbaca, jadi syarat tidak dapat ditentukan',
+  'requirement.title': 'Syarat batu gerinda',
+  'requirement.partial':
+    'Tidak semua syarat dapat ditentukan. Periksa sendiri nilai yang kurang pada pelat nama.',
+  'requirement.notRecommendation':
+    'Ini bukan rekomendasi produk, melainkan syarat yang mengikuti nilai pada pelat nama.',
+  'requirement.purposeUnknown':
+    'Pekerjaan belum dipilih, jadi kegunaan tidak dapat ditentukan.',
+  'requirement.diameterMax': 'Φ{diameter}mm atau lebih kecil',
+  'requirement.diameterUnknown':
+    'Diameter maksimum yang diizinkan tidak terbaca dari pelat nama.',
+  'requirement.rpmMin': '{rpm}rpm atau lebih tinggi',
+  'requirement.rpmUnknown':
+    'Kecepatan tanpa beban tidak terbaca dari pelat nama.',
+  'summary.sizeClass': 'Kelas {inch} inci (maks. Φ{diameter}mm)',
+  'summary.maxDiameter': 'maks. Φ{diameter}mm',
+  'summary.unreadable': 'Nilai pelat nama tidak terbaca',
+  'margin.surplus': 'Margin +{percent}%',
+  'margin.shortfall': 'Kurang {percent}%',
+  'margin.none': 'Tanpa margin (0%)',
+
+  'wheelPurpose.cutting': 'Untuk memotong',
+  'wheelPurpose.grinding': 'Untuk menggerinda',
+  'wheelPurpose.unknown': 'Belum dikenali',
+  'wheelType.unconfirmed': 'Belum dipastikan',
+  'confidence.high': 'Tinggi',
+  'confidence.medium': 'Sedang',
+  'confidence.low': 'Rendah',
+  'value.bore': 'Lubang Φ{bore}mm',
+  'value.unitConsistency': '{rpm}rpm = {computed}m/s / label {labeled}m/s',
+
+  'reason.requiredValues.ok':
+    'Nilai kecepatan yang diperlukan untuk perbandingan sudah terbaca semua.',
+  'reason.requiredValues.missingGrinder':
+    'Kecepatan tanpa beban gerinda tidak terbaca. Foto ulang atau isi nilainya sendiri.',
+  'reason.requiredValues.missingWheel':
+    'Kecepatan kerja maksimum batu gerinda tidak terbaca. Foto ulang atau isi nilainya sendiri.',
+  'reason.requiredValues.missingBoth':
+    'Kecepatan tanpa beban gerinda dan kecepatan kerja maksimum batu gerinda tidak terbaca. Foto ulang atau isi nilainya sendiri.',
+  'reason.rpmSafety.missing':
+    'Nilai kecepatan tidak lengkap, jadi tidak dapat dibandingkan.',
+  'reason.rpmSafety.fail':
+    'Kecepatan kerja maksimum batu gerinda ({wheel}rpm) lebih rendah dari kecepatan tanpa beban gerinda ({grinder}rpm). Batu bisa pecah dan terlempar.',
+  'reason.rpmSafety.pass':
+    'Kecepatan kerja maksimum batu gerinda ({wheel}rpm) sama dengan atau lebih tinggi dari kecepatan tanpa beban gerinda ({grinder}rpm).',
+  'reason.diameterFit.missing':
+    'Nilai diameter tidak lengkap, jadi tidak dapat dibandingkan. Periksa sendiri diameter pada pelat nama gerinda dan label batu gerinda.',
+  'reason.diameterFit.fail':
+    'Diameter batu gerinda ({wheel}mm) melebihi diameter maksimum yang diizinkan gerinda ({grinder}mm).',
+  'reason.diameterFit.pass':
+    'Diameter batu gerinda ({wheel}mm) masih dalam batas diameter maksimum yang diizinkan gerinda ({grinder}mm).',
+  'reason.purpose.unknown':
+    'Kegunaan batu gerinda (potong/gerinda) tidak dikenali. Periksa label sendiri.',
+  'reason.purpose.recognized': 'Kegunaan batu gerinda dikenali: {purpose}.',
+  'reason.workPurpose.unknown':
+    'Pekerjaan hari ini: {work}. Kegunaan batu gerinda tidak terbaca. Periksa sendiri tanda kegunaan pada label.',
+  'reason.workPurpose.mismatch':
+    'Pekerjaan hari ini: {work}. Batu gerinda ini: {purpose}. Batu gerinda yang tidak sesuai kegunaannya bisa pecah karena beban samping.',
+  'reason.workPurpose.match':
+    'Pekerjaan hari ini ({work}) sesuai dengan kegunaan batu gerinda.',
+  'reason.wheelType.unknown':
+    'Jenis batu gerinda belum dipastikan. Spesifikasi hanya dicocokkan untuk batu gerinda bonded biasa yang sudah dipastikan. Lihat batu yang sebenarnya dan pilih jenisnya di layar pemeriksaan nilai.',
+  'reason.wheelType.unsupported':
+    '{type}: aplikasi ini tidak menangani jenis ini. Sistem spesifikasinya berbeda sehingga tidak dapat dinilai. Ikuti petunjuk produsen.',
+  'reason.wheelType.supported':
+    'Dipastikan sebagai batu gerinda bonded biasa, jenis yang spesifikasinya dicocokkan aplikasi ini.',
+  'reason.visibleDamage.suspected':
+    'Ada bagian di foto yang tampak pecah atau retak. Jangan gunakan batu gerinda ini; periksa sendiri.',
+  'reason.visibleDamage.notVerifiable':
+    'Retak rambut tidak terlihat pada foto. Sebelum dipasang, lakukan uji ketuk (ketuk pelan dan dengarkan suaranya).',
+  'reason.confidence.low':
+    'Keyakinan pembacaan label rendah. Foto ulang atau isi nilainya sendiri.',
+  'reason.confidence.ok': 'Keyakinan pembacaan label cukup.',
+  'reason.unitConsistency.mismatch':
+    'Kecepatan dalam rpm dan kecepatan keliling dalam m/s pada label tidak cocok. Salah satunya mungkin salah baca. Periksa lagi angka pada label.',
+  'reason.unitConsistency.match':
+    'Dua tanda kecepatan pada label saling cocok.',
+  'reason.mountingSpec.missing':
+    'Diameter lubang pemasangan tidak terbaca dari label. Sebelum dipasang, periksa sendiri apakah batu pas dengan poros.',
+  'reason.mountingSpec.shown':
+    'Diameter lubang pada label adalah Φ{bore}mm. Pelat nama gerinda tidak mencantumkan ukuran poros, jadi aplikasi ini tidak dapat membandingkannya. Periksa sendiri kecocokannya dengan poros.',
+  'reason.peripheralSpeed.oddGrinder':
+    'Kecepatan keliling yang dihitung dari nilai gerinda berada di luar rentang wajar. Diameter atau kecepatan mungkin salah baca. Periksa lagi angka gerinda.',
+  'reason.peripheralSpeed.oddWheel':
+    'Kecepatan keliling yang dihitung dari nilai batu gerinda berada di luar rentang wajar. Diameter atau kecepatan mungkin salah baca. Periksa lagi angka pada label batu gerinda.',
+  'reason.peripheralSpeed.oddBoth':
+    'Kecepatan keliling yang dihitung dari nilai gerinda dan batu gerinda berada di luar rentang wajar. Diameter atau kecepatan mungkin salah baca. Periksa lagi angka gerinda dan batu gerinda.',
+  'reason.peripheralSpeed.ok': 'Nilai diameter dan kecepatan saling sesuai.',
+  'reason.expiry.noToday':
+    'Tidak ada tanggal acuan, jadi tanggal kedaluwarsa tidak dapat diperiksa. Buka ulang aplikasi dan lakukan pemeriksaan lagi.',
+  'reason.expiry.unreadable':
+    'Tanggal kedaluwarsa tidak terbaca dari label. Tanggal acuan {today}. Periksa sendiri tanda bulan/tahun pada cincin logam (contoh: 04/2023). Ada batu yang tidak mencantumkannya.',
+  'reason.expiry.expired':
+    'Tanggal kedaluwarsa pada label sudah lewat. Tertera {expiry} (berlaku sampai {lastValid}), tanggal acuan {today}. Produsen melarang memakai batu gerinda yang sudah kedaluwarsa.',
+  'reason.expiry.valid':
+    'Tanggal kedaluwarsa pada label belum lewat. Tertera {expiry} (berlaku sampai {lastValid}), tanggal acuan {today}.',
+
+  'ruleSource.krOsh.label':
+    'Peraturan Standar Keselamatan dan Kesehatan Kerja Korea',
+  'ruleSource.krOsh.reference':
+    'Pasal 122 (Peraturan Menteri Ketenagakerjaan Korea No. 450, berlaku 2026-03-02)',
+  'ruleSource.krOsh.scope':
+    'Kecepatan kerja maksimum · pemakaian sisi · kap pelindung · uji putar',
+  'ruleSource.kosha.label': 'KOSHA GUIDE',
+  'ruleSource.kosha.reference':
+    'M-189-2015 Pedoman teknis kerja aman dengan gerinda tangan',
+  'ruleSource.kosha.scope':
+    'Anjuran penyimpanan dan penanganan (tidak mengikat secara hukum)',
+  'ruleSource.osa.label': 'oSa Product marking requirements',
+  'ruleSource.osa.reference': 'Issue 2, 2020-04 (berdasarkan EN 12413:2019)',
+  'ruleSource.osa.scope':
+    'Acuan format penandaan kedaluwarsa. Naskah asli EN belum dibaca',
+
+  'hazard.list.cutting': 'Bahaya pekerjaan potong',
+  'hazard.list.grinding': 'Bahaya pekerjaan gerinda',
+  'hazard.list.common': 'Bahaya umum',
+  'hazard.summary': '{title} ({count})',
+  'hazard.cuttingSide.title': 'Jangan menggerinda dengan sisi batu potong',
+  'hazard.cuttingSide.detail':
+    'Batu gerinda potong dibuat hanya untuk memotong dengan tepinya. Jika didorong ke samping, batu yang tipis tidak kuat menahan beban samping dan patah.',
+  'hazard.cuttingPinch.title': 'Jangan memuntir atau menekuk batu potong',
+  'hazard.cuttingPinch.detail':
+    'Jika celah potongan menutup, batu terjepit dan terjadi hentakan balik. Topang bahan di kedua sisi agar celah potongan terbuka.',
+  'hazard.cuttingForce.title': 'Jangan memotong dengan menekan kuat',
+  'hazard.cuttingForce.detail':
+    'Menekan kuat membuat batu terlalu panas dan berubah bentuk. Biarkan berat mesin membawa batu masuk perlahan.',
+  'hazard.grindingAngle.title': 'Miringkan batu 15–30° saat menggerinda',
+  'hazard.grindingAngle.detail':
+    'Jika terlalu tegak, tepi batu menancap ke bahan dan mesin terpental. Dengan dimiringkan, bidang kontak lebih lebar dan lebih stabil.',
+  'hazard.grindingSide.title':
+    'Jangan beri beban samping pada batu gerinda untuk menggerinda',
+  'hazard.grindingSide.detail':
+    'Hanya batu gerinda mangkuk yang dibuat untuk dipakai dengan sisinya. Mendorong batu gerinda biasa ke samping bisa membuatnya pecah.',
+  'hazard.grindingIdle.title': 'Putar dulu batu yang baru dipasang tanpa beban',
+  'hazard.grindingIdle.detail':
+    'Pemasangan yang salah atau retak akan terlihat sebelum ada beban. Arahkan ke tempat tanpa orang dan periksa getaran atau suara tidak wajar.',
+  'hazard.commonStop.title': 'Letakkan mesin setelah batu benar-benar berhenti',
+  'hazard.commonStop.detail':
+    'Setelah listrik dimatikan, batu masih berputar karena kelembaman. Jika menyentuh lantai saat masih berputar, mesin terpental.',
+  'hazard.commonGuard.title': 'Arahkan kap pelindung menjauhi pekerja',
+  'hazard.commonGuard.detail':
+    'Kap pelindung menahan arah datangnya pecahan. Jika sudutnya bergeser, tubuh tetap terbuka meski kap pelindung terpasang.',
+
+  'notVerifiable.internalCrack.title': 'Retak di bagian dalam',
+  'notVerifiable.internalCrack.detail':
+    'Retak rambut tidak tampak pada foto permukaan. Sebelum dipasang, lakukan uji ketuk (ketuk pelan dan dengarkan suaranya).',
+  'notVerifiable.physicalDamage.title': 'Kerusakan fisik',
+  'notVerifiable.physicalDamage.detail':
+    'Foto hanya menunjukkan kerusakan yang jelas. Penyok, perubahan bentuk, atau lembap tidak dapat dikenali. Periksa sendiri.',
+  'notVerifiable.mounting.title': 'Pemasangan yang benar',
+  'notVerifiable.mounting.detail':
+    'Kekencangan flensa, arah putaran, dan duduknya batu pada poros tidak dapat diketahui dari foto. Periksa sendiri setelah dipasang.',
+  'notVerifiable.guard.title': 'Kondisi kap pelindung',
+  'notVerifiable.guard.detail':
+    'Aplikasi ini tidak dapat melihat apakah kap pelindung terpasang, sudutnya benar, atau tidak rusak. Periksa dengan mata sendiri.',
+
+  'history.title': 'Riwayat pemeriksaan',
+  'history.loading': 'Memuat catatan...',
+  'history.clearConfirm':
+    'Semua {count} catatan pemeriksaan yang tersimpan akan dihapus. Tidak dapat dibatalkan.',
+  'history.clearConfirmButton': 'Hapus semua',
+  'history.cancel': 'Batal',
+  'history.clearAll': 'Hapus semua catatan',
+  'history.newInspection': 'Mulai pemeriksaan baru',
+  'history.empty': 'Belum ada catatan pemeriksaan yang tersimpan.',
+  'history.timeNote':
+    '"30 detik" adalah target waktu pemeriksaan awal: dari memilih pekerjaan sampai tepat sebelum uji putar dimulai. Uji putar yang diwajibkan peraturan (minimal 1 atau 3 menit) terpisah dari target ini dan tidak dipersingkat.',
+  'history.elapsed': 'Pemeriksaan memakan {time}',
+  'history.elapsedWithTrial': 'Pemeriksaan memakan {time} (termasuk uji putar)',
+  'history.preTrial': 'Pemeriksaan awal {time} (sampai sebelum uji putar)',
+  'history.unknownModel': 'Model tidak diketahui',
+  'history.unknownDiameter': 'Diameter tidak diketahui',
+  'history.summary':
+    '{model} {grinderRpm} · batu gerinda {wheelDiameter} {wheelRpm}',
+  'history.grinderPhoto': 'Pelat nama gerinda',
+  'history.wheelPhoto': 'Label batu gerinda',
+  'history.noPhoto': 'Tidak ada foto yang tersimpan.',
+  'elapsed.overHour': 'lebih dari 1 jam',
+  'elapsed.seconds': '{seconds} detik',
+  'elapsed.minutes': '{minutes} menit',
+  'elapsed.minutesSeconds': '{minutes} menit {seconds} detik',
+
+  'research.notice':
+    'Fitur validasi/riset ini tidak mengubah hasil di lapangan.',
+  'research.noticeDetail':
+    'Hanya terlihat di build validasi. Fitur ini hanya mengekspor catatan dan menghitung metrik; tidak ikut menentukan hasil, pemeriksaan kondisi, uji putar, atau syarat penyimpanan.',
+  'research.modeTitle': 'Mode riset',
+  'research.modeHint':
+    'Mengekspor hasil pengukuran sebagai CSV. Tidak diperlukan untuk pemakaian di lapangan.',
+  'research.download': 'Unduh CSV ({count} catatan)',
+  'research.deviceOnly':
+    'Catatan hanya ada di perangkat ini. Pindahkan sendiri berkas yang diunduh.',
+  'research.downloadFailed': 'Gagal mengunduh. Periksa ruang penyimpanan.',
+  'research.truthTitle': 'Berkas nilai benar (Ground Truth)',
+  'research.truthHint':
+    'Nilai yang Anda baca dan catat sendiri sebelum memotret. Diperlukan untuk menghitung metrik. Aplikasi tidak membuat nilai benar.',
+  'research.truthEmpty':
+    'Tidak ada nilai benar yang terbaca. Pastikan berkas berupa array JSON.',
+  'research.truthUnreadable': 'Berkas nilai benar tidak dapat dibaca.',
+  'research.truthRejected':
+    '{count} baris dikeluarkan karena formatnya salah. Periksa jumlah sampel.',
+  'metrics.title': 'Metrik evaluasi',
+  'metrics.note':
+    'Dihitung dari {count} catatan yang memiliki nilai benar. Akurasi pembacaan diukur dengan nilai OCR asli sebelum dikoreksi pengguna.',
+  'metrics.notAvailable': 'N/A — tidak ada data untuk dihitung',
+  'metrics.records': '{numerator} / {denominator} catatan',
+  'metrics.fields': '{numerator} / {denominator} kolom',
+  'metrics.falseSafe.name': 'False-Safe Rate',
+  'metrics.falseSafe.definition':
+    'Dari catatan yang nilai benarnya SPESIFIKASI TIDAK COCOK, porsi yang dilaporkan aplikasi sebagai SPESIFIKASI COCOK. Jika bukan nol, jangan dirilis.',
+  'metrics.undetermined.name': 'Tingkat tidak dapat dinilai',
+  'metrics.undetermined.definition':
+    'Porsi hasil yang tidak dapat dinilai. Ini perilaku yang dirancang, bukan kegagalan.',
+  'metrics.fieldAccuracy.name': 'Akurasi ekstraksi kolom',
+  'metrics.fieldAccuracy.definition':
+    'Dari kolom yang memiliki nilai benar, porsi nilai OCR asli yang cocok.',
+  'metrics.unitNormalization.name': 'Galat normalisasi satuan',
+  'metrics.unitNormalization.definition':
+    'Dari catatan yang dikonversi dari m/s, porsi yang hasilnya berbeda dari nilai benar.',
+  'metrics.falseSafeIds':
+    'id catatan False-Safe: {ids} — analisis dan laporkan satu per satu. Jangan disembunyikan.',
+
+  'meta.title':
+    'WheelMatch AI — Pencocokan spesifikasi gerinda dan batu gerinda',
 
   disclaimer:
     'Aplikasi ini hanya membandingkan spesifikasi yang tercetak pada label. Aplikasi ini tidak menjamin keselamatan kerja dan tidak menggantikan buku panduan pabrikan maupun peraturan keselamatan di lokasi kerja.',

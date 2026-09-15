@@ -7,7 +7,9 @@
 //
 // 제품을 추천하지 않는다. 명판 값에서 곧바로 따라 나오는 조건만 적는다.
 
-import { grinderSummary, wheelRequirements } from '@/lib/rules/requirement';
+import { useLocale } from '@/lib/i18n';
+import { formatGrinderSummary, formatRequirement } from '@/lib/i18n/format';
+import { wheelRequirements } from '@/lib/rules/requirement';
 import type { GrinderSpec, WorkPurpose } from '@/lib/rules/types';
 
 interface RequirementBannerProps {
@@ -22,18 +24,23 @@ export function RequirementBanner({
   declaredPurpose,
   compact = false,
 }: RequirementBannerProps) {
-  const requirements = wheelRequirements(grinder, declaredPurpose);
+  const { t } = useLocale();
+  const requirements = wheelRequirements(grinder, declaredPurpose).map(
+    (item) => ({ kind: item.kind, ...formatRequirement(item, t) }),
+  );
   const known = requirements.filter((item) => item.condition !== null);
   const unknown = requirements.filter((item) => item.condition === null);
 
   if (compact) {
     return (
       <div className="border-b border-slate-800 bg-slate-900 px-6 py-3">
-        <p className="text-sm text-slate-400">필요한 숫돌</p>
+        <p className="text-sm text-slate-400">
+          {t('requirement.compactTitle')}
+        </p>
         <p className="text-base font-bold leading-relaxed text-slate-100">
           {known.length > 0
             ? known.map((item) => item.condition).join(' · ')
-            : '명판 값을 읽지 못해 조건을 세울 수 없습니다'}
+            : t('requirement.compactUnknown')}
         </p>
       </div>
     );
@@ -42,13 +49,17 @@ export function RequirementBanner({
   return (
     <section className="flex flex-col gap-3 rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-4">
       <div className="flex flex-col gap-1">
-        <h2 className="text-xl font-bold text-slate-100">필요한 숫돌 조건</h2>
-        <p className="text-base text-slate-400">{grinderSummary(grinder)}</p>
+        <h2 className="text-xl font-bold text-slate-100">
+          {t('requirement.title')}
+        </h2>
+        <p className="text-base text-slate-400">
+          {formatGrinderSummary(grinder, t)}
+        </p>
       </div>
 
       <ul className="flex flex-col gap-2">
         {requirements.map((item) => (
-          <li key={item.label} className="flex items-baseline gap-3">
+          <li key={item.kind} className="flex items-baseline gap-3">
             <span className="w-32 shrink-0 text-base text-slate-400">
               {item.label}
             </span>
@@ -67,12 +78,12 @@ export function RequirementBanner({
 
       {unknown.length > 0 && (
         <p className="text-base leading-relaxed text-yellow-200">
-          ⚠ 조건을 다 세우지 못했습니다. 빠진 값은 명판에서 직접 확인하세요.
+          ⚠ {t('requirement.partial')}
         </p>
       )}
 
       <p className="text-sm leading-relaxed text-slate-500">
-        제품을 추천하는 것이 아니라, 명판에 적힌 값에서 따라 나오는 조건입니다.
+        {t('requirement.notRecommendation')}
       </p>
     </section>
   );

@@ -8,7 +8,19 @@
 // 빈 칸이 되지는 않는다. 짝이 빠지지 않았는지는 테스트가 지킨다.
 
 import { RULE } from '@/lib/rules/engine';
+import type { Translate } from './index';
 import type { MessageKey } from './messages/ko';
+
+/**
+ * 규칙 이름을 고른 언어로 바꾼다.
+ *
+ * 짝이 없으면 엔진이 낸 한국어 이름을 그대로 쓴다. 빈 칸이 되지 않게 하려는 것이다.
+ * 결과 화면과 이력 화면이 같은 이름을 쓰도록 여기 한 곳에 둔다.
+ */
+export function ruleLabelText(rule: string, t: Translate): string {
+  const key = RULE_MESSAGE_KEY[rule];
+  return key ? t(key) : rule;
+}
 
 /** 규칙 이름 → 문구 키 */
 export const RULE_MESSAGE_KEY: Readonly<Record<string, MessageKey>> = {

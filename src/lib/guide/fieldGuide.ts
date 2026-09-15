@@ -10,51 +10,49 @@
 //
 // 문구는 규칙엔진의 판정 사유와 어긋나지 않게 쓴다.
 // 예: RPM은 "숫돌이 그라인더보다 높아야 한다"는 방향을 그대로 반복한다.
+// 문장은 문구 파일(src/lib/i18n/messages)에 있고, 여기서는 키만 잇는다.
+
+import type { MessageKey } from '@/lib/i18n';
 
 export interface FieldGuide {
-  hint: string;
-  where: string;
+  hint: MessageKey;
+  where: MessageKey;
 }
 
 export const GRINDER_FIELD_GUIDE: Record<string, FieldGuide> = {
   model: {
-    hint: '그라인더 제품 이름입니다. 판정에는 쓰지 않고 기록에만 남깁니다.',
-    where: '명판 맨 위에 크게 적혀 있습니다. 예: GWS 750-125',
+    hint: 'guide.grinder.model.hint',
+    where: 'guide.grinder.model.where',
   },
   noLoadRPM: {
-    hint: '이 그라인더가 도는 속도입니다. 숫돌이 이 속도를 견뎌야 합니다.',
-    where:
-      '명판에서 n₀ 또는 no load speed 옆의 숫자입니다. 예: 11000 r/min, 11000 min⁻¹',
+    hint: 'guide.grinder.noLoadRPM.hint',
+    where: 'guide.grinder.noLoadRPM.where',
   },
   maxWheelDiameter: {
-    hint: '이 기계에 끼울 수 있는 가장 큰 숫돌입니다. 더 큰 숫돌은 방호덮개에 들어가지 않습니다.',
-    where:
-      '명판에서 wheel, disc, 숫돌 같은 단어 옆의 지름입니다. 예: max Ø125mm',
+    hint: 'guide.grinder.maxWheelDiameter.hint',
+    where: 'guide.grinder.maxWheelDiameter.where',
   },
 };
 
 export const WHEEL_FIELD_GUIDE: Record<string, FieldGuide> = {
   maxRPM: {
-    hint: '이 숫돌이 견디는 최대 속도입니다. 그라인더 속도보다 낮으면 깨져서 날아갑니다.',
-    where:
-      '라벨에 크게 적힌 회전속도입니다. m/s로만 적혀 있으면 앱이 자동으로 바꿉니다. 예: 12200 r/min, 80 m/s',
+    hint: 'guide.wheel.maxRPM.hint',
+    where: 'guide.wheel.maxRPM.where',
   },
   diameter: {
-    hint: '숫돌의 바깥 지름입니다. 그라인더가 허용하는 크기 이하여야 합니다.',
-    where: '치수 표기의 첫 숫자입니다. 예: 125 × 1.6 × 22.23 에서 125',
+    hint: 'guide.wheel.diameter.hint',
+    where: 'guide.wheel.diameter.where',
   },
   thickness: {
-    hint: '숫돌의 두께입니다. 절단날은 얇고(1~3mm) 연삭석은 두껍습니다(6mm 안팎).',
-    where: '치수 표기의 가운데 숫자입니다. 예: 125 × 1.6 × 22.23 에서 1.6',
+    hint: 'guide.wheel.thickness.hint',
+    where: 'guide.wheel.thickness.where',
   },
   purpose: {
-    hint: '절단용은 자르기, 연삭용은 갈기입니다. 바꿔 쓰면 옆으로 힘을 받아 깨질 수 있습니다.',
-    where:
-      '라벨의 절단용/연삭용 표기입니다. 영문은 CUT-OFF 또는 GRINDING, DEPRESSED CENTER로 적힙니다.',
+    hint: 'guide.wheel.purpose.hint',
+    where: 'guide.wheel.purpose.where',
   },
   expiry: {
-    hint: '라벨에 적힌 유효기한입니다. 지난 숫돌은 제조사가 사용하지 말라고 안내합니다. 표기가 없는 숫돌도 있습니다.',
-    where:
-      '가운데 금속 링에 월/연으로 찍힙니다. 예: 04/2023. 앞에 V나 EXP가 붙기도 합니다. 제조일을 대신 넣지 마세요.',
+    hint: 'guide.wheel.expiry.hint',
+    where: 'guide.wheel.expiry.where',
   },
 };

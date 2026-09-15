@@ -35,10 +35,10 @@ export function RuleVersionNote({ version }: RuleVersionNoteProps) {
       <ul className="flex flex-col gap-2">
         {RULE_SOURCES.map((source) => (
           <li key={source.reference} className="text-sm text-slate-400">
-            <span className="text-slate-300">{source.label}</span>{' '}
-            {source.reference}
+            <span className="text-slate-300">{t(source.label)}</span>{' '}
+            {t(source.reference)}
             <br />
-            <span className="text-slate-500">{source.scope}</span>
+            <span className="text-slate-500">{t(source.scope)}</span>
           </li>
         ))}
       </ul>

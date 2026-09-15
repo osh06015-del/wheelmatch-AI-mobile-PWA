@@ -24,16 +24,16 @@ export function NotVerifiablePanel() {
 
       <ul className="flex flex-col gap-3">
         {NOT_VERIFIABLE.map((item) => (
-          <li key={item.title} className="flex gap-3">
+          <li key={item.titleKey} className="flex gap-3">
             <span aria-hidden className="text-slate-500">
               —
             </span>
             <span className="flex flex-col gap-1">
               <span className="text-base font-semibold text-slate-200">
-                {item.title}
+                {t(item.titleKey)}
               </span>
               <span className="text-base leading-relaxed text-slate-400">
-                {item.detail}
+                {t(item.detailKey)}
               </span>
             </span>
           </li>

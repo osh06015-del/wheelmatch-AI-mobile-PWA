@@ -12,6 +12,7 @@
 import { useState } from 'react';
 
 import { MetricsPanel } from './MetricsPanel';
+import { useLocale, type MessageKey } from '@/lib/i18n';
 import { csvFilename, toCsv } from '@/lib/record/csv';
 import { parseGroundTruth } from '@/lib/record/groundTruth';
 import type { GroundTruth } from '@/lib/record/metrics';
@@ -19,8 +20,10 @@ import { useResearchMode } from '@/lib/record/researchMode';
 import type { InspectionRecord } from '@/lib/rules/types';
 
 export function ResearchPanel({ records }: { records: InspectionRecord[] }) {
+  const { t } = useLocale();
   const [enabled, setEnabled] = useResearchMode();
-  const [error, setError] = useState<string | null>(null);
+  // 문장 대신 문구 키를 둔다. 문장은 그릴 때 고른 언어로 만든다.
+  const [error, setError] = useState<MessageKey | null>(null);
   const [truths, setTruths] = useState<GroundTruth[]>([]);
   const [rejected, setRejected] = useState(0);
 
@@ -32,10 +35,10 @@ export function ResearchPanel({ records }: { records: InspectionRecord[] }) {
       setTruths(parsed.truths);
       setRejected(parsed.rejected);
       if (parsed.truths.length === 0) {
-        setError('읽어낸 정답이 없습니다. JSON 배열 형식인지 확인하세요.');
+        setError('research.truthEmpty');
       }
     } catch {
-      setError('정답 파일을 읽지 못했습니다.');
+      setError('research.truthUnreadable');
     }
   }
 
@@ -54,7 +57,7 @@ export function ResearchPanel({ records }: { records: InspectionRecord[] }) {
       link.click();
       URL.revokeObjectURL(url);
     } catch {
-      setError('내려받기에 실패했습니다. 저장 공간을 확인하세요.');
+      setError('research.downloadFailed');
     }
   }
 
@@ -67,21 +70,20 @@ export function ResearchPanel({ records }: { records: InspectionRecord[] }) {
         className="flex flex-col gap-1 rounded-lg border border-sky-500/50 bg-sky-500/10 px-4 py-3"
       >
         <p className="text-base font-bold leading-relaxed text-sky-100">
-          검증/연구용 기능이며 현장 판정을 변경하지 않습니다.
+          {t('research.notice')}
         </p>
         <p className="text-sm leading-relaxed text-sky-200">
-          검증 빌드에서만 보입니다. 기록을 내보내고 지표를 계산할 뿐, 판정·상태
-          확인·시험운전·저장 조건에는 관여하지 않습니다.
+          {t('research.noticeDetail')}
         </p>
       </div>
 
       <label className="flex min-h-12 items-center justify-between gap-3">
         <span className="flex flex-col">
           <span className="text-base font-semibold text-slate-200">
-            연구·실험 모드
+            {t('research.modeTitle')}
           </span>
           <span className="text-sm text-slate-400">
-            측정값을 CSV로 내보냅니다. 현장 사용에는 필요하지 않습니다.
+            {t('research.modeHint')}
           </span>
         </span>
         <input
@@ -100,19 +102,18 @@ export function ResearchPanel({ records }: { records: InspectionRecord[] }) {
             disabled={records.length === 0}
             className="min-h-14 rounded-lg bg-slate-700 text-lg font-semibold text-slate-100 active:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-500"
           >
-            CSV 내려받기 ({records.length}건)
+            {t('research.download', { count: records.length })}
           </button>
           <p className="text-sm leading-relaxed text-slate-500">
-            기록은 이 기기에만 있습니다. 내려받은 파일은 직접 옮겨야 합니다.
+            {t('research.deviceOnly')}
           </p>
 
           <label className="flex flex-col gap-1">
             <span className="text-base font-semibold text-slate-200">
-              정답(Ground Truth) 파일
+              {t('research.truthTitle')}
             </span>
             <span className="text-sm leading-relaxed text-slate-400">
-              촬영 전에 직접 읽어 적어둔 값입니다. 넣어야 지표를 계산할 수
-              있습니다. 앱이 정답을 만들지는 않습니다.
+              {t('research.truthHint')}
             </span>
             <input
               type="file"
@@ -126,14 +127,13 @@ export function ResearchPanel({ records }: { records: InspectionRecord[] }) {
           </label>
           {rejected > 0 && (
             <p className="text-base text-yellow-200">
-              형식이 맞지 않아 {rejected}줄을 제외했습니다. 표본 수를
-              확인하세요.
+              {t('research.truthRejected', { count: rejected })}
             </p>
           )}
 
           <MetricsPanel records={records} truths={truths} />
 
-          {error && <p className="text-base text-red-300">{error}</p>}
+          {error && <p className="text-base text-red-300">{t(error)}</p>}
         </>
       )}
     </section>

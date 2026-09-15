@@ -17,6 +17,8 @@ import { GrinderConditionGate } from '@/components/GrinderConditionGate';
 import { ManualConfirmToggle } from '@/components/ManualConfirmToggle';
 import { ScanHeader } from '@/components/ScanHeader';
 import { GRINDER_FIELD_GUIDE } from '@/lib/guide/fieldGuide';
+import { useLocale } from '@/lib/i18n';
+import { analysisErrorText } from '@/lib/i18n/errors';
 import { optimizeForUpload } from '@/lib/image/optimize';
 import { getExtractor } from '@/lib/ocr/extractor';
 import {
@@ -36,6 +38,7 @@ interface FormState {
 
 export default function GrinderScanPage() {
   const router = useRouter();
+  const { t } = useLocale();
   const { setGrinder, setGrinderCondition } = useInspection();
 
   const [phase, setPhase] = useState<Phase>('capture');
@@ -50,7 +53,8 @@ export default function GrinderScanPage() {
   const [condition, setCondition] = useState<GrinderCondition>({
     ...EMPTY_GRINDER_CONDITION,
   });
-  const [error, setError] = useState<string | null>(null);
+  // 문장이 아니라 오류 자체를 둔다. 문장은 그릴 때 작업자가 고른 언어로 만든다.
+  const [error, setError] = useState<unknown>(null);
 
   async function analyze(source: Blob) {
     setPhase('analyzing');
@@ -71,9 +75,7 @@ export default function GrinderScanPage() {
       setCondition({ ...EMPTY_GRINDER_CONDITION });
       setPhase('confirm');
     } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : '명판 분석에 실패했습니다.',
-      );
+      setError(caught);
       setPhase('error');
     }
   }
@@ -109,14 +111,14 @@ export default function GrinderScanPage() {
   const fields: FieldSpec[] = [
     {
       key: 'model',
-      label: '모델명',
+      label: t('field.model'),
       kind: 'text',
       value: form.model,
       guide: GRINDER_FIELD_GUIDE.model,
     },
     {
       key: 'noLoadRPM',
-      label: '무부하 회전속도',
+      label: t('field.noLoadRPM'),
       unit: 'rpm',
       kind: 'number',
       value: form.noLoadRPM,
@@ -124,7 +126,7 @@ export default function GrinderScanPage() {
     },
     {
       key: 'maxWheelDiameter',
-      label: '허용 숫돌 최대 지름',
+      label: t('field.maxWheelDiameter'),
       unit: 'mm',
       kind: 'number',
       value: form.maxWheelDiameter,
@@ -135,9 +137,9 @@ export default function GrinderScanPage() {
   if (phase === 'capture') {
     return (
       <main className="flex flex-1 flex-col">
-        <ScanHeader step="1 / 2" title="그라인더 명판 촬영" />
+        <ScanHeader step="1 / 2" title={t('scan.grinder.title')} />
         <CameraView
-          guideLabel="명판을 사각형 안에 맞추세요"
+          guideLabel={t('scan.grinder.guide')}
           onCapture={(blob) => void analyze(blob)}
           onPickFile={(file) => void analyze(file)}
         />
@@ -148,13 +150,15 @@ export default function GrinderScanPage() {
   if (phase === 'analyzing') {
     return (
       <main className="flex flex-1 flex-col">
-        <ScanHeader step="1 / 2" title="그라인더 명판 촬영" />
+        <ScanHeader step="1 / 2" title={t('scan.grinder.title')} />
         <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6">
           <div
             aria-hidden
             className="h-14 w-14 animate-spin rounded-full border-4 border-slate-700 border-t-slate-200"
           />
-          <p className="text-lg text-slate-300">명판을 분석하고 있습니다...</p>
+          <p className="text-lg text-slate-300">
+            {t('scan.grinder.analyzing')}
+          </p>
         </div>
       </main>
     );
@@ -163,24 +167,27 @@ export default function GrinderScanPage() {
   if (phase === 'error') {
     return (
       <main className="flex flex-1 flex-col">
-        <ScanHeader step="1 / 2" title="그라인더 명판 촬영" />
+        <ScanHeader step="1 / 2" title={t('scan.grinder.title')} />
         <div className="flex flex-1 flex-col justify-center gap-4 px-6">
-          <p className="rounded-lg border border-red-500/40 bg-red-500/15 px-4 py-4 text-lg leading-relaxed text-red-200">
-            {error}
+          <p
+            role="alert"
+            className="rounded-lg border border-red-500/40 bg-red-500/15 px-4 py-4 text-lg leading-relaxed text-red-200"
+          >
+            {analysisErrorText(error, 'scan.grinder.failed', t)}
           </p>
           <button
             type="button"
             onClick={() => photo && void analyze(photo)}
             className="min-h-14 rounded-lg bg-slate-700 text-lg font-semibold text-white active:bg-slate-600"
           >
-            같은 사진으로 다시 분석
+            {t('scan.retryAnalysis')}
           </button>
           <button
             type="button"
             onClick={() => setPhase('capture')}
             className="min-h-14 rounded-lg border border-slate-600 text-lg font-semibold text-slate-200 active:bg-slate-800"
           >
-            재촬영
+            {t('scan.retake')}
           </button>
         </div>
       </main>
@@ -189,9 +196,9 @@ export default function GrinderScanPage() {
 
   return (
     <main className="flex flex-1 flex-col gap-6 px-6 py-6">
-      <ScanHeader step="1 / 2" title="그라인더 명판 촬영" bare />
+      <ScanHeader step="1 / 2" title={t('scan.grinder.title')} bare />
       <FieldConfirm
-        title="읽어낸 값을 확인하세요"
+        title={t('scan.confirmTitle')}
         fields={fields}
         confidence={ocr?.confidence ?? 'low'}
         rawText={ocr?.rawText ?? ''}
@@ -214,14 +221,14 @@ export default function GrinderScanPage() {
           disabled={!isGrinderConditionComplete(condition)}
           className="min-h-14 rounded-lg bg-green-500 text-lg font-bold text-slate-950 active:bg-green-400 disabled:bg-slate-700 disabled:text-slate-400"
         >
-          확인 후 숫돌 촬영
+          {t('scan.grinder.proceed')}
         </button>
         <button
           type="button"
           onClick={() => setPhase('capture')}
           className="min-h-14 rounded-lg border border-slate-600 text-lg font-semibold text-slate-200 active:bg-slate-800"
         >
-          재촬영
+          {t('scan.retake')}
         </button>
       </div>
     </main>

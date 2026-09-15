@@ -8,32 +8,32 @@
 //
 // hazards.ts와 같은 자리에 둔다. 둘 다 판정이 아니라 사람에게 하는 안내다.
 // 규칙 계층(src/lib/rules)에 두지 않는 이유이기도 하다 — 판정에 관여하지 않는다.
+//
+// 문장은 문구 파일(src/lib/i18n/messages)에 있다. 여기서는 순서만 정한다.
+
+import type { MessageKey } from '@/lib/i18n';
 
 export interface NotVerifiableItem {
-  title: string;
+  titleKey: MessageKey;
   /** 왜 못 보는지 + 그래서 사람이 무엇을 해야 하는지. 반드시 지시문으로 끝낸다. */
-  detail: string;
+  detailKey: MessageKey;
 }
 
 export const NOT_VERIFIABLE: readonly NotVerifiableItem[] = [
   {
-    title: '내부 균열',
-    detail:
-      '미세균열은 표면 사진에 나타나지 않습니다. 장착 전 타음검사(가볍게 두드려 소리 확인)를 하세요.',
+    titleKey: 'notVerifiable.internalCrack.title',
+    detailKey: 'notVerifiable.internalCrack.detail',
   },
   {
-    title: '물리적 손상',
-    detail:
-      '사진에서는 뚜렷한 파손만 보입니다. 눌린 자국·변형·젖음은 판별하지 못합니다. 직접 살펴보세요.',
+    titleKey: 'notVerifiable.physicalDamage.title',
+    detailKey: 'notVerifiable.physicalDamage.detail',
   },
   {
-    title: '올바른 장착',
-    detail:
-      '플랜지 조임, 회전 방향, 축에 제대로 앉았는지는 사진으로 알 수 없습니다. 장착 후 직접 확인하세요.',
+    titleKey: 'notVerifiable.mounting.title',
+    detailKey: 'notVerifiable.mounting.detail',
   },
   {
-    title: '방호덮개 상태',
-    detail:
-      '덮개가 달려 있는지, 각도가 맞는지, 파손되지 않았는지는 이 앱이 보지 못합니다. 눈으로 확인하세요.',
+    titleKey: 'notVerifiable.guard.title',
+    detailKey: 'notVerifiable.guard.detail',
   },
 ];

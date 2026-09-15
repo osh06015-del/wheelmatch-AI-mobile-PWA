@@ -6,15 +6,37 @@
 // 경우가 많다. 그래서 촬영과 갤러리 선택을 같은 비중으로 노출한다.
 // 장갑 낀 손을 전제로 모든 터치 타겟은 최소 48px, 촬영 버튼은 72px이다.
 
-import { useCamera } from '@/lib/camera/useCamera';
+import {
+  useCamera,
+  type CameraError,
+  type CameraErrorCode,
+} from '@/lib/camera/useCamera';
+import { useLocale, type MessageKey, type Translate } from '@/lib/i18n';
 
 interface CameraViewProps {
-  /** 가이드 오버레이 안에 띄울 안내 문구 */
+  /** 가이드 오버레이 안에 띄울 안내 문구. 고른 언어로 이미 바꾼 문장이다 */
   guideLabel: string;
   onCapture: (photo: Blob) => void;
   /** 갤러리·파일에서 고른 사진 */
   onPickFile: (file: File) => void;
   disabled?: boolean;
+}
+
+const CAMERA_ERROR_MESSAGE: Record<CameraErrorCode, MessageKey> = {
+  unsupported: 'camera.error.unsupported',
+  permission: 'camera.error.permission',
+  notFound: 'camera.error.notFound',
+  inUse: 'camera.error.inUse',
+  failed: 'camera.error.failed',
+};
+
+/** 분류하지 못한 실패는 브라우저가 준 오류 이름을 함께 보여 원인을 되짚게 한다. */
+function cameraErrorText(error: CameraError | null, t: Translate): string {
+  if (!error) return t('camera.error.failed');
+  if (error.code === 'failed' && error.name) {
+    return t('camera.error.failedNamed', { name: error.name });
+  }
+  return t(CAMERA_ERROR_MESSAGE[error.code]);
 }
 
 /**
@@ -57,6 +79,7 @@ export function CameraView({
   onPickFile,
   disabled = false,
 }: CameraViewProps) {
+  const { t } = useLocale();
   const {
     videoRef,
     canvasRef,
@@ -99,27 +122,29 @@ export function CameraView({
 
       {status === 'starting' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 bg-slate-900/90 px-6">
-          <p className="text-lg text-slate-100">카메라를 여는 중입니다...</p>
+          <p className="text-lg text-slate-100">{t('camera.starting')}</p>
           {/* 카메라가 느리거나 열리지 않아도 갤러리로 진행할 수 있게 한다. */}
           <GalleryInput
             onPickFile={onPickFile}
             className="flex min-h-14 cursor-pointer items-center justify-center rounded-lg border border-slate-600 px-6 text-lg font-semibold text-slate-200 active:bg-slate-800"
           >
-            갤러리에서 선택
+            {t('camera.pickFromGallery')}
           </GalleryInput>
         </div>
       )}
 
       {status === 'error' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-900/95 px-6 text-center">
-          <p className="text-lg leading-relaxed text-slate-100">{error}</p>
+          <p className="text-lg leading-relaxed text-slate-100">
+            {cameraErrorText(error, t)}
+          </p>
 
           {/* 카메라가 안 되는 상황이므로 갤러리를 주 동작으로 올린다. */}
           <GalleryInput
             onPickFile={onPickFile}
             className="flex min-h-14 w-full max-w-xs cursor-pointer items-center justify-center rounded-lg bg-green-500 text-lg font-bold text-slate-950 active:bg-green-400"
           >
-            갤러리에서 사진 선택
+            {t('camera.pickPhoto')}
           </GalleryInput>
 
           <button
@@ -127,7 +152,7 @@ export function CameraView({
             onClick={restart}
             className="min-h-14 w-full max-w-xs rounded-lg border border-slate-600 text-lg font-semibold text-slate-200 active:bg-slate-800"
           >
-            카메라 다시 시도
+            {t('camera.retry')}
           </button>
         </div>
       )}
@@ -142,14 +167,16 @@ export function CameraView({
               <span aria-hidden className="text-2xl leading-none">
                 🖼
               </span>
-              <span className="text-sm font-medium text-white">갤러리</span>
+              <span className="text-sm font-medium text-white">
+                {t('camera.gallery')}
+              </span>
             </GalleryInput>
 
             <button
               type="button"
               onClick={handleCapture}
               disabled={disabled}
-              aria-label="촬영"
+              aria-label={t('camera.shutter')}
               className="h-[72px] w-[72px] rounded-full border-4 border-white bg-white/30 active:bg-white/60 disabled:opacity-40"
             />
 

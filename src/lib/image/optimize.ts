@@ -46,12 +46,15 @@ export function needsOptimization(
   return bytes > maxBytes || Math.max(width, height) > maxEdge;
 }
 
-/** 브라우저가 이 이미지를 디코딩하지 못할 때 던진다. */
+/**
+ * 브라우저가 이 이미지를 디코딩하지 못할 때 던진다.
+ *
+ * 메시지는 개발자용이다. 작업자에게 보이는 문장은 화면이 고른 언어로 붙인다
+ * (error.imageDecode).
+ */
 export class ImageDecodeError extends Error {
   constructor() {
-    super(
-      '이 사진 형식을 읽지 못했습니다. JPG 또는 PNG로 다시 선택해 주세요. (아이폰 HEIC 사진은 지원되지 않을 수 있습니다)',
-    );
+    super('image could not be decoded (HEIC or unsupported format)');
     this.name = 'ImageDecodeError';
   }
 }

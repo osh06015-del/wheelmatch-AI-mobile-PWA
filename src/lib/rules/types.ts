@@ -223,10 +223,73 @@ export interface MatchResult {
   timestamp: string;
 }
 
+/**
+ * 사유 문장 코드. `규칙.분기` 형태다.
+ *
+ * 화면은 이 코드로 고른 언어의 문장을 찾는다(src/lib/i18n/checkText.ts).
+ * 거기 연결표가 이 타입 전체를 요구하므로, 코드를 추가하고 번역을 잊으면
+ * 타입 검사에서 막힌다.
+ */
+export type ReasonCode =
+  | 'requiredValues.ok'
+  | 'requiredValues.missingGrinder'
+  | 'requiredValues.missingWheel'
+  | 'requiredValues.missingBoth'
+  | 'rpmSafety.missing'
+  | 'rpmSafety.fail'
+  | 'rpmSafety.pass'
+  | 'diameterFit.missing'
+  | 'diameterFit.fail'
+  | 'diameterFit.pass'
+  | 'purpose.unknown'
+  | 'purpose.recognized'
+  | 'workPurpose.unknown'
+  | 'workPurpose.mismatch'
+  | 'workPurpose.match'
+  | 'wheelType.unknown'
+  | 'wheelType.unsupported'
+  | 'wheelType.supported'
+  | 'visibleDamage.suspected'
+  | 'visibleDamage.notVerifiable'
+  | 'confidence.low'
+  | 'confidence.ok'
+  | 'unitConsistency.mismatch'
+  | 'unitConsistency.match'
+  | 'mountingSpec.missing'
+  | 'mountingSpec.shown'
+  | 'peripheralSpeed.oddGrinder'
+  | 'peripheralSpeed.oddWheel'
+  | 'peripheralSpeed.oddBoth'
+  | 'peripheralSpeed.ok'
+  | 'expiry.noToday'
+  | 'expiry.unreadable'
+  | 'expiry.expired'
+  | 'expiry.valid';
+
+/**
+ * 사유를 고른 언어로 다시 만들기 위한 코드와 값.
+ *
+ * 엔진은 번역을 모른다 — 순수 함수로 남아야 하기 때문이다. 대신 어느 분기에서
+ * 나온 사유인지와 문장에 들어갈 값을 함께 낸다. 화면은 이것으로 문장을 만들고,
+ * 한국어 reason은 기록과 CSV에 그대로 남는다.
+ *
+ * params에는 숫자·날짜·코드('cutting', 'flap_disc')만 넣는다. 절단용·플랩디스크
+ * 같은 이름을 넣으면 그 낱말이 번역되지 않은 채 다른 언어 문장에 박힌다.
+ */
+export interface CheckDetail {
+  code: ReasonCode;
+  params?: Readonly<Record<string, string | number>>;
+}
+
 export interface CheckItem {
   rule: string; // 검사 규칙 이름
   passed: boolean | null; // true=통과, false=부적합, null=판정불가
-  reason: string; // 한국어 사유
+  reason: string; // 한국어 사유. 기록·CSV에 그대로 남는다
+  /**
+   * 사유 코드와 값. 화면이 고른 언어로 사유를 다시 만든다.
+   * 이 기능 도입 전 기록에는 없다 — 그때 화면은 한국어 reason을 그대로 보여준다.
+   */
+  detail?: CheckDetail;
   grinderValue: string | null;
   wheelValue: string | null;
   /**

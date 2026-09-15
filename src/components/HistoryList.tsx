@@ -8,13 +8,16 @@
 import { useCallback, useState } from 'react';
 import { RuleVersionNote } from './RuleVersionNote';
 
+import { useLocale, type MessageKey, type Translate } from '@/lib/i18n';
+import { checkReasonText } from '@/lib/i18n/checkText';
+import { ruleLabelText } from '@/lib/i18n/ruleLabel';
 import { formatElapsed } from '@/lib/record/elapsed';
 import type { InspectionRecord, Verdict, WorkPurpose } from '@/lib/rules/types';
 
-const BADGE_TEXT: Record<Verdict, string> = {
-  COMPATIBLE: '적합',
-  INCOMPATIBLE: '부적합',
-  UNDETERMINED: '판정불가',
+const BADGE_TEXT: Record<Verdict, MessageKey> = {
+  COMPATIBLE: 'verdict.compatible',
+  INCOMPATIBLE: 'verdict.incompatible',
+  UNDETERMINED: 'verdict.undetermined',
 };
 
 const BADGE_STYLE: Record<Verdict, string> = {
@@ -23,9 +26,10 @@ const BADGE_STYLE: Record<Verdict, string> = {
   UNDETERMINED: 'bg-yellow-500 text-slate-950',
 };
 
-const PURPOSE_TEXT: Record<WorkPurpose, string> = {
-  cutting: '절단',
-  grinding: '연삭',
+/** 메인 화면에서 고른 작업 이름과 같은 말을 쓴다. */
+const PURPOSE_TEXT: Record<WorkPurpose, MessageKey> = {
+  cutting: 'home.cutting',
+  grinding: 'home.grinding',
 };
 
 function formatDateTime(iso: string): string {
@@ -35,17 +39,17 @@ function formatDateTime(iso: string): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-function summarize(record: InspectionRecord): string {
-  const model = record.grinder.model ?? '모델 미상';
-  const rpm =
+function summarize(record: InspectionRecord, t: Translate): string {
+  const model = record.grinder.model ?? t('history.unknownModel');
+  const grinderRpm =
     record.grinder.noLoadRPM === null ? '—' : `${record.grinder.noLoadRPM}rpm`;
-  const wheel =
+  const wheelDiameter =
     record.wheel.diameter === null
-      ? '지름 미상'
+      ? t('history.unknownDiameter')
       : `Φ${record.wheel.diameter}mm`;
   const wheelRpm =
     record.wheel.maxRPM === null ? '—' : `${record.wheel.maxRPM}rpm`;
-  return `${model} ${rpm} · 숫돌 ${wheel} ${wheelRpm}`;
+  return t('history.summary', { model, grinderRpm, wheelDiameter, wheelRpm });
 }
 
 /**
@@ -84,12 +88,13 @@ function Photo({ blob, label }: { blob: Blob; label: string }) {
 }
 
 export function HistoryList({ records }: { records: InspectionRecord[] }) {
+  const { t, locale } = useLocale();
   const [openId, setOpenId] = useState<number | null>(null);
 
   if (records.length === 0) {
     return (
       <p className="rounded-lg bg-slate-800 px-4 py-8 text-center text-base leading-relaxed text-slate-400">
-        저장된 점검 기록이 없습니다.
+        {t('history.empty')}
       </p>
     );
   }
@@ -98,18 +103,16 @@ export function HistoryList({ records }: { records: InspectionRecord[] }) {
     <div className="flex flex-col gap-3">
       {/* 소요시간을 보는 기준을 한 번만 적는다. 기록마다 되풀이하면 읽지 않게 된다. */}
       <p className="text-sm leading-relaxed text-slate-400">
-        「30초」는 사전점검 시간 목표입니다. 작업 선택부터 시험운전을 시작하기
-        직전까지를 잽니다. 법정 시험운전(1분·3분 이상)은 이 목표와 별도이며
-        줄이지 않습니다.
+        {t('history.timeNote')}
       </p>
       <ul className="flex flex-col gap-3">
         {records.map((record) => {
           const open = openId === record.id;
           const purpose = record.declaredPurpose
-            ? PURPOSE_TEXT[record.declaredPurpose]
+            ? t(PURPOSE_TEXT[record.declaredPurpose])
             : null;
-          const elapsed = formatElapsed(record.elapsedMs ?? null);
-          const preTrial = formatElapsed(record.preTrialElapsedMs ?? null);
+          const elapsed = formatElapsed(record.elapsedMs ?? null, t);
+          const preTrial = formatElapsed(record.preTrialElapsedMs ?? null, t);
           const hasPhoto = Boolean(record.grinderImage ?? record.wheelImage);
 
           return (
@@ -123,7 +126,7 @@ export function HistoryList({ records }: { records: InspectionRecord[] }) {
                 <span
                   className={`shrink-0 rounded-md px-3 py-1 text-base font-bold ${BADGE_STYLE[record.result.verdict]}`}
                 >
-                  {BADGE_TEXT[record.result.verdict]}
+                  {t(BADGE_TEXT[record.result.verdict])}
                 </span>
                 <span className="flex flex-1 flex-col gap-1">
                   {/* 한 줄에 다 넣으면 좁은 화면에서 접혀 읽기 나빠진다.
@@ -139,17 +142,18 @@ export function HistoryList({ records }: { records: InspectionRecord[] }) {
                     </span>
                   </span>
                   <span className="text-base text-slate-100">
-                    {summarize(record)}
+                    {summarize(record, t)}
                   </span>
                   {elapsed && (
                     <span className="text-sm text-slate-400">
-                      점검에 {elapsed} 걸림
-                      {record.trialRun ? ' (시험운전 포함)' : ''}
+                      {record.trialRun
+                        ? t('history.elapsedWithTrial', { time: elapsed })
+                        : t('history.elapsed', { time: elapsed })}
                     </span>
                   )}
                   {preTrial && (
                     <span className="text-sm text-slate-400">
-                      사전점검 {preTrial} (시험운전 전까지)
+                      {t('history.preTrial', { time: preTrial })}
                     </span>
                   )}
                 </span>
@@ -165,16 +169,19 @@ export function HistoryList({ records }: { records: InspectionRecord[] }) {
                       {record.grinderImage && (
                         <Photo
                           blob={record.grinderImage}
-                          label="그라인더 명판"
+                          label={t('history.grinderPhoto')}
                         />
                       )}
                       {record.wheelImage && (
-                        <Photo blob={record.wheelImage} label="숫돌 라벨" />
+                        <Photo
+                          blob={record.wheelImage}
+                          label={t('history.wheelPhoto')}
+                        />
                       )}
                     </div>
                   ) : (
                     <p className="text-base text-slate-400">
-                      저장된 사진이 없습니다.
+                      {t('history.noPhoto')}
                     </p>
                   )}
 
@@ -187,10 +194,12 @@ export function HistoryList({ records }: { records: InspectionRecord[] }) {
                             : check.passed === false
                               ? '❌'
                               : '⚠'}{' '}
-                          {check.rule}
+                          {ruleLabelText(check.rule, t)}
                         </span>
+                        {/* 저장 당시 엔진이 남긴 사유 코드로 고른 언어의 문장을 만든다.
+                          코드가 없는 옛 기록은 저장된 한국어 사유를 그대로 보인다. */}
                         <span className="text-base leading-relaxed text-slate-400">
-                          {check.reason}
+                          {checkReasonText(check, locale)}
                         </span>
                       </li>
                     ))}
