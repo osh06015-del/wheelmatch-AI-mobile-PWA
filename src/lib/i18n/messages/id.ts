@@ -47,6 +47,9 @@ export const id: Messages = {
     'Gagal menyimpan. Periksa ruang penyimpanan lalu coba lagi.',
   'result.saveErrorQuota':
     'Catatan ini tidak tersimpan — ruang penyimpanan perangkat penuh. Hapus catatan yang tidak diperlukan di riwayat atau kosongkan ruang penyimpanan perangkat, lalu coba lagi.',
+  'result.saveWithoutPhotosHint':
+    'Anda dapat menyimpan hasilnya tanpa foto. Aplikasi tidak menghapus foto yang sudah tersimpan.',
+  'result.saveWithoutPhotos': 'Simpan hasil tanpa foto',
   'result.saveStopped': 'Simpan hasil penghentian',
 
   'group.confirmed': 'Sudah dicocokkan',
@@ -256,6 +259,112 @@ export const id: Messages = {
   'wheelCondition.stopTitle': 'JANGAN GUNAKAN BATU GERINDA INI',
   'wheelCondition.stopBody':
     'Ditemukan masalah pada batu gerinda. Jangan pasang. Ganti dengan batu gerinda lain yang layak dan periksa lagi.',
+
+  'exam.title': 'Pemeriksaan tampilan dari beberapa sudut',
+  'exam.boundary':
+    'AI hanya mencari tanda kelainan yang terlihat di foto. AI tidak memastikan tidak ada kerusakan, dan tidak memastikan aman digunakan.',
+  'exam.microCrack':
+    'Retak halus dan retak dalam tidak bisa diperiksa lewat foto. Lakukan uji ketuk sebelum memasang.',
+  'exam.frontReused': 'Sisi depan memakai foto label yang baru saja diambil.',
+  'exam.view.front': 'Sisi depan (label)',
+  'exam.view.back': 'Seluruh sisi belakang',
+  'exam.view.backHint':
+    'Ambil foto sehingga seluruh sisi belakang masuk dalam satu bingkai.',
+  'exam.view.edge': 'Tepi luar',
+  'exam.view.edgeHint':
+    'Foto tepi luar dari samping. Di sinilah gompal dan pecah terlihat.',
+  'exam.view.bore': 'Lubang tengah dan area pemasangan',
+  'exam.view.boreHint':
+    'Foto dari dekat lubang tengah dan sekelilingnya — bagian yang menempel pada as.',
+  'exam.capture': 'Kamera',
+  'exam.gallery': 'Galeri',
+  'exam.retakeView': 'Foto ulang {view}',
+  'exam.photoReady': 'Foto sudah ada',
+  'exam.photoMissing': 'Belum ada',
+  'exam.analyze': 'Periksa dengan 4 foto',
+  'exam.analyzing': 'Sedang memeriksa foto...',
+  'exam.missing':
+    'Lengkapi foto sisi belakang, tepi luar, dan lubang tengah agar bisa diperiksa.',
+  'exam.status.suspected':
+    'Ada tanda kelainan yang terlihat di foto. Periksa langsung batu gerinda aslinya.',
+  'exam.status.notObserved':
+    'Tidak ditemukan kelainan yang jelas. Periksa sendiri sisi depan, belakang, tepi luar, dan lubang tengah batu gerinda asli.',
+  'exam.status.unassessable':
+    'Foto ini tidak memungkinkan penilaian. Foto ulang sesuai petunjuk di bawah, atau periksa langsung.',
+  'exam.findingConfidence': 'Tingkat keyakinan AI: {confidence}',
+  'exam.finding.crack': 'Dugaan retak',
+  'exam.finding.chip': 'Dugaan gompal atau serpihan lepas',
+  'exam.finding.edgeBreak': 'Dugaan tepi luar pecah',
+  'exam.finding.boreDamage':
+    'Dugaan kerusakan lubang tengah atau area pemasangan',
+  'exam.finding.deformation': 'Dugaan bengkok atau berubah bentuk',
+  'exam.finding.contamination': 'Dugaan kotoran atau benda asing',
+  'exam.finding.other': 'Dugaan kelainan lain',
+  'exam.quality.blur': 'buram',
+  'exam.quality.glare': 'silau',
+  'exam.quality.darkness': 'terlalu gelap',
+  'exam.quality.incompleteView':
+    'bagian yang perlu dilihat tidak masuk bingkai',
+  'exam.retakeRequired':
+    'Ada foto yang tidak terbaca. Foto ulang yang tercantum di bawah.',
+  'exam.acknowledge':
+    'Saya sudah memeriksa bagian yang ditandai pada batu gerinda asli.',
+  'exam.blocked':
+    'Anda bisa melanjutkan setelah mengonfirmasi tanda yang dilaporkan.',
+  'exam.failed': 'AI tidak dapat memeriksa foto.',
+  'exam.failedFallback':
+    'Lanjut tanpa pemeriksaan AI. Periksa sendiri sisi depan, belakang, tepi luar, dan lubang tengah batu gerinda.',
+  'exam.block.photosMissing':
+    'Tambahkan foto sisi belakang, tepi luar, dan lubang tengah lalu jalankan pemeriksaan sebelum lanjut.',
+  'exam.block.notAnalyzed':
+    'Jalankan pemeriksaan pada foto yang sudah ditambahkan sebelum lanjut.',
+  'exam.block.retakeRequired':
+    'Foto ulang gambar yang tidak terbaca sebelum lanjut.',
+  'exam.block.needsAcknowledge':
+    'Tandai bahwa Anda sudah memeriksa tanda yang dilaporkan pada batu gerinda asli sebelum lanjut.',
+
+  'exam.block.needsManualContinue':
+    'Tandai bahwa Anda lanjut dengan pemeriksaan sendiri, tanpa pemeriksaan AI, sebelum melanjutkan.',
+  'exam.progress': 'Foto tambahan siap: {done} / {total}',
+  'exam.captureView': 'Ambil foto {view}',
+  'exam.galleryView': 'Pilih foto {view} dari galeri',
+  'exam.replaceNote':
+    'Mengganti foto akan menghapus hasil pemeriksaan dari foto itu beserta tanda konfirmasi Anda. Anda harus memeriksa lagi.',
+  'exam.manualContinue':
+    'Lanjut dengan pemeriksaan sendiri, tanpa pemeriksaan AI.',
+  'exam.manualContinueHint':
+    'Lihat sendiri sisi depan, belakang, tepi, dan lubang tengah batu gerinda. AI tidak memastikan apa pun.',
+  'exam.notRun.networkError':
+    'AI tidak dapat melihat foto — server tidak terjangkau.',
+  'exam.notRun.apiError':
+    'AI tidak dapat melihat foto — server mengembalikan galat.',
+  'exam.notRun.offline':
+    'AI tidak dapat melihat foto — perangkat sedang luring.',
+  'exam.notRun.userManualContinue':
+    'AI tidak dapat melihat foto. Penyebabnya tidak tercatat.',
+  'exam.evidence.title': 'Catatan pemeriksaan tampilan multi-sudut',
+  'exam.evidence.suspected':
+    'Dugaan tanda kerusakan — periksa sendiri batu gerinda aslinya',
+  'exam.evidence.notObserved':
+    'Tidak ada tanda jelas yang ditemukan — tetap harus diperiksa sendiri',
+  'exam.evidence.unassessable':
+    'Foto tidak cukup untuk menilai — periksa sendiri',
+  'exam.evidence.notRun':
+    'Pemeriksaan AI tidak dijalankan — dilanjutkan dengan pemeriksaan sendiri oleh pekerja',
+  'exam.evidence.notRunAt':
+    'Waktu konfirmasi lanjut dengan pemeriksaan sendiri: {time}',
+  'exam.evidence.notCounted':
+    'Ini yang dilihat AI pada foto. Ini tidak dihitung sebagai butir yang dikonfirmasi sendiri oleh pekerja.',
+  'exam.evidence.noFindings': 'Lokasi tanda tidak tercatat.',
+  'exam.evidence.unreadablePhotos': 'Foto yang tidak terbaca',
+  'exam.evidence.acknowledged':
+    'Pekerja sudah memeriksa titik yang dilaporkan pada batu gerinda asli.',
+  'exam.evidence.photosMissing':
+    'Catatan ini tidak menyimpan foto multi-sudut.',
+  'exam.evidence.meta':
+    'Diperiksa {time} · model {model} · instruksi {version}',
+  'photo.zoomOpen': 'Perbesar {label}',
+  'photo.zoomClose': 'Tutup foto yang diperbesar',
 
   'wheelType.bonded_abrasive': 'Batu gerinda bonded biasa',
   'wheelType.flap_disc': 'Flap disc (amplas susun)',
@@ -572,6 +681,10 @@ export const id: Messages = {
   'history.clearConfirm':
     'Semua {count} catatan pemeriksaan yang tersimpan akan dihapus. Tidak dapat dibatalkan.',
   'history.clearConfirmButton': 'Hapus semua',
+  'history.deleteRecord': 'Hapus catatan ini',
+  'history.deleteConfirm':
+    'Ini menghapus satu catatan. Foto yang tersimpan bersamanya ikut terhapus dan tidak bisa dikembalikan.',
+  'history.deleteConfirmButton': 'Ya, hapus catatan ini',
   'history.cancel': 'Batal',
   'history.clearAll': 'Hapus semua catatan',
   'history.newInspection': 'Mulai pemeriksaan baru',

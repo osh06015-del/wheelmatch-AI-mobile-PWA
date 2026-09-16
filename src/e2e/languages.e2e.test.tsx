@@ -82,7 +82,10 @@ describe.each(Object.keys(HTML_LANG) as ForeignLocale[])(
 
       await f.pickPhoto();
       await screen.findByText(f.t('scan.confirmTitle'));
-      expectNoKorean(); // 숫돌 값 확인·종류 선택·Wheel Condition
+      expectNoKorean(); // 숫돌 값 확인·종류 선택·다각도 확인·Wheel Condition
+
+      await f.completeWheelExam();
+      expectNoKorean(); // 다각도 확인 결과와 경계 문구
 
       await f.answerWheelCondition();
       await f.user.click(f.button('scan.wheel.proceed'));
@@ -127,6 +130,7 @@ describe.each(Object.keys(HTML_LANG) as ForeignLocale[])(
       await f.user.click(f.button('scan.grinder.proceed'));
       await f.atPath('/scan/wheel');
       await f.pickPhoto();
+      await f.completeWheelExam();
       await f.answerWheelCondition();
       await f.user.click(f.button('scan.wheel.proceed'));
       await f.atPath('/result');

@@ -20,7 +20,11 @@ const ALLOWED: Readonly<Record<string, string>> = {
   'src/lib/rules/engine.ts':
     '기록·CSV에 남는 한국어 사유와 규칙 이름. 화면은 사유 코드로 번역한다',
   'src/lib/ocr/schema.ts': '모델에게 주는 지시문. 작업자에게 보이지 않는다',
+  'src/lib/vision/wheelExamSchema.ts':
+    '모델에게 주는 지시문. 작업자에게 보이지 않는다',
   'src/app/api/extract/route.ts':
+    '로그·개발자용 오류 문장과 모델 지시문. 화면은 code로 문장을 고른다',
+  'src/app/api/wheel-exam/route.ts':
     '로그·개발자용 오류 문장과 모델 지시문. 화면은 code로 문장을 고른다',
   'src/app/layout.tsx':
     '검색·공유 카드용 기본 메타데이터. 탭 제목은 DocumentLocale이 바꾼다',

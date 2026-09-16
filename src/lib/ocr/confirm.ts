@@ -19,8 +19,10 @@
 // 판정은 하지 않는다. 값을 옮기기만 한다.
 
 import { normalizeExpiry } from './parser';
+import { mergeVisibleDamage } from '@/lib/vision/wheelExamSafety';
 import type {
   RpmSource,
+  VisibleDamage,
   WheelPurpose,
   WheelSpec,
   WheelType,
@@ -49,6 +51,14 @@ export interface ConfirmedWheelFields {
   expiryText: string;
   /** ManualConfirmToggle 상태. 사람이 직접 확인해야만 신뢰도가 올라간다. */
   userConfirmed: boolean;
+  /**
+   * 다각도 외관 확인이 낸 판독값.
+   *
+   * 'suspected'만 들어온다(그 외에는 'unknown'). 라벨 사진의 판독값과 합칠 때
+   * **의심을 더하는 방향으로만** 쓴다 — mergeVisibleDamage 참고.
+   * 넘기지 않으면 기존 동작 그대로다.
+   */
+  examVisibleDamage?: VisibleDamage;
 }
 
 /**
@@ -101,7 +111,13 @@ export function confirmedWheelSpec(
     wheelType: fields.wheelType,
     // 외관 손상은 사진에서 판별한 값이고 확인 화면에 없다. 사용자가 숫자를
     // 고쳐도 그대로 이어간다. 값이 없으면 'unknown'으로 둔다.
-    visibleDamage: ocr?.visibleDamage ?? 'unknown',
+    //
+    // 다각도 확인 결과가 있으면 **의심을 더하는 방향으로만** 합친다. 라벨
+    // 사진이 의심했는데 다각도 확인이 찾지 못했다고 해서 의심을 지우지 않는다.
+    visibleDamage: mergeVisibleDamage(
+      ocr?.visibleDamage ?? 'unknown',
+      fields.examVisibleDamage ?? 'unknown',
+    ),
     // 라벨 원본 표시. 사용자 수정으로 덮지 않는다 — 이 파일 맨 위 참고.
     //
     // 사본으로 넘긴다. 참조를 공유하면 최종값과 OCR 원본이 사실상 한 객체가

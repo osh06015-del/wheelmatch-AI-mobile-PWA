@@ -296,6 +296,16 @@ describe('toCsv', () => {
       `${prefix}OcrCacheCreationTokens`,
       `${prefix}OcrDurationMs`,
     ];
+    const examColumns = [
+      'wheelExamStatus',
+      'wheelExamFindingCount',
+      'wheelExamFindings',
+      'wheelExamRetakeViews',
+      'wheelExamAcknowledged',
+      'wheelExamModel',
+      'wheelExamPromptVersion',
+      'wheelExamNotRunReason',
+    ];
     expect([...CSV_COLUMNS]).toEqual([
       ...LEGACY_COLUMNS,
       ...wheelColumns,
@@ -308,6 +318,7 @@ describe('toCsv', () => {
       ...captureColumns('wheel'),
       ...telemetryColumns('grinder'),
       ...telemetryColumns('wheel'),
+      ...examColumns,
     ]);
   });
 
@@ -497,10 +508,11 @@ describe('검증용 원시 측정값 열', () => {
     durationMs: 2100,
   };
 
-  it('맨 마지막 열에 붙인다 — preTrialElapsedMs 뒤를 지킨다', () => {
-    expect(CSV_COLUMNS[CSV_COLUMNS.length - 1]).toBe('wheelOcrDurationMs');
+  it('preTrialElapsedMs 뒤 자리를 지킨다 — 뒤에 다각도 확인 열이 더 붙었다', () => {
     expect(CSV_COLUMNS[45]).toBe('preTrialElapsedMs');
     expect(CSV_COLUMNS[46]).toBe('grinderCaptureOriginalWidth');
+    // 검증용 측정값 열 마지막. 그 뒤부터가 다각도 확인 열이다.
+    expect(CSV_COLUMNS.indexOf('wheelOcrDurationMs')).toBe(83);
   });
 
   it('이 기능 도입 전 기록은 모두 빈 칸이다', () => {
@@ -572,5 +584,106 @@ describe('검증용 원시 측정값 열', () => {
     );
     expect(row[CSV_COLUMNS.indexOf('verdict')]).toBe('COMPATIBLE');
     expect(row[CSV_COLUMNS.indexOf('grinderRPM')]).toBe('11000');
+  });
+});
+
+describe('다각도 외관 확인 열', () => {
+  const EXAM: InspectionRecord['wheelExam'] = {
+    status: 'suspected',
+    findings: [
+      {
+        kind: 'edge_break',
+        view: 'edge',
+        reason: '가장자리 2시 방향 파손, 쉼표가 든 문장',
+        confidence: 'high',
+      },
+      {
+        kind: 'chip',
+        view: 'back',
+        reason: '뒷면 조각 떨어짐',
+        confidence: 'medium',
+      },
+    ],
+    photoQuality: [
+      { view: 'front', issues: [], readable: true },
+      { view: 'back', issues: [], readable: true },
+      { view: 'edge', issues: [], readable: true },
+      { view: 'bore', issues: ['blur'], readable: false },
+    ],
+    model: 'claude-sonnet-5',
+    promptVersion: '2026.09.16-r1',
+    analyzedAt: '2026-09-16T03:00:00.000Z',
+  };
+
+  it('맨 마지막 열에 붙인다 — 앞선 열의 자리를 밀지 않는다', () => {
+    expect(CSV_COLUMNS[CSV_COLUMNS.length - 1]).toBe('wheelExamNotRunReason');
+    expect(CSV_COLUMNS.indexOf('wheelExamStatus')).toBe(84);
+  });
+
+  it('이 기능 도입 전 기록은 모두 빈 칸이다', () => {
+    const [, row] = parse(toCsv([record()]));
+    for (const column of CSV_COLUMNS.slice(84)) {
+      expect(row[CSV_COLUMNS.indexOf(column)]).toBe('');
+    }
+  });
+
+  it('상태·건수·종류:부위·재촬영·모델·지시문 버전을 적는다', () => {
+    const [, row] = parse(
+      toCsv([record({ wheelExam: EXAM, wheelExamAcknowledged: true })]),
+    );
+
+    expect(row[CSV_COLUMNS.indexOf('wheelExamStatus')]).toBe('suspected');
+    expect(row[CSV_COLUMNS.indexOf('wheelExamFindingCount')]).toBe('2');
+    // 자유 문장(reason)은 넣지 않는다 — 쉼표·줄바꿈이 섞여 열이 밀린다.
+    expect(row[CSV_COLUMNS.indexOf('wheelExamFindings')]).toBe(
+      'edge_break:edge chip:back',
+    );
+    expect(row[CSV_COLUMNS.indexOf('wheelExamRetakeViews')]).toBe('bore');
+    expect(row[CSV_COLUMNS.indexOf('wheelExamAcknowledged')]).toBe('Y');
+    expect(row[CSV_COLUMNS.indexOf('wheelExamModel')]).toBe('claude-sonnet-5');
+    expect(row[CSV_COLUMNS.indexOf('wheelExamPromptVersion')]).toBe(
+      '2026.09.16-r1',
+    );
+  });
+
+  it('찾지 못한 결과도 "없음"이 아니라 not_observed로 적는다', () => {
+    // 열 값이 "없음"이나 빈 칸이면 나중에 손상 없음으로 읽힌다.
+    const [, row] = parse(
+      toCsv([
+        record({
+          wheelExam: { ...EXAM, status: 'not_observed', findings: [] },
+          wheelExamAcknowledged: false,
+        }),
+      ]),
+    );
+
+    expect(row[CSV_COLUMNS.indexOf('wheelExamStatus')]).toBe('not_observed');
+    expect(row[CSV_COLUMNS.indexOf('wheelExamFindingCount')]).toBe('0');
+    expect(row[CSV_COLUMNS.indexOf('wheelExamAcknowledged')]).toBe('N');
+  });
+
+  it('실행되지 않은 경우는 status가 아니라 사유 열에만 적는다', () => {
+    // 실패를 status 칸에 적으면 사진을 본 결과와 구분되지 않는다.
+    const [, row] = parse(
+      toCsv([
+        record({
+          wheelExamNotRun: {
+            reason: 'network_error',
+            acknowledgedAt: '2026-09-16T03:00:00.000Z',
+          },
+        }),
+      ]),
+    );
+
+    expect(row[CSV_COLUMNS.indexOf('wheelExamNotRunReason')]).toBe(
+      'network_error',
+    );
+    expect(row[CSV_COLUMNS.indexOf('wheelExamStatus')]).toBe('');
+    expect(row[CSV_COLUMNS.indexOf('wheelExamFindingCount')]).toBe('');
+  });
+
+  it('확인이 돌아간 기록의 사유 열은 빈 칸이다', () => {
+    const [, row] = parse(toCsv([record({ wheelExam: EXAM })]));
+    expect(row[CSV_COLUMNS.indexOf('wheelExamNotRunReason')]).toBe('');
   });
 });

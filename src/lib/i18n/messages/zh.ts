@@ -42,6 +42,9 @@ export const zh: Messages = {
   'result.saveError': '保存失败。请检查存储空间后重试。',
   'result.saveErrorQuota':
     '设备存储空间已满，本次记录未保存。请在历史记录中删除不需要的记录，或释放设备存储空间后重试。',
+  'result.saveWithoutPhotosHint':
+    '可以不含照片、只保存结果。应用不会替您删除已保存的照片。',
+  'result.saveWithoutPhotos': '不含照片，仅保存结果',
   'result.saveStopped': '保存中止结果',
 
   'group.confirmed': '已核对',
@@ -222,6 +225,86 @@ export const zh: Messages = {
   'wheelCondition.stopTitle': '请勿使用此砂轮',
   'wheelCondition.stopBody':
     '已确认砂轮状态存在问题。请勿安装，更换其他可用砂轮后重新检查。',
+
+  'exam.title': '多角度外观确认',
+  'exam.boundary':
+    'AI 只查找照片中可见的异常迹象。不确认没有损伤，也不确认可以安全使用。',
+  'exam.microCrack': '微裂纹和内部裂纹无法通过照片确认。安装前请做敲击音检查。',
+  'exam.frontReused': '正面直接使用刚才拍摄的标签照片。',
+  'exam.view.front': '正面（标签）',
+  'exam.view.back': '背面整体',
+  'exam.view.backHint': '请让砂轮背面整体完整地进入一张照片。',
+  'exam.view.edge': '边缘',
+  'exam.view.edgeHint': '从侧面拍摄外圆面。缺口和破损通常出现在这里。',
+  'exam.view.bore': '中心孔与安装部位',
+  'exam.view.boreHint': '近距离拍摄中心孔及其周围 — 与主轴接触的部位。',
+  'exam.capture': '拍照',
+  'exam.gallery': '相册',
+  'exam.retakeView': '重拍{view}',
+  'exam.photoReady': '已有照片',
+  'exam.photoMissing': '尚未添加',
+  'exam.analyze': '用 4 张照片确认',
+  'exam.analyzing': '正在确认照片...',
+  'exam.missing': '需要补齐背面、边缘和中心孔照片才能确认。',
+  'exam.status.suspected': '照片中可见异常迹象。请直接检查实际砂轮。',
+  'exam.status.notObserved':
+    '未找到明显异常。请亲自确认实际砂轮的正面、背面、边缘和中心孔。',
+  'exam.status.unassessable':
+    '仅凭这些照片无法判断。请按下面的提示重拍，或直接检查实物。',
+  'exam.findingConfidence': 'AI 确信程度：{confidence}',
+  'exam.finding.crack': '疑似裂纹',
+  'exam.finding.chip': '疑似缺口或掉块',
+  'exam.finding.edgeBreak': '疑似边缘破损',
+  'exam.finding.boreDamage': '疑似中心孔或安装部位损伤',
+  'exam.finding.deformation': '疑似弯曲变形',
+  'exam.finding.contamination': '疑似附着物或污染',
+  'exam.finding.other': '疑似其他异常',
+  'exam.quality.blur': '模糊',
+  'exam.quality.glare': '反光',
+  'exam.quality.darkness': '过暗',
+  'exam.quality.incompleteView': '需要查看的部位未入镜',
+  'exam.retakeRequired': '有照片无法判读。请重拍下列照片。',
+  'exam.acknowledge': '我已在实际砂轮上确认了标示的位置。',
+  'exam.blocked': '确认所报告的迹象后才能继续。',
+  'exam.failed': 'AI 未能确认照片。',
+  'exam.failedFallback':
+    '将在没有 AI 确认的情况下继续。请亲自确认砂轮的正面、背面、边缘和中心孔。',
+  'exam.block.photosMissing':
+    '请添加背面、边缘、中心孔照片并执行确认后再继续。',
+  'exam.block.notAnalyzed': '请对已添加的照片执行确认后再继续。',
+  'exam.block.retakeRequired': '请重拍无法判读的照片后再继续。',
+  'exam.block.needsAcknowledge':
+    '请标示已在实际砂轮上确认所报告的迹象后再继续。',
+
+  'exam.block.needsManualContinue':
+    '请标示将在没有 AI 检查的情况下由作业者自行检查后继续。',
+  'exam.progress': '已准备的补充照片：{done} / {total}',
+  'exam.captureView': '拍摄{view}',
+  'exam.galleryView': '从相册选择{view}',
+  'exam.replaceNote':
+    '更换照片后，基于该照片的检查结果和您的确认标示都会清除，需要重新检查。',
+  'exam.manualContinue': '在没有 AI 检查的情况下，由作业者自行检查后继续。',
+  'exam.manualContinueHint':
+    '请亲自查看砂轮的正面、背面、边缘和中心孔。AI 没有确认任何内容。',
+  'exam.notRun.networkError': 'AI 未能查看照片 — 无法连接服务器。',
+  'exam.notRun.apiError': 'AI 未能查看照片 — 服务器返回错误。',
+  'exam.notRun.offline': 'AI 未能查看照片 — 设备处于离线状态。',
+  'exam.notRun.userManualContinue': 'AI 未能查看照片。未记录原因。',
+  'exam.evidence.title': '多角度外观确认记录',
+  'exam.evidence.suspected': '疑似异常迹象 — 请亲自确认实物',
+  'exam.evidence.notObserved': '未发现明显异常 — 仍需亲自确认',
+  'exam.evidence.unassessable': '照片无法判断 — 请亲自确认',
+  'exam.evidence.notRun': 'AI 确认未执行 — 已由作业者自行检查后继续',
+  'exam.evidence.notRunAt': '确认自行检查继续的时间：{time}',
+  'exam.evidence.notCounted':
+    '这是 AI 在照片中看到的内容，不计入作业者亲自确认的项目。',
+  'exam.evidence.noFindings': '未记录迹象的位置。',
+  'exam.evidence.unreadablePhotos': '无法判读的照片',
+  'exam.evidence.acknowledged': '作业者已在实物上确认所报告的位置。',
+  'exam.evidence.photosMissing': '此记录中没有保存多角度照片。',
+  'exam.evidence.meta': '确认 {time} · 模型 {model} · 指令 {version}',
+  'photo.zoomOpen': '放大查看{label}',
+  'photo.zoomClose': '关闭放大查看',
 
   'wheelType.bonded_abrasive': '普通砂轮（固结磨具）',
   'wheelType.flap_disc': '百叶片',
@@ -498,6 +581,10 @@ export const zh: Messages = {
   'history.loading': '正在加载记录...',
   'history.clearConfirm': '将删除已保存的全部 {count} 条检查记录。无法恢复。',
   'history.clearConfirmButton': '全部删除',
+  'history.deleteRecord': '删除此记录',
+  'history.deleteConfirm':
+    '将删除这一条记录。一并保存的照片也会删除且无法恢复。',
+  'history.deleteConfirmButton': '确认删除此记录',
   'history.cancel': '取消',
   'history.clearAll': '删除全部记录',
   'history.newInspection': '开始新的检查',

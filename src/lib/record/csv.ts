@@ -107,6 +107,23 @@ export const CSV_COLUMNS = [
   'wheelOcrCacheReadTokens',
   'wheelOcrCacheCreationTokens',
   'wheelOcrDurationMs',
+  // 다각도 외관 확인. 이 기능 도입 전 기록은 빈 칸이다. 앞선 열의 자리를
+  // 지키기 위해 맨 뒤에 붙인다.
+  //
+  // status는 suspected / not_observed / unassessable 셋뿐이다. "손상 없음"에
+  // 해당하는 값이 없다는 것이 이 열의 요점이다 — not_observed는 찾지 못했다는
+  // 뜻이지 없다는 뜻이 아니다(types.ts의 WheelExamStatus 참고).
+  'wheelExamStatus',
+  'wheelExamFindingCount',
+  'wheelExamFindings',
+  'wheelExamRetakeViews',
+  'wheelExamAcknowledged',
+  'wheelExamModel',
+  'wheelExamPromptVersion',
+  // 확인이 실행되지 않은 이유. 실패를 status로 옮겨 적지 않기 위해 열을 따로
+  // 둔다 — network_error / api_error / offline / user_manual_continue.
+  // 확인이 돌아간 기록에서는 빈 칸이다.
+  'wheelExamNotRunReason',
 ] as const;
 
 /**
@@ -267,6 +284,21 @@ function row(record: InspectionRecord): string {
     telemetry(record, 'wheelOcrTelemetry', 'cacheReadTokens'),
     telemetry(record, 'wheelOcrTelemetry', 'cacheCreationTokens'),
     telemetry(record, 'wheelOcrTelemetry', 'durationMs'),
+    record.wheelExam?.status,
+    record.wheelExam?.findings.length,
+    // 종류:부위 목록. 문장(reason)은 넣지 않는다 — 쉼표·줄바꿈이 섞인 자유
+    // 문장이라 열이 밀리고, 분석에 쓰는 것은 어느 부위에서 무엇이 보였는가다.
+    record.wheelExam?.findings
+      .map((finding) => `${finding.kind}:${finding.view}`)
+      .join(' '),
+    record.wheelExam?.photoQuality
+      .filter((photo) => !photo.readable)
+      .map((photo) => photo.view)
+      .join(' '),
+    tick(record.wheelExamAcknowledged),
+    record.wheelExam?.model,
+    record.wheelExam?.promptVersion,
+    record.wheelExamNotRun?.reason,
   ];
 
   return values.map(cell).join(',');

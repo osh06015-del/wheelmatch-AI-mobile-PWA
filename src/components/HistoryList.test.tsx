@@ -211,3 +211,133 @@ describe('저장된 사진 표시', () => {
     expect(revoked).toEqual(created);
   });
 });
+
+describe('이력 상세 — 다각도 외관 확인', () => {
+  const EXAM = {
+    status: 'suspected' as const,
+    findings: [
+      {
+        kind: 'chip' as const,
+        view: 'back' as const,
+        reason: '뒷면 4시 방향에 조각이 떨어진 자국.',
+        confidence: 'medium' as const,
+      },
+    ],
+    photoQuality: (['front', 'back', 'edge', 'bore'] as const).map((view) => ({
+      view,
+      issues: [],
+      readable: true,
+    })),
+    model: 'claude-sonnet-5',
+    promptVersion: '2026.09.16-r1',
+    analyzedAt: '2026-09-01T09:00:00.000Z',
+  };
+
+  it('AI가 본 것을 규칙 판정 항목과 섞지 않는다', async () => {
+    const user = userEvent.setup();
+    render(
+      <HistoryList
+        records={[record({ wheelExam: EXAM, wheelExamAcknowledged: true })]}
+      />,
+    );
+    await user.click(screen.getByRole('button', { expanded: false }));
+
+    // 규칙엔진이 낸 항목 수는 그대로다 — AI 결과가 확인된 항목으로 세어지지 않는다.
+    expect(screen.getByText(/RPM 안전/)).toBeInTheDocument();
+    expect(screen.getByText('다각도 외관 확인 기록')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'AI가 사진에서 본 것입니다. 작업자가 직접 확인하는 항목에는 들어가지 않습니다.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('깨짐·조각 떨어짐 의심 · 뒷면 전체'),
+    ).toBeInTheDocument();
+  });
+
+  it('확인하지 못한 채 진행한 기록은 미실행으로 남는다', async () => {
+    const user = userEvent.setup();
+    render(
+      <HistoryList
+        records={[
+          record({
+            wheelExamNotRun: {
+              reason: 'offline',
+              acknowledgedAt: '2026-09-01T09:00:00.000Z',
+            },
+          }),
+        ]}
+      />,
+    );
+    await user.click(screen.getByRole('button', { expanded: false }));
+
+    expect(
+      screen.getByText('AI 확인 미실행 — 작업자 직접점검으로 진행함'),
+    ).toBeInTheDocument();
+  });
+
+  it('이 기능 도입 전 기록에는 카드를 그리지 않는다', async () => {
+    const user = userEvent.setup();
+    render(<HistoryList records={[record()]} />);
+    await user.click(screen.getByRole('button', { expanded: false }));
+
+    expect(screen.queryByText('다각도 외관 확인 기록')).not.toBeInTheDocument();
+  });
+
+  it('다각도 사진이 없는 기록도 오류 없이 펼쳐진다', async () => {
+    const user = userEvent.setup();
+    render(<HistoryList records={[record({ wheelExam: EXAM })]} />);
+    await user.click(screen.getByRole('button', { expanded: false }));
+
+    expect(
+      screen.getByText('이 기록에는 다각도 사진이 저장되어 있지 않습니다.'),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('이력 상세 — 기록별 삭제', () => {
+  it('삭제 전에 한 번 더 묻는다', async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn();
+    render(<HistoryList records={[record()]} onDelete={onDelete} />);
+    await user.click(screen.getByRole('button', { expanded: false }));
+
+    await user.click(screen.getByRole('button', { name: '이 기록 삭제' }));
+    expect(onDelete).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(
+        '이 기록 한 건을 지웁니다. 함께 저장된 사진도 지워지고 되살릴 수 없습니다.',
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: '이 기록을 지웁니다' }),
+    );
+    expect(onDelete).toHaveBeenCalledWith(1);
+  });
+
+  it('취소하면 지우지 않는다', async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn();
+    render(<HistoryList records={[record()]} onDelete={onDelete} />);
+    await user.click(screen.getByRole('button', { expanded: false }));
+
+    await user.click(screen.getByRole('button', { name: '이 기록 삭제' }));
+    await user.click(screen.getByRole('button', { name: '취소' }));
+
+    expect(onDelete).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('button', { name: '이 기록 삭제' }),
+    ).toBeInTheDocument();
+  });
+
+  it('삭제 수단을 주지 않은 화면에는 버튼을 그리지 않는다', async () => {
+    const user = userEvent.setup();
+    render(<HistoryList records={[record()]} />);
+    await user.click(screen.getByRole('button', { expanded: false }));
+
+    expect(
+      screen.queryByRole('button', { name: '이 기록 삭제' }),
+    ).not.toBeInTheDocument();
+  });
+});

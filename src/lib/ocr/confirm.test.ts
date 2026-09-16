@@ -166,6 +166,34 @@ describe('confirmedWheelSpec — 원본 표시 보존', () => {
     expect(spec.visibleDamage).toBe('suspected');
   });
 
+  it('다각도 확인이 의심하면 라벨 판독이 무엇이든 의심으로 올린다', () => {
+    const ocr = ocrWheel({ visibleDamage: 'none_visible' });
+    const spec = confirmedWheelSpec(ocr, {
+      ...untouched(ocr),
+      examVisibleDamage: 'suspected',
+    });
+
+    expect(spec.visibleDamage).toBe('suspected');
+  });
+
+  it('다각도 확인이 찾지 못해도 라벨의 의심을 지우지 않는다', () => {
+    // 이 방향이 깨지면 "한 번 더 찍었더니 경고가 사라지는" 앱이 된다.
+    const ocr = ocrWheel({ visibleDamage: 'suspected' });
+    const spec = confirmedWheelSpec(ocr, {
+      ...untouched(ocr),
+      examVisibleDamage: 'unknown',
+    });
+
+    expect(spec.visibleDamage).toBe('suspected');
+  });
+
+  it('다각도 확인을 넘기지 않으면 기존 동작 그대로다', () => {
+    const ocr = ocrWheel({ visibleDamage: 'none_visible' });
+    const spec = confirmedWheelSpec(ocr, untouched(ocr));
+
+    expect(spec.visibleDamage).toBe('none_visible');
+  });
+
   it('사용자가 유효기한을 고쳐도 라벨 원문은 그대로 남는다', () => {
     // OCR이 04/2023으로 읽었는데 사용자가 라벨을 다시 보고 04/2027로 고친 경우.
     // 정규화 값만 바뀌고, 모델이 무엇을 읽었는지는 증거로 남는다.

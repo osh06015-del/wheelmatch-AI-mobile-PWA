@@ -25,6 +25,7 @@ import { NotVerifiablePanel } from '@/components/NotVerifiablePanel';
 import { ResultCard } from '@/components/ResultCard';
 import { RuleVersionNote } from '@/components/RuleVersionNote';
 import { TrialRunPanel, TrialRunStopNotice } from '@/components/TrialRunPanel';
+import { WheelExamEvidence } from '@/components/WheelExamEvidence';
 import { useLocale } from '@/lib/i18n';
 import { isQuotaExceededError, saveInspection } from '@/lib/db';
 import { elapsedSince, preTrialElapsed } from '@/lib/record/elapsed';
@@ -67,6 +68,12 @@ export default function ResultPage() {
     setTrialRun,
     grinderImage,
     wheelImage,
+    wheelBackImage,
+    wheelEdgeImage,
+    wheelBoreImage,
+    wheelExam,
+    wheelExamNotRun,
+    wheelExamAcknowledged,
     hydrating,
     reset,
   } = useInspection();
@@ -75,6 +82,9 @@ export default function ResultPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // 저장 공간이 모자랐는가. 사진을 뺀 저장을 제안할지 정한다 — 제안일 뿐이고
+  // 사진을 앱이 알아서 지우지는 않는다.
+  const [quotaHit, setQuotaHit] = useState(false);
   const [findings, setFindings] = useState<TrialRunFinding[]>([]);
   const [trialRunRecord, setTrialRunRecord] = useState<TrialRun | null>(null);
 
@@ -163,7 +173,15 @@ export default function ResultPage() {
     setTrialRun(null);
   }
 
-  async function save() {
+  /**
+   * 기록을 저장한다.
+   *
+   * @param withPhotos 사진을 함께 저장할지. 저장 공간이 모자라 실패했을 때
+   *   작업자가 "사진을 빼고 결과만 저장"을 고르면 false로 다시 부른다. 앱이
+   *   알아서 사진을 버리지 않는다 — 사진은 나중에 "그때 그 숫돌이 뭐였지"를
+   *   되짚는 유일한 증빙이라, 없애는 판단을 사람이 해야 한다.
+   */
+  async function save(withPhotos = true) {
     if (
       !grinder ||
       !wheel ||
@@ -191,6 +209,7 @@ export default function ResultPage() {
     }
     setSaving(true);
     setSaveError(null);
+    setQuotaHit(false);
     try {
       // 두 시간이 같은 끝 시각을 쓰게 한다. 따로 읽으면 몇 ms씩 어긋난다.
       const savedAt = Date.now();
@@ -220,8 +239,17 @@ export default function ResultPage() {
         wheelCaptureMetrics: wheelCaptureMetrics ?? undefined,
         grinderOcrTelemetry: grinderOcrTelemetry ?? undefined,
         wheelOcrTelemetry: wheelOcrTelemetry ?? undefined,
-        grinderImage: grinderImage ?? undefined,
-        wheelImage: wheelImage ?? undefined,
+        grinderImage: (withPhotos ? grinderImage : null) ?? undefined,
+        wheelImage: (withPhotos ? wheelImage : null) ?? undefined,
+        // 다각도 확인의 AI 원본 결과와 사진. 작업자 확인(wheelCondition)과
+        // 따로 남긴다 — 합치면 AI가 본 것과 사람이 확인한 것을 구분할 수 없다.
+        wheelExam: wheelExam ?? undefined,
+        // 확인하지 못한 채 진행했다는 사실. 결과와 둘 중 하나만 남는다.
+        wheelExamNotRun: wheelExamNotRun ?? undefined,
+        wheelExamAcknowledged: wheelExam ? wheelExamAcknowledged : undefined,
+        wheelBackImage: (withPhotos ? wheelBackImage : null) ?? undefined,
+        wheelEdgeImage: (withPhotos ? wheelEdgeImage : null) ?? undefined,
+        wheelBoreImage: (withPhotos ? wheelBoreImage : null) ?? undefined,
         ruleVersion: RULESET_VERSION,
         createdAt: new Date().toISOString(),
       });
@@ -232,11 +260,10 @@ export default function ResultPage() {
       // 저장 공간이 가득 찬 경우는 원인이 다르고 조치도 다르다 — "다시
       // 시도하라"가 아니라 공간을 비우라고 안내해야 한다. 어느 쪽이든
       // 기록이 저장되지 않았다는 것은 명확히 알린다.
-      setSaveError(
-        isQuotaExceededError(error)
-          ? t('result.saveErrorQuota')
-          : t('result.saveError'),
-      );
+      const quota = isQuotaExceededError(error);
+      setSaveError(quota ? t('result.saveErrorQuota') : t('result.saveError'));
+      // 사진 없이 저장하고도 공간이 모자랐다면 사진을 빼는 제안은 소용이 없다.
+      setQuotaHit(quota && withPhotos);
       setSaving(false);
     }
   }
@@ -264,6 +291,20 @@ export default function ResultPage() {
         result={result}
         grinderOcr={grinderOcr ?? undefined}
         wheelOcr={wheelOcr ?? undefined}
+      />
+
+      {/* AI가 사진에서 본 것. 아래 작업자 확인 항목과 따로 둔다 — 확인 개수에
+          섞이면 사람이 누르지 않은 것이 확인된 것처럼 보인다. */}
+      <WheelExamEvidence
+        exam={wheelExam}
+        notRun={wheelExamNotRun}
+        acknowledged={wheelExamAcknowledged}
+        photos={{
+          front: wheelImage,
+          back: wheelBackImage,
+          edge: wheelEdgeImage,
+          bore: wheelBoreImage,
+        }}
       />
 
       <ActionGuide failures={failures} />
@@ -328,15 +369,32 @@ export default function ResultPage() {
       </p>
 
       {saveError && (
-        <p className="rounded-lg border border-red-500/40 bg-red-500/15 px-4 py-4 text-base leading-relaxed text-red-200">
-          {saveError}
-        </p>
+        <div className="flex flex-col gap-3 rounded-lg border border-red-500/40 bg-red-500/15 px-4 py-4">
+          <p className="text-base leading-relaxed text-red-200">{saveError}</p>
+          {/* 공간이 모자랄 때만 나온다. 고르는 것은 작업자다 — 사진을 앱이
+              알아서 지우거나 조용히 빼고 저장하지 않는다. */}
+          {quotaHit && (
+            <>
+              <p className="text-base leading-relaxed text-red-200">
+                {t('result.saveWithoutPhotosHint')}
+              </p>
+              <button
+                type="button"
+                onClick={() => void save(false)}
+                disabled={saving}
+                className="min-h-14 rounded-lg border border-red-400 text-lg font-semibold text-red-100 active:bg-red-500/20 disabled:text-red-300/50"
+              >
+                {t('result.saveWithoutPhotos')}
+              </button>
+            </>
+          )}
+        </div>
       )}
 
       <div className="flex flex-col gap-3">
         <button
           type="button"
-          onClick={() => void save()}
+          onClick={() => void save(true)}
           disabled={!canSave}
           className="min-h-14 rounded-lg bg-green-500 text-lg font-bold text-slate-950 active:bg-green-400 disabled:bg-slate-700 disabled:text-slate-400"
         >

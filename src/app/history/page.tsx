@@ -20,6 +20,7 @@ import { HistoryList } from '@/components/HistoryList';
 import { ResearchPanel } from '@/components/ResearchPanel';
 import {
   clearInspections,
+  deleteInspection,
   listAllInspectionsWithoutPhotos,
   listInspectionsByIds,
 } from '@/lib/db';
@@ -132,7 +133,10 @@ export default function HistoryPage() {
         </p>
       ) : (
         <>
-          <HistoryList records={pageRecords} />
+          <HistoryList
+            records={pageRecords}
+            onDelete={(id) => void deleteInspection(id)}
+          />
           {hasMore && (
             <button
               type="button"

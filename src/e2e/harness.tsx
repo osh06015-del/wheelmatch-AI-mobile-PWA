@@ -35,7 +35,12 @@ import { translate, type Locale, type MessageKey } from '@/lib/i18n';
 import type { ExtractFailure } from '@/lib/ocr/errors';
 import type { OCRExtractor } from '@/lib/ocr/extractor';
 import { normalizeExpiry } from '@/lib/ocr/parser';
-import type { GrinderSpec, WheelSpec } from '@/lib/rules/types';
+import type { WheelExaminer } from '@/lib/vision/wheelExam';
+import type {
+  GrinderSpec,
+  WheelExamResult,
+  WheelSpec,
+} from '@/lib/rules/types';
 
 type Params = Record<string, string | number>;
 
@@ -205,6 +210,44 @@ export class FixtureExtractor implements OCRExtractor {
 }
 
 /**
+ * 다각도 외관 확인 대신 넣는 결과.
+ *
+ * 실제 모델을 부르지 않는다. 기본값은 "찾지 못함"이고, 그것이 통과 근거가
+ * 되지 않는다는 것은 화면과 Gate가 지킨다 — 여기서는 흐름만 이어 준다.
+ */
+export class FixtureExaminer implements WheelExaminer {
+  private readonly results: Step<WheelExamResult>[] = [];
+
+  result(...steps: Step<WheelExamResult>[]): this {
+    this.results.push(...steps);
+    return this;
+  }
+
+  examine(): Promise<WheelExamResult> {
+    // 정해 둔 결과가 떨어지면 기본값(찾지 못함)을 계속 돌려준다. 시나리오마다
+    // 다각도 확인 결과를 일일이 적지 않아도 되게 한다.
+    if (this.results.length === 0) return Promise.resolve(examNotObserved());
+    return take(this.results, 'wheel exam');
+  }
+}
+
+/** 네 장을 모두 살펴봤지만 찾지 못한 결과. **손상 없음이라는 뜻이 아니다.** */
+export function examNotObserved(): WheelExamResult {
+  return {
+    status: 'not_observed',
+    findings: [],
+    photoQuality: (['front', 'back', 'edge', 'bore'] as const).map((view) => ({
+      view,
+      issues: [],
+      readable: true,
+    })),
+    model: 'claude-sonnet-5',
+    promptVersion: 'test',
+    analyzedAt: '2026-09-16T03:00:00.000Z',
+  };
+}
+
+/**
  * 분석 실패. 새로고침(모듈 재적재) 뒤에도 화면의 instanceof와 맞도록
  * 부르는 순간에 오류 클래스를 불러와 만든다.
  */
@@ -299,10 +342,15 @@ const PAGES: Record<string, () => Promise<{ default: ComponentType }>> = {
  */
 export async function mountApp(
   extractor: OCRExtractor | null = null,
+  examiner: WheelExaminer | null = new FixtureExaminer(),
 ): Promise<RenderResult> {
   vi.resetModules();
   const { setExtractorForTesting } = await import('@/lib/ocr/extractor');
   setExtractorForTesting(extractor);
+  // 다각도 외관 확인도 같은 방식으로 경계에서 바꿔 끼운다. 넣지 않으면
+  // 화면이 실제 서버를 부르려 한다.
+  const { setWheelExaminerForTesting } = await import('@/lib/vision/wheelExam');
+  setWheelExaminerForTesting(examiner);
 
   const pages: Record<string, ComponentType> = {};
   for (const [path, load] of Object.entries(PAGES)) {
@@ -329,9 +377,10 @@ export async function mountApp(
 export async function reloadApp(
   view: RenderResult,
   extractor: OCRExtractor | null = null,
+  examiner: WheelExaminer | null = new FixtureExaminer(),
 ): Promise<RenderResult> {
   view.unmount();
-  return mountApp(extractor);
+  return mountApp(extractor, examiner);
 }
 
 /** 주소창에 주소를 직접 넣은 것처럼 옮긴다. 화면의 Gate를 건너뛰려는 시도다. */
@@ -400,6 +449,32 @@ export function inspector(locale: Locale) {
       }
     },
 
+    /**
+     * 다각도 외관 확인: 뒷면·가장자리·중심구멍 사진을 넣고 확인을 누른다.
+     *
+     * 화면의 파일 입력을 그대로 쓴다 — 자리마다 촬영·갤러리 두 개가 있어
+     * 자리당 앞의 것(촬영)에 넣는다.
+     */
+    async completeWheelExam() {
+      await screen.findByText(t('exam.title'));
+      const inputs = [
+        ...document.querySelectorAll<HTMLInputElement>('input[type=file]'),
+      ];
+      for (const [index, view] of ['back', 'edge', 'bore'].entries()) {
+        const input = inputs[index * 2];
+        if (!input) throw new Error(`exam file input for ${view} is missing`);
+        await user.upload(
+          input,
+          new File([view], `${view}.jpg`, { type: 'image/jpeg' }),
+        );
+      }
+      await user.click(button('exam.analyze'));
+      // 결과가 들어와야 진행 버튼이 열린다.
+      await screen.findByText(
+        new RegExp(escapeRegExp(t('exam.status.notObserved'))),
+      );
+    },
+
     /** 숫돌 상태 다섯 항목에 답한다. issueAt 번째 항목은 문제 있음으로 답한다. */
     async answerWheelCondition(issueAt?: number) {
       await screen.findByText(t('scan.confirmTitle'));
@@ -443,12 +518,18 @@ export async function openWheelConfirm(
   return view;
 }
 
-/** 숫돌 상태에 모두 답하고 규격 대조 결과 화면까지 간다. */
+/**
+ * 다각도 외관 확인과 숫돌 상태에 모두 답하고 규격 대조 결과 화면까지 간다.
+ *
+ * 일반 결합숫돌은 다각도 확인을 마쳐야 넘어갈 수 있다. 다른 종류는 이 단계가
+ * 아예 뜨지 않으므로(규격 대조가 판정불가로 끝난다) 건너뛴다.
+ */
 export async function openResult(
   f: Inspector,
   extractor: FixtureExtractor,
 ): Promise<RenderResult> {
   const view = await openWheelConfirm(f, extractor);
+  if (screen.queryByText(f.t('exam.title'))) await f.completeWheelExam();
   await f.answerWheelCondition();
   await f.user.click(f.button('scan.wheel.proceed'));
   await f.atPath('/result');

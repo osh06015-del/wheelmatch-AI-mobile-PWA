@@ -16,12 +16,24 @@ import { ManualConfirmToggle } from '@/components/ManualConfirmToggle';
 import { RequirementBanner } from '@/components/RequirementBanner';
 import { ScanHeader } from '@/components/ScanHeader';
 import { WheelConditionGate } from '@/components/WheelConditionGate';
+import {
+  WheelExamPanel,
+  type ExtraExamView,
+} from '@/components/WheelExamPanel';
 import { WheelTypeConfirm } from '@/components/WheelTypeConfirm';
 import { WHEEL_FIELD_GUIDE } from '@/lib/guide/fieldGuide';
-import { useLocale } from '@/lib/i18n';
+import { useLocale, type MessageKey } from '@/lib/i18n';
 import { analysisErrorText } from '@/lib/i18n/errors';
 import { optimizeForUpload } from '@/lib/image/optimize';
 import { measureCapture } from '@/lib/image/quality';
+import { getWheelExaminer } from '@/lib/vision/wheelExam';
+import {
+  examVisibleDamage,
+  notRunReasonFrom,
+  wheelExamBlock,
+  wheelExamRequired,
+  type WheelExamBlock,
+} from '@/lib/vision/wheelExamSafety';
 import {
   confirmedWheelSpec,
   wheelTypeDiffersFromSuggestion,
@@ -38,12 +50,23 @@ import type {
   CaptureQualityMetrics,
   OcrTelemetry,
   WheelCondition,
+  WheelExamNotRunReason,
+  WheelExamResult,
   WheelPurpose,
   WheelSpec,
   WheelType,
 } from '@/lib/rules/types';
 
 type Phase = 'capture' | 'analyzing' | 'confirm' | 'error';
+
+/** 다각도 확인이 진행을 막는 이유별 안내 문구. */
+const EXAM_BLOCK_MESSAGE: Readonly<Record<WheelExamBlock, MessageKey>> = {
+  photosMissing: 'exam.block.photosMissing',
+  notAnalyzed: 'exam.block.notAnalyzed',
+  retakeRequired: 'exam.block.retakeRequired',
+  needsAcknowledge: 'exam.block.needsAcknowledge',
+  needsManualContinue: 'exam.block.needsManualContinue',
+};
 
 interface FormState {
   maxRPM: string;
@@ -66,6 +89,7 @@ export default function WheelScanPage() {
     hydrating,
     setWheel,
     setWheelCondition,
+    setWheelExam,
   } = useInspection();
 
   const [phase, setPhase] = useState<Phase>('capture');
@@ -89,6 +113,23 @@ export default function WheelScanPage() {
   // 문장이 아니라 오류 자체를 둔다. 문장은 그릴 때 작업자가 고른 언어로 만든다.
   const [error, setError] = useState<unknown>(null);
 
+  // ── 다각도 외관 확인 ──
+  // 사진은 이 화면이 들고 있다가 proceed()에서 한 번에 저장소로 넘긴다
+  // (라벨 사진·OCR 결과와 같은 방식).
+  const [examPhotos, setExamPhotos] = useState<
+    Record<ExtraExamView, Blob | null>
+  >({ back: null, edge: null, bore: null });
+  const [exam, setExam] = useState<WheelExamResult | null>(null);
+  const [examAnalyzing, setExamAnalyzing] = useState(false);
+  const [examError, setExamError] = useState<unknown>(null);
+  const [examAcknowledged, setExamAcknowledged] = useState(false);
+  // 실패했을 때 무엇 때문이었는지. 실패한 그 순간에 정해둔다 — 나중에 다시
+  // 판단하면 그 사이에 기기가 온라인으로 돌아와 원인이 바뀐다.
+  const [examNotRunReason, setExamNotRunReason] =
+    useState<WheelExamNotRunReason | null>(null);
+  // AI가 확인하지 못한 채 작업자 직접점검으로 진행하겠다는 확인.
+  const [examManualContinue, setExamManualContinue] = useState(false);
+
   // 그라인더를 찍지 않았거나 장비 상태를 직접 확인하지 않은 경우 1단계로 되돌린다.
   // 화면 이동으로 Gate를 건너뛸 수 있으면 Gate가 아니다.
   const grinderReady =
@@ -101,6 +142,16 @@ export default function WheelScanPage() {
   // 앱은 모르므로, 작업자가 실물을 다시 보고 직접 확인을 체크해야 넘어간다.
   const typeNeedsConfirm =
     wheelTypeDiffersFromSuggestion(ocr, form.wheelType) && !userConfirmed;
+
+  /** 다각도 확인을 처음 상태로 되돌린다. 새 숫돌이면 이전 결과를 이어 쓰지 않는다. */
+  const resetExam = () => {
+    setExamPhotos({ back: null, edge: null, bore: null });
+    setExam(null);
+    setExamError(null);
+    setExamAcknowledged(false);
+    setExamNotRunReason(null);
+    setExamManualContinue(false);
+  };
 
   async function analyze(source: Blob) {
     setPhase('analyzing');
@@ -131,10 +182,70 @@ export default function WheelScanPage() {
       setUserConfirmed(false);
       // 새 사진은 새 숫돌일 수 있다. 이전 숫돌의 직접 확인을 이어 쓰지 않는다.
       setCondition({ ...EMPTY_WHEEL_CONDITION });
+      // 다각도 확인도 그 숫돌을 보고 한 것이다. 라벨을 다시 찍었으면 전부 버린다.
+      resetExam();
       setPhase('confirm');
     } catch (caught) {
       setError(caught);
       setPhase('error');
+    }
+  }
+
+  /**
+   * 추가 사진 한 장을 받는다.
+   *
+   * 라벨 사진과 같은 최적화 함수를 거친다 — 거치지 않으면 휴대폰 원본이
+   * 그대로 올라가 요청 한도를 넘는다. 사진이 바뀌면 이전 분석 결과는 그
+   * 사진을 보고 낸 것이 아니므로 함께 버린다. 작업자가 그 결과를 보고 한
+   * 확인(이상 징후 확인·직접점검 진행)도 같이 버린다 — 다른 사진을 보고 한
+   * 확인을 새 사진에 이어 쓰면 확인하지 않은 것을 확인한 것으로 남긴다.
+   */
+  async function pickExamPhoto(view: ExtraExamView, file: File) {
+    setExamError(null);
+    try {
+      const blob = await optimizeForUpload(file);
+      setExamPhotos((current) => ({ ...current, [view]: blob }));
+      setExam(null);
+      setExamAcknowledged(false);
+      setExamNotRunReason(null);
+      setExamManualContinue(false);
+    } catch (caught) {
+      // 사진을 준비하지 못해도 AI 확인은 실행되지 않은 것이다. 원인을 가릴 수
+      // 없으므로 user_manual_continue로 남는다(notRunReasonFrom).
+      setExamError(caught);
+      setExamNotRunReason(notRunReasonFrom(caught, navigator.onLine));
+    }
+  }
+
+  /** 네 장을 한 번에 보내 살펴본다. 앞면은 라벨 사진을 그대로 쓴다. */
+  async function runExam() {
+    const { back, edge, bore } = examPhotos;
+    if (!photo || !back || !edge || !bore) return;
+    setExamAnalyzing(true);
+    setExamError(null);
+    setExamAcknowledged(false);
+    // 다시 시도하는 것이므로 앞선 실패에 대한 확인은 지운다. 새 시도가 또
+    // 실패하면 작업자는 다시 확인해야 한다.
+    setExamNotRunReason(null);
+    setExamManualContinue(false);
+    try {
+      const result = await getWheelExaminer().examine({
+        front: photo,
+        back,
+        edge,
+        bore,
+      });
+      setExam(result);
+    } catch (caught) {
+      // 실패를 결과로 꾸미지 않는다. 결과는 비워 두고 실패만 남긴다 —
+      // 화면은 AI가 확인하지 못했다고 알리고, 작업자 확인 Gate는 그대로 남는다.
+      setExam(null);
+      setExamError(caught);
+      // 실패를 not_observed·unassessable로 바꾸지 않는다. 실행되지 않았다는
+      // 사실과 그 이유만 남긴다.
+      setExamNotRunReason(notRunReasonFrom(caught, navigator.onLine));
+    } finally {
+      setExamAnalyzing(false);
     }
   }
 
@@ -158,6 +269,7 @@ export default function WheelScanPage() {
     if (!isWheelConditionComplete(condition)) return;
     // 버튼만 막으면 다른 경로로 불렸을 때 샌다. 여기서도 막는다.
     if (typeNeedsConfirm) return;
+    if (examBlock !== null) return;
     // 화면이 가진 값만 넘기고, OCR 원본에서 무엇을 이어갈지는 confirmedWheelSpec이
     // 정한다. 여기서 필드를 하나하나 옮겨 적으면 선택 필드(markings·rpmSource)가
     // 조용히 빠진다 — 실제로 그렇게 빠져서 표기 일치 검사가 돌지 않았다.
@@ -169,11 +281,40 @@ export default function WheelScanPage() {
       wheelType: form.wheelType,
       expiryText: form.expiry,
       userConfirmed,
+      // 다각도 확인은 의심을 더하는 방향으로만 반영된다(mergeVisibleDamage).
+      examVisibleDamage: examVisibleDamage(exam),
     });
+    // setWheel이 이전 숫돌의 다각도 확인을 지운다. 그 뒤에 이번 결과를 넣는다.
     setWheel(spec, photo, ocr, captureMetrics, ocrTelemetry);
+    setWheelExam({
+      exam,
+      // 확인하지 못한 채 진행하는 경우에만 채운다. 결과와 둘 중 하나다 —
+      // 둘 다 남기면 확인한 것인지 못 한 것인지 되짚을 수 없다.
+      notRun:
+        exam === null && examNotRunReason !== null
+          ? {
+              reason: examNotRunReason,
+              acknowledgedAt: new Date().toISOString(),
+            }
+          : null,
+      photos: examPhotos,
+      acknowledged: examAcknowledged,
+    });
     setWheelCondition(condition);
     router.push('/result');
   }
+
+  // 다각도 확인이 진행을 막는가. 막는 이유는 화면이 문구로 알린다.
+  // 이 앱이 규격을 대조하는 종류(일반 결합숫돌)에만 요구한다 — 나머지 종류는
+  // 규격 대조 자체가 판정불가로 끝나므로 사진을 더 받아도 결과가 달라지지 않는다.
+  const examBlock = wheelExamBlock({
+    required: wheelExamRequired(form.wheelType),
+    photosReady: Object.values(examPhotos).every((photo) => photo !== null),
+    exam,
+    acknowledged: examAcknowledged,
+    analysisFailed: examError !== null,
+    manualContinueAcknowledged: examManualContinue,
+  });
 
   const labelNeedsReview =
     form.maxRPM.trim() === '' ||
@@ -327,6 +468,26 @@ export default function WheelScanPage() {
         checked={userConfirmed}
         onChange={setUserConfirmed}
       />
+      {/* 다각도 외관 확인은 작업자 확인 Gate **앞에** 둔다. AI가 본 것을 먼저
+          보여주고, 그 다음에 사람이 실물을 보고 직접 누르는 순서다. */}
+      {wheelExamRequired(form.wheelType) && (
+        <WheelExamPanel
+          photos={examPhotos}
+          onPick={(view, file) => void pickExamPhoto(view, file)}
+          onAnalyze={() => void runExam()}
+          analyzing={examAnalyzing}
+          exam={exam}
+          failureText={
+            examError === null
+              ? null
+              : `${analysisErrorText(examError, 'exam.failed', t)} ${t('exam.failedFallback')}`
+          }
+          acknowledged={examAcknowledged}
+          onAcknowledge={setExamAcknowledged}
+          manualContinue={examManualContinue}
+          onManualContinue={setExamManualContinue}
+        />
+      )}
       <WheelConditionGate
         condition={condition}
         visibleDamage={ocr?.visibleDamage ?? 'unknown'}
@@ -342,10 +503,19 @@ export default function WheelScanPage() {
             {t('wheelTypeConfirm.needsConfirm')}
           </p>
         )}
+        {examBlock !== null && (
+          <p className="text-base leading-relaxed text-yellow-200">
+            {t(EXAM_BLOCK_MESSAGE[examBlock])}
+          </p>
+        )}
         <button
           type="button"
           onClick={proceed}
-          disabled={!isWheelConditionComplete(condition) || typeNeedsConfirm}
+          disabled={
+            !isWheelConditionComplete(condition) ||
+            typeNeedsConfirm ||
+            examBlock !== null
+          }
           className="min-h-14 rounded-lg bg-green-500 text-lg font-bold text-slate-950 active:bg-green-400 disabled:bg-slate-700 disabled:text-slate-400"
         >
           {t('scan.wheel.proceed')}

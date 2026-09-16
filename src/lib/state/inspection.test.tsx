@@ -13,6 +13,7 @@ import type {
   GrinderSpec,
   OcrTelemetry,
   WheelCondition,
+  WheelExamResult,
   WheelSpec,
 } from '@/lib/rules/types';
 
@@ -362,5 +363,175 @@ describe('useInspection', () => {
 
     expect(result.current.wheelImage).toBe(photo);
     expect(result.current.wheel?.diameter).toBe(100);
+  });
+
+  describe('다각도 외관 확인', () => {
+    const EXAM: WheelExamResult = {
+      status: 'not_observed',
+      findings: [],
+      photoQuality: [],
+      model: 'claude-sonnet-5',
+      promptVersion: 'test',
+      analyzedAt: '2026-09-16T03:00:00.000Z',
+    };
+
+    function photos() {
+      return {
+        back: new Blob(['back']),
+        edge: new Blob(['edge']),
+        bore: new Blob(['bore']),
+      };
+    }
+
+    it('결과와 사진을 함께 들고 있다 — 화면을 옮겨도 남는다', () => {
+      // 모듈 저장소라 라우팅(촬영 → 결과 → 이력)으로는 사라지지 않는다.
+      const { result } = renderHook(() => useInspection());
+      const taken = photos();
+
+      act(() =>
+        result.current.setWheelExam({
+          exam: EXAM,
+          photos: taken,
+          acknowledged: true,
+        }),
+      );
+
+      expect(result.current.wheelExam).toEqual(EXAM);
+      expect(result.current.wheelBackImage).toBe(taken.back);
+      expect(result.current.wheelEdgeImage).toBe(taken.edge);
+      expect(result.current.wheelBoreImage).toBe(taken.bore);
+      expect(result.current.wheelExamAcknowledged).toBe(true);
+    });
+
+    it('sessionStorage에는 남기지 않는다 — 사진 없이 결과만 살아남지 않게', () => {
+      // Blob은 sessionStorage에 담을 수 없다. 결과만 남기면 새로고침 뒤에
+      // "사진 없이 확인된 결과"가 되어 다시 찍지 않고도 통과한 것처럼 보인다.
+      const { result } = renderHook(() => useInspection());
+
+      act(() =>
+        result.current.setWheelExam({
+          exam: EXAM,
+          photos: photos(),
+          acknowledged: true,
+        }),
+      );
+
+      const stored = Object.keys(sessionStorage).filter((key) =>
+        key.toLowerCase().includes('exam'),
+      );
+      expect(stored).toEqual([]);
+    });
+
+    it('새 숫돌이 들어오면 이전 숫돌의 확인 결과와 사진을 버린다', () => {
+      const { result } = renderHook(() => useInspection());
+      act(() =>
+        result.current.setWheelExam({
+          exam: EXAM,
+          photos: photos(),
+          acknowledged: true,
+        }),
+      );
+
+      act(() => result.current.setWheel({ ...WHEEL, diameter: 115 }));
+
+      expect(result.current.wheelExam).toBeNull();
+      expect(result.current.wheelExamAcknowledged).toBe(false);
+      expect(result.current.wheelBackImage).toBeNull();
+      expect(result.current.wheelEdgeImage).toBeNull();
+      expect(result.current.wheelBoreImage).toBeNull();
+    });
+
+    it('새 그라인더가 들어와도 함께 버린다', () => {
+      const { result } = renderHook(() => useInspection());
+      act(() =>
+        result.current.setWheelExam({
+          exam: EXAM,
+          photos: photos(),
+          acknowledged: true,
+        }),
+      );
+
+      act(() => result.current.setGrinder({ ...GRINDER, noLoadRPM: 8500 }));
+
+      expect(result.current.wheelExam).toBeNull();
+      expect(result.current.wheelBackImage).toBeNull();
+    });
+
+    it('확인하지 못한 사실도 결과와 같은 자리에 남긴다', () => {
+      // 실패를 결과로 바꾸지 않는다. 둘은 서로 다른 칸에 들어간다.
+      const { result } = renderHook(() => useInspection());
+      const taken = photos();
+
+      act(() =>
+        result.current.setWheelExam({
+          exam: null,
+          notRun: {
+            reason: 'offline',
+            acknowledgedAt: '2026-09-16T03:00:00.000Z',
+          },
+          photos: taken,
+          acknowledged: false,
+        }),
+      );
+
+      expect(result.current.wheelExam).toBeNull();
+      expect(result.current.wheelExamNotRun).toEqual({
+        reason: 'offline',
+        acknowledgedAt: '2026-09-16T03:00:00.000Z',
+      });
+      // 사진은 그대로 남는다 — 확인하지 못했어도 무엇을 찍었는지는 증빙이다.
+      expect(result.current.wheelBackImage).toBe(taken.back);
+    });
+
+    it('확인이 돌아간 경우에는 미실행 사유를 남기지 않는다', () => {
+      const { result } = renderHook(() => useInspection());
+
+      act(() =>
+        result.current.setWheelExam({
+          exam: EXAM,
+          photos: photos(),
+          acknowledged: true,
+        }),
+      );
+
+      expect(result.current.wheelExamNotRun).toBeNull();
+    });
+
+    it('새 숫돌이 들어오면 미실행 사유도 버린다', () => {
+      const { result } = renderHook(() => useInspection());
+      act(() =>
+        result.current.setWheelExam({
+          exam: null,
+          notRun: {
+            reason: 'api_error',
+            acknowledgedAt: '2026-09-16T03:00:00.000Z',
+          },
+          photos: photos(),
+          acknowledged: false,
+        }),
+      );
+
+      act(() => result.current.setWheel({ ...WHEEL, diameter: 115 }));
+
+      expect(result.current.wheelExamNotRun).toBeNull();
+    });
+
+    it('reset은 확인 결과와 사진도 지운다', () => {
+      const { result } = renderHook(() => useInspection());
+      act(() =>
+        result.current.setWheelExam({
+          exam: EXAM,
+          photos: photos(),
+          acknowledged: true,
+        }),
+      );
+
+      act(() => result.current.reset());
+
+      expect(result.current.wheelExam).toBeNull();
+      expect(result.current.wheelExamNotRun).toBeNull();
+      expect(result.current.wheelExamAcknowledged).toBe(false);
+      expect(result.current.wheelBoreImage).toBeNull();
+    });
   });
 });

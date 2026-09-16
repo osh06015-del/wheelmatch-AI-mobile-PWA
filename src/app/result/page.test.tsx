@@ -754,4 +754,99 @@ describe('결과 화면 — 저장 함수 내부 재검사와 저장공간 오�
       screen.queryByText(/기기 저장 공간이 가득 차/),
     ).not.toBeInTheDocument();
   });
+  it('저장 공간이 모자라면 사진을 빼고 결과만 저장할지 작업자가 고른다', async () => {
+    // 앱이 알아서 사진을 버리지 않는다. 고르는 것은 작업자다.
+    const photo = new Blob(['x'], { type: 'image/jpeg' });
+    const wheel = { ...WHEEL, maxRPM: 8500 };
+    const result = ready(wheel);
+    act(() => {
+      result.current.setWheel(wheel, photo);
+      result.current.setWheelExam({
+        exam: null,
+        notRun: {
+          reason: 'api_error',
+          acknowledgedAt: '2026-09-16T03:00:00.000Z',
+        },
+        photos: { back: photo, edge: photo, bore: photo },
+        acknowledged: false,
+      });
+      result.current.setWheelCondition(CONFIRMED);
+    });
+
+    const quotaError = new Error('storage full');
+    quotaError.name = 'QuotaExceededError';
+    vi.mocked(saveInspection).mockRejectedValueOnce(quotaError);
+
+    render(<ResultPage />);
+    checkAll();
+    fireEvent.click(screen.getByRole('button', { name: /점검 완료 및 저장/ }));
+
+    await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(saveInspection).mock.calls[0][0].wheelImage).toBe(photo);
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: '사진을 빼고 결과만 저장' }),
+    );
+
+    await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(2));
+    const second = vi.mocked(saveInspection).mock.calls[1][0];
+    expect(second.wheelImage).toBeUndefined();
+    expect(second.grinderImage).toBeUndefined();
+    expect(second.wheelBackImage).toBeUndefined();
+    expect(second.wheelEdgeImage).toBeUndefined();
+    expect(second.wheelBoreImage).toBeUndefined();
+    // 사진만 빠진다. 결과와 미실행 사실은 그대로 남는다.
+    expect(second.result.verdict).toBe('INCOMPATIBLE');
+    expect(second.wheelExamNotRun?.reason).toBe('api_error');
+  });
+
+  it('저장공간 부족이 아니면 사진을 빼는 선택지를 내놓지 않는다', async () => {
+    ready({ ...WHEEL, maxRPM: 8500 });
+    vi.mocked(saveInspection).mockRejectedValueOnce(new Error('network down'));
+
+    render(<ResultPage />);
+    checkAll();
+    fireEvent.click(screen.getByRole('button', { name: /점검 완료 및 저장/ }));
+
+    await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
+    expect(
+      screen.queryByRole('button', { name: '사진을 빼고 결과만 저장' }),
+    ).not.toBeInTheDocument();
+  });
+  it('AI가 본 것을 결과 화면에도 남기되 확인 항목으로 세지 않는다', () => {
+    const wheel = { ...WHEEL, maxRPM: 8500 };
+    const result = ready(wheel);
+    act(() => {
+      result.current.setWheelExam({
+        exam: {
+          status: 'not_observed',
+          findings: [],
+          photoQuality: (['front', 'back', 'edge', 'bore'] as const).map(
+            (view) => ({ view, issues: [], readable: true }),
+          ),
+          model: 'claude-sonnet-5',
+          promptVersion: '2026.09.16-r1',
+          analyzedAt: '2026-09-16T03:00:00.000Z',
+        },
+        photos: { back: null, edge: null, bore: null },
+        acknowledged: false,
+      });
+      result.current.setWheelCondition(CONFIRMED);
+    });
+
+    render(<ResultPage />);
+
+    expect(
+      screen.getByText('뚜렷한 이상 미탐지 — 직접 확인 필요'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'AI가 사진에서 본 것입니다. 작업자가 직접 확인하는 항목에는 들어가지 않습니다.',
+      ),
+    ).toBeInTheDocument();
+    // AI 결과가 체크리스트를 대신 채우지 않는다 — 여전히 전부 직접 눌러야 한다.
+    for (const box of screen.getAllByRole('checkbox')) {
+      expect(box).not.toBeChecked();
+    }
+  });
 });

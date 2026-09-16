@@ -18,6 +18,8 @@ import type {
   GrinderSpec,
   OcrTelemetry,
   WheelCondition,
+  WheelExamNotRun,
+  WheelExamResult,
   WheelSpec,
   WorkPurpose,
 } from '@/lib/rules/types';
@@ -60,6 +62,29 @@ interface InspectionState {
   grinderImage: Blob | null;
   wheelImage: Blob | null;
   /**
+   * 다각도 외관 확인 사진. 앞면은 wheelImage(라벨 사진)를 그대로 쓴다.
+   *
+   * Blob은 sessionStorage에 담을 수 없어 **메모리에만** 둔다. 화면 이동
+   * (촬영 → 결과 → 이력)에서는 이 모듈이 살아 있어 사진이 유지되고,
+   * 새로고침하면 사라진다 — 기존 wheelImage와 같은 성질이다. 사라졌을 때
+   * 조용히 넘어가지 않도록, 분석 결과(wheelExam)는 사진과 함께 비운다.
+   */
+  wheelBackImage: Blob | null;
+  wheelEdgeImage: Blob | null;
+  wheelBoreImage: Blob | null;
+  /**
+   * 다각도 외관 확인의 AI 원본 결과. 판정에 직접 쓰지 않는다 —
+   * 의심을 더하는 경로(mergeVisibleDamage)와 기록에만 쓴다.
+   */
+  wheelExam: WheelExamResult | null;
+  /**
+   * 다각도 확인을 하지 못한 채 진행한 사유. wheelExam과 둘 중 하나만 채워진다.
+   * 작업자가 직접점검 진행을 확인해야만 만들어진다.
+   */
+  wheelExamNotRun: WheelExamNotRun | null;
+  /** 이상 징후 경고를 작업자가 확인했는가 */
+  wheelExamAcknowledged: boolean;
+  /**
    * 촬영·OCR의 검증용 원시 측정값. 판정에 쓰지 않는다 — CaptureQualityMetrics·
    * OcrTelemetry 참고. 값 수집이 실패해도 점검 흐름과 무관하므로 null일 수 있다.
    */
@@ -84,6 +109,12 @@ const SERVER_SNAPSHOT: InspectionState = {
   trialRun: null,
   grinderImage: null,
   wheelImage: null,
+  wheelBackImage: null,
+  wheelEdgeImage: null,
+  wheelBoreImage: null,
+  wheelExam: null,
+  wheelExamNotRun: null,
+  wheelExamAcknowledged: false,
   grinderCaptureMetrics: null,
   wheelCaptureMetrics: null,
   grinderOcrTelemetry: null,
@@ -122,6 +153,15 @@ function initialClientState(): InspectionState {
     trialRun: readStored<TrialRunProgress>(TRIAL_RUN_KEY),
     grinderImage: null,
     wheelImage: null,
+    // 사진은 Blob이라 sessionStorage에 담을 수 없고 새로고침을 넘지 못한다.
+    // 분석 결과와 작업자 확인만 남기면 "사진 없이 확인된 결과"가 되므로 함께
+    // 버린다 — 새로고침 뒤에는 화면이 다시 찍게 만든다.
+    wheelBackImage: null,
+    wheelEdgeImage: null,
+    wheelBoreImage: null,
+    wheelExam: null,
+    wheelExamNotRun: null,
+    wheelExamAcknowledged: false,
     grinderCaptureMetrics: readStored<CaptureQualityMetrics>(
       GRINDER_CAPTURE_METRICS_KEY,
     ),
@@ -178,6 +218,19 @@ export interface InspectionStore extends InspectionState {
   ) => void;
   setGrinderCondition: (condition: GrinderCondition) => void;
   setWheelCondition: (condition: WheelCondition) => void;
+  /**
+   * 다각도 외관 확인 결과와 사진.
+   *
+   * setWheel의 인자로 더 밀어 넣지 않고 따로 둔다 — 다각도 확인은 숫돌 규격과
+   * 성격이 다르고, 인자를 계속 늘리면 어느 자리가 무엇인지 알 수 없게 된다.
+   */
+  setWheelExam: (input: {
+    exam: WheelExamResult | null;
+    /** 확인하지 못한 채 진행한 경우의 사유. exam과 둘 중 하나만 채운다 */
+    notRun?: WheelExamNotRun | null;
+    photos: { back: Blob | null; edge: Blob | null; bore: Blob | null };
+    acknowledged: boolean;
+  }) => void;
   setTrialRun: (progress: TrialRunProgress | null) => void;
   reset: () => void;
 }
@@ -239,6 +292,12 @@ export function useInspection(): InspectionStore {
         trialRun: null,
         wheelCaptureMetrics: null,
         wheelOcrTelemetry: null,
+        wheelBackImage: null,
+        wheelEdgeImage: null,
+        wheelBoreImage: null,
+        wheelExam: null,
+        wheelExamNotRun: null,
+        wheelExamAcknowledged: false,
         ...(image === undefined ? {} : { grinderImage: image }),
         ...(ocr === undefined ? {} : { grinderOcr: ocr }),
         ...(captureMetrics === undefined
@@ -278,6 +337,14 @@ export function useInspection(): InspectionStore {
         wheel: spec,
         wheelCondition: null,
         trialRun: null,
+        // 다각도 확인은 그 숫돌을 보고 한 것이다. 숫돌이 바뀌면 이어 쓰지 않는다.
+        // 새 숫돌의 확인 결과는 곧바로 이어지는 setWheelExam이 넣는다.
+        wheelBackImage: null,
+        wheelEdgeImage: null,
+        wheelBoreImage: null,
+        wheelExam: null,
+        wheelExamNotRun: null,
+        wheelExamAcknowledged: false,
         ...(image === undefined ? {} : { wheelImage: image }),
         ...(ocr === undefined ? {} : { wheelOcr: ocr }),
         ...(captureMetrics === undefined
@@ -300,6 +367,32 @@ export function useInspection(): InspectionStore {
     writeStored(WHEEL_CONDITION_KEY, condition);
     setState({ wheelCondition: condition });
   }, []);
+
+  /**
+   * 다각도 외관 확인 결과와 사진.
+   *
+   * sessionStorage에 남기지 않는다. 사진(Blob)을 담을 수 없는데 결과만 남기면
+   * 새로고침 뒤에 "사진 없이 확인된 결과"가 되어, 다시 찍지 않고도 통과한
+   * 것처럼 보인다. 결과는 사진과 수명을 같이 한다.
+   */
+  const setWheelExam = useCallback(
+    (input: {
+      exam: WheelExamResult | null;
+      notRun?: WheelExamNotRun | null;
+      photos: { back: Blob | null; edge: Blob | null; bore: Blob | null };
+      acknowledged: boolean;
+    }) => {
+      setState({
+        wheelExam: input.exam,
+        wheelExamNotRun: input.notRun ?? null,
+        wheelExamAcknowledged: input.acknowledged,
+        wheelBackImage: input.photos.back,
+        wheelEdgeImage: input.photos.edge,
+        wheelBoreImage: input.photos.bore,
+      });
+    },
+    [],
+  );
 
   /** 시험운전 시작·종료. null을 넣으면 진행 중인 것을 버린다. */
   const setTrialRun = useCallback((progress: TrialRunProgress | null) => {
@@ -344,6 +437,12 @@ export function useInspection(): InspectionStore {
       trialRun: null,
       grinderImage: null,
       wheelImage: null,
+      wheelBackImage: null,
+      wheelEdgeImage: null,
+      wheelBoreImage: null,
+      wheelExam: null,
+      wheelExamNotRun: null,
+      wheelExamAcknowledged: false,
       grinderCaptureMetrics: null,
       wheelCaptureMetrics: null,
       grinderOcrTelemetry: null,
@@ -360,6 +459,7 @@ export function useInspection(): InspectionStore {
       setWheel,
       setGrinderCondition,
       setWheelCondition,
+      setWheelExam,
       setTrialRun,
       reset,
     }),
@@ -370,6 +470,7 @@ export function useInspection(): InspectionStore {
       setWheel,
       setGrinderCondition,
       setWheelCondition,
+      setWheelExam,
       setTrialRun,
       reset,
     ],

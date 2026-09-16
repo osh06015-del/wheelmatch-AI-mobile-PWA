@@ -43,6 +43,9 @@ export const en: Messages = {
   'result.saveError': 'Saving failed. Check your storage space and try again.',
   'result.saveErrorQuota':
     'This record was not saved — the device storage is full. Delete records you no longer need in history, or free up device storage, then try again.',
+  'result.saveWithoutPhotosHint':
+    'You can save the result without the photos. The app does not delete photos you already saved.',
+  'result.saveWithoutPhotos': 'Save the result without photos',
   'result.saveStopped': 'Save the stop result',
 
   'group.confirmed': 'Confirmed',
@@ -250,6 +253,105 @@ export const en: Messages = {
   'wheelCondition.stopTitle': 'DO NOT USE THIS WHEEL',
   'wheelCondition.stopBody':
     'A problem was found with the wheel. Do not mount it. Replace it with another serviceable wheel and inspect again.',
+
+  'exam.title': 'Multi-angle appearance check',
+  'exam.boundary':
+    'The AI only looks for signs of damage visible in the photos. It does not confirm that there is no damage, nor that the wheel is safe to use.',
+  'exam.microCrack':
+    'Hairline and internal cracks cannot be checked from photos. Do a ring test (tap lightly and listen) before mounting.',
+  'exam.frontReused': 'The front view reuses the label photo you just took.',
+  'exam.view.front': 'Front (label)',
+  'exam.view.back': 'Full back face',
+  'exam.view.backHint': 'Fit the whole back face of the wheel into one photo.',
+  'exam.view.edge': 'Edge',
+  'exam.view.edgeHint':
+    'Photograph the rim from the side. This is where chips and breaks show.',
+  'exam.view.bore': 'Bore and mounting area',
+  'exam.view.boreHint':
+    'Take a close photo of the centre hole and its surround — the part that sits on the spindle.',
+  'exam.capture': 'Camera',
+  'exam.gallery': 'Gallery',
+  'exam.retakeView': 'Retake {view}',
+  'exam.photoReady': 'Photo added',
+  'exam.photoMissing': 'Not yet added',
+  'exam.analyze': 'Check with all 4 photos',
+  'exam.analyzing': 'Checking the photos...',
+  'exam.missing':
+    'Add the back, edge and bore photos before the check can run.',
+  'exam.status.suspected':
+    'Signs of damage are visible in the photos. Inspect the actual wheel.',
+  'exam.status.notObserved':
+    'No clear damage was found. Inspect the front, back, edge and bore of the actual wheel yourself.',
+  'exam.status.unassessable':
+    'The photos do not allow a judgement. Retake them as shown below, or inspect the wheel directly.',
+  'exam.findingConfidence': 'AI confidence: {confidence}',
+  'exam.finding.crack': 'Possible crack',
+  'exam.finding.chip': 'Possible chip or missing piece',
+  'exam.finding.edgeBreak': 'Possible edge break',
+  'exam.finding.boreDamage': 'Possible bore or mounting-area damage',
+  'exam.finding.deformation': 'Possible warping or deformation',
+  'exam.finding.contamination': 'Possible contamination or debris',
+  'exam.finding.other': 'Other possible abnormality',
+  'exam.quality.blur': 'blurred',
+  'exam.quality.glare': 'glare',
+  'exam.quality.darkness': 'too dark',
+  'exam.quality.incompleteView': 'required area not in frame',
+  'exam.retakeRequired':
+    'Some photos could not be read. Retake the photos listed below.',
+  'exam.acknowledge': 'I checked the marked area on the actual wheel.',
+  'exam.blocked': 'You can continue once you confirm the reported signs.',
+  'exam.failed': 'The AI could not check the photos.',
+  'exam.failedFallback':
+    'Continuing without the AI check. Inspect the front, back, edge and bore of the wheel yourself.',
+  'exam.block.photosMissing':
+    'Add the back, edge and bore photos and run the check before continuing.',
+  'exam.block.notAnalyzed':
+    'Run the check on the photos you added before continuing.',
+  'exam.block.retakeRequired':
+    'Retake the photos that could not be read before continuing.',
+  'exam.block.needsAcknowledge':
+    'Mark that you checked the reported signs on the actual wheel before continuing.',
+
+  'exam.block.needsManualContinue':
+    'Mark that you are continuing with your own inspection, without the AI check, before moving on.',
+  'exam.progress': 'Extra photos ready: {done} / {total}',
+  'exam.captureView': 'Take the {view} photo',
+  'exam.galleryView': 'Pick the {view} photo from the gallery',
+  'exam.replaceNote':
+    'Replacing a photo clears the check made from it and your confirmation. You have to run the check again.',
+  'exam.manualContinue':
+    'Continue with my own inspection, without the AI check.',
+  'exam.manualContinueHint':
+    'Look at the front, back, edge and centre hole of the wheel yourself. The AI confirmed nothing.',
+  'exam.notRun.networkError':
+    'The AI could not look at the photos — the server could not be reached.',
+  'exam.notRun.apiError':
+    'The AI could not look at the photos — the server returned an error.',
+  'exam.notRun.offline':
+    'The AI could not look at the photos — the device was offline.',
+  'exam.notRun.userManualContinue':
+    'The AI could not look at the photos. The cause was not recorded.',
+  'exam.evidence.title': 'Multi-angle appearance check record',
+  'exam.evidence.suspected':
+    'Possible sign of damage — check the actual wheel yourself',
+  'exam.evidence.notObserved':
+    'No clear sign found — you still have to check it yourself',
+  'exam.evidence.unassessable':
+    'Photos do not allow a judgement — check it yourself',
+  'exam.evidence.notRun':
+    'AI check not run — continued with a manual inspection by the worker',
+  'exam.evidence.notRunAt': 'Manual inspection confirmed at {time}',
+  'exam.evidence.notCounted':
+    'This is what the AI saw in the photos. It does not count as one of the items the worker confirms in person.',
+  'exam.evidence.noFindings': 'No location was recorded for the sign.',
+  'exam.evidence.unreadablePhotos': 'Photos that could not be read',
+  'exam.evidence.acknowledged':
+    'The worker confirmed the reported spots on the actual wheel.',
+  'exam.evidence.photosMissing':
+    'No multi-angle photos are stored with this record.',
+  'exam.evidence.meta': 'Checked {time} · model {model} · prompt {version}',
+  'photo.zoomOpen': 'Enlarge {label}',
+  'photo.zoomClose': 'Close the enlarged photo',
 
   'wheelType.bonded_abrasive': 'Standard bonded abrasive wheel',
   'wheelType.flap_disc': 'Flap disc',
@@ -562,6 +664,10 @@ export const en: Messages = {
   'history.clearConfirm':
     'All {count} saved inspection records will be deleted. This cannot be undone.',
   'history.clearConfirmButton': 'Delete all',
+  'history.deleteRecord': 'Delete this record',
+  'history.deleteConfirm':
+    'This deletes one record. The photos saved with it go too, and it cannot be restored.',
+  'history.deleteConfirmButton': 'Yes, delete it',
   'history.cancel': 'Cancel',
   'history.clearAll': 'Delete all records',
   'history.newInspection': 'Start a new inspection',

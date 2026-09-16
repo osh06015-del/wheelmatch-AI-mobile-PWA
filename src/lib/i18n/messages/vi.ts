@@ -47,6 +47,9 @@ export const vi: Messages = {
     'Lưu không thành công. Hãy kiểm tra dung lượng lưu trữ rồi thử lại.',
   'result.saveErrorQuota':
     'Bản ghi này chưa được lưu — bộ nhớ thiết bị đã đầy. Hãy xóa các bản ghi không cần thiết trong lịch sử hoặc giải phóng bộ nhớ thiết bị rồi thử lại.',
+  'result.saveWithoutPhotosHint':
+    'Bạn có thể lưu kết quả mà không kèm ảnh. Ứng dụng không tự xóa các ảnh đã lưu trước đó.',
+  'result.saveWithoutPhotos': 'Lưu kết quả, không kèm ảnh',
   'result.saveStopped': 'Lưu kết quả dừng máy',
 
   'group.confirmed': 'Đã đối chiếu',
@@ -250,6 +253,101 @@ export const vi: Messages = {
   'wheelCondition.stopTitle': 'KHÔNG ĐƯỢC SỬ DỤNG ĐÁ MÀI NÀY',
   'wheelCondition.stopBody':
     'Đã phát hiện vấn đề với đá mài. Không được lắp. Hãy thay bằng đá mài khác còn dùng được và kiểm tra lại.',
+
+  'exam.title': 'Kiểm tra bề ngoài nhiều góc',
+  'exam.boundary':
+    'AI chỉ tìm những dấu hiệu bất thường nhìn thấy được trong ảnh. AI không xác nhận là không có hư hỏng, cũng không xác nhận là an toàn để sử dụng.',
+  'exam.microCrack':
+    'Vết nứt nhỏ và nứt bên trong không thể kiểm tra bằng ảnh. Hãy gõ nhẹ và nghe âm thanh trước khi lắp.',
+  'exam.frontReused': 'Mặt trước dùng lại ảnh nhãn bạn vừa chụp.',
+  'exam.view.front': 'Mặt trước (nhãn)',
+  'exam.view.back': 'Toàn bộ mặt sau',
+  'exam.view.backHint': 'Chụp sao cho toàn bộ mặt sau nằm gọn trong một ảnh.',
+  'exam.view.edge': 'Cạnh ngoài',
+  'exam.view.edgeHint':
+    'Chụp vành ngoài từ bên hông. Đây là nơi dễ thấy mẻ và vỡ.',
+  'exam.view.bore': 'Lỗ tâm và phần lắp',
+  'exam.view.boreHint':
+    'Chụp cận cảnh lỗ tâm và vùng quanh nó — phần tiếp xúc với trục.',
+  'exam.capture': 'Chụp ảnh',
+  'exam.gallery': 'Thư viện',
+  'exam.retakeView': 'Chụp lại {view}',
+  'exam.photoReady': 'Đã có ảnh',
+  'exam.photoMissing': 'Chưa có',
+  'exam.analyze': 'Kiểm tra bằng 4 ảnh',
+  'exam.analyzing': 'Đang kiểm tra ảnh...',
+  'exam.missing':
+    'Cần đủ ảnh mặt sau, cạnh ngoài và lỗ tâm thì mới kiểm tra được.',
+  'exam.status.suspected':
+    'Ảnh cho thấy dấu hiệu bất thường. Hãy kiểm tra trực tiếp đá mài thật.',
+  'exam.status.notObserved':
+    'Không tìm thấy bất thường rõ ràng. Hãy tự kiểm tra mặt trước, mặt sau, cạnh ngoài và lỗ tâm của đá mài thật.',
+  'exam.status.unassessable':
+    'Không thể đánh giá bằng những ảnh này. Hãy chụp lại theo hướng dẫn bên dưới hoặc kiểm tra trực tiếp.',
+  'exam.findingConfidence': 'Mức độ chắc chắn của AI: {confidence}',
+  'exam.finding.crack': 'Nghi ngờ có vết nứt',
+  'exam.finding.chip': 'Nghi ngờ bị mẻ hoặc bong mảnh',
+  'exam.finding.edgeBreak': 'Nghi ngờ vỡ cạnh ngoài',
+  'exam.finding.boreDamage': 'Nghi ngờ hỏng lỗ tâm hoặc phần lắp',
+  'exam.finding.deformation': 'Nghi ngờ cong vênh, biến dạng',
+  'exam.finding.contamination': 'Nghi ngờ bám bẩn hoặc dị vật',
+  'exam.finding.other': 'Nghi ngờ bất thường khác',
+  'exam.quality.blur': 'bị mờ',
+  'exam.quality.glare': 'bị lóa',
+  'exam.quality.darkness': 'quá tối',
+  'exam.quality.incompleteView': 'chưa lấy đủ phần cần xem',
+  'exam.retakeRequired':
+    'Có ảnh không đọc được. Hãy chụp lại những ảnh liệt kê bên dưới.',
+  'exam.acknowledge': 'Tôi đã kiểm tra vị trí được chỉ ra trên đá mài thật.',
+  'exam.blocked': 'Xác nhận dấu hiệu được báo rồi mới đi tiếp được.',
+  'exam.failed': 'AI không kiểm tra được ảnh.',
+  'exam.failedFallback':
+    'Tiếp tục mà không có kiểm tra của AI. Hãy tự kiểm tra mặt trước, mặt sau, cạnh ngoài và lỗ tâm của đá mài.',
+  'exam.block.photosMissing':
+    'Hãy thêm ảnh mặt sau, cạnh ngoài, lỗ tâm và chạy kiểm tra rồi mới đi tiếp.',
+  'exam.block.notAnalyzed':
+    'Hãy chạy kiểm tra trên những ảnh đã thêm rồi mới đi tiếp.',
+  'exam.block.retakeRequired':
+    'Hãy chụp lại những ảnh không đọc được rồi mới đi tiếp.',
+  'exam.block.needsAcknowledge':
+    'Hãy đánh dấu là đã kiểm tra dấu hiệu được báo trên đá mài thật rồi mới đi tiếp.',
+
+  'exam.block.needsManualContinue':
+    'Hãy đánh dấu là bạn tiếp tục bằng cách tự kiểm tra, không có phần kiểm tra của AI, rồi mới đi tiếp.',
+  'exam.progress': 'Ảnh bổ sung đã có: {done} / {total}',
+  'exam.captureView': 'Chụp ảnh {view}',
+  'exam.galleryView': 'Chọn ảnh {view} từ thư viện',
+  'exam.replaceNote':
+    'Khi thay ảnh, kết quả kiểm tra từ ảnh đó và phần bạn đã đánh dấu sẽ bị xóa. Bạn phải kiểm tra lại.',
+  'exam.manualContinue':
+    'Tiếp tục bằng cách tự kiểm tra, không có phần kiểm tra của AI.',
+  'exam.manualContinueHint':
+    'Hãy tự nhìn mặt trước, mặt sau, mép và lỗ tâm của đá mài. AI không xác nhận điều gì cả.',
+  'exam.notRun.networkError':
+    'AI không xem được ảnh — không kết nối được tới máy chủ.',
+  'exam.notRun.apiError': 'AI không xem được ảnh — máy chủ trả về lỗi.',
+  'exam.notRun.offline': 'AI không xem được ảnh — thiết bị đang ngoại tuyến.',
+  'exam.notRun.userManualContinue':
+    'AI không xem được ảnh. Nguyên nhân không được ghi lại.',
+  'exam.evidence.title': 'Bản ghi kiểm tra bề ngoài nhiều góc',
+  'exam.evidence.suspected':
+    'Nghi ngờ có dấu hiệu bất thường — hãy tự kiểm tra đá mài thật',
+  'exam.evidence.notObserved':
+    'Không phát hiện dấu hiệu rõ ràng — vẫn phải tự kiểm tra',
+  'exam.evidence.unassessable': 'Ảnh không đủ để kết luận — hãy tự kiểm tra',
+  'exam.evidence.notRun':
+    'Chưa chạy kiểm tra bằng AI — đã tiếp tục bằng cách người thợ tự kiểm tra',
+  'exam.evidence.notRunAt': 'Thời điểm xác nhận tự kiểm tra: {time}',
+  'exam.evidence.notCounted':
+    'Đây là những gì AI nhìn thấy trong ảnh. Nó không được tính vào các mục mà người thợ tự xác nhận.',
+  'exam.evidence.noFindings': 'Không ghi lại vị trí của dấu hiệu.',
+  'exam.evidence.unreadablePhotos': 'Ảnh không đọc được',
+  'exam.evidence.acknowledged':
+    'Người thợ đã xác nhận các vị trí được báo trên đá mài thật.',
+  'exam.evidence.photosMissing': 'Bản ghi này không lưu ảnh nhiều góc.',
+  'exam.evidence.meta': 'Kiểm tra {time} · mô hình {model} · chỉ dẫn {version}',
+  'photo.zoomOpen': 'Xem to {label}',
+  'photo.zoomClose': 'Đóng ảnh phóng to',
 
   'wheelType.bonded_abrasive': 'Đá mài liên kết thông thường',
   'wheelType.flap_disc': 'Đĩa nhám xếp',
@@ -559,6 +657,10 @@ export const vi: Messages = {
   'history.clearConfirm':
     'Sẽ xóa toàn bộ {count} hồ sơ kiểm tra đã lưu. Không thể hoàn tác.',
   'history.clearConfirmButton': 'Xóa tất cả',
+  'history.deleteRecord': 'Xóa bản ghi này',
+  'history.deleteConfirm':
+    'Thao tác này xóa một bản ghi. Ảnh lưu kèm cũng bị xóa và không thể khôi phục.',
+  'history.deleteConfirmButton': 'Xóa bản ghi',
   'history.cancel': 'Hủy',
   'history.clearAll': 'Xóa toàn bộ hồ sơ',
   'history.newInspection': 'Bắt đầu kiểm tra mới',

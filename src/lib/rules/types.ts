@@ -121,6 +121,100 @@ export type WheelType =
  */
 export type VisibleDamage = 'suspected' | 'none_visible' | 'unknown';
 
+// ─────────────────────────────────────────────────────────────
+// 다각도 외관 이상 징후 확인 (WheelExam)
+//
+// 라벨 한 장으로는 뒷면·가장자리·중심구멍을 볼 수 없다. 앞면(라벨 사진)에
+// 뒷면·가장자리·중심구멍 사진을 더해 한 번에 살펴본 결과다.
+//
+// **이 결과는 손상이 없다고 말하지 않는다.** 보이는 이상 징후를 찾아 알릴
+// 뿐이고, 찾지 못한 경우는 "확인되지 않음"으로만 남는다. 그래서 상태에
+// safe·normal·undamaged 같은 승인 값이 없다. 통과 근거로 쓰지 않는다.
+// ─────────────────────────────────────────────────────────────
+
+/** 어느 사진에서 본 것인지. front는 기존 라벨 사진을 그대로 재사용한다. */
+export type WheelExamView = 'front' | 'back' | 'edge' | 'bore';
+
+/**
+ * 다각도 확인의 결론.
+ *
+ *   suspected     — 사진에서 이상 징후가 보인다
+ *   not_observed  — 사진에서 찾지 못했다. **손상 없음이라는 뜻이 아니다**
+ *   unassessable  — 사진으로는 판단할 수 없다(품질·누락)
+ */
+export type WheelExamStatus = 'suspected' | 'not_observed' | 'unassessable';
+
+/** 이상 징후의 종류. 부위가 아니라 무엇이 보이는지를 나눈다. */
+export type WheelExamFindingKind =
+  | 'crack' // 균열
+  | 'chip' // 깨짐·조각 떨어짐
+  | 'edge_break' // 가장자리 파손
+  | 'bore_damage' // 중심구멍·장착부 손상
+  | 'deformation' // 휨·변형
+  | 'contamination' // 이물·오염
+  | 'other';
+
+/** 사진이 판독을 방해하는 이유. 해당 사진을 다시 찍어야 한다. */
+export type WheelExamPhotoIssue =
+  'blur' | 'glare' | 'darkness' | 'incomplete_view';
+
+export interface WheelExamFinding {
+  kind: WheelExamFindingKind;
+  view: WheelExamView;
+  /** 왜 그렇게 보았는지. 작업자가 실물의 어디를 봐야 하는지 알려주는 문장 */
+  reason: string;
+  confidence: Confidence;
+}
+
+/**
+ * 사진 한 장의 판독 가능 여부.
+ *
+ * readable은 **사진**이 판독할 만한가를 말한다. 숫돌이 정상이라는 뜻이 아니다.
+ * issues가 비어 있어도 "품질 문제를 찾지 못했다"는 뜻일 뿐이다.
+ */
+export interface WheelExamPhotoQuality {
+  view: WheelExamView;
+  issues: WheelExamPhotoIssue[];
+  readable: boolean;
+}
+
+/**
+ * 다각도 확인이 **실행되지 않은** 이유.
+ *
+ * 실패를 not_observed나 unassessable로 바꾸지 않는다. 그 둘은 "사진을 보았다"는
+ * 뜻이라, 보지도 못한 경우에 쓰면 확인한 것처럼 보인다. 실행되지 않은 것은
+ * 실행되지 않은 채로 남긴다.
+ */
+export type WheelExamNotRunReason =
+  | 'network_error' // 서버에 닿지 못했다
+  | 'api_error' // 서버·분석 서비스가 오류를 돌려줬다
+  | 'offline' // 기기가 오프라인이었다
+  | 'user_manual_continue'; // 원인을 가릴 수 없어 작업자 확인으로만 남는다
+
+/**
+ * 다각도 확인을 하지 못한 채 진행한 기록.
+ *
+ * 작업자가 "AI 확인 없이 직접점검으로 진행"을 명시적으로 확인해야만 만들어진다.
+ * 확인 없이 조용히 넘어가는 경로는 없다.
+ */
+export interface WheelExamNotRun {
+  reason: WheelExamNotRunReason;
+  /** 작업자가 직접점검 진행을 확인한 시각 */
+  acknowledgedAt: string;
+}
+
+/** 다각도 확인 결과 원본. 작업자 확인과 따로 보관한다. */
+export interface WheelExamResult {
+  status: WheelExamStatus;
+  findings: WheelExamFinding[];
+  photoQuality: WheelExamPhotoQuality[];
+  /** 어느 모델이 보았는지. 되짚을 수 없는 기록은 근거가 되지 못한다 */
+  model: string | null;
+  /** 어느 지시문으로 물었는지 (src/lib/vision/wheelExamSchema.ts) */
+  promptVersion: string;
+  analyzedAt: string;
+}
+
 /**
  * 작업자가 시작할 때 고른 오늘의 작업.
  *
@@ -416,8 +510,25 @@ export interface InspectionRecord {
    */
   grinderOcrTelemetry?: OcrTelemetry;
   wheelOcrTelemetry?: OcrTelemetry;
+  /**
+   * 다각도 외관 확인의 AI 원본 결과. 이 기능 도입 전 기록에는 없다.
+   * 작업자의 최종 확인(wheelCondition)과 따로 남긴다 — 둘을 합치면 AI가
+   * 무엇을 보았고 사람이 무엇을 확인했는지 되짚을 수 없다.
+   */
+  wheelExam?: WheelExamResult;
+  /**
+   * 다각도 확인을 하지 못한 채 진행한 경우의 사유. wheelExam과 둘 중 하나만 있다.
+   * 둘 다 없으면 이 기능 도입 전 기록이거나 요구되지 않는 종류다.
+   */
+  wheelExamNotRun?: WheelExamNotRun;
+  /** 이상 징후 경고를 작업자가 확인했는가. 경고가 없었으면 없다 */
+  wheelExamAcknowledged?: boolean;
   grinderImage?: Blob;
   wheelImage?: Blob;
+  /** 다각도 확인 사진. 앞면은 wheelImage(라벨 사진)를 그대로 쓴다 */
+  wheelBackImage?: Blob;
+  wheelEdgeImage?: Blob;
+  wheelBoreImage?: Blob;
   /**
    * 작업 선택부터 저장까지 걸린 전체 흐름 시간(ms). 적합 조합이면 법정 시험운전
    * 시간이 들어 있다. 이 기능 도입 전 기록과 시계가 뒤로 간 경우에는 없다.

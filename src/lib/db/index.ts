@@ -47,7 +47,11 @@ export async function saveInspection(record: NewInspection): Promise<number> {
 /** 사진 Blob을 뺀 기록. 전체를 훑어야 하지만 사진은 필요 없는 곳(필터·CSV)에 쓴다. */
 export type InspectionWithoutPhotos = Omit<
   StoredInspection,
-  'grinderImage' | 'wheelImage'
+  | 'grinderImage'
+  | 'wheelImage'
+  | 'wheelBackImage'
+  | 'wheelEdgeImage'
+  | 'wheelBoreImage'
 >;
 
 /**
@@ -68,8 +72,16 @@ export async function listAllInspectionsWithoutPhotos(): Promise<
     .orderBy('createdAt')
     .reverse()
     .each((record) => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 사진 두 필드를 버리는 목적의 구조분해다.
-      const { grinderImage, wheelImage, ...rest } = record;
+      const {
+        /* eslint-disable @typescript-eslint/no-unused-vars -- 사진 필드를 버리는 목적의 구조분해다. */
+        grinderImage,
+        wheelImage,
+        wheelBackImage,
+        wheelEdgeImage,
+        wheelBoreImage,
+        /* eslint-enable @typescript-eslint/no-unused-vars */
+        ...rest
+      } = record;
       out.push(rest);
     });
   return out;

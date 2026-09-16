@@ -24,6 +24,7 @@ vi.mock('@/lib/db', () => ({
   listAllInspectionsWithoutPhotos: vi.fn(),
   listInspectionsByIds: vi.fn(),
   clearInspections: vi.fn(),
+  deleteInspection: vi.fn(),
 }));
 
 // Link는 App Router 컨텍스트를 요구한다. 평범한 <a>로 바꿔 둔다.
@@ -41,7 +42,7 @@ vi.mock('next/link', () => ({
 
 import { useLiveQuery } from 'dexie-react-hooks';
 import HistoryPage from './page';
-import { clearInspections } from '@/lib/db';
+import { clearInspections, deleteInspection } from '@/lib/db';
 import { useResearchMode } from '@/lib/record/researchMode';
 import type {
   GrinderSpec,
@@ -222,6 +223,27 @@ describe('이력 화면 — 필터', () => {
     expect(within(list).getByText('연삭')).toBeInTheDocument();
     expect(within(list).queryByText('절단')).not.toBeInTheDocument();
     expect(screen.getByText('전체 2건 중 1건')).toBeInTheDocument();
+  });
+
+  it('기록 하나를 확인창을 거쳐 지운다', async () => {
+    const user = userEvent.setup();
+    vi.mocked(deleteInspection).mockClear();
+    render(<HistoryPage />);
+
+    const list = screen.getByRole('list');
+    await user.click(
+      within(list).getAllByRole('button', { expanded: false })[0],
+    );
+    await user.click(screen.getByRole('button', { name: '이 기록 삭제' }));
+    // 확인창을 거치기 전에는 아무것도 지우지 않는다.
+    expect(deleteInspection).not.toHaveBeenCalled();
+
+    await user.click(
+      screen.getByRole('button', { name: '이 기록을 지웁니다' }),
+    );
+    expect(deleteInspection).toHaveBeenCalledWith(1);
+    // 전체 삭제는 건드리지 않는다.
+    expect(clearInspections).not.toHaveBeenCalled();
   });
 
   it('조건에 맞는 기록이 없으면 결과 없음 안내를 보여준다 — 전체가 비었다는 안내와는 다르다', async () => {

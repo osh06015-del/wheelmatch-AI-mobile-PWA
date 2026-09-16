@@ -5,13 +5,16 @@
 // 사진을 함께 남기는 이유: 나중에 "그때 그 숫돌이 뭐였지"를 되짚을 수 있어야
 // 기록이 증빙이 된다. 사진은 IndexedDB 안, 즉 이 기기에만 있다.
 
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
+import { ZoomablePhoto } from './BlobPhoto';
 import { EvidencePanel } from './EvidencePanel';
 import { RuleVersionNote } from './RuleVersionNote';
+import { WheelExamEvidence } from './WheelExamEvidence';
 
 import { useLocale, type MessageKey, type Translate } from '@/lib/i18n';
 import { checkReasonText } from '@/lib/i18n/checkText';
 import { ruleLabelText } from '@/lib/i18n/ruleLabel';
+import { formatDateTime } from '@/lib/record/datetime';
 import { formatElapsed } from '@/lib/record/elapsed';
 import type { InspectionRecord, Verdict, WorkPurpose } from '@/lib/rules/types';
 
@@ -33,13 +36,6 @@ const PURPOSE_TEXT: Record<WorkPurpose, MessageKey> = {
   grinding: 'home.grinding',
 };
 
-function formatDateTime(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
 function summarize(record: InspectionRecord, t: Translate): string {
   const model = record.grinder.model ?? t('history.unknownModel');
   const grinderRpm =
@@ -53,44 +49,20 @@ function summarize(record: InspectionRecord, t: Translate): string {
   return t('history.summary', { model, grinderRpm, wheelDiameter, wheelRpm });
 }
 
-/**
- * 저장된 Blob을 화면에 띄운다.
- *
- * object URL의 수명을 <img> 엘리먼트에 그대로 묶는다.
- * useMemo로 만들고 useEffect 정리에서 해제하면, StrictMode가 마운트를 두 번
- * 시뮬레이션할 때 첫 정리에서 URL이 이미 해제된 뒤 같은 URL을 다시 쓰게 되어
- * 사진이 뜨지 않는다(실제로 그렇게 만들었다가 빈 사진을 봤다).
- * ref 콜백은 엘리먼트가 붙을 때마다 새로 만들고 떨어질 때 해제하므로 어긋나지 않고,
- * 해제를 빠뜨려 사진이 메모리에 쌓이는 일도 없다.
- */
-function Photo({ blob, label }: { blob: Blob; label: string }) {
-  const attach = useCallback(
-    (img: HTMLImageElement | null) => {
-      if (!img) return;
-      const url = URL.createObjectURL(blob);
-      img.src = url;
-      return () => URL.revokeObjectURL(url);
-    },
-    [blob],
-  );
-
-  return (
-    <figure className="flex flex-1 flex-col gap-1">
-      {/* next/image는 크기를 미리 알아야 하는데 object URL은 알 수 없다. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        ref={attach}
-        alt={label}
-        className="aspect-square w-full rounded-lg object-cover"
-      />
-      <figcaption className="text-sm text-slate-400">{label}</figcaption>
-    </figure>
-  );
-}
-
-export function HistoryList({ records }: { records: InspectionRecord[] }) {
+export function HistoryList({
+  records,
+  onDelete,
+}: {
+  records: InspectionRecord[];
+  /** 기록 하나를 지운다. 넘기지 않으면 삭제 버튼을 그리지 않는다 */
+  onDelete?: (id: number) => void | Promise<void>;
+}) {
   const { t, locale } = useLocale();
   const [openId, setOpenId] = useState<number | null>(null);
+  // 지우기 전에 한 번 더 묻는다. 기록은 이 기기에만 있어 되살릴 수 없다.
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<number | null>(
+    null,
+  );
 
   if (records.length === 0) {
     return (
@@ -115,6 +87,7 @@ export function HistoryList({ records }: { records: InspectionRecord[] }) {
           const elapsed = formatElapsed(record.elapsedMs ?? null, t);
           const preTrial = formatElapsed(record.preTrialElapsedMs ?? null, t);
           const hasPhoto = Boolean(record.grinderImage ?? record.wheelImage);
+          const confirmingDelete = confirmingDeleteId === record.id;
 
           return (
             <li key={record.id} className="rounded-lg bg-slate-800">
@@ -168,15 +141,17 @@ export function HistoryList({ records }: { records: InspectionRecord[] }) {
                   {hasPhoto ? (
                     <div className="flex gap-3">
                       {record.grinderImage && (
-                        <Photo
+                        <ZoomablePhoto
                           blob={record.grinderImage}
                           label={t('history.grinderPhoto')}
+                          className="flex-1"
                         />
                       )}
                       {record.wheelImage && (
-                        <Photo
+                        <ZoomablePhoto
                           blob={record.wheelImage}
                           label={t('history.wheelPhoto')}
+                          className="flex-1"
                         />
                       )}
                     </div>
@@ -206,6 +181,21 @@ export function HistoryList({ records }: { records: InspectionRecord[] }) {
                     ))}
                   </ul>
 
+                  {/* AI가 사진에서 본 것. 위 검사 항목 목록과 따로 둔다 —
+                      규칙엔진이 낸 판정 항목에 섞으면 AI 결과가 확인된 항목
+                      하나로 읽힌다. 없는 기록에서는 아무것도 그리지 않는다. */}
+                  <WheelExamEvidence
+                    exam={record.wheelExam}
+                    notRun={record.wheelExamNotRun}
+                    acknowledged={record.wheelExamAcknowledged}
+                    photos={{
+                      front: record.wheelImage,
+                      back: record.wheelBackImage,
+                      edge: record.wheelEdgeImage,
+                      bore: record.wheelBoreImage,
+                    }}
+                  />
+
                   <EvidencePanel
                     grinder={record.grinder}
                     wheel={record.wheel}
@@ -217,6 +207,45 @@ export function HistoryList({ records }: { records: InspectionRecord[] }) {
                   {/* 저장 당시의 버전을 보여준다. 지금 버전으로 채우면
                     어느 규칙으로 나온 판정인지 거짓으로 적게 된다. */}
                   <RuleVersionNote version={record.ruleVersion ?? null} />
+
+                  {onDelete && record.id !== undefined && (
+                    <div className="flex flex-col gap-3 border-t border-slate-700 pt-4">
+                      {confirmingDelete ? (
+                        <>
+                          <p className="text-base leading-relaxed text-red-100">
+                            {t('history.deleteConfirm')}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setConfirmingDeleteId(null);
+                              void onDelete(record.id as number);
+                            }}
+                            className="min-h-14 rounded-lg bg-red-500 text-lg font-bold text-white active:bg-red-400"
+                          >
+                            {t('history.deleteConfirmButton')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmingDeleteId(null)}
+                            className="min-h-14 rounded-lg border border-slate-600 text-lg font-semibold text-slate-200 active:bg-slate-700"
+                          >
+                            {t('history.cancel')}
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setConfirmingDeleteId(record.id ?? null)
+                          }
+                          className="min-h-14 rounded-lg border border-slate-600 text-lg font-semibold text-slate-300 active:bg-slate-700"
+                        >
+                          {t('history.deleteRecord')}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </li>
