@@ -7,7 +7,7 @@
 //
 // 따로 돌리기: npx vitest run src/e2e
 
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -361,16 +361,20 @@ describe('점검 흐름 E2E — Gate와 시험운전', () => {
     await f.user.click(f.button('result.save'));
     await f.atPath('/history');
 
+    // 이력 필터가 판정별 <option>도 같은 문구로 내므로, 목록(<ul>) 안에서만 찾는다.
+    const list = await screen.findByRole('list');
     expect(
-      await screen.findByText(f.t('verdict.compatible')),
+      within(list).getByText(f.t('verdict.compatible')),
     ).toBeInTheDocument();
-    expect(screen.getByText(f.t('home.cutting'))).toBeInTheDocument();
+    expect(within(list).getByText(f.t('home.cutting'))).toBeInTheDocument();
     // 전체 흐름은 시험운전을 포함하고, 사전점검은 시험운전 시작 직전에서 끊긴다.
     expect(
-      screen.getByText(f.t('history.elapsedWithTrial', { time: '1분 20초' })),
+      within(list).getByText(
+        f.t('history.elapsedWithTrial', { time: '1분 20초' }),
+      ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(f.t('history.preTrial', { time: '20초' })),
+      within(list).getByText(f.t('history.preTrial', { time: '20초' })),
     ).toBeInTheDocument();
 
     await f.user.click(screen.getByRole('button', { expanded: false }));

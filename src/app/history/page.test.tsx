@@ -4,11 +4,19 @@
 // CSS로 숨기면 요소가 문서에 남아 스크린리더나 인쇄로 새어 나온다. 그래서
 // "안 보인다"가 아니라 "문서에 없다"를 확인한다.
 
-import { act, render, renderHook, screen } from '@testing-library/react';
+import {
+  act,
+  render,
+  renderHook,
+  screen,
+  within,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // 이 테스트가 보는 것은 IndexedDB가 아니라 무엇을 그리느냐다.
-vi.mock('dexie-react-hooks', () => ({ useLiveQuery: () => [] }));
+// 필터 테스트에서는 반환값을 기록 배열로 바꿔 쓴다.
+vi.mock('dexie-react-hooks', () => ({ useLiveQuery: vi.fn(() => []) }));
 vi.mock('@/lib/db', () => ({
   listInspections: vi.fn(),
   clearInspections: vi.fn(),
@@ -27,8 +35,15 @@ vi.mock('next/link', () => ({
   ),
 }));
 
+import { useLiveQuery } from 'dexie-react-hooks';
 import HistoryPage from './page';
+import { clearInspections } from '@/lib/db';
 import { useResearchMode } from '@/lib/record/researchMode';
+import type {
+  GrinderSpec,
+  InspectionRecord,
+  WheelSpec,
+} from '@/lib/rules/types';
 
 const FLAG = 'NEXT_PUBLIC_ENABLE_RESEARCH_TOOLS';
 const NOTICE = '검증/연구용 기능이며 현장 판정을 변경하지 않습니다.';
@@ -130,5 +145,110 @@ describe('이력 화면 — 검증 빌드 (NEXT_PUBLIC_ENABLE_RESEARCH_TOOLS=tru
     ).toBeInTheDocument();
     expect(screen.getByText('평가 지표')).toBeInTheDocument();
     expect(screen.getByText(NOTICE)).toBeInTheDocument();
+  });
+});
+
+const GRINDER: GrinderSpec = {
+  model: 'GWS 750-125',
+  noLoadRPM: 11000,
+  maxWheelDiameter: 125,
+  rawText: '',
+  confidence: 'high',
+};
+
+const WHEEL: WheelSpec = {
+  maxRPM: 12200,
+  diameter: 125,
+  thickness: 1.6,
+  purpose: 'cutting',
+  wheelType: 'bonded_abrasive',
+  visibleDamage: 'none_visible',
+  rawText: '',
+  confidence: 'high',
+};
+
+function record(overrides: Partial<InspectionRecord> = {}): InspectionRecord {
+  return {
+    id: 1,
+    grinder: GRINDER,
+    wheel: WHEEL,
+    result: { verdict: 'COMPATIBLE', checks: [], timestamp: '' },
+    checklist: {
+      guardCover: true,
+      auxiliaryHandle: true,
+      wheelDamage: true,
+      ppe: true,
+    },
+    declaredPurpose: 'cutting',
+    createdAt: '2026-09-16T05:00:00.000Z',
+    ...overrides,
+  };
+}
+
+describe('이력 화면 — 필터', () => {
+  const cutting = record({ id: 1, declaredPurpose: 'cutting' });
+  const grinding = record({
+    id: 2,
+    declaredPurpose: 'grinding',
+    result: { verdict: 'INCOMPATIBLE', checks: [], timestamp: '' },
+    wheel: { ...WHEEL, wheelType: 'flap_disc' },
+  });
+
+  beforeEach(() => {
+    vi.mocked(useLiveQuery).mockReturnValue([cutting, grinding]);
+  });
+
+  it('필터를 걸면 조건에 맞는 기록만 남고, 건수를 함께 보여준다', async () => {
+    const user = userEvent.setup();
+    render(<HistoryPage />);
+
+    expect(screen.getByText('2건')).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('작업'), '연삭');
+
+    const list = screen.getByRole('list');
+    expect(within(list).getAllByRole('listitem')).toHaveLength(1);
+    expect(within(list).getByText('연삭')).toBeInTheDocument();
+    expect(within(list).queryByText('절단')).not.toBeInTheDocument();
+    expect(screen.getByText('전체 2건 중 1건')).toBeInTheDocument();
+  });
+
+  it('조건에 맞는 기록이 없으면 결과 없음 안내를 보여준다 — 전체가 비었다는 안내와는 다르다', async () => {
+    const user = userEvent.setup();
+    render(<HistoryPage />);
+
+    await user.selectOptions(screen.getByLabelText('판정'), '판정불가');
+
+    expect(
+      screen.getByText('조건에 맞는 기록이 없습니다.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('저장된 점검 기록이 없습니다.'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('초기화를 누르면 전체 기록으로 돌아온다', async () => {
+    const user = userEvent.setup();
+    render(<HistoryPage />);
+
+    await user.selectOptions(screen.getByLabelText('작업'), '연삭');
+    expect(screen.getByText('전체 2건 중 1건')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '필터 초기화' }));
+
+    expect(screen.getByText('2건')).toBeInTheDocument();
+  });
+
+  it('필터를 걸어도 IndexedDB를 읽거나 지우지 않는다', async () => {
+    const user = userEvent.setup();
+    render(<HistoryPage />);
+
+    const callsBefore = vi.mocked(clearInspections).mock.calls.length;
+    await user.selectOptions(screen.getByLabelText('작업'), '연삭');
+    await user.selectOptions(screen.getByLabelText('숫돌 종류'), '플랩디스크');
+    await user.click(screen.getByRole('button', { name: '필터 초기화' }));
+
+    // 필터는 useLiveQuery가 이미 읽어 온 배열만 다시 거른다 — 삭제 함수는
+    // "전체 삭제" 확인을 눌러야만 불린다.
+    expect(vi.mocked(clearInspections).mock.calls.length).toBe(callsBefore);
   });
 });
