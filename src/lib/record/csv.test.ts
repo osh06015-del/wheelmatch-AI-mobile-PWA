@@ -306,6 +306,16 @@ describe('toCsv', () => {
       'wheelExamPromptVersion',
       'wheelExamNotRunReason',
     ];
+    const captureCheckColumns = [
+      'captureCheckVersion',
+      ...(['grinder', 'wheel', 'wheelBack', 'wheelEdge', 'wheelBore'] as const)
+        .map((slot) => [
+          `${slot}CaptureWarnings`,
+          `${slot}CaptureUsedDespiteWarning`,
+          `${slot}CaptureRetakeCount`,
+        ])
+        .flat(),
+    ];
     expect([...CSV_COLUMNS]).toEqual([
       ...LEGACY_COLUMNS,
       ...wheelColumns,
@@ -319,6 +329,7 @@ describe('toCsv', () => {
       ...telemetryColumns('grinder'),
       ...telemetryColumns('wheel'),
       ...examColumns,
+      ...captureCheckColumns,
     ]);
   });
 
@@ -616,7 +627,8 @@ describe('다각도 외관 확인 열', () => {
   };
 
   it('맨 마지막 열에 붙인다 — 앞선 열의 자리를 밀지 않는다', () => {
-    expect(CSV_COLUMNS[CSV_COLUMNS.length - 1]).toBe('wheelExamNotRunReason');
+    // 뒤에 사진 상태 확인 열이 더 붙었지만 다각도 확인 열의 자리는 그대로다.
+    expect(CSV_COLUMNS.indexOf('wheelExamNotRunReason')).toBe(91);
     expect(CSV_COLUMNS.indexOf('wheelExamStatus')).toBe(84);
   });
 
@@ -685,5 +697,50 @@ describe('다각도 외관 확인 열', () => {
   it('확인이 돌아간 기록의 사유 열은 빈 칸이다', () => {
     const [, row] = parse(toCsv([record({ wheelExam: EXAM })]));
     expect(row[CSV_COLUMNS.indexOf('wheelExamNotRunReason')]).toBe('');
+  });
+  it('촬영 자리별 경고·그래도 사용·재촬영 횟수를 맨 뒤 열에 적는다', () => {
+    const [, row] = parse(
+      toCsv([
+        record({
+          captureChecks: {
+            grinder: {
+              checkVersion: 'v1',
+              warnings: [],
+              usedDespiteWarning: false,
+              retakeCount: 0,
+            },
+            wheelEdge: {
+              checkVersion: 'v1',
+              warnings: ['blur', 'overexposed'],
+              usedDespiteWarning: true,
+              retakeCount: 2,
+            },
+          },
+        }),
+      ]),
+    );
+    const at = (column: (typeof CSV_COLUMNS)[number]) =>
+      row[CSV_COLUMNS.indexOf(column)];
+
+    expect(at('captureCheckVersion')).toBe('v1');
+    // 경고가 없던 자리: 경고 칸은 비고, 나머지는 N·0으로 남는다.
+    expect(at('grinderCaptureWarnings')).toBe('');
+    expect(at('grinderCaptureUsedDespiteWarning')).toBe('N');
+    expect(at('grinderCaptureRetakeCount')).toBe('0');
+    expect(at('wheelEdgeCaptureWarnings')).toBe('blur overexposed');
+    expect(at('wheelEdgeCaptureUsedDespiteWarning')).toBe('Y');
+    expect(at('wheelEdgeCaptureRetakeCount')).toBe('2');
+    // 찍지 않은 자리는 세 칸 모두 빈 칸이다.
+    expect(at('wheelCaptureUsedDespiteWarning')).toBe('');
+    expect(at('wheelCaptureRetakeCount')).toBe('');
+  });
+
+  it('사진 상태 확인 기능 도입 전 기록은 새 열이 모두 빈 칸이다', () => {
+    const [, row] = parse(toCsv([record()]));
+    const start = CSV_COLUMNS.indexOf('captureCheckVersion');
+    expect(start).toBe(92);
+    for (const column of CSV_COLUMNS.slice(start)) {
+      expect(row[CSV_COLUMNS.indexOf(column)]).toBe('');
+    }
   });
 });

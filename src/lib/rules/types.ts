@@ -426,8 +426,9 @@ export interface SafetyChecklist {
 /**
  * 촬영 원본·업로드본의 원시 측정값. 검증용 실측 데이터일 뿐이다.
  *
- * **품질 경고·차단·적합 판정의 근거로 쓰지 않는다.** 여기 있는 어떤 값도
- * 점검 흐름을 막을 수 없다. 측정 자체가 실패해도(카메라·디코딩 환경에 따라
+ * **차단·적합 판정의 근거로 쓰지 않는다.** 여기 있는 어떤 값도 점검 흐름을
+ * 막을 수 없다. 촬영 직후의 사진 상태 경고(captureCheck.ts)가 이 값을 읽지만
+ * 경고일 뿐이고, 작업자가 그래도 쓸 수 있다. 측정 자체가 실패해도(카메라·디코딩 환경에 따라
  * 다르다) 각 항목을 null로 남기고 점검은 그대로 진행된다.
  */
 export interface CaptureQualityMetrics {
@@ -449,6 +450,37 @@ export interface CaptureQualityMetrics {
   blurMetric: number | null;
   /** optimizeForUpload()가 걸린 시간(ms) */
   optimizeMs: number | null;
+}
+
+/**
+ * 촬영 직후 사진 상태 경고의 종류.
+ *
+ * **사진**이 읽기 좋은 상태인지만 말한다. 명판·숫돌이 찍혔는지, 손상됐는지,
+ * 써도 되는지는 이 값의 범위가 아니다. 경계값은 검증되지 않은 잠정값이라
+ * 경고만 하고 작업자가 그래도 쓸 수 있다(src/lib/image/captureCheck.ts).
+ */
+export type CaptureQualityWarning =
+  'low_resolution' | 'blur' | 'too_dark' | 'overexposed';
+
+/** 사진 상태 확인을 받는 촬영 자리. */
+export type CaptureSlot =
+  'grinder' | 'wheel' | 'wheelBack' | 'wheelEdge' | 'wheelBore';
+
+/**
+ * 한 촬영 자리의 사진 상태 확인 기록(검증용).
+ *
+ * 판정·Gate에 쓰지 않는다. 경고가 실제 판독 실패와 겹치는지, 작업자가 경고를
+ * 보고 다시 찍는지를 나중에 재기 위해 남긴다.
+ */
+export interface CaptureQualityCheck {
+  /** 어느 경계값으로 낸 경고인지. 경계값을 바꾸면 올린다 */
+  checkVersion: string;
+  /** 최종으로 쓴 사진에 붙은 경고. 비어 있어도 사진이 좋다는 뜻이 아니다 */
+  warnings: CaptureQualityWarning[];
+  /** 경고가 있는데 작업자가 "그래도 사용"을 골랐는가 */
+  usedDespiteWarning: boolean;
+  /** 이 자리에서 사진을 다시 넣은 횟수. 0이면 다시 찍지 않았다 */
+  retakeCount: number;
 }
 
 /**
@@ -504,6 +536,15 @@ export interface InspectionRecord {
    */
   grinderCaptureMetrics?: CaptureQualityMetrics;
   wheelCaptureMetrics?: CaptureQualityMetrics;
+  /** 다각도 확인 사진의 원시 측정값(검증용). 이 기능 도입 전 기록에는 없다 */
+  wheelBackCaptureMetrics?: CaptureQualityMetrics;
+  wheelEdgeCaptureMetrics?: CaptureQualityMetrics;
+  wheelBoreCaptureMetrics?: CaptureQualityMetrics;
+  /**
+   * 촬영 자리별 사진 상태 경고와 재촬영 여부(검증용). 이 기능 도입 전 기록에는
+   * 없다. 판정·UI 흐름의 근거로 쓰지 않는다 — [[CaptureQualityCheck]] 참고.
+   */
+  captureChecks?: Partial<Record<CaptureSlot, CaptureQualityCheck>>;
   /**
    * 서버 OCR 응답의 메타데이터(검증용). 이 기능 도입 전 기록에는 없다.
    * 판정·UI에 영향을 주지 않는다 — [[OcrTelemetry]] 참고.

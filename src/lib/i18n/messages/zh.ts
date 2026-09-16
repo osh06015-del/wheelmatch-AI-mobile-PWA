@@ -306,6 +306,30 @@ export const zh: Messages = {
   'photo.zoomOpen': '放大查看{label}',
   'photo.zoomClose': '关闭放大查看',
 
+  'exam.block.captureReview':
+    '有照片质量警告的照片，需要重新拍摄或选择仍然使用后，才能进行确认。',
+  'captureCheck.title': '照片质量检查',
+  'captureCheck.titleFor': '照片质量检查：{subject}',
+  'captureCheck.warning.lowResolution': '照片分辨率较低。',
+  'captureCheck.warning.blur': '照片看起来模糊。',
+  'captureCheck.warning.tooDark': '照片太暗。',
+  'captureCheck.warning.overexposed': '照片过亮或反光强烈。',
+  'captureCheck.hint.lowResolution':
+    '请不要使用截屏或放大的照片，靠近后用相机重新拍摄。',
+  'captureCheck.hint.blur': '请保持手机稳定，等文字对焦清晰后再拍。',
+  'captureCheck.hint.tooDark': '请移到更亮的地方或打光后再拍。',
+  'captureCheck.hint.overexposed': '请稍微倾斜拍摄或换个位置，避开反射光。',
+  'captureCheck.provisional':
+    '此警告使用的阈值尚未经过验证，仅供参考。可以重新拍摄，也可以直接使用。',
+  'captureCheck.boundary':
+    '只检查照片是否便于判读，不判断铭牌或砂轮的状态，也不判断使用是否安全。',
+  'captureCheck.decodeBlocked':
+    '无法打开的照片不能继续使用。请重新拍摄或选择其他照片。',
+  'captureCheck.retake': '重新拍摄',
+  'captureCheck.useAnyway': '仍然使用这张照片',
+  'captureCheck.useAnywayFor': '仍然使用{subject}照片',
+  'captureCheck.usedAnyway': '已查看警告并选择使用这张照片。',
+
   'wheelType.bonded_abrasive': '普通砂轮（固结磨具）',
   'wheelType.flap_disc': '百叶片',
   'wheelType.cup_wheel': '碗形砂轮',

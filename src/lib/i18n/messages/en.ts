@@ -353,6 +353,34 @@ export const en: Messages = {
   'photo.zoomOpen': 'Enlarge {label}',
   'photo.zoomClose': 'Close the enlarged photo',
 
+  'exam.block.captureReview':
+    'For photos with a photo-quality warning, retake them or choose to use them anyway before running the check.',
+  'captureCheck.title': 'Photo quality check',
+  'captureCheck.titleFor': 'Photo quality check: {subject}',
+  'captureCheck.warning.lowResolution': 'The photo resolution is low.',
+  'captureCheck.warning.blur': 'The photo looks blurry.',
+  'captureCheck.warning.tooDark': 'The photo is too dark.',
+  'captureCheck.warning.overexposed':
+    'The photo is too bright or has strong glare.',
+  'captureCheck.hint.lowResolution':
+    'Instead of a screenshot or a zoomed-in photo, move closer and take it again with the camera.',
+  'captureCheck.hint.blur':
+    'Hold the phone still and take the photo once the text is in focus.',
+  'captureCheck.hint.tooDark':
+    'Move somewhere brighter or shine a light on it, then take the photo.',
+  'captureCheck.hint.overexposed':
+    'Shoot at a slight angle or change position to avoid reflected light.',
+  'captureCheck.provisional':
+    'This warning uses thresholds that have not been validated. You can retake the photo or use it as it is.',
+  'captureCheck.boundary':
+    'This only checks whether the photo is easy to read. It does not judge the condition of the nameplate or wheel, or whether it is safe to use.',
+  'captureCheck.decodeBlocked':
+    'You cannot continue with a photo that cannot be opened. Retake it or choose another photo.',
+  'captureCheck.retake': 'Retake',
+  'captureCheck.useAnyway': 'Use this photo anyway',
+  'captureCheck.useAnywayFor': 'Use the {subject} photo anyway',
+  'captureCheck.usedAnyway': 'You saw the warning and chose to use this photo.',
+
   'wheelType.bonded_abrasive': 'Standard bonded abrasive wheel',
   'wheelType.flap_disc': 'Flap disc',
   'wheelType.cup_wheel': 'Cup wheel',

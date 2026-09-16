@@ -298,11 +298,17 @@ export function wheelLabel(
 
 // ─── 앱 열기 ───
 
-/** happy-dom에 없는 사진 API를 채운다. 사진 내용은 추출기가 보지 않으므로 크기만 준다. */
+/**
+ * happy-dom에 없는 사진 API를 채운다. 사진 내용은 추출기가 보지 않으므로 크기만 준다.
+ *
+ * 크기는 휴대폰 카메라 원본(12MP)으로 둔다. 작게 두면 촬영 직후 사진 상태
+ * 확인이 해상도 부족 경고로 흐름을 멈춘다 — 흐름 테스트가 보려는 것이 아니다.
+ * 경고 자체는 captureCheck·CaptureQualityNotice·촬영 화면 테스트가 따로 본다.
+ */
 export function stubPhotoApis(): void {
   vi.stubGlobal('createImageBitmap', async () => ({
-    width: 640,
-    height: 480,
+    width: 4032,
+    height: 3024,
     close: () => undefined,
   }));
   vi.stubGlobal(

@@ -9,7 +9,16 @@
 //
 // 사진은 넣지 않는다. CSV에 base64를 밀어 넣으면 열리지 않는 파일이 된다.
 
-import type { InspectionRecord } from '@/lib/rules/types';
+import type { CaptureSlot, InspectionRecord } from '@/lib/rules/types';
+
+/** CSV에 적는 촬영 자리 순서. 열 순서와 같다. */
+const CAPTURE_SLOTS: readonly CaptureSlot[] = [
+  'grinder',
+  'wheel',
+  'wheelBack',
+  'wheelEdge',
+  'wheelBore',
+];
 
 export const CSV_COLUMNS = [
   'id',
@@ -124,6 +133,28 @@ export const CSV_COLUMNS = [
   // 둔다 — network_error / api_error / offline / user_manual_continue.
   // 확인이 돌아간 기록에서는 빈 칸이다.
   'wheelExamNotRunReason',
+  // 촬영 직후 사진 상태 경고. 이 기능 도입 전 기록은 빈 칸이다. 앞선 열의
+  // 자리를 지키기 위해 맨 뒤에 붙인다.
+  //
+  // 경계값이 검증되지 않은 잠정값이라 어느 기준으로 낸 경고인지(버전)를 함께
+  // 적는다. 경고가 실제 판독 실패와 겹치는지를 이 열들로 잰다. 다각도 사진의
+  // 원시 측정값은 열이 너무 많아져 CSV에 넣지 않고 기록에만 남긴다.
+  'captureCheckVersion',
+  'grinderCaptureWarnings',
+  'grinderCaptureUsedDespiteWarning',
+  'grinderCaptureRetakeCount',
+  'wheelCaptureWarnings',
+  'wheelCaptureUsedDespiteWarning',
+  'wheelCaptureRetakeCount',
+  'wheelBackCaptureWarnings',
+  'wheelBackCaptureUsedDespiteWarning',
+  'wheelBackCaptureRetakeCount',
+  'wheelEdgeCaptureWarnings',
+  'wheelEdgeCaptureUsedDespiteWarning',
+  'wheelEdgeCaptureRetakeCount',
+  'wheelBoreCaptureWarnings',
+  'wheelBoreCaptureUsedDespiteWarning',
+  'wheelBoreCaptureRetakeCount',
 ] as const;
 
 /**
@@ -299,6 +330,20 @@ function row(record: InspectionRecord): string {
     record.wheelExam?.model,
     record.wheelExam?.promptVersion,
     record.wheelExamNotRun?.reason,
+    // 버전은 기록된 자리 중 아무 곳에서나 읽는다. 한 점검 안에서는 같다.
+    CAPTURE_SLOTS.map(
+      (slot) => record.captureChecks?.[slot]?.checkVersion,
+    ).find((version) => version !== undefined),
+    ...CAPTURE_SLOTS.flatMap((slot) => {
+      const check = record.captureChecks?.[slot];
+      // 찍지 않은 자리(구기록·요구되지 않은 종류)는 세 칸 모두 빈 칸이다.
+      // 경고가 없었던 자리는 경고 칸만 빈 문자열이고 나머지는 N·0으로 채워진다.
+      return [
+        check?.warnings.join(' '),
+        tick(check?.usedDespiteWarning),
+        check?.retakeCount,
+      ];
+    }),
   ];
 
   return values.map(cell).join(',');

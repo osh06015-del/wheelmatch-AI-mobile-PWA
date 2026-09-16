@@ -13,7 +13,9 @@
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import type { TrialRunProgress } from '@/lib/safety/trialRun';
 import type {
+  CaptureQualityCheck,
   CaptureQualityMetrics,
+  CaptureSlot,
   GrinderCondition,
   GrinderSpec,
   OcrTelemetry,
@@ -37,6 +39,27 @@ const GRINDER_CAPTURE_METRICS_KEY = 'wheelmatch.grinderCaptureMetrics';
 const WHEEL_CAPTURE_METRICS_KEY = 'wheelmatch.wheelCaptureMetrics';
 const GRINDER_OCR_TELEMETRY_KEY = 'wheelmatch.grinderOcrTelemetry';
 const WHEEL_OCR_TELEMETRY_KEY = 'wheelmatch.wheelOcrTelemetry';
+const CAPTURE_CHECKS_KEY = 'wheelmatch.captureChecks';
+
+/** 다각도 확인에서 작업자가 더 찍는 세 자리. */
+type ExamSlotValues<T> = { back: T; edge: T; bore: T };
+
+/** 촬영 자리별 사진 상태 확인 기록. 한 번도 찍지 않은 자리는 없다. */
+export type CaptureChecks = Partial<Record<CaptureSlot, CaptureQualityCheck>>;
+
+/**
+ * sessionStorage에는 명판·라벨 자리만 남긴다.
+ *
+ * 다각도 확인 자리는 사진(Blob)과 수명을 같이 한다 — 새로고침으로 사진이
+ * 사라졌는데 그 사진의 상태 기록만 남으면, 없는 사진에 대한 기록이 저장된다.
+ */
+function persistCaptureChecks(checks: CaptureChecks): void {
+  const kept: CaptureChecks = {
+    ...(checks.grinder ? { grinder: checks.grinder } : {}),
+    ...(checks.wheel ? { wheel: checks.wheel } : {}),
+  };
+  writeStored(CAPTURE_CHECKS_KEY, kept);
+}
 
 interface InspectionState {
   /** 작업자가 시작할 때 고른 오늘의 작업 */
@@ -92,6 +115,13 @@ interface InspectionState {
   wheelCaptureMetrics: CaptureQualityMetrics | null;
   grinderOcrTelemetry: OcrTelemetry | null;
   wheelOcrTelemetry: OcrTelemetry | null;
+  /**
+   * 촬영 직후 사진 상태 경고와 재촬영 여부(검증용). 판정·Gate에 쓰지 않는다.
+   * 다각도 확인 자리는 메모리에만 둔다(persistCaptureChecks).
+   */
+  captureChecks: CaptureChecks;
+  /** 다각도 확인 사진의 원시 측정값. 사진과 수명을 같이 해 메모리에만 둔다 */
+  wheelExamCaptureMetrics: ExamSlotValues<CaptureQualityMetrics | null> | null;
   /** 서버 렌더 결과에서는 false. 브라우저 값이 반영된 뒤에만 true가 된다. */
   hydrated: boolean;
 }
@@ -119,6 +149,8 @@ const SERVER_SNAPSHOT: InspectionState = {
   wheelCaptureMetrics: null,
   grinderOcrTelemetry: null,
   wheelOcrTelemetry: null,
+  captureChecks: {},
+  wheelExamCaptureMetrics: null,
   hydrated: false,
 };
 
@@ -170,6 +202,8 @@ function initialClientState(): InspectionState {
     ),
     grinderOcrTelemetry: readStored<OcrTelemetry>(GRINDER_OCR_TELEMETRY_KEY),
     wheelOcrTelemetry: readStored<OcrTelemetry>(WHEEL_OCR_TELEMETRY_KEY),
+    captureChecks: readStored<CaptureChecks>(CAPTURE_CHECKS_KEY) ?? {},
+    wheelExamCaptureMetrics: null,
     hydrated: true,
   };
 }
@@ -219,6 +253,14 @@ export interface InspectionStore extends InspectionState {
   setGrinderCondition: (condition: GrinderCondition) => void;
   setWheelCondition: (condition: WheelCondition) => void;
   /**
+   * 명판·라벨 사진의 상태 확인 기록. setGrinder/setWheel 뒤에 부른다 —
+   * 그 둘이 이전 기록을 지우기 때문이다(장비 상태 확인과 같은 순서).
+   */
+  setCaptureCheck: (
+    slot: 'grinder' | 'wheel',
+    check: CaptureQualityCheck | null,
+  ) => void;
+  /**
    * 다각도 외관 확인 결과와 사진.
    *
    * setWheel의 인자로 더 밀어 넣지 않고 따로 둔다 — 다각도 확인은 숫돌 규격과
@@ -230,6 +272,10 @@ export interface InspectionStore extends InspectionState {
     notRun?: WheelExamNotRun | null;
     photos: { back: Blob | null; edge: Blob | null; bore: Blob | null };
     acknowledged: boolean;
+    /** 세 사진의 상태 확인 기록. 넘기지 않으면 없는 것으로 둔다 */
+    captureChecks?: ExamSlotValues<CaptureQualityCheck | null>;
+    /** 세 사진의 원시 측정값 */
+    captureMetrics?: ExamSlotValues<CaptureQualityMetrics | null>;
   }) => void;
   setTrialRun: (progress: TrialRunProgress | null) => void;
   reset: () => void;
@@ -279,11 +325,16 @@ export function useInspection(): InspectionStore {
         window.sessionStorage.removeItem(TRIAL_RUN_KEY);
         window.sessionStorage.removeItem(WHEEL_CAPTURE_METRICS_KEY);
         window.sessionStorage.removeItem(WHEEL_OCR_TELEMETRY_KEY);
+        // 사진 상태 기록도 모두 지운다. 이번 명판 사진의 기록은 곧바로 이어지는
+        // setCaptureCheck('grinder')가 넣는다.
+        window.sessionStorage.removeItem(CAPTURE_CHECKS_KEY);
       } catch {
         // 메모리 상태는 아래에서 반드시 지운다.
       }
       setState({
         grinder: spec,
+        captureChecks: {},
+        wheelExamCaptureMetrics: null,
         grinderCondition: null,
         wheel: null,
         wheelOcr: null,
@@ -333,10 +384,18 @@ export function useInspection(): InspectionStore {
       } catch {
         // 메모리 상태는 아래에서 반드시 지운다.
       }
+      // 사진 상태 기록은 명판 것만 남긴다. 라벨·다각도 자리는 이전 숫돌의 사진에
+      // 대한 기록이다. 이번 라벨 사진의 기록은 setCaptureCheck('wheel')가 넣는다.
+      const kept: CaptureChecks = state.captureChecks.grinder
+        ? { grinder: state.captureChecks.grinder }
+        : {};
+      persistCaptureChecks(kept);
       setState({
         wheel: spec,
         wheelCondition: null,
         trialRun: null,
+        captureChecks: kept,
+        wheelExamCaptureMetrics: null,
         // 다각도 확인은 그 숫돌을 보고 한 것이다. 숫돌이 바뀌면 이어 쓰지 않는다.
         // 새 숫돌의 확인 결과는 곧바로 이어지는 setWheelExam이 넣는다.
         wheelBackImage: null,
@@ -368,6 +427,17 @@ export function useInspection(): InspectionStore {
     setState({ wheelCondition: condition });
   }, []);
 
+  const setCaptureCheck = useCallback(
+    (slot: 'grinder' | 'wheel', check: CaptureQualityCheck | null) => {
+      const next: CaptureChecks = { ...state.captureChecks };
+      if (check) next[slot] = check;
+      else delete next[slot];
+      persistCaptureChecks(next);
+      setState({ captureChecks: next });
+    },
+    [],
+  );
+
   /**
    * 다각도 외관 확인 결과와 사진.
    *
@@ -381,8 +451,27 @@ export function useInspection(): InspectionStore {
       notRun?: WheelExamNotRun | null;
       photos: { back: Blob | null; edge: Blob | null; bore: Blob | null };
       acknowledged: boolean;
+      captureChecks?: ExamSlotValues<CaptureQualityCheck | null>;
+      captureMetrics?: ExamSlotValues<CaptureQualityMetrics | null>;
     }) => {
+      // 다각도 자리의 기록은 통째로 바꾼다. 이전 사진의 기록이 섞여 남지 않게.
+      const labelChecks: CaptureChecks = {
+        ...(state.captureChecks.grinder
+          ? { grinder: state.captureChecks.grinder }
+          : {}),
+        ...(state.captureChecks.wheel
+          ? { wheel: state.captureChecks.wheel }
+          : {}),
+      };
+      const checks = input.captureChecks;
       setState({
+        captureChecks: {
+          ...labelChecks,
+          ...(checks?.back ? { wheelBack: checks.back } : {}),
+          ...(checks?.edge ? { wheelEdge: checks.edge } : {}),
+          ...(checks?.bore ? { wheelBore: checks.bore } : {}),
+        },
+        wheelExamCaptureMetrics: input.captureMetrics ?? null,
         wheelExam: input.exam,
         wheelExamNotRun: input.notRun ?? null,
         wheelExamAcknowledged: input.acknowledged,
@@ -422,6 +511,7 @@ export function useInspection(): InspectionStore {
       window.sessionStorage.removeItem(WHEEL_CAPTURE_METRICS_KEY);
       window.sessionStorage.removeItem(GRINDER_OCR_TELEMETRY_KEY);
       window.sessionStorage.removeItem(WHEEL_OCR_TELEMETRY_KEY);
+      window.sessionStorage.removeItem(CAPTURE_CHECKS_KEY);
     } catch {
       // 무시한다.
     }
@@ -447,6 +537,8 @@ export function useInspection(): InspectionStore {
       wheelCaptureMetrics: null,
       grinderOcrTelemetry: null,
       wheelOcrTelemetry: null,
+      captureChecks: {},
+      wheelExamCaptureMetrics: null,
     });
   }, []);
 
@@ -459,6 +551,7 @@ export function useInspection(): InspectionStore {
       setWheel,
       setGrinderCondition,
       setWheelCondition,
+      setCaptureCheck,
       setWheelExam,
       setTrialRun,
       reset,
@@ -470,6 +563,7 @@ export function useInspection(): InspectionStore {
       setWheel,
       setGrinderCondition,
       setWheelCondition,
+      setCaptureCheck,
       setWheelExam,
       setTrialRun,
       reset,

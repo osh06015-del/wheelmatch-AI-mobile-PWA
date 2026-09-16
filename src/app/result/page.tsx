@@ -73,6 +73,8 @@ export default function ResultPage() {
     wheelBoreImage,
     wheelExam,
     wheelExamNotRun,
+    captureChecks,
+    wheelExamCaptureMetrics,
     wheelExamAcknowledged,
     hydrating,
     reset,
@@ -239,6 +241,14 @@ export default function ResultPage() {
         wheelCaptureMetrics: wheelCaptureMetrics ?? undefined,
         grinderOcrTelemetry: grinderOcrTelemetry ?? undefined,
         wheelOcrTelemetry: wheelOcrTelemetry ?? undefined,
+        // 사진 상태 경고와 재촬영 여부. 사진을 빼고 저장해도 이 기록은 남긴다 —
+        // 사진이 아니라 촬영 과정에 대한 측정값이다. 한 번도 찍지 않은 자리는
+        // 없는 채로 둔다.
+        captureChecks:
+          Object.keys(captureChecks).length > 0 ? captureChecks : undefined,
+        wheelBackCaptureMetrics: wheelExamCaptureMetrics?.back ?? undefined,
+        wheelEdgeCaptureMetrics: wheelExamCaptureMetrics?.edge ?? undefined,
+        wheelBoreCaptureMetrics: wheelExamCaptureMetrics?.bore ?? undefined,
         grinderImage: (withPhotos ? grinderImage : null) ?? undefined,
         wheelImage: (withPhotos ? wheelImage : null) ?? undefined,
         // 다각도 확인의 AI 원본 결과와 사진. 작업자 확인(wheelCondition)과

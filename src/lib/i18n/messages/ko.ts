@@ -338,6 +338,33 @@ export const ko = {
   'photo.zoomOpen': '{label} 크게 보기',
   'photo.zoomClose': '크게 보기 닫기',
 
+  'exam.block.captureReview':
+    '사진 상태 경고가 있는 사진은 다시 찍거나 그래도 사용을 골라야 확인하기를 할 수 있습니다.',
+  'captureCheck.title': '사진 상태 확인',
+  'captureCheck.titleFor': '{subject} 사진 상태 확인',
+  'captureCheck.warning.lowResolution': '사진 해상도가 낮습니다.',
+  'captureCheck.warning.blur': '사진이 흐릿해 보입니다.',
+  'captureCheck.warning.tooDark': '사진이 너무 어둡습니다.',
+  'captureCheck.warning.overexposed': '사진이 너무 밝거나 빛 반사가 강합니다.',
+  'captureCheck.hint.lowResolution':
+    '화면 캡처나 확대한 사진 대신, 가까이 다가가 카메라로 다시 찍으세요.',
+  'captureCheck.hint.blur':
+    '휴대폰을 움직이지 말고, 글자에 초점이 맞은 뒤에 찍으세요.',
+  'captureCheck.hint.tooDark':
+    '밝은 곳으로 옮기거나 조명을 비춘 뒤에 찍으세요.',
+  'captureCheck.hint.overexposed':
+    '비스듬히 찍거나 위치를 옮겨 반사되는 빛을 피하세요.',
+  'captureCheck.provisional':
+    '검증되지 않은 기준으로 낸 참고용 경고입니다. 다시 찍거나 그대로 쓸 수 있습니다.',
+  'captureCheck.boundary':
+    '사진이 읽기 좋은 상태인지만 봅니다. 명판·숫돌의 상태나 사용 안전은 판단하지 않습니다.',
+  'captureCheck.decodeBlocked':
+    '열 수 없는 사진으로는 진행할 수 없습니다. 다시 찍거나 다른 사진을 고르세요.',
+  'captureCheck.retake': '다시 찍기',
+  'captureCheck.useAnyway': '그래도 이 사진 사용',
+  'captureCheck.useAnywayFor': '{subject} 사진을 그래도 사용',
+  'captureCheck.usedAnyway': '경고를 확인하고 이 사진을 쓰기로 했습니다.',
+
   'wheelType.bonded_abrasive': '일반 결합숫돌',
   'wheelType.flap_disc': '플랩디스크',
   'wheelType.cup_wheel': '컵휠',

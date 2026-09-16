@@ -5,7 +5,9 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import { ZoomablePhoto } from '@/components/BlobPhoto';
 import { CameraView } from '@/components/CameraView';
+import { CaptureQualityNotice } from '@/components/CaptureQualityNotice';
 import {
   FieldConfirm,
   fromNumber,
@@ -19,8 +21,13 @@ import { ScanHeader } from '@/components/ScanHeader';
 import { GRINDER_FIELD_GUIDE } from '@/lib/guide/fieldGuide';
 import { useLocale } from '@/lib/i18n';
 import { analysisErrorText } from '@/lib/i18n/errors';
-import { optimizeForUpload } from '@/lib/image/optimize';
-import { measureCapture } from '@/lib/image/quality';
+import {
+  captureReviewSettled,
+  nextCaptureReview,
+  prepareCapture,
+  toCaptureQualityCheck,
+  type CaptureReview,
+} from '@/lib/image/captureCheck';
 import { getExtractor } from '@/lib/ocr/extractor';
 import {
   EMPTY_GRINDER_CONDITION,
@@ -34,7 +41,8 @@ import type {
   OcrTelemetry,
 } from '@/lib/rules/types';
 
-type Phase = 'capture' | 'analyzing' | 'confirm' | 'error';
+/** review: 사진 상태 경고가 있거나 사진을 열지 못해 서버로 보내기 전에 멈춘 상태 */
+type Phase = 'capture' | 'analyzing' | 'review' | 'confirm' | 'error';
 
 interface FormState {
   model: string;
@@ -45,7 +53,7 @@ interface FormState {
 export default function GrinderScanPage() {
   const router = useRouter();
   const { t } = useLocale();
-  const { setGrinder, setGrinderCondition } = useInspection();
+  const { setGrinder, setGrinderCondition, setCaptureCheck } = useInspection();
 
   const [phase, setPhase] = useState<Phase>('capture');
   const [photo, setPhoto] = useState<Blob | null>(null);
@@ -64,18 +72,54 @@ export default function GrinderScanPage() {
   });
   // 문장이 아니라 오류 자체를 둔다. 문장은 그릴 때 작업자가 고른 언어로 만든다.
   const [error, setError] = useState<unknown>(null);
+  // 사진 상태 경고와 이 자리에서 사진을 넣은 횟수. 명판 사진 한 자리에 대한 것이다.
+  const [review, setReview] = useState<CaptureReview | null>(null);
 
+  /**
+   * 새 사진을 받는다.
+   *
+   * 서버로 보내기 전에 사진 상태를 본다(prepareCapture). 경고가 있으면 멈추고
+   * 작업자가 다시 찍기와 그래도 사용 중에서 고른다. 열 수 없는 사진은 보내지
+   * 않는다. 경고가 없으면 곧바로 판독으로 넘어간다 — 경고가 없다는 것이 사진이
+   * 좋다는 뜻은 아니므로 "좋은 사진" 같은 안내는 띄우지 않는다.
+   */
   async function analyze(source: Blob) {
     setPhase('analyzing');
     setError(null);
+    // 새 사진이다. 이전 사진으로 읽은 값과 그 값을 보고 한 확인은 버린다.
+    setPhoto(null);
+    setOcr(null);
+    setOcrTelemetry(null);
+    setCaptureMetrics(null);
+    setUserConfirmed(false);
     try {
       // 원본 사진은 Vercel 함수의 4.5MB 요청 한도를 넘길 수 있다. 먼저 줄인다.
-      const optimizeStart = performance.now();
-      const blob = await optimizeForUpload(source);
-      const optimizeMs = performance.now() - optimizeStart;
-      setPhoto(blob);
+      const prepared = await prepareCapture(source);
+      const next = nextCaptureReview(review, prepared);
+      setReview(next);
+      if (prepared.status === 'decode_failed') {
+        setPhase('review');
+        return;
+      }
+      setPhoto(prepared.blob);
       // 검증용 원시 측정값. 실패해도 null로만 남고 분석은 그대로 진행된다.
-      setCaptureMetrics(await measureCapture(source, blob, optimizeMs));
+      setCaptureMetrics(prepared.metrics);
+      if (!captureReviewSettled(next)) {
+        setPhase('review');
+        return;
+      }
+      await extract(prepared.blob);
+    } catch (caught) {
+      setError(caught);
+      setPhase('error');
+    }
+  }
+
+  /** 준비된 사진을 판독한다. 같은 사진으로 다시 시도할 때도 이 함수만 부른다. */
+  async function extract(blob: Blob) {
+    setPhase('analyzing');
+    setError(null);
+    try {
       const extractor = getExtractor();
       const spec = await extractor.extractGrinder(blob);
       setOcr(spec);
@@ -93,6 +137,13 @@ export default function GrinderScanPage() {
       setError(caught);
       setPhase('error');
     }
+  }
+
+  /** 경고를 보고도 이 사진을 쓴다. 열지 못한 사진에는 이 길이 없다. */
+  function acceptWarnedPhoto() {
+    if (!photo || !review || review.decodeFailed) return;
+    setReview({ ...review, usedDespiteWarning: true });
+    void extract(photo);
   }
 
   function updateField(key: string, value: string) {
@@ -120,6 +171,7 @@ export default function GrinderScanPage() {
     // setGrinder가 이전 장비 상태·숫돌 값을 모두 지운다. 그 뒤에 이번 확인을 넣는다.
     setGrinder(spec, photo, ocr, captureMetrics, ocrTelemetry);
     setGrinderCondition(condition);
+    setCaptureCheck('grinder', toCaptureQualityCheck(review));
     router.push('/scan/wheel');
   }
 
@@ -162,6 +214,28 @@ export default function GrinderScanPage() {
     );
   }
 
+  if (phase === 'review') {
+    return (
+      <main className="flex flex-1 flex-col">
+        <ScanHeader step="1 / 2" title={t('scan.grinder.title')} />
+        <div className="flex flex-1 flex-col justify-center gap-4 px-6 py-6">
+          {photo && (
+            <ZoomablePhoto
+              blob={photo}
+              label={t('history.grinderPhoto')}
+              className="mx-auto w-full max-w-xs"
+            />
+          )}
+          <CaptureQualityNotice
+            review={review}
+            onRetake={() => setPhase('capture')}
+            onUseAnyway={acceptWarnedPhoto}
+          />
+        </div>
+      </main>
+    );
+  }
+
   if (phase === 'analyzing') {
     return (
       <main className="flex flex-1 flex-col">
@@ -192,7 +266,7 @@ export default function GrinderScanPage() {
           </p>
           <button
             type="button"
-            onClick={() => photo && void analyze(photo)}
+            onClick={() => photo && void extract(photo)}
             className="min-h-14 rounded-lg bg-slate-700 text-lg font-semibold text-white active:bg-slate-600"
           >
             {t('scan.retryAnalysis')}

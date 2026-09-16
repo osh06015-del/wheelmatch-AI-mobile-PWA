@@ -46,6 +46,7 @@ function gate(overrides: Partial<WheelExamGateInput> = {}): WheelExamGateInput {
     acknowledged: false,
     analysisFailed: false,
     manualContinueAcknowledged: false,
+    captureReviewPending: false,
     ...overrides,
   };
 }
@@ -239,6 +240,28 @@ describe('wheelExamBlock — 언제 진행을 막는가', () => {
           manualContinueAcknowledged: true,
         }),
       ),
+    ).toBeNull();
+  });
+});
+
+describe('wheelExamBlock — 사진 상태 경고', () => {
+  it('경고에 아직 답하지 않은 사진이 있으면 분석 전에 막는다', () => {
+    expect(
+      wheelExamBlock(gate({ exam: null, captureReviewPending: true })),
+    ).toBe('captureReview');
+  });
+
+  it('사진이 모자란 것이 먼저다', () => {
+    expect(
+      wheelExamBlock(
+        gate({ exam: null, photosReady: false, captureReviewPending: true }),
+      ),
+    ).toBe('photosMissing');
+  });
+
+  it('사진 상태 경고는 안전 조건이 아니다 — 요구되지 않는 종류는 막지 않는다', () => {
+    expect(
+      wheelExamBlock(gate({ required: false, captureReviewPending: true })),
     ).toBeNull();
   });
 });

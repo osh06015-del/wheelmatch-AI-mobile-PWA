@@ -349,6 +349,32 @@ export const vi: Messages = {
   'photo.zoomOpen': 'Xem to {label}',
   'photo.zoomClose': 'Đóng ảnh phóng to',
 
+  'exam.block.captureReview':
+    'Với ảnh có cảnh báo chất lượng, hãy chụp lại hoặc chọn vẫn dùng rồi mới kiểm tra được.',
+  'captureCheck.title': 'Kiểm tra chất lượng ảnh',
+  'captureCheck.titleFor': 'Kiểm tra chất lượng ảnh: {subject}',
+  'captureCheck.warning.lowResolution': 'Độ phân giải của ảnh thấp.',
+  'captureCheck.warning.blur': 'Ảnh có vẻ bị mờ.',
+  'captureCheck.warning.tooDark': 'Ảnh quá tối.',
+  'captureCheck.warning.overexposed': 'Ảnh quá sáng hoặc bị lóa mạnh.',
+  'captureCheck.hint.lowResolution':
+    'Đừng dùng ảnh chụp màn hình hay ảnh phóng to; hãy lại gần và chụp lại bằng máy ảnh.',
+  'captureCheck.hint.blur': 'Giữ yên điện thoại và chụp khi chữ đã rõ nét.',
+  'captureCheck.hint.tooDark':
+    'Hãy chuyển sang chỗ sáng hơn hoặc chiếu đèn rồi chụp.',
+  'captureCheck.hint.overexposed':
+    'Chụp hơi nghiêng hoặc đổi vị trí để tránh ánh sáng phản chiếu.',
+  'captureCheck.provisional':
+    'Cảnh báo này dùng ngưỡng chưa được kiểm chứng, chỉ để tham khảo. Bạn có thể chụp lại hoặc dùng luôn.',
+  'captureCheck.boundary':
+    'Chỉ xem ảnh có dễ đọc hay không. Không đánh giá tình trạng của nhãn máy, đá mài hay mức độ an toàn khi sử dụng.',
+  'captureCheck.decodeBlocked':
+    'Không thể tiếp tục với ảnh không mở được. Hãy chụp lại hoặc chọn ảnh khác.',
+  'captureCheck.retake': 'Chụp lại',
+  'captureCheck.useAnyway': 'Vẫn dùng ảnh này',
+  'captureCheck.useAnywayFor': 'Vẫn dùng ảnh {subject}',
+  'captureCheck.usedAnyway': 'Bạn đã xem cảnh báo và chọn dùng ảnh này.',
+
   'wheelType.bonded_abrasive': 'Đá mài liên kết thông thường',
   'wheelType.flap_disc': 'Đĩa nhám xếp',
   'wheelType.cup_wheel': 'Đá mài dạng chén',

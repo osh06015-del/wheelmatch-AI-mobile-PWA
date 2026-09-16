@@ -849,4 +849,57 @@ describe('결과 화면 — 저장 함수 내부 재검사와 저장공간 오�
       expect(box).not.toBeChecked();
     }
   });
+  it('사진 상태 확인 기록을 함께 저장한다 — 사진을 빼고 저장해도 남는다', async () => {
+    const wheel = { ...WHEEL, maxRPM: 8500 };
+    const result = ready(wheel);
+    const check = {
+      checkVersion: 'v1',
+      warnings: ['blur' as const],
+      usedDespiteWarning: true,
+      retakeCount: 1,
+    };
+    act(() => {
+      result.current.setCaptureCheck('grinder', check);
+      result.current.setCaptureCheck('wheel', { ...check, warnings: [] });
+      result.current.setWheelExam({
+        exam: null,
+        photos: { back: null, edge: null, bore: null },
+        acknowledged: false,
+        captureChecks: { back: check, edge: null, bore: null },
+        captureMetrics: { back: null, edge: null, bore: null },
+      });
+    });
+
+    const quotaError = new Error('storage full');
+    quotaError.name = 'QuotaExceededError';
+    vi.mocked(saveInspection).mockRejectedValueOnce(quotaError);
+
+    render(<ResultPage />);
+    checkAll();
+    fireEvent.click(screen.getByRole('button', { name: /점검 완료 및 저장/ }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: '사진을 빼고 결과만 저장' }),
+    );
+    await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(2));
+
+    const saved = vi.mocked(saveInspection).mock.calls[1][0];
+    expect(saved.captureChecks).toEqual({
+      grinder: check,
+      wheel: { ...check, warnings: [] },
+      wheelBack: check,
+    });
+  });
+
+  it('사진 상태 확인 기록이 없으면 기록에 빈 객체를 남기지 않는다', async () => {
+    ready({ ...WHEEL, maxRPM: 8500 });
+
+    render(<ResultPage />);
+    checkAll();
+    fireEvent.click(screen.getByRole('button', { name: /점검 완료 및 저장/ }));
+    await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
+
+    const saved = vi.mocked(saveInspection).mock.calls[0][0];
+    expect(saved.captureChecks).toBeUndefined();
+    expect(saved.wheelBackCaptureMetrics).toBeUndefined();
+  });
 });

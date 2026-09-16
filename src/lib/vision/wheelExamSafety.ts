@@ -103,6 +103,7 @@ export function notRunReasonFrom(
 /** 진행을 막는 이유. null이면 이 기능이 막을 이유가 없다는 뜻이다. */
 export type WheelExamBlock =
   | 'photosMissing' // 추가 사진 3장이 아직 없다
+  | 'captureReview' // 사진 상태 경고에 아직 답하지 않았다(다시 찍기·그래도 사용)
   | 'notAnalyzed' // 사진은 있는데 아직 분석하지 않았다
   | 'retakeRequired' // 판독할 수 없는 사진이 있다
   | 'needsAcknowledge' // 이상 징후를 작업자가 아직 확인하지 않았다
@@ -113,6 +114,12 @@ export interface WheelExamGateInput {
   required: boolean;
   /** 추가 사진 세 장을 모두 받았는가 */
   photosReady: boolean;
+  /**
+   * 사진 상태 경고가 붙은 사진 중 작업자가 아직 답하지 않은 것이 있는가.
+   *
+   * 사진을 보내기 전의 확인일 뿐 안전 조건이 아니다. "그래도 사용"으로 풀린다.
+   */
+  captureReviewPending: boolean;
   /** 분석 결과. 아직 돌리지 않았거나 실패했으면 null */
   exam: WheelExamResult | null;
   /** 이상 징후 경고를 작업자가 확인했는가 */
@@ -134,8 +141,9 @@ export interface WheelExamGateInput {
 /**
  * 다각도 확인 때문에 진행을 막아야 하는가.
  *
- * 막는 경우는 다섯이다.
+ * 막는 경우는 여섯이다.
  *   1. 요구되는데 사진이 아직 없다
+ *   1-1. 사진 상태 경고에 아직 답하지 않았다(다시 찍기·그래도 사용으로 풀린다)
  *   2. 사진은 있는데 분석을 돌리지 않았다
  *   3. 판독할 수 없는 사진이 있다 → 그 사진을 다시 찍어야 한다
  *   4. 이상 징후가 보이는데 작업자가 아직 확인하지 않았다
@@ -153,6 +161,7 @@ export function wheelExamBlock(
     return input.manualContinueAcknowledged ? null : 'needsManualContinue';
   }
   if (!input.photosReady) return 'photosMissing';
+  if (input.captureReviewPending) return 'captureReview';
   if (!input.exam) return 'notAnalyzed';
   if (viewsNeedingRetake(input.exam).length > 0) return 'retakeRequired';
   if (input.exam.status === 'suspected' && !input.acknowledged) {

@@ -320,3 +320,70 @@ describe('WheelExamPanel — AI 확인 실패', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe('WheelExamPanel — 사진 상태 경고', () => {
+  const warned = {
+    decodeFailed: false,
+    warnings: ['too_dark' as const],
+    usedDespiteWarning: false,
+    attempts: 1,
+  };
+
+  it('경고가 붙은 자리에 경고를 보이고, 그래도 사용하기 전에는 확인하기를 막는다', async () => {
+    const user = userEvent.setup();
+    const onUseAnyway = vi.fn();
+    renderPanel({
+      photos: { back: PHOTO, edge: PHOTO, bore: PHOTO },
+      reviews: { back: null, edge: warned, bore: null },
+      onUseAnyway,
+    });
+
+    expect(
+      screen.getByRole('region', { name: '가장자리 사진 상태 확인' }),
+    ).toHaveTextContent('사진이 너무 어둡습니다.');
+    expect(
+      screen.getByRole('button', { name: '사진 4장으로 확인하기' }),
+    ).toBeDisabled();
+
+    await user.click(
+      screen.getByRole('button', { name: '가장자리 사진을 그래도 사용' }),
+    );
+    expect(onUseAnyway).toHaveBeenCalledWith('edge');
+  });
+
+  it('그래도 사용을 고른 자리는 확인하기를 막지 않는다', () => {
+    renderPanel({
+      photos: { back: PHOTO, edge: PHOTO, bore: PHOTO },
+      reviews: {
+        back: null,
+        edge: { ...warned, usedDespiteWarning: true },
+        bore: null,
+      },
+    });
+
+    expect(
+      screen.getByRole('button', { name: '사진 4장으로 확인하기' }),
+    ).toBeEnabled();
+  });
+
+  it('열지 못한 자리는 비어 있고 그래도 사용할 수 없다', () => {
+    renderPanel({
+      photos: { back: PHOTO, edge: null, bore: PHOTO },
+      reviews: {
+        back: null,
+        edge: { ...warned, decodeFailed: true, warnings: [] },
+        bore: null,
+      },
+    });
+
+    expect(
+      screen.getByText(/가장자리 — 이 사진 형식을 읽지 못했습니다/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /그래도 사용/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '사진 4장으로 확인하기' }),
+    ).toBeDisabled();
+  });
+});

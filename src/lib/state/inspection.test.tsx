@@ -535,3 +535,91 @@ describe('useInspection', () => {
     });
   });
 });
+
+describe('사진 상태 확인 기록', () => {
+  const CHECK = {
+    checkVersion: 'test',
+    warnings: ['blur' as const],
+    usedDespiteWarning: true,
+    retakeCount: 2,
+  };
+  const EXAM_CHECKS = {
+    back: { ...CHECK, retakeCount: 0 },
+    edge: null,
+    bore: { ...CHECK, warnings: [] },
+  };
+  const photo = () => new Blob(['x'], { type: 'image/jpeg' });
+
+  beforeEach(() => {
+    const { result } = renderHook(() => useInspection());
+    act(() => result.current.reset());
+  });
+
+  it('명판·라벨 기록은 새로고침을 넘도록 sessionStorage에도 남긴다', () => {
+    const { result } = renderHook(() => useInspection());
+    act(() => {
+      result.current.setCaptureCheck('grinder', CHECK);
+      result.current.setCaptureCheck('wheel', { ...CHECK, retakeCount: 0 });
+    });
+
+    expect(result.current.captureChecks.grinder).toEqual(CHECK);
+    expect(
+      JSON.parse(sessionStorage.getItem('wheelmatch.captureChecks') ?? '{}'),
+    ).toEqual({ grinder: CHECK, wheel: { ...CHECK, retakeCount: 0 } });
+  });
+
+  it('다각도 자리 기록은 사진과 수명을 같이 해 sessionStorage에 남기지 않는다', () => {
+    const { result } = renderHook(() => useInspection());
+    act(() => {
+      result.current.setCaptureCheck('wheel', CHECK);
+      result.current.setWheelExam({
+        exam: null,
+        photos: { back: photo(), edge: photo(), bore: photo() },
+        acknowledged: false,
+        captureChecks: EXAM_CHECKS,
+      });
+    });
+
+    expect(result.current.captureChecks.wheelBack).toEqual(EXAM_CHECKS.back);
+    // 한 번도 찍지 않은(null) 자리는 기록하지 않는다.
+    expect(result.current.captureChecks).not.toHaveProperty('wheelEdge');
+    expect(
+      JSON.parse(sessionStorage.getItem('wheelmatch.captureChecks') ?? '{}'),
+    ).toEqual({ wheel: CHECK });
+  });
+
+  it('새 숫돌이 들어오면 라벨·다각도 기록을 버리고 명판 기록만 남긴다', () => {
+    const { result } = renderHook(() => useInspection());
+    act(() => {
+      result.current.setCaptureCheck('grinder', CHECK);
+      result.current.setCaptureCheck('wheel', CHECK);
+      result.current.setWheelExam({
+        exam: null,
+        photos: { back: photo(), edge: photo(), bore: photo() },
+        acknowledged: false,
+        captureChecks: EXAM_CHECKS,
+        captureMetrics: { back: null, edge: null, bore: null },
+      });
+    });
+
+    act(() => result.current.setWheel({ ...WHEEL, diameter: 115 }));
+
+    expect(result.current.captureChecks).toEqual({ grinder: CHECK });
+    expect(result.current.wheelExamCaptureMetrics).toBeNull();
+  });
+
+  it('새 그라인더와 reset은 모든 기록을 버린다', () => {
+    const { result } = renderHook(() => useInspection());
+    act(() => {
+      result.current.setCaptureCheck('grinder', CHECK);
+      result.current.setCaptureCheck('wheel', CHECK);
+    });
+    act(() => result.current.setGrinder(GRINDER));
+    expect(result.current.captureChecks).toEqual({});
+
+    act(() => result.current.setCaptureCheck('grinder', CHECK));
+    act(() => result.current.reset());
+    expect(result.current.captureChecks).toEqual({});
+    expect(sessionStorage.getItem('wheelmatch.captureChecks')).toBeNull();
+  });
+});

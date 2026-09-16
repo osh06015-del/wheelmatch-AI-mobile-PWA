@@ -9,10 +9,15 @@
 // 대신 눌러주지 않는다. 경계 문구는 결과와 무관하게 항상 띄운다.
 
 import { ZoomablePhoto } from './BlobPhoto';
+import { CaptureQualityNotice } from './CaptureQualityNotice';
 import { WheelExamFindings } from './WheelExamFindings';
 
 import { useLocale, type MessageKey, type Translate } from '@/lib/i18n';
 import { EXAM_ISSUE_LABEL, EXAM_VIEW_LABEL } from '@/lib/i18n/examLabels';
+import {
+  captureReviewSettled,
+  type CaptureReview,
+} from '@/lib/image/captureCheck';
 import {
   EXTRA_EXAM_VIEWS,
   viewsNeedingRetake,
@@ -42,14 +47,18 @@ const VIEW_HINT: Readonly<Record<ExtraExamView, MessageKey>> = {
 function ViewSlot({
   view,
   photo,
+  review,
   needsRetake,
   onPick,
+  onUseAnyway,
   t,
 }: {
   view: ExtraExamView;
   photo: Blob | null;
+  review: CaptureReview | null;
   needsRetake: boolean;
   onPick: (view: ExtraExamView, file: File) => void;
+  onUseAnyway: (view: ExtraExamView) => void;
   t: Translate;
 }) {
   const label = t(EXAM_VIEW_LABEL[view]);
@@ -79,6 +88,14 @@ function ViewSlot({
       {photo && (
         <ZoomablePhoto blob={photo} label={label} className="max-w-40" />
       )}
+
+      {/* 사진 상태 경고. 이 자리의 촬영·갤러리 버튼이 곧 다시 찍기라서 같은
+          버튼을 한 번 더 두지 않는다. 열지 못한 사진은 그래도 사용할 수 없다. */}
+      <CaptureQualityNotice
+        review={review}
+        subject={label}
+        onUseAnyway={() => onUseAnyway(view)}
+      />
 
       <div className="grid grid-cols-2 gap-3">
         <label className="flex min-h-12 cursor-pointer items-center justify-center rounded-lg border border-slate-600 bg-slate-900 text-base font-bold text-slate-200 active:bg-slate-700">
@@ -119,7 +136,11 @@ function ViewSlot({
 
 export interface WheelExamPanelProps {
   photos: Record<ExtraExamView, Blob | null>;
+  /** 자리별 사진 상태 확인. 아직 넣지 않은 자리는 null이다 */
+  reviews?: Record<ExtraExamView, CaptureReview | null>;
   onPick: (view: ExtraExamView, file: File) => void;
+  /** 사진 상태 경고를 보고도 그 자리의 사진을 쓴다 */
+  onUseAnyway?: (view: ExtraExamView) => void;
   onAnalyze: () => void;
   analyzing: boolean;
   exam: WheelExamResult | null;
@@ -134,7 +155,9 @@ export interface WheelExamPanelProps {
 
 export function WheelExamPanel({
   photos,
+  reviews,
   onPick,
+  onUseAnyway = () => undefined,
   onAnalyze,
   analyzing,
   exam,
@@ -147,7 +170,13 @@ export function WheelExamPanel({
   const { t } = useLocale();
   const retakeViews = viewsNeedingRetake(exam);
   const ready = EXTRA_EXAM_VIEWS.filter((view) => photos[view] !== null);
-  const photosReady = ready.length === EXTRA_EXAM_VIEWS.length;
+  // 서버로 보내기 전에 경고에 답해야 한다. 경고가 없거나 그래도 사용을 고른 사진만 보낸다.
+  const photosReady =
+    ready.length === EXTRA_EXAM_VIEWS.length &&
+    EXTRA_EXAM_VIEWS.every((view) => {
+      const review = reviews?.[view] ?? null;
+      return review === null || captureReviewSettled(review);
+    });
 
   return (
     <section className="flex flex-col gap-4" aria-labelledby="wheel-exam-title">
@@ -185,8 +214,10 @@ export function WheelExamPanel({
             key={view}
             view={view}
             photo={photos[view]}
+            review={reviews?.[view] ?? null}
             needsRetake={retakeViews.includes(view)}
             onPick={onPick}
+            onUseAnyway={onUseAnyway}
             t={t}
           />
         ))}
@@ -196,7 +227,7 @@ export function WheelExamPanel({
         {t('exam.replaceNote')}
       </p>
 
-      {!photosReady && (
+      {ready.length < EXTRA_EXAM_VIEWS.length && (
         <p className="text-base leading-relaxed text-slate-400">
           {t('exam.missing')}
         </p>

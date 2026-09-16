@@ -366,6 +366,35 @@ export const id: Messages = {
   'photo.zoomOpen': 'Perbesar {label}',
   'photo.zoomClose': 'Tutup foto yang diperbesar',
 
+  'exam.block.captureReview':
+    'Untuk foto dengan peringatan kualitas, ambil ulang atau pilih tetap gunakan sebelum menjalankan pemeriksaan.',
+  'captureCheck.title': 'Pemeriksaan kualitas foto',
+  'captureCheck.titleFor': 'Pemeriksaan kualitas foto: {subject}',
+  'captureCheck.warning.lowResolution': 'Resolusi foto rendah.',
+  'captureCheck.warning.blur': 'Foto tampak buram.',
+  'captureCheck.warning.tooDark': 'Foto terlalu gelap.',
+  'captureCheck.warning.overexposed':
+    'Foto terlalu terang atau ada pantulan cahaya yang kuat.',
+  'captureCheck.hint.lowResolution':
+    'Jangan pakai tangkapan layar atau foto yang diperbesar; dekati objek lalu ambil ulang dengan kamera.',
+  'captureCheck.hint.blur':
+    'Tahan ponsel agar diam dan ambil foto setelah tulisan terlihat fokus.',
+  'captureCheck.hint.tooDark':
+    'Pindah ke tempat yang lebih terang atau sorot dengan lampu, lalu ambil foto.',
+  'captureCheck.hint.overexposed':
+    'Ambil dari sudut sedikit miring atau pindah posisi untuk menghindari pantulan cahaya.',
+  'captureCheck.provisional':
+    'Peringatan ini memakai ambang batas yang belum divalidasi, hanya sebagai acuan. Anda dapat mengambil ulang atau tetap memakainya.',
+  'captureCheck.boundary':
+    'Hanya memeriksa apakah foto mudah dibaca. Tidak menilai kondisi pelat nama atau batu gerinda, maupun keamanan penggunaannya.',
+  'captureCheck.decodeBlocked':
+    'Tidak dapat melanjutkan dengan foto yang tidak bisa dibuka. Ambil ulang atau pilih foto lain.',
+  'captureCheck.retake': 'Ambil ulang',
+  'captureCheck.useAnyway': 'Tetap gunakan foto ini',
+  'captureCheck.useAnywayFor': 'Tetap gunakan foto {subject}',
+  'captureCheck.usedAnyway':
+    'Anda sudah melihat peringatan dan memilih memakai foto ini.',
+
   'wheelType.bonded_abrasive': 'Batu gerinda bonded biasa',
   'wheelType.flap_disc': 'Flap disc (amplas susun)',
   'wheelType.cup_wheel': 'Batu gerinda mangkuk',
