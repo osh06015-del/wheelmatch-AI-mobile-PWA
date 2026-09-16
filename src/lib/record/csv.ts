@@ -67,6 +67,46 @@ export const CSV_COLUMNS = [
   // 사전점검 시간(시험운전 시작 직전까지). elapsedMs는 시험운전을 포함한 전체다.
   // 기능 도입 전 기록은 빈 칸이다. 앞선 열을 밀지 않도록 맨 뒤에 둔다.
   'preTrialElapsedMs',
+  // ── 아래부터는 검증용 원시 측정값이다. 판정·현장 UI에 쓰지 않는다. ──
+  // 기능 도입 전 기록은 빈 칸이다. 앞선 열의 자리를 지키기 위해 맨 뒤에 붙인다.
+  'grinderCaptureOriginalWidth',
+  'grinderCaptureOriginalHeight',
+  'grinderCaptureOriginalBytes',
+  'grinderCaptureUploadWidth',
+  'grinderCaptureUploadHeight',
+  'grinderCaptureUploadBytes',
+  'grinderCaptureBrightness',
+  'grinderCaptureContrast',
+  'grinderCaptureDarkRatio',
+  'grinderCaptureBrightRatio',
+  'grinderCaptureBlur',
+  'grinderCaptureOptimizeMs',
+  'wheelCaptureOriginalWidth',
+  'wheelCaptureOriginalHeight',
+  'wheelCaptureOriginalBytes',
+  'wheelCaptureUploadWidth',
+  'wheelCaptureUploadHeight',
+  'wheelCaptureUploadBytes',
+  'wheelCaptureBrightness',
+  'wheelCaptureContrast',
+  'wheelCaptureDarkRatio',
+  'wheelCaptureBrightRatio',
+  'wheelCaptureBlur',
+  'wheelCaptureOptimizeMs',
+  'grinderOcrEngine',
+  'grinderOcrModel',
+  'grinderOcrInputTokens',
+  'grinderOcrOutputTokens',
+  'grinderOcrCacheReadTokens',
+  'grinderOcrCacheCreationTokens',
+  'grinderOcrDurationMs',
+  'wheelOcrEngine',
+  'wheelOcrModel',
+  'wheelOcrInputTokens',
+  'wheelOcrOutputTokens',
+  'wheelOcrCacheReadTokens',
+  'wheelOcrCacheCreationTokens',
+  'wheelOcrDurationMs',
 ] as const;
 
 /**
@@ -101,6 +141,27 @@ function edited<T extends object>(
 ): string {
   if (!ocr) return '';
   return keys.some((key) => ocr[key] !== final[key]) ? 'Y' : 'N';
+}
+
+/** CaptureQualityMetrics의 필드 하나. 기록에 없으면(구기록) undefined다. */
+function capture<K extends keyof InspectionRecord>(
+  record: InspectionRecord,
+  key: K,
+  field: string,
+): number | null | undefined {
+  const metrics = record[key] as Record<string, number | null> | undefined;
+  return metrics ? metrics[field] : undefined;
+}
+
+/** OcrTelemetry의 필드 하나. 기록에 없으면(구기록) undefined다. */
+function telemetry<K extends keyof InspectionRecord>(
+  record: InspectionRecord,
+  key: K,
+  field: string,
+): string | number | null | undefined {
+  const value = record[key] as
+    Record<string, string | number | null> | undefined;
+  return value ? value[field] : undefined;
 }
 
 function row(record: InspectionRecord): string {
@@ -168,6 +229,44 @@ function row(record: InspectionRecord): string {
     tick(checklist.surroundingsClear),
     record.ruleVersion,
     record.preTrialElapsedMs,
+    capture(record, 'grinderCaptureMetrics', 'originalWidth'),
+    capture(record, 'grinderCaptureMetrics', 'originalHeight'),
+    capture(record, 'grinderCaptureMetrics', 'originalBytes'),
+    capture(record, 'grinderCaptureMetrics', 'uploadWidth'),
+    capture(record, 'grinderCaptureMetrics', 'uploadHeight'),
+    capture(record, 'grinderCaptureMetrics', 'uploadBytes'),
+    capture(record, 'grinderCaptureMetrics', 'meanBrightness'),
+    capture(record, 'grinderCaptureMetrics', 'contrast'),
+    capture(record, 'grinderCaptureMetrics', 'darkPixelRatio'),
+    capture(record, 'grinderCaptureMetrics', 'brightPixelRatio'),
+    capture(record, 'grinderCaptureMetrics', 'blurMetric'),
+    capture(record, 'grinderCaptureMetrics', 'optimizeMs'),
+    capture(record, 'wheelCaptureMetrics', 'originalWidth'),
+    capture(record, 'wheelCaptureMetrics', 'originalHeight'),
+    capture(record, 'wheelCaptureMetrics', 'originalBytes'),
+    capture(record, 'wheelCaptureMetrics', 'uploadWidth'),
+    capture(record, 'wheelCaptureMetrics', 'uploadHeight'),
+    capture(record, 'wheelCaptureMetrics', 'uploadBytes'),
+    capture(record, 'wheelCaptureMetrics', 'meanBrightness'),
+    capture(record, 'wheelCaptureMetrics', 'contrast'),
+    capture(record, 'wheelCaptureMetrics', 'darkPixelRatio'),
+    capture(record, 'wheelCaptureMetrics', 'brightPixelRatio'),
+    capture(record, 'wheelCaptureMetrics', 'blurMetric'),
+    capture(record, 'wheelCaptureMetrics', 'optimizeMs'),
+    telemetry(record, 'grinderOcrTelemetry', 'engine'),
+    telemetry(record, 'grinderOcrTelemetry', 'model'),
+    telemetry(record, 'grinderOcrTelemetry', 'inputTokens'),
+    telemetry(record, 'grinderOcrTelemetry', 'outputTokens'),
+    telemetry(record, 'grinderOcrTelemetry', 'cacheReadTokens'),
+    telemetry(record, 'grinderOcrTelemetry', 'cacheCreationTokens'),
+    telemetry(record, 'grinderOcrTelemetry', 'durationMs'),
+    telemetry(record, 'wheelOcrTelemetry', 'engine'),
+    telemetry(record, 'wheelOcrTelemetry', 'model'),
+    telemetry(record, 'wheelOcrTelemetry', 'inputTokens'),
+    telemetry(record, 'wheelOcrTelemetry', 'outputTokens'),
+    telemetry(record, 'wheelOcrTelemetry', 'cacheReadTokens'),
+    telemetry(record, 'wheelOcrTelemetry', 'cacheCreationTokens'),
+    telemetry(record, 'wheelOcrTelemetry', 'durationMs'),
   ];
 
   return values.map(cell).join(',');

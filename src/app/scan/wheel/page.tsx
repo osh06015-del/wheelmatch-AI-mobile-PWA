@@ -21,6 +21,7 @@ import { WHEEL_FIELD_GUIDE } from '@/lib/guide/fieldGuide';
 import { useLocale } from '@/lib/i18n';
 import { analysisErrorText } from '@/lib/i18n/errors';
 import { optimizeForUpload } from '@/lib/image/optimize';
+import { measureCapture } from '@/lib/image/quality';
 import {
   confirmedWheelSpec,
   wheelTypeDiffersFromSuggestion,
@@ -34,6 +35,8 @@ import {
 } from '@/lib/safety/wheelCondition';
 import { useInspection } from '@/lib/state/inspection';
 import type {
+  CaptureQualityMetrics,
+  OcrTelemetry,
   WheelCondition,
   WheelPurpose,
   WheelSpec,
@@ -68,6 +71,9 @@ export default function WheelScanPage() {
   const [phase, setPhase] = useState<Phase>('capture');
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [ocr, setOcr] = useState<WheelSpec | null>(null);
+  const [captureMetrics, setCaptureMetrics] =
+    useState<CaptureQualityMetrics | null>(null);
+  const [ocrTelemetry, setOcrTelemetry] = useState<OcrTelemetry | null>(null);
   const [form, setForm] = useState<FormState>({
     maxRPM: '',
     diameter: '',
@@ -101,10 +107,16 @@ export default function WheelScanPage() {
     setError(null);
     try {
       // 원본 사진은 Vercel 함수의 4.5MB 요청 한도를 넘길 수 있다. 먼저 줄인다.
+      const optimizeStart = performance.now();
       const blob = await optimizeForUpload(source);
+      const optimizeMs = performance.now() - optimizeStart;
       setPhoto(blob);
-      const spec = await getExtractor().extractWheel(blob);
+      // 검증용 원시 측정값. 실패해도 null로만 남고 분석은 그대로 진행된다.
+      setCaptureMetrics(await measureCapture(source, blob, optimizeMs));
+      const extractor = getExtractor();
+      const spec = await extractor.extractWheel(blob);
       setOcr(spec);
+      setOcrTelemetry(extractor.getLastTelemetry?.() ?? null);
       setForm({
         maxRPM: fromNumber(spec.maxRPM),
         diameter: fromNumber(spec.diameter),
@@ -158,7 +170,7 @@ export default function WheelScanPage() {
       expiryText: form.expiry,
       userConfirmed,
     });
-    setWheel(spec, photo, ocr);
+    setWheel(spec, photo, ocr, captureMetrics, ocrTelemetry);
     setWheelCondition(condition);
     router.push('/result');
   }

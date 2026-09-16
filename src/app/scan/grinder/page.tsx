@@ -20,13 +20,19 @@ import { GRINDER_FIELD_GUIDE } from '@/lib/guide/fieldGuide';
 import { useLocale } from '@/lib/i18n';
 import { analysisErrorText } from '@/lib/i18n/errors';
 import { optimizeForUpload } from '@/lib/image/optimize';
+import { measureCapture } from '@/lib/image/quality';
 import { getExtractor } from '@/lib/ocr/extractor';
 import {
   EMPTY_GRINDER_CONDITION,
   isGrinderConditionComplete,
 } from '@/lib/safety/grinderCondition';
 import { useInspection } from '@/lib/state/inspection';
-import type { GrinderCondition, GrinderSpec } from '@/lib/rules/types';
+import type {
+  CaptureQualityMetrics,
+  GrinderCondition,
+  GrinderSpec,
+  OcrTelemetry,
+} from '@/lib/rules/types';
 
 type Phase = 'capture' | 'analyzing' | 'confirm' | 'error';
 
@@ -44,6 +50,9 @@ export default function GrinderScanPage() {
   const [phase, setPhase] = useState<Phase>('capture');
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [ocr, setOcr] = useState<GrinderSpec | null>(null);
+  const [captureMetrics, setCaptureMetrics] =
+    useState<CaptureQualityMetrics | null>(null);
+  const [ocrTelemetry, setOcrTelemetry] = useState<OcrTelemetry | null>(null);
   const [form, setForm] = useState<FormState>({
     model: '',
     noLoadRPM: '',
@@ -61,10 +70,16 @@ export default function GrinderScanPage() {
     setError(null);
     try {
       // 원본 사진은 Vercel 함수의 4.5MB 요청 한도를 넘길 수 있다. 먼저 줄인다.
+      const optimizeStart = performance.now();
       const blob = await optimizeForUpload(source);
+      const optimizeMs = performance.now() - optimizeStart;
       setPhoto(blob);
-      const spec = await getExtractor().extractGrinder(blob);
+      // 검증용 원시 측정값. 실패해도 null로만 남고 분석은 그대로 진행된다.
+      setCaptureMetrics(await measureCapture(source, blob, optimizeMs));
+      const extractor = getExtractor();
+      const spec = await extractor.extractGrinder(blob);
       setOcr(spec);
+      setOcrTelemetry(extractor.getLastTelemetry?.() ?? null);
       setForm({
         model: spec.model ?? '',
         noLoadRPM: fromNumber(spec.noLoadRPM),
@@ -103,7 +118,7 @@ export default function GrinderScanPage() {
       confidence: userConfirmed ? 'high' : (ocr?.confidence ?? 'low'),
     };
     // setGrinder가 이전 장비 상태·숫돌 값을 모두 지운다. 그 뒤에 이번 확인을 넣는다.
-    setGrinder(spec, photo, ocr);
+    setGrinder(spec, photo, ocr, captureMetrics, ocrTelemetry);
     setGrinderCondition(condition);
     router.push('/scan/wheel');
   }

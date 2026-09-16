@@ -13,8 +13,10 @@
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import type { TrialRunProgress } from '@/lib/safety/trialRun';
 import type {
+  CaptureQualityMetrics,
   GrinderCondition,
   GrinderSpec,
+  OcrTelemetry,
   WheelCondition,
   WheelSpec,
   WorkPurpose,
@@ -29,6 +31,10 @@ const WHEEL_OCR_KEY = 'wheelmatch.wheelOcr';
 const GRINDER_CONDITION_KEY = 'wheelmatch.grinderCondition';
 const WHEEL_CONDITION_KEY = 'wheelmatch.wheelCondition';
 const TRIAL_RUN_KEY = 'wheelmatch.trialRun';
+const GRINDER_CAPTURE_METRICS_KEY = 'wheelmatch.grinderCaptureMetrics';
+const WHEEL_CAPTURE_METRICS_KEY = 'wheelmatch.wheelCaptureMetrics';
+const GRINDER_OCR_TELEMETRY_KEY = 'wheelmatch.grinderOcrTelemetry';
+const WHEEL_OCR_TELEMETRY_KEY = 'wheelmatch.wheelOcrTelemetry';
 
 interface InspectionState {
   /** 작업자가 시작할 때 고른 오늘의 작업 */
@@ -53,6 +59,14 @@ interface InspectionState {
   trialRun: TrialRunProgress | null;
   grinderImage: Blob | null;
   wheelImage: Blob | null;
+  /**
+   * 촬영·OCR의 검증용 원시 측정값. 판정에 쓰지 않는다 — CaptureQualityMetrics·
+   * OcrTelemetry 참고. 값 수집이 실패해도 점검 흐름과 무관하므로 null일 수 있다.
+   */
+  grinderCaptureMetrics: CaptureQualityMetrics | null;
+  wheelCaptureMetrics: CaptureQualityMetrics | null;
+  grinderOcrTelemetry: OcrTelemetry | null;
+  wheelOcrTelemetry: OcrTelemetry | null;
   /** 서버 렌더 결과에서는 false. 브라우저 값이 반영된 뒤에만 true가 된다. */
   hydrated: boolean;
 }
@@ -70,6 +84,10 @@ const SERVER_SNAPSHOT: InspectionState = {
   trialRun: null,
   grinderImage: null,
   wheelImage: null,
+  grinderCaptureMetrics: null,
+  wheelCaptureMetrics: null,
+  grinderOcrTelemetry: null,
+  wheelOcrTelemetry: null,
   hydrated: false,
 };
 
@@ -104,6 +122,14 @@ function initialClientState(): InspectionState {
     trialRun: readStored<TrialRunProgress>(TRIAL_RUN_KEY),
     grinderImage: null,
     wheelImage: null,
+    grinderCaptureMetrics: readStored<CaptureQualityMetrics>(
+      GRINDER_CAPTURE_METRICS_KEY,
+    ),
+    wheelCaptureMetrics: readStored<CaptureQualityMetrics>(
+      WHEEL_CAPTURE_METRICS_KEY,
+    ),
+    grinderOcrTelemetry: readStored<OcrTelemetry>(GRINDER_OCR_TELEMETRY_KEY),
+    wheelOcrTelemetry: readStored<OcrTelemetry>(WHEEL_OCR_TELEMETRY_KEY),
     hydrated: true,
   };
 }
@@ -140,11 +166,15 @@ export interface InspectionStore extends InspectionState {
     spec: GrinderSpec,
     image?: Blob | null,
     ocr?: GrinderSpec | null,
+    captureMetrics?: CaptureQualityMetrics | null,
+    ocrTelemetry?: OcrTelemetry | null,
   ) => void;
   setWheel: (
     spec: WheelSpec,
     image?: Blob | null,
     ocr?: WheelSpec | null,
+    captureMetrics?: CaptureQualityMetrics | null,
+    ocrTelemetry?: OcrTelemetry | null,
   ) => void;
   setGrinderCondition: (condition: GrinderCondition) => void;
   setWheelCondition: (condition: WheelCondition) => void;
@@ -170,9 +200,19 @@ export function useInspection(): InspectionStore {
   }, []);
 
   const setGrinder = useCallback(
-    (spec: GrinderSpec, image?: Blob | null, ocr?: GrinderSpec | null) => {
+    (
+      spec: GrinderSpec,
+      image?: Blob | null,
+      ocr?: GrinderSpec | null,
+      captureMetrics?: CaptureQualityMetrics | null,
+      ocrTelemetry?: OcrTelemetry | null,
+    ) => {
       writeStored(GRINDER_KEY, spec);
       if (ocr !== undefined) writeStored(GRINDER_OCR_KEY, ocr);
+      if (captureMetrics !== undefined)
+        writeStored(GRINDER_CAPTURE_METRICS_KEY, captureMetrics);
+      if (ocrTelemetry !== undefined)
+        writeStored(GRINDER_OCR_TELEMETRY_KEY, ocrTelemetry);
       // 그라인더가 바뀌면 그 뒤의 모든 것이 근거를 잃는다.
       //
       // 직접 확인한 장비 상태는 그 기계에 대한 답이고, 숫돌 규격 대조는
@@ -184,6 +224,8 @@ export function useInspection(): InspectionStore {
         window.sessionStorage.removeItem(WHEEL_OCR_KEY);
         window.sessionStorage.removeItem(WHEEL_CONDITION_KEY);
         window.sessionStorage.removeItem(TRIAL_RUN_KEY);
+        window.sessionStorage.removeItem(WHEEL_CAPTURE_METRICS_KEY);
+        window.sessionStorage.removeItem(WHEEL_OCR_TELEMETRY_KEY);
       } catch {
         // 메모리 상태는 아래에서 반드시 지운다.
       }
@@ -195,17 +237,35 @@ export function useInspection(): InspectionStore {
         wheelCondition: null,
         wheelImage: null,
         trialRun: null,
+        wheelCaptureMetrics: null,
+        wheelOcrTelemetry: null,
         ...(image === undefined ? {} : { grinderImage: image }),
         ...(ocr === undefined ? {} : { grinderOcr: ocr }),
+        ...(captureMetrics === undefined
+          ? {}
+          : { grinderCaptureMetrics: captureMetrics }),
+        ...(ocrTelemetry === undefined
+          ? {}
+          : { grinderOcrTelemetry: ocrTelemetry }),
       });
     },
     [],
   );
 
   const setWheel = useCallback(
-    (spec: WheelSpec, image?: Blob | null, ocr?: WheelSpec | null) => {
+    (
+      spec: WheelSpec,
+      image?: Blob | null,
+      ocr?: WheelSpec | null,
+      captureMetrics?: CaptureQualityMetrics | null,
+      ocrTelemetry?: OcrTelemetry | null,
+    ) => {
       writeStored(WHEEL_KEY, spec);
       if (ocr !== undefined) writeStored(WHEEL_OCR_KEY, ocr);
+      if (captureMetrics !== undefined)
+        writeStored(WHEEL_CAPTURE_METRICS_KEY, captureMetrics);
+      if (ocrTelemetry !== undefined)
+        writeStored(WHEEL_OCR_TELEMETRY_KEY, ocrTelemetry);
       // 숫돌이 바뀌면 이전 숫돌에 대한 직접 확인도, 그 숫돌로 돌린
       // 시험운전도 재사용할 수 없다.
       try {
@@ -220,6 +280,12 @@ export function useInspection(): InspectionStore {
         trialRun: null,
         ...(image === undefined ? {} : { wheelImage: image }),
         ...(ocr === undefined ? {} : { wheelOcr: ocr }),
+        ...(captureMetrics === undefined
+          ? {}
+          : { wheelCaptureMetrics: captureMetrics }),
+        ...(ocrTelemetry === undefined
+          ? {}
+          : { wheelOcrTelemetry: ocrTelemetry }),
       });
     },
     [],
@@ -259,6 +325,10 @@ export function useInspection(): InspectionStore {
       window.sessionStorage.removeItem(GRINDER_CONDITION_KEY);
       window.sessionStorage.removeItem(WHEEL_CONDITION_KEY);
       window.sessionStorage.removeItem(TRIAL_RUN_KEY);
+      window.sessionStorage.removeItem(GRINDER_CAPTURE_METRICS_KEY);
+      window.sessionStorage.removeItem(WHEEL_CAPTURE_METRICS_KEY);
+      window.sessionStorage.removeItem(GRINDER_OCR_TELEMETRY_KEY);
+      window.sessionStorage.removeItem(WHEEL_OCR_TELEMETRY_KEY);
     } catch {
       // 무시한다.
     }
@@ -274,6 +344,10 @@ export function useInspection(): InspectionStore {
       trialRun: null,
       grinderImage: null,
       wheelImage: null,
+      grinderCaptureMetrics: null,
+      wheelCaptureMetrics: null,
+      grinderOcrTelemetry: null,
+      wheelOcrTelemetry: null,
     });
   }, []);
 

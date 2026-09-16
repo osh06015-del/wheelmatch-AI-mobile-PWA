@@ -9,7 +9,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { POST } from './route';
+import { buildTelemetry, POST } from './route';
 
 /** 검증 단계까지 도달시키기 위한 가짜 키. 실제 호출에는 쓰이지 않는다. */
 const DUMMY_KEY = 'sk-ant-not-a-real-key-for-tests-only';
@@ -115,6 +115,57 @@ describe('요청 본문 검증', () => {
   // 프로덕션은 runtime='nodejs'라 해당 없는, 테스트 환경만의 제약이다.
   //
   // 허용 목록의 의미는 반대 방향(위의 'nameplate' → 400)으로 이미 고정된다.
+});
+
+describe('buildTelemetry — 검증용 메타데이터', () => {
+  it('usage와 model을 그대로 옮긴다', () => {
+    const telemetry = buildTelemetry(
+      {
+        model: 'claude-sonnet-5',
+        usage: {
+          input_tokens: 1500,
+          output_tokens: 80,
+          cache_read_input_tokens: 0,
+          cache_creation_input_tokens: 1500,
+        },
+      },
+      Date.now() - 100,
+    );
+
+    expect(telemetry.engine).toBe('claude');
+    expect(telemetry.model).toBe('claude-sonnet-5');
+    expect(telemetry.inputTokens).toBe(1500);
+    expect(telemetry.outputTokens).toBe(80);
+    expect(telemetry.cacheReadTokens).toBe(0);
+    expect(telemetry.cacheCreationTokens).toBe(1500);
+    expect(telemetry.durationMs).toBeGreaterThanOrEqual(100);
+  });
+
+  it('usage가 없거나 형태가 달라도 null로만 채우고 죽지 않는다', () => {
+    const telemetry = buildTelemetry({}, Date.now());
+
+    expect(telemetry.model).toBeNull();
+    expect(telemetry.inputTokens).toBeNull();
+    expect(telemetry.outputTokens).toBeNull();
+    expect(telemetry.cacheReadTokens).toBeNull();
+    expect(telemetry.cacheCreationTokens).toBeNull();
+    expect(typeof telemetry.durationMs).toBe('number');
+  });
+
+  it('비용은 계산하지 않는다 — 토큰 수 이외의 필드가 없다', () => {
+    const telemetry = buildTelemetry({}, Date.now());
+    expect(Object.keys(telemetry).sort()).toEqual(
+      [
+        'cacheCreationTokens',
+        'cacheReadTokens',
+        'durationMs',
+        'engine',
+        'inputTokens',
+        'model',
+        'outputTokens',
+      ].sort(),
+    );
+  });
 });
 
 describe('오류 응답 형태', () => {

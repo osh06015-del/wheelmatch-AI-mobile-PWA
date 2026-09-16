@@ -3,12 +3,43 @@
 // Phase 1은 Claude API(ClaudeExtractor), Phase 2는 Tesseract.js(TesseractExtractor)를 쓴다.
 // 화면 코드는 이 인터페이스만 알면 되므로, 엔진을 갈아끼워도 UI는 건드릴 필요가 없다.
 
-import type { GrinderSpec, WheelSpec } from '@/lib/rules/types';
+import type { GrinderSpec, OcrTelemetry, WheelSpec } from '@/lib/rules/types';
 import { ExtractError, failureFromResponse } from './errors';
 
 export interface OCRExtractor {
   extractGrinder(imageBlob: Blob): Promise<GrinderSpec>;
   extractWheel(imageBlob: Blob): Promise<WheelSpec>;
+  /**
+   * 방금 끝난 추출 호출의 서버 응답 메타데이터(검증용). 판정에 쓰지 않는다.
+   *
+   * optional인 이유: 테스트가 만드는 최소 fixture 추출기까지 이 메서드를
+   * 구현하도록 강제하지 않기 위해서다. 없으면 호출부가 null로 취급한다.
+   */
+  getLastTelemetry?(): OcrTelemetry | null;
+}
+
+/** 서버가 응답에 실은 telemetry를 읽는다. 형태가 안 맞아도 죽지 않는다. */
+function parseTelemetry(
+  raw: unknown,
+  engine: OcrTelemetry['engine'],
+): OcrTelemetry {
+  const record =
+    typeof raw === 'object' && raw !== null
+      ? (raw as Record<string, unknown>)
+      : {};
+  const num = (value: unknown): number | null =>
+    typeof value === 'number' ? value : null;
+  const str = (value: unknown): string | null =>
+    typeof value === 'string' ? value : null;
+  return {
+    engine,
+    model: str(record.model),
+    inputTokens: num(record.inputTokens),
+    outputTokens: num(record.outputTokens),
+    cacheReadTokens: num(record.cacheReadTokens),
+    cacheCreationTokens: num(record.cacheCreationTokens),
+    durationMs: num(record.durationMs),
+  };
 }
 
 export type OCRMode = 'claude' | 'tesseract';
@@ -26,12 +57,18 @@ export async function blobToBase64(blob: Blob): Promise<string> {
 
 /** Phase 1 — 서버의 /api/extract를 거쳐 Claude로 추출한다. */
 export class ClaudeExtractor implements OCRExtractor {
+  private lastTelemetry: OcrTelemetry | null = null;
+
   async extractGrinder(imageBlob: Blob): Promise<GrinderSpec> {
     return this.request<GrinderSpec>(imageBlob, 'grinder');
   }
 
   async extractWheel(imageBlob: Blob): Promise<WheelSpec> {
     return this.request<WheelSpec>(imageBlob, 'wheel');
+  }
+
+  getLastTelemetry(): OcrTelemetry | null {
+    return this.lastTelemetry;
   }
 
   private async request<T>(
@@ -72,7 +109,12 @@ export class ClaudeExtractor implements OCRExtractor {
       );
     }
 
-    return (await response.json()) as T;
+    // telemetry는 spec과 섞여 오지만 T(GrinderSpec/WheelSpec)에 없는 필드다.
+    // 분리해서 저장하지 않으면 세션 저장·IndexedDB에 엉뚱한 키가 섞여 들어간다.
+    const raw = (await response.json()) as Record<string, unknown>;
+    const { telemetry, ...spec } = raw;
+    this.lastTelemetry = parseTelemetry(telemetry, 'claude');
+    return spec as T;
   }
 }
 
@@ -81,14 +123,39 @@ export class ClaudeExtractor implements OCRExtractor {
  * 무거운 라이브러리이므로 실제로 쓸 때만 동적으로 불러온다.
  */
 export class TesseractExtractor implements OCRExtractor {
+  private lastTelemetry: OcrTelemetry | null = null;
+
   async extractGrinder(imageBlob: Blob): Promise<GrinderSpec> {
+    const start = Date.now();
     const { recognizeGrinder } = await import('./tesseract');
-    return recognizeGrinder(imageBlob);
+    const spec = await recognizeGrinder(imageBlob);
+    this.setTelemetry(start);
+    return spec;
   }
 
   async extractWheel(imageBlob: Blob): Promise<WheelSpec> {
+    const start = Date.now();
     const { recognizeWheel } = await import('./tesseract');
-    return recognizeWheel(imageBlob);
+    const spec = await recognizeWheel(imageBlob);
+    this.setTelemetry(start);
+    return spec;
+  }
+
+  getLastTelemetry(): OcrTelemetry | null {
+    return this.lastTelemetry;
+  }
+
+  /** 브라우저에서 직접 도는 경로라 토큰·모델명이 없다. 처리시간만 남는다. */
+  private setTelemetry(start: number): void {
+    this.lastTelemetry = {
+      engine: 'tesseract',
+      model: null,
+      inputTokens: null,
+      outputTokens: null,
+      cacheReadTokens: null,
+      cacheCreationTokens: null,
+      durationMs: Date.now() - start,
+    };
   }
 }
 

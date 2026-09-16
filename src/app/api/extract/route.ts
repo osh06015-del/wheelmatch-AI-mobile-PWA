@@ -17,7 +17,7 @@ import {
   wheelExtractionSchema,
   type ExtractionTarget,
 } from '@/lib/ocr/schema';
-import type { GrinderSpec, WheelSpec } from '@/lib/rules/types';
+import type { GrinderSpec, OcrTelemetry, WheelSpec } from '@/lib/rules/types';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -105,6 +105,7 @@ export async function POST(request: Request) {
   const target: ExtractionTarget = type;
 
   try {
+    const requestStartedAt = Date.now();
     const response = await client.messages.parse({
       model: resolveModel(process.env.ANTHROPIC_MODEL),
       max_tokens: 8000,
@@ -140,10 +141,16 @@ export async function POST(request: Request) {
       },
     });
 
+    // 검증용 메타데이터일 뿐이다 — 실패해도 추출 자체를 막지 않는다.
+    const telemetry = buildTelemetry(response, requestStartedAt);
+
     const parsed = response.parsed_output;
     if (!parsed) {
       // 스키마에 맞는 응답을 못 받았다. 빈 값으로 채우고 신뢰도를 낮춰 돌려준다.
-      return NextResponse.json(emptySpec(target), { status: 200 });
+      return NextResponse.json(
+        { ...emptySpec(target), telemetry },
+        { status: 200 },
+      );
     }
 
     if (target === 'grinder') {
@@ -155,7 +162,7 @@ export async function POST(request: Request) {
         rawText: value.rawText,
         confidence: value.confidence,
       };
-      return NextResponse.json(spec, { status: 200 });
+      return NextResponse.json({ ...spec, telemetry }, { status: 200 });
     }
 
     const value = parsed as import('@/lib/ocr/schema').WheelExtraction;
@@ -193,7 +200,7 @@ export async function POST(request: Request) {
       rawText: value.rawText,
       confidence: value.confidence,
     };
-    return NextResponse.json(spec, { status: 200 });
+    return NextResponse.json({ ...spec, telemetry }, { status: 200 });
   } catch (error) {
     if (error instanceof Anthropic.AuthenticationError) {
       return errorResponse(500, 'server_config', 'API 키가 올바르지 않습니다.');
@@ -228,6 +235,33 @@ export async function POST(request: Request) {
       '라벨 분석 중 알 수 없는 오류가 발생했습니다.',
     );
   }
+}
+
+/**
+ * Anthropic 응답에서 검증용 메타데이터만 뽑는다.
+ *
+ * 비용은 여기서 계산하지 않는다(하드코딩한 단가는 바뀐다) — 토큰 수만 남긴다.
+ * usage 필드가 없거나 형태가 다르면 그 항목만 null로 두고 죽지 않는다.
+ */
+export function buildTelemetry(
+  response: { model?: unknown; usage?: unknown },
+  requestStartedAt: number,
+): OcrTelemetry {
+  const usage =
+    typeof response.usage === 'object' && response.usage !== null
+      ? (response.usage as Record<string, unknown>)
+      : {};
+  const num = (value: unknown): number | null =>
+    typeof value === 'number' ? value : null;
+  return {
+    engine: 'claude',
+    model: typeof response.model === 'string' ? response.model : null,
+    inputTokens: num(usage.input_tokens),
+    outputTokens: num(usage.output_tokens),
+    cacheReadTokens: num(usage.cache_read_input_tokens),
+    cacheCreationTokens: num(usage.cache_creation_input_tokens),
+    durationMs: Date.now() - requestStartedAt,
+  };
 }
 
 /** 추출 실패 시 돌려줄 빈 결과. 값을 지어내지 않고 confidence를 low로 둔다. */

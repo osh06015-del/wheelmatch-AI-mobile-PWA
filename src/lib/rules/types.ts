@@ -329,6 +329,51 @@ export interface SafetyChecklist {
   sparkDirection?: boolean | null;
 }
 
+/**
+ * 촬영 원본·업로드본의 원시 측정값. 검증용 실측 데이터일 뿐이다.
+ *
+ * **품질 경고·차단·적합 판정의 근거로 쓰지 않는다.** 여기 있는 어떤 값도
+ * 점검 흐름을 막을 수 없다. 측정 자체가 실패해도(카메라·디코딩 환경에 따라
+ * 다르다) 각 항목을 null로 남기고 점검은 그대로 진행된다.
+ */
+export interface CaptureQualityMetrics {
+  originalWidth: number | null;
+  originalHeight: number | null;
+  originalBytes: number | null;
+  uploadWidth: number | null;
+  uploadHeight: number | null;
+  uploadBytes: number | null;
+  /** 0~255 그레이스케일 평균 밝기 */
+  meanBrightness: number | null;
+  /** 그레이스케일 표준편차(명암 대비) */
+  contrast: number | null;
+  /** 너무 어두운 픽셀의 비율(0~1). 경계값은 lib/image/quality.ts에만 있다 */
+  darkPixelRatio: number | null;
+  /** 너무 밝은 픽셀의 비율(0~1) */
+  brightPixelRatio: number | null;
+  /** 라플라시안 분산. 임계값 없이 수치만 남긴다 — 흐림 여부는 판단하지 않는다 */
+  blurMetric: number | null;
+  /** optimizeForUpload()가 걸린 시간(ms) */
+  optimizeMs: number | null;
+}
+
+/**
+ * 서버 OCR 응답의 메타데이터. 검증용 실측 데이터일 뿐이다.
+ *
+ * 비용은 여기 넣지 않는다(하드코딩한 단가는 바뀐다). 토큰 수만 남기고
+ * 비용 계산은 필요할 때 CSV 밖에서 한다.
+ */
+export interface OcrTelemetry {
+  engine: 'claude' | 'tesseract';
+  model: string | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  cacheReadTokens: number | null;
+  cacheCreationTokens: number | null;
+  /** 서버가 Anthropic 호출에 걸린 시간(ms). tesseract는 브라우저 처리 시간 */
+  durationMs: number | null;
+}
+
 // IndexedDB에 저장할 점검 기록
 export interface InspectionRecord {
   id?: number;
@@ -359,6 +404,18 @@ export interface InspectionRecord {
    */
   grinderOcr?: GrinderSpec;
   wheelOcr?: WheelSpec;
+  /**
+   * 촬영 원본·업로드본의 원시 측정값(검증용). 이 기능 도입 전 기록에는 없다.
+   * 판정·UI에 영향을 주지 않는다 — [[CaptureQualityMetrics]] 참고.
+   */
+  grinderCaptureMetrics?: CaptureQualityMetrics;
+  wheelCaptureMetrics?: CaptureQualityMetrics;
+  /**
+   * 서버 OCR 응답의 메타데이터(검증용). 이 기능 도입 전 기록에는 없다.
+   * 판정·UI에 영향을 주지 않는다 — [[OcrTelemetry]] 참고.
+   */
+  grinderOcrTelemetry?: OcrTelemetry;
+  wheelOcrTelemetry?: OcrTelemetry;
   grinderImage?: Blob;
   wheelImage?: Blob;
   /**

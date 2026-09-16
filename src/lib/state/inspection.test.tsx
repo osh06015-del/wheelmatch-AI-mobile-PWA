@@ -8,8 +8,10 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { useInspection } from './inspection';
 import type { TrialRunProgress } from '@/lib/safety/trialRun';
 import type {
+  CaptureQualityMetrics,
   GrinderCondition,
   GrinderSpec,
+  OcrTelemetry,
   WheelCondition,
   WheelSpec,
 } from '@/lib/rules/types';
@@ -253,6 +255,103 @@ describe('useInspection', () => {
     expect(sessionStorage.getItem('wheelmatch.wheelOcr')).toBeNull();
     expect(sessionStorage.getItem('wheelmatch.grinderCondition')).toBeNull();
     expect(sessionStorage.getItem('wheelmatch.wheelCondition')).toBeNull();
+  });
+
+  const CAPTURE_METRICS: CaptureQualityMetrics = {
+    originalWidth: 4032,
+    originalHeight: 3024,
+    originalBytes: 7_580_000,
+    uploadWidth: 2048,
+    uploadHeight: 1536,
+    uploadBytes: 1_830_000,
+    meanBrightness: 132.5,
+    contrast: 48.1,
+    darkPixelRatio: 0.02,
+    brightPixelRatio: 0.01,
+    blurMetric: 913.4,
+    optimizeMs: 210,
+  };
+
+  const OCR_TELEMETRY: OcrTelemetry = {
+    engine: 'claude',
+    model: 'claude-sonnet-5',
+    inputTokens: 1500,
+    outputTokens: 80,
+    cacheReadTokens: 0,
+    cacheCreationTokens: 1500,
+    durationMs: 2100,
+  };
+
+  it('촬영·OCR 검증용 측정값을 함께 보관하고 새로고침에도 남는다', () => {
+    const { result } = renderHook(() => useInspection());
+
+    act(() =>
+      result.current.setGrinder(
+        GRINDER,
+        null,
+        GRINDER,
+        CAPTURE_METRICS,
+        OCR_TELEMETRY,
+      ),
+    );
+
+    expect(result.current.grinderCaptureMetrics).toEqual(CAPTURE_METRICS);
+    expect(result.current.grinderOcrTelemetry).toEqual(OCR_TELEMETRY);
+    expect(
+      JSON.parse(
+        sessionStorage.getItem('wheelmatch.grinderCaptureMetrics') ?? 'null',
+      ),
+    ).toEqual(CAPTURE_METRICS);
+  });
+
+  it('측정값 수집이 실패해도(null) 판정에 필요한 값은 그대로 저장된다', () => {
+    // 값 수집 실패가 점검을 막으면 안 된다 — null을 넘겨도 spec은 그대로 들어간다.
+    const { result } = renderHook(() => useInspection());
+
+    act(() => result.current.setWheel(WHEEL, null, WHEEL, null, null));
+
+    expect(result.current.wheel).toEqual(WHEEL);
+    expect(result.current.wheelCaptureMetrics).toBeNull();
+    expect(result.current.wheelOcrTelemetry).toBeNull();
+  });
+
+  it('새 그라인더가 들어오면 숫돌의 검증용 측정값도 함께 버린다', () => {
+    const { result } = renderHook(() => useInspection());
+    act(() => result.current.setGrinder(GRINDER));
+    act(() =>
+      result.current.setWheel(
+        WHEEL,
+        null,
+        WHEEL,
+        CAPTURE_METRICS,
+        OCR_TELEMETRY,
+      ),
+    );
+
+    act(() => result.current.setGrinder({ ...GRINDER, noLoadRPM: 8500 }));
+
+    expect(result.current.wheelCaptureMetrics).toBeNull();
+    expect(result.current.wheelOcrTelemetry).toBeNull();
+  });
+
+  it('reset은 검증용 측정값도 모두 지운다', () => {
+    const { result } = renderHook(() => useInspection());
+    act(() =>
+      result.current.setGrinder(
+        GRINDER,
+        null,
+        GRINDER,
+        CAPTURE_METRICS,
+        OCR_TELEMETRY,
+      ),
+    );
+    act(() => result.current.reset());
+
+    expect(result.current.grinderCaptureMetrics).toBeNull();
+    expect(result.current.grinderOcrTelemetry).toBeNull();
+    expect(
+      sessionStorage.getItem('wheelmatch.grinderCaptureMetrics'),
+    ).toBeNull();
   });
 
   it('사진 없이 값만 갱신해도 이전 사진을 지우지 않는다', () => {

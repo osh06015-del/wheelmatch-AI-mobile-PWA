@@ -12,6 +12,7 @@ import {
   ClaudeExtractor,
   getExtractor,
   setExtractorForTesting,
+  TesseractExtractor,
   type OCRExtractor,
 } from './extractor';
 
@@ -95,6 +96,97 @@ describe('ClaudeExtractor — 실패 종류', () => {
     await expect(new ClaudeExtractor().extractGrinder(PHOTO)).resolves.toEqual(
       spec,
     );
+  });
+});
+
+describe('ClaudeExtractor — 검증용 telemetry', () => {
+  it('응답에 실린 telemetry를 spec과 분리해 저장하고 spec에는 남기지 않는다', async () => {
+    const spec = { model: 'GWS 750-125', noLoadRPM: 11000 };
+    respond(
+      200,
+      JSON.stringify({
+        ...spec,
+        telemetry: {
+          model: 'claude-sonnet-5',
+          inputTokens: 1500,
+          outputTokens: 80,
+          cacheReadTokens: 0,
+          cacheCreationTokens: 1500,
+          durationMs: 2100,
+        },
+      }),
+    );
+
+    const extractor = new ClaudeExtractor();
+    const result = await extractor.extractGrinder(PHOTO);
+
+    expect(result).toEqual(spec);
+    expect(extractor.getLastTelemetry()).toEqual({
+      engine: 'claude',
+      model: 'claude-sonnet-5',
+      inputTokens: 1500,
+      outputTokens: 80,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 1500,
+      durationMs: 2100,
+    });
+  });
+
+  it('telemetry가 없거나 형태가 이상해도 죽지 않고 null 필드로 남긴다', async () => {
+    respond(200, JSON.stringify({ model: 'GWS 750-125' }));
+
+    const extractor = new ClaudeExtractor();
+    await extractor.extractGrinder(PHOTO);
+
+    expect(extractor.getLastTelemetry()).toEqual({
+      engine: 'claude',
+      model: null,
+      inputTokens: null,
+      outputTokens: null,
+      cacheReadTokens: null,
+      cacheCreationTokens: null,
+      durationMs: null,
+    });
+  });
+
+  it('실패 응답에서는 telemetry를 남기지 않는다 — 값을 지어내지 않는다', async () => {
+    respond(429, JSON.stringify({ error: '서버 문장', code: 'rate_limited' }));
+
+    const extractor = new ClaudeExtractor();
+    await failureOf(extractor.extractGrinder(PHOTO));
+
+    expect(extractor.getLastTelemetry()).toBeNull();
+  });
+});
+
+describe('TesseractExtractor — 검증용 telemetry', () => {
+  const GRINDER_SPEC = {
+    model: null,
+    noLoadRPM: null,
+    maxWheelDiameter: null,
+    rawText: '',
+    confidence: 'low' as const,
+  };
+
+  it('토큰·모델명 없이 engine과 처리시간만 남긴다', async () => {
+    // 실제 tesseract.js 워커는 wasm·언어 데이터를 내려받는다. 단위 테스트는
+    // 그 경계(./tesseract)만 갈아끼우고, 이 클래스가 telemetry를 어떻게
+    // 채우는지만 본다.
+    vi.doMock('./tesseract', () => ({
+      recognizeGrinder: vi.fn().mockResolvedValue(GRINDER_SPEC),
+    }));
+
+    const extractor = new TesseractExtractor();
+    const spec = await extractor.extractGrinder(PHOTO);
+
+    expect(spec).toEqual(GRINDER_SPEC);
+    const telemetry = extractor.getLastTelemetry();
+    expect(telemetry?.engine).toBe('tesseract');
+    expect(telemetry?.model).toBeNull();
+    expect(telemetry?.inputTokens).toBeNull();
+    expect(typeof telemetry?.durationMs).toBe('number');
+
+    vi.doUnmock('./tesseract');
   });
 });
 

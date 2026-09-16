@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { CSV_COLUMNS, csvFilename, toCsv } from './csv';
 import type {
+  CaptureQualityMetrics,
   GrinderSpec,
   InspectionRecord,
+  OcrTelemetry,
   WheelSpec,
 } from '@/lib/rules/types';
 
@@ -271,6 +273,29 @@ describe('toCsv', () => {
       'checkWorkpieceSecured',
       'checkSurroundingsClear',
     ];
+    const captureColumns = (prefix: 'grinder' | 'wheel') => [
+      `${prefix}CaptureOriginalWidth`,
+      `${prefix}CaptureOriginalHeight`,
+      `${prefix}CaptureOriginalBytes`,
+      `${prefix}CaptureUploadWidth`,
+      `${prefix}CaptureUploadHeight`,
+      `${prefix}CaptureUploadBytes`,
+      `${prefix}CaptureBrightness`,
+      `${prefix}CaptureContrast`,
+      `${prefix}CaptureDarkRatio`,
+      `${prefix}CaptureBrightRatio`,
+      `${prefix}CaptureBlur`,
+      `${prefix}CaptureOptimizeMs`,
+    ];
+    const telemetryColumns = (prefix: 'grinder' | 'wheel') => [
+      `${prefix}OcrEngine`,
+      `${prefix}OcrModel`,
+      `${prefix}OcrInputTokens`,
+      `${prefix}OcrOutputTokens`,
+      `${prefix}OcrCacheReadTokens`,
+      `${prefix}OcrCacheCreationTokens`,
+      `${prefix}OcrDurationMs`,
+    ];
     expect([...CSV_COLUMNS]).toEqual([
       ...LEGACY_COLUMNS,
       ...wheelColumns,
@@ -279,6 +304,10 @@ describe('toCsv', () => {
       ...environmentColumns,
       'ruleVersion',
       'preTrialElapsedMs',
+      ...captureColumns('grinder'),
+      ...captureColumns('wheel'),
+      ...telemetryColumns('grinder'),
+      ...telemetryColumns('wheel'),
     ]);
   });
 
@@ -420,8 +449,10 @@ describe('규칙 버전 열', () => {
 });
 
 describe('사전점검 시간 열', () => {
-  it('맨 마지막 열에 붙인다 — elapsedMs 열은 자리를 지킨다', () => {
-    expect(CSV_COLUMNS[CSV_COLUMNS.length - 1]).toBe('preTrialElapsedMs');
+  it('검증용 측정값 열보다 앞에 자리를 지킨다', () => {
+    // 검증용 원시 측정값(촬영·OCR)이 이 열 뒤에 추가되면서 더는 맨 마지막이
+    // 아니다. 자리 자체(45번째 뒤)가 밀리지 않았는지만 본다.
+    expect(CSV_COLUMNS.indexOf('preTrialElapsedMs')).toBe(45);
     expect(CSV_COLUMNS.indexOf('elapsedMs')).toBe(2);
   });
 
@@ -437,5 +468,109 @@ describe('사전점검 시간 열', () => {
     // 옛 기록의 elapsedMs에는 시험운전이 섞였을 수 있다. 사전점검 시간으로 옮기지 않는다.
     const [, row] = parse(toCsv([record({ elapsedMs: 250_000 })]));
     expect(row[CSV_COLUMNS.indexOf('preTrialElapsedMs')]).toBe('');
+  });
+});
+
+describe('검증용 원시 측정값 열', () => {
+  const CAPTURE_METRICS: CaptureQualityMetrics = {
+    originalWidth: 4032,
+    originalHeight: 3024,
+    originalBytes: 7_580_000,
+    uploadWidth: 2048,
+    uploadHeight: 1536,
+    uploadBytes: 1_830_000,
+    meanBrightness: 132.5,
+    contrast: 48.1,
+    darkPixelRatio: 0.02,
+    brightPixelRatio: 0.01,
+    blurMetric: 913.4,
+    optimizeMs: 210,
+  };
+
+  const OCR_TELEMETRY: OcrTelemetry = {
+    engine: 'claude',
+    model: 'claude-sonnet-5',
+    inputTokens: 1500,
+    outputTokens: 80,
+    cacheReadTokens: 0,
+    cacheCreationTokens: 1500,
+    durationMs: 2100,
+  };
+
+  it('맨 마지막 열에 붙인다 — preTrialElapsedMs 뒤를 지킨다', () => {
+    expect(CSV_COLUMNS[CSV_COLUMNS.length - 1]).toBe('wheelOcrDurationMs');
+    expect(CSV_COLUMNS[45]).toBe('preTrialElapsedMs');
+    expect(CSV_COLUMNS[46]).toBe('grinderCaptureOriginalWidth');
+  });
+
+  it('이 기능 도입 전 기록은 모두 빈 칸이다', () => {
+    const [, row] = parse(toCsv([record()]));
+    for (const column of CSV_COLUMNS.slice(46)) {
+      expect(row[CSV_COLUMNS.indexOf(column)]).toBe('');
+    }
+  });
+
+  it('그라인더·숫돌 측정값을 각자의 열에 적는다', () => {
+    const [, row] = parse(
+      toCsv([
+        record({
+          grinderCaptureMetrics: CAPTURE_METRICS,
+          wheelCaptureMetrics: { ...CAPTURE_METRICS, originalWidth: 3000 },
+        }),
+      ]),
+    );
+    expect(row[CSV_COLUMNS.indexOf('grinderCaptureOriginalWidth')]).toBe(
+      '4032',
+    );
+    expect(row[CSV_COLUMNS.indexOf('wheelCaptureOriginalWidth')]).toBe('3000');
+    expect(row[CSV_COLUMNS.indexOf('grinderCaptureBlur')]).toBe('913.4');
+    expect(row[CSV_COLUMNS.indexOf('grinderCaptureOptimizeMs')]).toBe('210');
+  });
+
+  it('OCR 응답 메타데이터를 각자의 열에 적는다', () => {
+    const [, row] = parse(
+      toCsv([
+        record({
+          grinderOcrTelemetry: OCR_TELEMETRY,
+          wheelOcrTelemetry: { ...OCR_TELEMETRY, engine: 'tesseract' },
+        }),
+      ]),
+    );
+    expect(row[CSV_COLUMNS.indexOf('grinderOcrEngine')]).toBe('claude');
+    expect(row[CSV_COLUMNS.indexOf('grinderOcrModel')]).toBe('claude-sonnet-5');
+    expect(row[CSV_COLUMNS.indexOf('grinderOcrInputTokens')]).toBe('1500');
+    expect(row[CSV_COLUMNS.indexOf('wheelOcrEngine')]).toBe('tesseract');
+  });
+
+  it('측정에 실패한 항목(null)은 값 0과 구분해 빈 칸으로 둔다', () => {
+    const [, row] = parse(
+      toCsv([
+        record({
+          grinderCaptureMetrics: {
+            ...CAPTURE_METRICS,
+            meanBrightness: null,
+            blurMetric: null,
+          },
+        }),
+      ]),
+    );
+    expect(row[CSV_COLUMNS.indexOf('grinderCaptureBrightness')]).toBe('');
+    expect(row[CSV_COLUMNS.indexOf('grinderCaptureBlur')]).toBe('');
+    // 0은 실측값이다 — 빈 칸으로 뭉개지지 않는다.
+    expect(row[CSV_COLUMNS.indexOf('grinderCaptureDarkRatio')]).toBe('0.02');
+  });
+
+  it('기존 열에는 영향을 주지 않는다', () => {
+    // 검증용 열 추가가 판정·인식 관련 기존 열을 건드리면 안 된다.
+    const [, row] = parse(
+      toCsv([
+        record({
+          grinderCaptureMetrics: CAPTURE_METRICS,
+          grinderOcrTelemetry: OCR_TELEMETRY,
+        }),
+      ]),
+    );
+    expect(row[CSV_COLUMNS.indexOf('verdict')]).toBe('COMPATIBLE');
+    expect(row[CSV_COLUMNS.indexOf('grinderRPM')]).toBe('11000');
   });
 });
