@@ -42,6 +42,8 @@ export const ko = {
   'result.saving': '저장 중...',
   'result.saveError':
     '저장에 실패했습니다. 저장 공간을 확인한 뒤 다시 시도하세요.',
+  'result.saveErrorQuota':
+    '기기 저장 공간이 가득 차 이 기록은 저장되지 않았습니다. 이력에서 필요 없는 기록을 지우거나 기기 저장 공간을 확보한 뒤 다시 시도하세요.',
   'result.saveStopped': '중지 결과 저장',
 
   'group.confirmed': '확인된 정보',
@@ -559,6 +561,7 @@ export const ko = {
   'history.grinderPhoto': '그라인더 명판',
   'history.wheelPhoto': '숫돌 라벨',
   'history.noPhoto': '저장된 사진이 없습니다.',
+  'history.loadMore': '더 보기 ({shown}/{total}건)',
   'history.filter.title': '필터',
   'history.filter.reset': '필터 초기화',
   'history.filter.purpose': '작업',
@@ -592,6 +595,7 @@ export const ko = {
   'research.download': 'CSV 내려받기 ({count}건)',
   'research.deviceOnly':
     '기록은 이 기기에만 있습니다. 내려받은 파일은 직접 옮겨야 합니다.',
+  'research.exported': '전체 {count}건을 CSV로 내보냈습니다.',
   'research.downloadFailed': '내려받기에 실패했습니다. 저장 공간을 확인하세요.',
   'research.truthTitle': '정답(Ground Truth) 파일',
   'research.truthHint':

@@ -40,6 +40,8 @@ export const zh: Messages = {
   'result.save': '完成并保存',
   'result.saving': '正在保存...',
   'result.saveError': '保存失败。请检查存储空间后重试。',
+  'result.saveErrorQuota':
+    '设备存储空间已满，本次记录未保存。请在历史记录中删除不需要的记录，或释放设备存储空间后重试。',
   'result.saveStopped': '保存中止结果',
 
   'group.confirmed': '已核对',
@@ -511,6 +513,7 @@ export const zh: Messages = {
   'history.grinderPhoto': '角磨机铭牌',
   'history.wheelPhoto': '砂轮标签',
   'history.noPhoto': '没有保存照片。',
+  'history.loadMore': '加载更多（{shown}/{total}）',
   'history.filter.title': '筛选',
   'history.filter.reset': '重置筛选',
   'history.filter.purpose': '作业',
@@ -541,6 +544,7 @@ export const zh: Messages = {
   'research.modeHint': '将测量值导出为 CSV。现场使用不需要。',
   'research.download': '下载 CSV（{count} 条）',
   'research.deviceOnly': '记录只保存在本设备中。下载的文件需要自行转移。',
+  'research.exported': '已导出全部 {count} 条记录到 CSV。',
   'research.downloadFailed': '下载失败。请检查存储空间。',
   'research.truthTitle': '标准答案（Ground Truth）文件',
   'research.truthHint':

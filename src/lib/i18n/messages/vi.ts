@@ -45,6 +45,8 @@ export const vi: Messages = {
   'result.saving': 'Đang lưu...',
   'result.saveError':
     'Lưu không thành công. Hãy kiểm tra dung lượng lưu trữ rồi thử lại.',
+  'result.saveErrorQuota':
+    'Bản ghi này chưa được lưu — bộ nhớ thiết bị đã đầy. Hãy xóa các bản ghi không cần thiết trong lịch sử hoặc giải phóng bộ nhớ thiết bị rồi thử lại.',
   'result.saveStopped': 'Lưu kết quả dừng máy',
 
   'group.confirmed': 'Đã đối chiếu',
@@ -572,6 +574,7 @@ export const vi: Messages = {
   'history.grinderPhoto': 'Nhãn máy mài',
   'history.wheelPhoto': 'Nhãn đá mài',
   'history.noPhoto': 'Không có ảnh được lưu.',
+  'history.loadMore': 'Xem thêm ({shown}/{total})',
   'history.filter.title': 'Bộ lọc',
   'history.filter.reset': 'Đặt lại bộ lọc',
   'history.filter.purpose': 'Công việc',
@@ -605,6 +608,7 @@ export const vi: Messages = {
   'research.download': 'Tải CSV ({count} hồ sơ)',
   'research.deviceOnly':
     'Hồ sơ chỉ nằm trên thiết bị này. Bạn phải tự chuyển tệp đã tải.',
+  'research.exported': 'Đã xuất toàn bộ {count} hồ sơ ra CSV.',
   'research.downloadFailed':
     'Tải xuống không thành công. Hãy kiểm tra dung lượng lưu trữ.',
   'research.truthTitle': 'Tệp giá trị đúng (Ground Truth)',

@@ -73,7 +73,7 @@ function matchesDateRange(
 }
 
 function matchesTrialRun(
-  record: InspectionRecord,
+  record: Pick<InspectionRecord, 'trialRun'>,
   wanted: HistoryFilterState['trialRunOutcome'],
 ): boolean {
   if (wanted === null) return true;
@@ -81,9 +81,15 @@ function matchesTrialRun(
   return record.trialRun?.outcome === wanted;
 }
 
-/** 한 기록이 필터 조건을 모두 만족하는지. */
-export function matchesFilter(
-  record: InspectionRecord,
+/**
+ * 한 기록이 필터 조건을 모두 만족하는지.
+ *
+ * 제네릭인 이유: 이력 화면은 사진 Blob을 뺀 전체 기록(InspectionWithoutPhotos)을
+ * 필터링한다 — 사진까지 포함된 InspectionRecord로 좁히면 그 타입만 받게 되어
+ * 사진 없는 기록을 넘길 때마다 타입을 맞춰야 한다. 넘긴 타입을 그대로 돌려준다.
+ */
+export function matchesFilter<T extends InspectionRecord>(
+  record: T,
   filter: HistoryFilterState,
 ): boolean {
   if (filter.purpose !== null && record.declaredPurpose !== filter.purpose) {
@@ -111,9 +117,9 @@ export function matchesFilter(
  * 읽기만 한다 — db 모듈을 import하지 않고, 넘겨받은 배열이나 그 안의 기록을
  * 고치지 않는다. 호출자가 IndexedDB에서 읽어 온 배열을 그대로 다시 걸러 쓴다.
  */
-export function filterRecords(
-  records: readonly InspectionRecord[],
+export function filterRecords<T extends InspectionRecord>(
+  records: readonly T[],
   filter: HistoryFilterState,
-): InspectionRecord[] {
+): T[] {
   return records.filter((record) => matchesFilter(record, filter));
 }

@@ -122,6 +122,13 @@ export function linkModule() {
   return { default: MemoryLink };
 }
 
+/** 최신순 정렬. 실제 db 모듈의 orderBy('createdAt').reverse()와 같은 순서다. */
+function sortedRecords(): StoredInspection[] {
+  return [...browser().records].sort(
+    (a, b) => b.createdAt.localeCompare(a.createdAt) || b.id - a.id,
+  );
+}
+
 /** vi.mock('@/lib/db')에 넣는 모듈. 저장한 기록은 새로고침을 넘어 남는다. */
 export function dbModule() {
   return {
@@ -131,10 +138,17 @@ export function dbModule() {
       records.push({ ...record, id });
       return id;
     },
-    listInspections: async (limit = 50): Promise<StoredInspection[]> =>
-      [...browser().records]
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id - a.id)
-        .slice(0, limit),
+    listAllInspectionsWithoutPhotos: async () =>
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 사진 두 필드를 버리는 목적의 구조분해다.
+      sortedRecords().map(({ grinderImage, wheelImage, ...rest }) => rest),
+    listInspectionsByIds: async (
+      ids: readonly number[],
+    ): Promise<StoredInspection[]> => {
+      const records = browser().records;
+      return ids
+        .map((id) => records.find((record) => record.id === id))
+        .filter((record): record is StoredInspection => record !== undefined);
+    },
     deleteInspection: async (id: number): Promise<void> => {
       const records = browser().records;
       const index = records.findIndex((record) => record.id === id);
@@ -143,6 +157,8 @@ export function dbModule() {
     clearInspections: async (): Promise<void> => {
       browser().records.length = 0;
     },
+    isQuotaExceededError: (error: unknown): boolean =>
+      error instanceof Error && error.name === 'QuotaExceededError',
   };
 }
 

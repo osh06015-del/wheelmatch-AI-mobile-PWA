@@ -41,7 +41,11 @@ vi.mock('next/link', () => ({
 }));
 
 // IndexedDB는 이 테스트의 관심사가 아니다. 저장은 부르지 않는다.
-vi.mock('@/lib/db', () => ({ saveInspection: vi.fn() }));
+vi.mock('@/lib/db', () => ({
+  saveInspection: vi.fn(),
+  isQuotaExceededError: (error: unknown) =>
+    error instanceof Error && error.name === 'QuotaExceededError',
+}));
 
 import ResultPage from './page';
 import { saveInspection } from '@/lib/db';
@@ -654,6 +658,100 @@ describe('결과 화면 — 연구 도구 설정은 안전 판정을 바꾸지 �
     expect(screen.getByText('작업하지 마십시오')).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /점검 완료 및 저장/ }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe('결과 화면 — 저장 함수 내부 재검사와 저장공간 오류', () => {
+  beforeEach(() => {
+    replace.mockClear();
+    push.mockClear();
+    vi.mocked(saveInspection).mockClear();
+    vi.mocked(saveInspection).mockReset();
+    const result = store();
+    act(() => result.current.reset());
+  });
+
+  function ready(wheel: WheelSpec = WHEEL) {
+    const result = store();
+    act(() => {
+      result.current.setGrinder(GRINDER);
+      result.current.setGrinderCondition(GRINDER_OK);
+      result.current.setWheel(wheel);
+      result.current.setWheelCondition(CONFIRMED);
+    });
+    return result;
+  }
+
+  function checkAll() {
+    for (const box of screen.getAllByRole('checkbox')) {
+      if (!(box as HTMLInputElement).checked) fireEvent.click(box);
+    }
+  }
+
+  // 버튼의 disabled와 저장 함수 내부의 canSaveInspection이 같은 조건을
+  // 계산한다. 버튼이 막힌 상태에서 눌러도 saveInspection이 불리지 않는지로
+  // 두 계산이 실제로 같은 방향을 가리키는지 확인한다.
+  it('체크리스트를 다 채우지 않았으면 눌러도 저장되지 않는다', () => {
+    ready();
+    render(<ResultPage />);
+
+    const button = screen.getByRole('button', { name: /점검 완료 및 저장/ });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+
+    expect(saveInspection).not.toHaveBeenCalled();
+  });
+
+  it('적합인데 시험운전을 끝내지 않았으면 눌러도 저장되지 않는다', () => {
+    ready(WHEEL);
+    render(<ResultPage />);
+    checkAll();
+
+    const button = screen.getByRole('button', { name: /점검 완료 및 저장/ });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+
+    expect(saveInspection).not.toHaveBeenCalled();
+  });
+
+  it('저장 공간이 가득 차면 기록이 저장되지 않았다고 명확히 안내한다', async () => {
+    // 부적합으로 두면 시험운전 없이 바로 저장을 시도할 수 있다.
+    ready({ ...WHEEL, maxRPM: 8500 });
+    const quotaError = new Error('storage full');
+    quotaError.name = 'QuotaExceededError';
+    vi.mocked(saveInspection).mockRejectedValueOnce(quotaError);
+
+    render(<ResultPage />);
+    checkAll();
+    fireEvent.click(screen.getByRole('button', { name: /점검 완료 및 저장/ }));
+
+    await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
+    expect(
+      await screen.findByText(
+        /기기 저장 공간이 가득 차 이 기록은 저장되지 않았습니다/,
+      ),
+    ).toBeInTheDocument();
+    // 실패했으므로 이력으로 넘어가지 않는다 — 작업자가 다시 시도할 수 있어야 한다.
+    expect(push).not.toHaveBeenCalledWith('/history');
+  });
+
+  it('저장공간 부족이 아닌 다른 오류는 일반 저장 실패 문구를 그대로 쓴다', async () => {
+    ready({ ...WHEEL, maxRPM: 8500 });
+    vi.mocked(saveInspection).mockRejectedValueOnce(new Error('network down'));
+
+    render(<ResultPage />);
+    checkAll();
+    fireEvent.click(screen.getByRole('button', { name: /점검 완료 및 저장/ }));
+
+    await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
+    expect(
+      await screen.findByText(
+        '저장에 실패했습니다. 저장 공간을 확인한 뒤 다시 시도하세요.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/기기 저장 공간이 가득 차/),
     ).not.toBeInTheDocument();
   });
 });

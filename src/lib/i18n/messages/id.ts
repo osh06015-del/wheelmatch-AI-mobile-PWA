@@ -45,6 +45,8 @@ export const id: Messages = {
   'result.saving': 'Menyimpan...',
   'result.saveError':
     'Gagal menyimpan. Periksa ruang penyimpanan lalu coba lagi.',
+  'result.saveErrorQuota':
+    'Catatan ini tidak tersimpan — ruang penyimpanan perangkat penuh. Hapus catatan yang tidak diperlukan di riwayat atau kosongkan ruang penyimpanan perangkat, lalu coba lagi.',
   'result.saveStopped': 'Simpan hasil penghentian',
 
   'group.confirmed': 'Sudah dicocokkan',
@@ -586,6 +588,7 @@ export const id: Messages = {
   'history.grinderPhoto': 'Pelat nama gerinda',
   'history.wheelPhoto': 'Label batu gerinda',
   'history.noPhoto': 'Tidak ada foto yang tersimpan.',
+  'history.loadMore': 'Tampilkan lebih banyak ({shown}/{total})',
   'history.filter.title': 'Filter',
   'history.filter.reset': 'Atur ulang filter',
   'history.filter.purpose': 'Pekerjaan',
@@ -619,6 +622,7 @@ export const id: Messages = {
   'research.download': 'Unduh CSV ({count} catatan)',
   'research.deviceOnly':
     'Catatan hanya ada di perangkat ini. Pindahkan sendiri berkas yang diunduh.',
+  'research.exported': 'Berhasil mengekspor semua {count} catatan ke CSV.',
   'research.downloadFailed': 'Gagal mengunduh. Periksa ruang penyimpanan.',
   'research.truthTitle': 'Berkas nilai benar (Ground Truth)',
   'research.truthHint':

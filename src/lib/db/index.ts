@@ -44,9 +44,48 @@ export async function saveInspection(record: NewInspection): Promise<number> {
   return db.inspections.add(record);
 }
 
-/** 최근 기록을 최신순으로 가져온다. 기본 50건. */
-export async function listInspections(limit = 50): Promise<StoredInspection[]> {
-  return db.inspections.orderBy('createdAt').reverse().limit(limit).toArray();
+/** 사진 Blob을 뺀 기록. 전체를 훑어야 하지만 사진은 필요 없는 곳(필터·CSV)에 쓴다. */
+export type InspectionWithoutPhotos = Omit<
+  StoredInspection,
+  'grinderImage' | 'wheelImage'
+>;
+
+/**
+ * 사진을 뺀 전체 기록을 최신순으로 가져온다.
+ *
+ * "최근 50건" 같은 상한을 두지 않는다 — 상한을 두면 오래된 기록이 필터·CSV에서
+ * 조용히 빠진다. 대신 사진 Blob을 아예 읽지 않으므로 기록이 아무리 많아도
+ * 한 번에 메모리에 올라오는 양이 늘지 않는다.
+ *
+ * `each()`로 한 건씩 순회하며 그 자리에서 사진 필드를 버린다 — `toArray()`로
+ * 통째로 받으면 순간적으로나마 모든 사진이 메모리에 함께 올라온다.
+ */
+export async function listAllInspectionsWithoutPhotos(): Promise<
+  InspectionWithoutPhotos[]
+> {
+  const out: InspectionWithoutPhotos[] = [];
+  await db.inspections
+    .orderBy('createdAt')
+    .reverse()
+    .each((record) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 사진 두 필드를 버리는 목적의 구조분해다.
+      const { grinderImage, wheelImage, ...rest } = record;
+      out.push(rest);
+    });
+  return out;
+}
+
+/**
+ * id로 여러 건을 한 번에 사진과 함께 읽는다. 넘긴 id 순서를 그대로 지킨다
+ * (`bulkGet`의 계약). 이력 화면이 필터링된 id 목록 중 지금 보여줄 페이지만
+ * 사진 포함으로 다시 읽을 때 쓴다 — 삭제된 id는 결과에서 조용히 빠진다.
+ */
+export async function listInspectionsByIds(
+  ids: readonly number[],
+): Promise<StoredInspection[]> {
+  if (ids.length === 0) return [];
+  const rows = await db.inspections.bulkGet(ids as number[]);
+  return rows.filter((row): row is StoredInspection => row !== undefined);
 }
 
 export async function deleteInspection(id: number): Promise<void> {
@@ -55,4 +94,15 @@ export async function deleteInspection(id: number): Promise<void> {
 
 export async function clearInspections(): Promise<void> {
   await db.inspections.clear();
+}
+
+/**
+ * IndexedDB 저장 공간이 가득 찼는지.
+ *
+ * 브라우저 네이티브 오류와 Dexie가 감싼 오류 모두 이 이름을 쓴다
+ * (Dexie.errnames.QuotaExceeded === 'QuotaExceededError'). 값을 지어내지
+ * 않고 실제 오류 이름으로만 판단한다.
+ */
+export function isQuotaExceededError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'QuotaExceededError';
 }

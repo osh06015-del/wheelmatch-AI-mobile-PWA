@@ -15,10 +15,14 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // 이 테스트가 보는 것은 IndexedDB가 아니라 무엇을 그리느냐다.
-// 필터 테스트에서는 반환값을 기록 배열로 바꿔 쓴다.
+// 필터 테스트에서는 반환값을 기록 배열로 바꿔 쓴다. useLiveQuery를 모킹하므로
+// listAllInspectionsWithoutPhotos·listInspectionsByIds는 실제로 불리지 않는다
+// (useLiveQuery 모킹이 querier를 실행하지 않고 deps만 본다) — 그래도 모듈
+// 형태를 실제와 맞춰 둔다.
 vi.mock('dexie-react-hooks', () => ({ useLiveQuery: vi.fn(() => []) }));
 vi.mock('@/lib/db', () => ({
-  listInspections: vi.fn(),
+  listAllInspectionsWithoutPhotos: vi.fn(),
+  listInspectionsByIds: vi.fn(),
   clearInspections: vi.fn(),
 }));
 
@@ -194,8 +198,16 @@ describe('이력 화면 — 필터', () => {
     wheel: { ...WHEEL, wheelType: 'flap_disc' },
   });
 
+  const all = [cutting, grinding];
+
   beforeEach(() => {
-    vi.mocked(useLiveQuery).mockReturnValue([cutting, grinding]);
+    // history/page.tsx는 useLiveQuery를 두 번 부른다 — 사진 없는 전체 기록
+    // (deps: [])과 지금 보여줄 페이지(deps: [visibleIds]). deps로 둘을 가른다.
+    vi.mocked(useLiveQuery).mockImplementation((_querier, deps) => {
+      if (!deps || deps.length === 0) return all;
+      const ids = deps[0] as number[];
+      return all.filter((r) => r.id !== undefined && ids.includes(r.id));
+    });
   });
 
   it('필터를 걸면 조건에 맞는 기록만 남고, 건수를 함께 보여준다', async () => {
@@ -250,5 +262,99 @@ describe('이력 화면 — 필터', () => {
     // 필터는 useLiveQuery가 이미 읽어 온 배열만 다시 거른다 — 삭제 함수는
     // "전체 삭제" 확인을 눌러야만 불린다.
     expect(vi.mocked(clearInspections).mock.calls.length).toBe(callsBefore);
+  });
+});
+
+describe('이력 화면 — 51건 이상은 상한 없이 다룬다', () => {
+  // "최근 50건" 상한이 있던 시절 회귀 버그: 51번째 이후 기록이 필터·CSV에서
+  // 조용히 빠졌다. 51건으로 그 상한이 사라졌는지 고정한다.
+  const many = Array.from({ length: 51 }, (_, i) =>
+    record({
+      id: i + 1,
+      createdAt: new Date(2026, 0, 1 + i).toISOString(),
+    }),
+  );
+
+  beforeEach(() => {
+    vi.mocked(useLiveQuery).mockImplementation((_querier, deps) => {
+      if (!deps || deps.length === 0) return many;
+      const ids = deps[0] as number[];
+      return many.filter((r) => r.id !== undefined && ids.includes(r.id));
+    });
+  });
+
+  it('전체 건수는 51건이다 — 50건에서 잘리지 않는다', () => {
+    render(<HistoryPage />);
+    expect(screen.getByText('51건')).toBeInTheDocument();
+  });
+
+  it('처음에는 페이지 크기(20건)만 목록에 그린다', () => {
+    render(<HistoryPage />);
+    const list = screen.getByRole('list');
+    expect(within(list).getAllByRole('listitem')).toHaveLength(20);
+    expect(
+      screen.getByRole('button', { name: '더 보기 (20/51건)' }),
+    ).toBeInTheDocument();
+  });
+
+  it('더 보기를 누르면 다음 페이지가 이어 붙는다', async () => {
+    const user = userEvent.setup();
+    render(<HistoryPage />);
+
+    await user.click(screen.getByRole('button', { name: '더 보기 (20/51건)' }));
+
+    const list = screen.getByRole('list');
+    expect(within(list).getAllByRole('listitem')).toHaveLength(40);
+    expect(
+      screen.getByRole('button', { name: '더 보기 (40/51건)' }),
+    ).toBeInTheDocument();
+  });
+
+  it('끝까지 더 보면 더 보기 버튼이 사라진다', async () => {
+    const user = userEvent.setup();
+    render(<HistoryPage />);
+
+    await user.click(screen.getByRole('button', { name: '더 보기 (20/51건)' }));
+    await user.click(screen.getByRole('button', { name: '더 보기 (40/51건)' }));
+
+    const list = screen.getByRole('list');
+    expect(within(list).getAllByRole('listitem')).toHaveLength(51);
+    expect(
+      screen.queryByRole('button', { name: /더 보기/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('필터는 목록에 지금 그려진 20건이 아니라 51건 전체를 기준으로 센다', async () => {
+    const user = userEvent.setup();
+    render(<HistoryPage />);
+
+    // 절단으로 좁혀도(record() 기본값이 모두 cutting) 51건 전체가 대상이다.
+    await user.selectOptions(screen.getByLabelText('작업'), '절단');
+
+    expect(screen.getByText('전체 51건 중 51건')).toBeInTheDocument();
+  });
+
+  it('검증판 CSV는 50건 상한 없이 51건 전체를 내보내고 건수를 밝힌다', async () => {
+    vi.stubEnv(FLAG, 'true');
+    setResearchSwitch(true);
+    const user = userEvent.setup();
+    render(<HistoryPage />);
+
+    expect(
+      screen.getByRole('button', { name: 'CSV 내려받기 (51건)' }),
+    ).toBeInTheDocument();
+
+    // jsdom/happy-dom에 없는 다운로드 배관을 최소한으로 채운다.
+    URL.createObjectURL = vi.fn(() => 'blob:mock');
+    URL.revokeObjectURL = vi.fn();
+    await user.click(
+      screen.getByRole('button', { name: 'CSV 내려받기 (51건)' }),
+    );
+
+    expect(
+      screen.getByText('전체 51건을 CSV로 내보냈습니다.'),
+    ).toBeInTheDocument();
+    setResearchSwitch(false);
+    vi.unstubAllEnvs();
   });
 });

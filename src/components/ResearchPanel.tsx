@@ -26,6 +26,9 @@ export function ResearchPanel({ records }: { records: InspectionRecord[] }) {
   const [error, setError] = useState<MessageKey | null>(null);
   const [truths, setTruths] = useState<GroundTruth[]>([]);
   const [rejected, setRejected] = useState(0);
+  // 방금 내려받은 CSV가 몇 건을 담았는지. 버튼 문구는 누르기 전 예상 건수이고,
+  // 이건 실제로 내보낸 뒤의 확인이다 — 상한 없이 전체를 내보냈다는 것을 명시한다.
+  const [exportedCount, setExportedCount] = useState<number | null>(null);
 
   // 정답은 앱이 만들 수 없다. 촬영 전에 사람이 적어둔 것을 읽어 들이기만 한다.
   async function loadTruth(file: File) {
@@ -44,6 +47,7 @@ export function ResearchPanel({ records }: { records: InspectionRecord[] }) {
 
   function download() {
     setError(null);
+    setExportedCount(null);
     try {
       // text/csv로 주면 브라우저가 새 탭에서 열어버리는 경우가 있다.
       // 저장이 목적이므로 octet-stream으로 내린다.
@@ -56,6 +60,8 @@ export function ResearchPanel({ records }: { records: InspectionRecord[] }) {
       link.download = csvFilename();
       link.click();
       URL.revokeObjectURL(url);
+      // 상한 없이 records(전체 기록)를 그대로 내보냈다는 것을 건수로 확인시킨다.
+      setExportedCount(records.length);
     } catch {
       setError('research.downloadFailed');
     }
@@ -107,6 +113,11 @@ export function ResearchPanel({ records }: { records: InspectionRecord[] }) {
           <p className="text-sm leading-relaxed text-slate-500">
             {t('research.deviceOnly')}
           </p>
+          {exportedCount !== null && (
+            <p role="status" className="text-sm text-slate-300">
+              {t('research.exported', { count: exportedCount })}
+            </p>
+          )}
 
           <label className="flex flex-col gap-1">
             <span className="text-base font-semibold text-slate-200">

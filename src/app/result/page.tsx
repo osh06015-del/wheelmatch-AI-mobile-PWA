@@ -26,11 +26,12 @@ import { ResultCard } from '@/components/ResultCard';
 import { RuleVersionNote } from '@/components/RuleVersionNote';
 import { TrialRunPanel, TrialRunStopNotice } from '@/components/TrialRunPanel';
 import { useLocale } from '@/lib/i18n';
-import { saveInspection } from '@/lib/db';
+import { isQuotaExceededError, saveInspection } from '@/lib/db';
 import { elapsedSince, preTrialElapsed } from '@/lib/record/elapsed';
 import { matchSpecs, toDateOnly } from '@/lib/rules/engine';
 import { RULESET_VERSION } from '@/lib/rules/version';
 import { isGrinderConditionComplete } from '@/lib/safety/grinderCondition';
+import { canSaveInspection } from '@/lib/safety/saveGuard';
 import {
   canStartTrialRun,
   completeTrialRun,
@@ -143,7 +144,16 @@ export default function ResultPage() {
   // 시험운전을 해야 하는 조합이면 작업자가 답하기 전에는 저장할 수 없다.
   const trialRunSettled =
     result.verdict !== 'COMPATIBLE' || trialRunRecord !== null;
-  const canSave = complete && trialRunSettled && !saving;
+  // 버튼 활성화와 저장 함수 내부 재검사가 같은 함수(canSaveInspection)를 쓴다.
+  // 따로 계산하면 한쪽만 고쳤을 때 조용히 어긋날 수 있다.
+  const canSave =
+    canSaveInspection({
+      grinderConditionComplete: isGrinderConditionComplete(grinderCondition),
+      wheelConditionComplete: isWheelConditionComplete(wheelCondition),
+      checklistComplete: complete,
+      verdict: result.verdict,
+      trialRunRecord,
+    }) && !saving;
 
   function resolveTrialRun(outcome: TrialRunOutcome) {
     const record = completeTrialRun(trialRun, new Date(), outcome, findings);
@@ -160,6 +170,22 @@ export default function ResultPage() {
       !result ||
       !isGrinderConditionComplete(grinderCondition) ||
       !isWheelConditionComplete(wheelCondition)
+    ) {
+      return;
+    }
+    // 버튼이 disabled로 막아도, 저장 함수 자체가 체크리스트·시험운전을 한 번 더
+    // 확인한다 — canSave와 같은 함수(canSaveInspection)를 쓴다. 버튼의 disabled
+    // 계산과 이 확인이 어긋나면(코드 변경으로 한쪽만 고쳐지는 경우 등) 조건
+    // 미충족 기록이 그대로 저장될 수 있다. saveInspection은 이 확인을 통과했을
+    // 때만 부른다. 두 Condition은 위에서 이미 좁혀졌으므로 true를 넘긴다.
+    if (
+      !canSaveInspection({
+        grinderConditionComplete: true,
+        wheelConditionComplete: true,
+        checklistComplete: isChecklistComplete(checklist),
+        verdict: result.verdict,
+        trialRunRecord,
+      })
     ) {
       return;
     }
@@ -202,8 +228,15 @@ export default function ResultPage() {
       setSaved(true);
       reset();
       router.push('/history');
-    } catch {
-      setSaveError(t('result.saveError'));
+    } catch (error) {
+      // 저장 공간이 가득 찬 경우는 원인이 다르고 조치도 다르다 — "다시
+      // 시도하라"가 아니라 공간을 비우라고 안내해야 한다. 어느 쪽이든
+      // 기록이 저장되지 않았다는 것은 명확히 알린다.
+      setSaveError(
+        isQuotaExceededError(error)
+          ? t('result.saveErrorQuota')
+          : t('result.saveError'),
+      );
       setSaving(false);
     }
   }

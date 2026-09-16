@@ -41,6 +41,8 @@ export const en: Messages = {
   'result.save': 'Finish and save',
   'result.saving': 'Saving...',
   'result.saveError': 'Saving failed. Check your storage space and try again.',
+  'result.saveErrorQuota':
+    'This record was not saved — the device storage is full. Delete records you no longer need in history, or free up device storage, then try again.',
   'result.saveStopped': 'Save the stop result',
 
   'group.confirmed': 'Confirmed',
@@ -576,6 +578,7 @@ export const en: Messages = {
   'history.grinderPhoto': 'Grinder nameplate',
   'history.wheelPhoto': 'Wheel label',
   'history.noPhoto': 'No photos saved.',
+  'history.loadMore': 'Show more ({shown}/{total})',
   'history.filter.title': 'Filters',
   'history.filter.reset': 'Reset filters',
   'history.filter.purpose': 'Job',
@@ -609,6 +612,7 @@ export const en: Messages = {
   'research.download': 'Download CSV ({count} records)',
   'research.deviceOnly':
     'Records exist only on this device. Move the downloaded file yourself.',
+  'research.exported': 'Exported all {count} records to CSV.',
   'research.downloadFailed': 'Download failed. Check your storage space.',
   'research.truthTitle': 'Ground truth file',
   'research.truthHint':
