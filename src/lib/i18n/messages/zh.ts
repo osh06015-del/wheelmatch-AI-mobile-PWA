@@ -65,6 +65,75 @@ export const zh: Messages = {
   'expiry.source':
     '有效期依据：只使用标签上印刷的月/年标示，不从生产日期推算。标示格式依据 oSa《Product marking requirements for bonded abrasives》（2020-04，以 EN 12413:2019 为准）。EN 12413 原文未查阅。将标示月份视为有效至该月最后一天，是本应用的解读，并非法规。韩国《产业安全保健基准规则》第122条没有有效期条款。',
 
+  'evidence.toggleShow': '查看依据',
+  'evidence.toggleHide': '收起依据',
+  'evidence.disclaimer':
+    '此依据仅供参考，不是安全批准。「适合」只表示标示的规格互相匹配。',
+  'evidence.fields.title': '规格值依据',
+  'evidence.fields.note':
+    '并列显示 AI 识别的原始值、单位归一化后的值，以及作业者确认的最终值。',
+  'evidence.fields.raw': 'OCR 原始值',
+  'evidence.fields.normalized': '归一化值',
+  'evidence.fields.final': '最终值',
+  'evidence.fields.source': '来源',
+  'evidence.source.ai': 'AI 识别',
+  'evidence.source.converted': 'AI 换算',
+  'evidence.source.user': '作业者输入',
+  'evidence.notRecorded': '未记录',
+  'evidence.rules.title': '各规则判定依据',
+  'evidence.rules.formula': '计算公式',
+  'evidence.rules.difference': '差值',
+  'evidence.rules.gapPercent': '差值约 {percent}%',
+  'evidence.rules.expiryCompare': '有效期至 {lastValid} / 基准日 {today}',
+  'evidence.rules.doc': '依据文件',
+  'evidence.rules.limit': '适用限制',
+  'evidence.formula.rpmSafety': '砂轮最高使用转速(rpm) ≥ 磨机空载转速(rpm)',
+  'evidence.formula.diameterFit': '砂轮直径(mm) ≤ 磨机允许最大直径(mm)',
+  'evidence.formula.peripheralSpeed':
+    '线速度(m/s) = π × 直径(m) × 转速(rpm) ÷ 60',
+  'evidence.formula.unitConsistency':
+    '将标签上的 rpm 标示换算为线速度(m/s)，再与标签上的 m/s 标示比较（容许误差 10%）',
+  'evidence.formula.expiry':
+    '比较基准日与标示的有效期（月/年）所在月份的最后一天',
+  'evidence.doc.requiredValues': '本应用的设计 — 比较转速的前提条件',
+  'evidence.limit.requiredValues':
+    '不是法规依据。必须两个值都存在才能进行下一步比较。',
+  'evidence.doc.rpmSafety':
+    '《产业安全保健基准规则》第122条第4项 — 禁止超过标示的最高使用转速使用',
+  'evidence.limit.rpmSafety':
+    '只对照磨机铭牌和砂轮标签上印刷的数值，不看实际磨损或损伤。',
+  'evidence.doc.diameterFit': '磨机铭牌上印刷的允许最大直径',
+  'evidence.limit.diameterFit': '只对照铭牌数值，不从照片测量尺寸。',
+  'evidence.doc.purpose': '标签用途标示确认 — 仅作提醒',
+  'evidence.limit.purpose':
+    '不影响最终判定。与今日作业是否相符由「与作业相符」决定。',
+  'evidence.doc.workPurpose':
+    '《产业安全保健基准规则》第122条第5项 — 禁止将砂轮用于非标示用途的侧面作业',
+  'evidence.limit.workPurpose':
+    '只对照作业者选择的今日作业与标签上的用途标示。',
+  'evidence.doc.wheelType':
+    '本应用的设计 — 转速·直径规则以普通结合剂砂轮为前提',
+  'evidence.limit.wheelType':
+    '判定不可并不代表危险，而是本应用无法判定这种砂轮种类。',
+  'evidence.doc.visibleDamage': '仅确认照片中可见的损伤 — 仅作提醒',
+  'evidence.limit.visibleDamage':
+    '照片无法看出微裂纹。看不到损伤不会显示为「无损伤」。标准确认方法是敲击音检查。',
+  'evidence.doc.unitConsistency': '算术核对 — 标签上的两种标示是否一致',
+  'evidence.limit.unitConsistency':
+    '不是安全标准，只是用来筛出 OCR 误读的容许误差（10%）。',
+  'evidence.doc.mountingSpec': '制造商指南 — 博世韩国磨机安全宣传资料',
+  'evidence.limit.mountingSpec':
+    '磨机铭牌上没有主轴规格可供对照。仅显示数值供参考，不用于判定。',
+  'evidence.doc.peripheralSpeed': '常识范围核对 — 15~110 m/s',
+  'evidence.limit.peripheralSpeed':
+    '不是安全上限，只是用来筛出位数读错的算术核对。',
+  'evidence.doc.expiry':
+    'oSa《Product marking requirements for bonded abrasives》（2020-04，以 EN 12413:2019 为准）',
+  'evidence.limit.expiry':
+    '韩国法规没有有效期条款。只比较标签上标示的日期，不从生产日期推算。将标示月份视为有效至该月最后一天，是本应用自行采用的解读。',
+  'evidence.doc.confidence': '本应用的设计 — 可信度低时不会自动通过',
+  'evidence.limit.confidence': '解决低可信度的唯一方法是由人直接确认。',
+
   'ruleVersion.label': '规则版本',
   'ruleVersion.note':
     '本次判定所用规则的出处与适用范围。这不是法律认证，也不是法规符合性保证。',
@@ -242,6 +311,7 @@ export const zh: Messages = {
   'field.thickness': '厚度',
   'field.purpose': '用途',
   'field.expiry': '有效期',
+  'field.wheelType': '砂轮种类',
   'field.placeholder': '未识别 — 请手动输入',
   'field.purposeUnknown': '不确定',
   'field.confidence.high': '识别可信度：高',

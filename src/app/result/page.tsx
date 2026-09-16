@@ -18,6 +18,7 @@ import {
 } from '@/components/ChecklistForm';
 import { BuildInfo } from '@/components/BuildInfo';
 import { Disclaimer } from '@/components/Disclaimer';
+import { EvidencePanel } from '@/components/EvidencePanel';
 import { HazardList } from '@/components/HazardList';
 import { LanguagePicker } from '@/components/LanguagePicker';
 import { NotVerifiablePanel } from '@/components/NotVerifiablePanel';
@@ -223,6 +224,14 @@ export default function ResultPage() {
       </header>
 
       <ResultCard result={result} grinder={grinder} wheel={wheel} />
+
+      <EvidencePanel
+        grinder={grinder}
+        wheel={wheel}
+        result={result}
+        grinderOcr={grinderOcr ?? undefined}
+        wheelOcr={wheelOcr ?? undefined}
+      />
 
       <ActionGuide failures={failures} />
 

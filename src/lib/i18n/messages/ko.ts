@@ -68,6 +68,79 @@ export const ko = {
   'expiry.source':
     '유효기한 근거: 라벨에 표시된 월/연 표기만 씁니다. 제조일에서 계산하지 않습니다. 표시 형식은 oSa 「Product marking requirements for bonded abrasives」(2020-04, EN 12413:2019 기준)를 따랐습니다. EN 12413 원문은 확인하지 못했습니다. 표시된 달의 말일까지 유효로 보는 것은 이 앱의 해석이며 규정이 아닙니다. 한국 산업안전보건기준에 관한 규칙 제122조에는 유효기한 조항이 없습니다.',
 
+  'evidence.toggleShow': '근거 보기',
+  'evidence.toggleHide': '근거 접기',
+  'evidence.disclaimer':
+    '이 근거는 참고 정보이며 안전 승인이 아닙니다. 「적합」은 표시된 규격끼리 서로 맞는다는 뜻일 뿐입니다.',
+  'evidence.fields.title': '규격 값 근거',
+  'evidence.fields.note':
+    'AI가 읽은 원본, 단위를 정리한 값, 작업자가 확인한 최종값을 나란히 보여줍니다.',
+  'evidence.fields.raw': 'OCR 원본',
+  'evidence.fields.normalized': '정규화값',
+  'evidence.fields.final': '최종값',
+  'evidence.fields.source': '출처',
+  'evidence.source.ai': 'AI 인식',
+  'evidence.source.converted': 'AI 환산',
+  'evidence.source.user': '작업자 입력',
+  'evidence.notRecorded': '미기록',
+  'evidence.rules.title': '규칙별 판정 근거',
+  'evidence.rules.formula': '계산식',
+  'evidence.rules.difference': '차이',
+  'evidence.rules.gapPercent': '차이 약 {percent}%',
+  'evidence.rules.expiryCompare': '만료일 {lastValid} / 기준일 {today}',
+  'evidence.rules.doc': '근거 문서',
+  'evidence.rules.limit': '적용 한계',
+  'evidence.formula.rpmSafety':
+    '숫돌 최고사용회전속도(rpm) ≥ 그라인더 무부하 회전속도(rpm)',
+  'evidence.formula.diameterFit': '숫돌 지름(mm) ≤ 그라인더 허용 최대 지름(mm)',
+  'evidence.formula.peripheralSpeed':
+    '원주속도(m/s) = π × 지름(m) × 회전속도(rpm) ÷ 60',
+  'evidence.formula.unitConsistency':
+    '라벨의 rpm 표기를 원주속도(m/s)로 환산해 라벨의 m/s 표기와 비교합니다 (허용폭 10%)',
+  'evidence.formula.expiry':
+    '표시된 유효기한(월/연)이 속한 달의 마지막 날짜와 기준일을 비교합니다',
+  'evidence.doc.requiredValues': '이 앱의 설계 — 회전속도 비교의 전제 조건',
+  'evidence.limit.requiredValues':
+    '법령 근거가 아닙니다. 두 값이 모두 있어야 다음 비교가 성립합니다.',
+  'evidence.doc.rpmSafety':
+    '산업안전보건기준에 관한 규칙 제122조 ④ — 최고사용회전속도 초과 사용 금지',
+  'evidence.limit.rpmSafety':
+    '그라인더 명판과 숫돌 라벨에 적힌 값만 대조합니다. 실제 마모나 손상은 보지 않습니다.',
+  'evidence.doc.diameterFit': '그라인더 명판에 적힌 허용 최대 지름',
+  'evidence.limit.diameterFit':
+    '명판 값을 그대로 대조할 뿐, 사진에서 치수를 측정하지 않습니다.',
+  'evidence.doc.purpose': '라벨 표기 확인 — 경고 전용',
+  'evidence.limit.purpose':
+    '판정에 반영하지 않습니다. 오늘 작업과의 일치 여부는 작업 목적 일치가 맡습니다.',
+  'evidence.doc.workPurpose':
+    '산업안전보건기준에 관한 규칙 제122조 ⑤ — 측면 사용 목적이 아닌 숫돌의 측면 사용 금지',
+  'evidence.limit.workPurpose':
+    '작업자가 고른 오늘의 작업과 라벨의 용도 표기만 대조합니다.',
+  'evidence.doc.wheelType':
+    '이 앱의 설계 — RPM·지름 규칙은 일반 결합숫돌을 전제로 만들어졌습니다',
+  'evidence.limit.wheelType':
+    '판정불가는 위험하다는 뜻이 아니라 이 앱이 판정할 수 없는 종류라는 뜻입니다.',
+  'evidence.doc.visibleDamage': '사진에서 보이는 손상만 확인 — 경고 전용',
+  'evidence.limit.visibleDamage':
+    '미세균열은 사진으로 보이지 않습니다. 손상이 안 보인다고 「손상 없음」으로 표시하지 않습니다. 표준 확인법은 타음검사입니다.',
+  'evidence.doc.unitConsistency': '산술 검증 — 라벨의 두 표기가 서로 맞는지',
+  'evidence.limit.unitConsistency':
+    '안전 기준이 아닙니다. OCR 오독을 거르기 위한 허용폭(10%)입니다.',
+  'evidence.doc.mountingSpec': '제조사 안내 — 보쉬 코리아 그라인더 안전캠페인',
+  'evidence.limit.mountingSpec':
+    '그라인더 명판에는 축 규격이 없어 대조할 상대가 없습니다. 판정에 쓰지 않고 값만 보여줍니다.',
+  'evidence.doc.peripheralSpeed': '상식 범위 확인 — 15~110 m/s',
+  'evidence.limit.peripheralSpeed':
+    '안전 상한이 아닙니다. 자릿수를 잘못 읽은 값을 거르기 위한 산술 검증입니다.',
+  'evidence.doc.expiry':
+    'oSa 「Product marking requirements for bonded abrasives」(2020-04, EN 12413:2019 기준)',
+  'evidence.limit.expiry':
+    '한국 법령에는 유효기한 조항이 없습니다. 라벨에 표시된 기한만 비교하며 제조일에서 계산하지 않습니다. 표시월 말일까지 유효로 보는 해석은 이 앱이 정한 것입니다.',
+  'evidence.doc.confidence':
+    '이 앱의 설계 — 신뢰도가 낮으면 자동으로 통과시키지 않습니다',
+  'evidence.limit.confidence':
+    '낮은 신뢰도를 푸는 방법은 사람이 직접 확인하는 것뿐입니다.',
+
   'ruleVersion.label': '규칙 버전',
   'ruleVersion.note':
     '이 판정에 쓰인 규칙의 출처와 적용 범위입니다. 법적 인증이나 법령 적합 보증이 아닙니다.',
@@ -271,6 +344,7 @@ export const ko = {
   'field.thickness': '두께',
   'field.purpose': '용도',
   'field.expiry': '유효기한',
+  'field.wheelType': '숫돌 종류',
   'field.placeholder': '인식하지 못함 — 직접 입력',
   'field.purposeUnknown': '모르겠음',
   'field.confidence.high': '인식 신뢰도 높음',

@@ -60,7 +60,7 @@ export const REASON_MESSAGE_KEY: Readonly<Record<ReasonCode, MessageKey>> = {
   'expiry.valid': 'reason.expiry.valid',
 };
 
-const WHEEL_PURPOSE_LABEL: Readonly<Record<WheelPurpose, MessageKey>> = {
+export const WHEEL_PURPOSE_LABEL: Readonly<Record<WheelPurpose, MessageKey>> = {
   cutting: 'wheelPurpose.cutting',
   grinding: 'wheelPurpose.grinding',
   unknown: 'wheelPurpose.unknown',
@@ -76,7 +76,7 @@ const WORK_PURPOSE_LABEL: Readonly<Record<WorkPurpose, MessageKey>> = {
  * 결과 화면의 숫돌 종류 이름. 확인 화면 선택지와 같은 말을 쓰되,
  * 고르지 못한 종류는 결과에서 '확인 안 됨'으로 적는다 — 엔진의 이름과 같다.
  */
-const WHEEL_TYPE_LABEL: Readonly<Record<WheelType, MessageKey>> = {
+export const WHEEL_TYPE_LABEL: Readonly<Record<WheelType, MessageKey>> = {
   bonded_abrasive: 'wheelType.bonded_abrasive',
   flap_disc: 'wheelType.flap_disc',
   cup_wheel: 'wheelType.cup_wheel',
@@ -95,7 +95,7 @@ const CONFIDENCE_LABEL: Readonly<Record<Confidence, MessageKey>> = {
 type Params = Readonly<Record<string, string | number>>;
 
 /** 코드를 고른 언어의 이름으로 바꾼다. 모르는 코드면 null — 이름을 지어내지 않는다. */
-function labelOf<T extends string>(
+export function labelOf<T extends string>(
   table: Readonly<Record<T, MessageKey>>,
   code: string | number | undefined,
   locale: Locale,

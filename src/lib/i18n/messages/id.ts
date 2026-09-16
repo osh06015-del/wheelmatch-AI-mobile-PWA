@@ -71,6 +71,86 @@ export const id: Messages = {
   'expiry.source':
     'Dasar kedaluwarsa: hanya bulan/tahun yang tercetak pada label yang dipakai. Tidak pernah dihitung dari tanggal produksi. Format penandaan mengikuti oSa "Product marking requirements for bonded abrasives" (2020-04, berdasarkan EN 12413:2019). Naskah EN 12413 sendiri belum dibaca. Menganggap bulan yang tertera masih berlaku sampai hari terakhirnya adalah tafsiran aplikasi ini, bukan peraturan. Pasal 122 Peraturan Standar Keselamatan dan Kesehatan Kerja Korea tidak memuat ketentuan kedaluwarsa.',
 
+  'evidence.toggleShow': 'Lihat dasar penilaian',
+  'evidence.toggleHide': 'Sembunyikan dasar penilaian',
+  'evidence.disclaimer':
+    'Dasar penilaian ini hanya informasi referensi, bukan persetujuan keselamatan. "Sesuai" hanya berarti spesifikasi yang tercetak saling cocok.',
+  'evidence.fields.title': 'Dasar nilai spesifikasi',
+  'evidence.fields.note':
+    'Menampilkan bersamaan nilai yang dibaca AI, nilai setelah unit dinormalkan, dan nilai akhir yang dikonfirmasi pekerja.',
+  'evidence.fields.raw': 'Mentah OCR',
+  'evidence.fields.normalized': 'Ternormalisasi',
+  'evidence.fields.final': 'Nilai akhir',
+  'evidence.fields.source': 'Sumber',
+  'evidence.source.ai': 'Pembacaan AI',
+  'evidence.source.converted': 'Konversi AI',
+  'evidence.source.user': 'Input pekerja',
+  'evidence.notRecorded': 'Tidak tercatat',
+  'evidence.rules.title': 'Dasar hasil per aturan',
+  'evidence.rules.formula': 'Rumus',
+  'evidence.rules.difference': 'Selisih',
+  'evidence.rules.gapPercent': 'Selisih sekitar {percent}%',
+  'evidence.rules.expiryCompare':
+    'Kedaluwarsa {lastValid} / tanggal acuan {today}',
+  'evidence.rules.doc': 'Dokumen dasar',
+  'evidence.rules.limit': 'Batas penerapan',
+  'evidence.formula.rpmSafety':
+    'Kecepatan maksimum batu gerinda (rpm) ≥ kecepatan tanpa beban gerinda (rpm)',
+  'evidence.formula.diameterFit':
+    'Diameter batu gerinda (mm) ≤ diameter maksimum gerinda (mm)',
+  'evidence.formula.peripheralSpeed':
+    'Kecepatan keliling (m/s) = π × diameter (m) × rpm ÷ 60',
+  'evidence.formula.unitConsistency':
+    'Mengonversi angka rpm pada label ke kecepatan keliling (m/s) lalu membandingkannya dengan angka m/s pada label (toleransi 10%)',
+  'evidence.formula.expiry':
+    'Membandingkan tanggal acuan dengan hari terakhir bulan/tahun kedaluwarsa yang tercetak',
+  'evidence.doc.requiredValues':
+    'Desain aplikasi ini — prasyarat untuk membandingkan kecepatan',
+  'evidence.limit.requiredValues':
+    'Bukan dasar hukum. Kedua nilai harus ada agar perbandingan berikutnya bisa dilakukan.',
+  'evidence.doc.rpmSafety':
+    'Peraturan Standar Keselamatan dan Kesehatan Kerja Pasal 122(4) — larangan penggunaan di atas kecepatan maksimum yang tercetak',
+  'evidence.limit.rpmSafety':
+    'Hanya membandingkan nilai yang tercetak pada pelat gerinda dan label batu gerinda. Tidak melihat keausan atau kerusakan sebenarnya.',
+  'evidence.doc.diameterFit':
+    'Diameter maksimum yang tercetak pada pelat gerinda',
+  'evidence.limit.diameterFit':
+    'Hanya membandingkan nilai pada pelat, tidak mengukur dimensi dari foto.',
+  'evidence.doc.purpose': 'Pemeriksaan label kegunaan — hanya peringatan',
+  'evidence.limit.purpose':
+    'Tidak memengaruhi hasil akhir. Kecocokan dengan pekerjaan hari ini ditentukan oleh Sesuai pekerjaan Anda.',
+  'evidence.doc.workPurpose':
+    'Peraturan Standar Keselamatan dan Kesehatan Kerja Pasal 122(5) — larangan menggunakan batu gerinda pada sisi yang bukan kegunaannya',
+  'evidence.limit.workPurpose':
+    'Hanya membandingkan pekerjaan yang dipilih pekerja dengan kegunaan yang tercetak pada label.',
+  'evidence.doc.wheelType':
+    'Desain aplikasi ini — aturan RPM/diameter mengasumsikan batu gerinda terikat biasa',
+  'evidence.limit.wheelType':
+    '"Tidak dapat ditentukan" tidak berarti berbahaya — berarti aplikasi ini tidak dapat menilai jenis batu gerinda ini.',
+  'evidence.doc.visibleDamage':
+    'Hanya kerusakan yang terlihat di foto — hanya peringatan',
+  'evidence.limit.visibleDamage':
+    'Retak halus tidak terlihat di foto. Tidak terlihat kerusakan tidak pernah ditampilkan sebagai "tidak ada kerusakan". Pemeriksaan standarnya adalah uji ketuk.',
+  'evidence.doc.unitConsistency':
+    'Pemeriksaan aritmetika — apakah dua penandaan pada label saling cocok',
+  'evidence.limit.unitConsistency':
+    'Bukan batas keselamatan. Ini toleransi (10%) untuk menyaring kesalahan baca OCR.',
+  'evidence.doc.mountingSpec':
+    'Panduan produsen — kampanye keselamatan gerinda Bosch Korea',
+  'evidence.limit.mountingSpec':
+    'Pelat gerinda tidak memuat spesifikasi as sehingga tidak ada yang bisa dibandingkan. Hanya ditampilkan sebagai referensi, tidak dipakai untuk hasil akhir.',
+  'evidence.doc.peripheralSpeed': 'Pemeriksaan kewajaran — 15–110 m/s',
+  'evidence.limit.peripheralSpeed':
+    'Bukan batas keselamatan. Pemeriksaan aritmetika untuk menyaring nilai yang salah baca digitnya.',
+  'evidence.doc.expiry':
+    'oSa "Product marking requirements for bonded abrasives" (2020-04, berdasarkan EN 12413:2019)',
+  'evidence.limit.expiry':
+    'Hukum Korea tidak memuat ketentuan kedaluwarsa. Hanya membandingkan tanggal yang tercetak pada label, tidak dihitung dari tanggal produksi. Menganggap berlaku sampai hari terakhir bulan yang tercetak adalah tafsiran aplikasi ini sendiri.',
+  'evidence.doc.confidence':
+    'Desain aplikasi ini — keyakinan rendah tidak pernah lolos otomatis',
+  'evidence.limit.confidence':
+    'Satu-satunya cara mengatasi keyakinan rendah adalah dikonfirmasi langsung oleh orang.',
+
   'ruleVersion.label': 'Versi set aturan',
   'ruleVersion.note':
     'Sumber dan cakupan aturan yang dipakai untuk hasil ini. Ini bukan sertifikasi hukum atau jaminan kepatuhan peraturan.',
@@ -280,6 +360,7 @@ export const id: Messages = {
   'field.thickness': 'Ketebalan',
   'field.purpose': 'Kegunaan',
   'field.expiry': 'Tanggal kedaluwarsa',
+  'field.wheelType': 'Jenis batu gerinda',
   'field.placeholder': 'Tidak terbaca — isi sendiri',
   'field.purposeUnknown': 'Tidak yakin',
   'field.confidence.high': 'Keyakinan pembacaan: tinggi',

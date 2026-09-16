@@ -71,6 +71,84 @@ export const vi: Messages = {
   'expiry.source':
     'Căn cứ hạn sử dụng: chỉ dùng tháng/năm in trên nhãn. Không tính từ ngày sản xuất. Định dạng ghi nhãn theo oSa "Product marking requirements for bonded abrasives" (2020-04, dựa trên EN 12413:2019). Bản gốc EN 12413 chưa được đọc. Việc coi đá mài còn hạn đến ngày cuối của tháng ghi trên nhãn là cách hiểu của ứng dụng này, không phải quy định. Điều 122 Quy định về tiêu chuẩn an toàn vệ sinh lao động của Hàn Quốc không có điều khoản về hạn sử dụng.',
 
+  'evidence.toggleShow': 'Xem căn cứ',
+  'evidence.toggleHide': 'Ẩn căn cứ',
+  'evidence.disclaimer':
+    'Căn cứ này chỉ để tham khảo, không phải xác nhận an toàn. "Đạt" chỉ có nghĩa là các thông số ghi trên nhãn khớp với nhau.',
+  'evidence.fields.title': 'Căn cứ giá trị thông số',
+  'evidence.fields.note':
+    'Hiển thị cùng lúc giá trị AI đọc được, giá trị sau khi quy đổi đơn vị, và giá trị cuối cùng do người vận hành xác nhận.',
+  'evidence.fields.raw': 'Bản gốc OCR',
+  'evidence.fields.normalized': 'Giá trị quy đổi',
+  'evidence.fields.final': 'Giá trị cuối',
+  'evidence.fields.source': 'Nguồn',
+  'evidence.source.ai': 'AI nhận diện',
+  'evidence.source.converted': 'AI quy đổi',
+  'evidence.source.user': 'Người vận hành nhập',
+  'evidence.notRecorded': 'Chưa ghi',
+  'evidence.rules.title': 'Căn cứ kết quả theo từng quy tắc',
+  'evidence.rules.formula': 'Công thức',
+  'evidence.rules.difference': 'Chênh lệch',
+  'evidence.rules.gapPercent': 'Chênh lệch khoảng {percent}%',
+  'evidence.rules.expiryCompare': 'Hết hạn {lastValid} / mốc so sánh {today}',
+  'evidence.rules.doc': 'Tài liệu căn cứ',
+  'evidence.rules.limit': 'Giới hạn áp dụng',
+  'evidence.formula.rpmSafety':
+    'Tốc độ tối đa cho phép của đá mài (rpm) ≥ tốc độ không tải của máy mài (rpm)',
+  'evidence.formula.diameterFit':
+    'Đường kính đá mài (mm) ≤ đường kính tối đa cho phép của máy mài (mm)',
+  'evidence.formula.peripheralSpeed':
+    'Tốc độ vòng ngoài (m/s) = π × đường kính (m) × rpm ÷ 60',
+  'evidence.formula.unitConsistency':
+    'Quy đổi số rpm ghi trên nhãn sang tốc độ vòng ngoài (m/s) rồi so với số m/s ghi trên nhãn (sai số cho phép 10%)',
+  'evidence.formula.expiry':
+    'So sánh mốc ngày với ngày cuối cùng của tháng/năm hết hạn ghi trên nhãn',
+  'evidence.doc.requiredValues':
+    'Thiết kế của ứng dụng — điều kiện tiên quyết để so sánh tốc độ',
+  'evidence.limit.requiredValues':
+    'Không phải căn cứ pháp lý. Cả hai giá trị phải có mới so sánh được bước tiếp theo.',
+  'evidence.doc.rpmSafety':
+    'Điều 122 khoản 4, Quy định về tiêu chuẩn an toàn vệ sinh lao động — không dùng vượt tốc độ tối đa cho phép ghi trên nhãn',
+  'evidence.limit.rpmSafety':
+    'Chỉ đối chiếu giá trị in trên biển máy mài và nhãn đá mài. Không xem hao mòn hay hư hỏng thực tế.',
+  'evidence.doc.diameterFit': 'Đường kính tối đa cho phép in trên biển máy mài',
+  'evidence.limit.diameterFit':
+    'Chỉ đối chiếu giá trị trên biển máy, không đo kích thước từ ảnh.',
+  'evidence.doc.purpose': 'Kiểm tra nhãn ghi công dụng — chỉ cảnh báo',
+  'evidence.limit.purpose':
+    'Không ảnh hưởng đến kết quả. Việc khớp với công việc hôm nay do "Đúng với công việc" quyết định.',
+  'evidence.doc.workPurpose':
+    'Điều 122 khoản 5, Quy định về tiêu chuẩn an toàn vệ sinh lao động — không dùng đá mài sai công dụng theo hướng cạnh bên',
+  'evidence.limit.workPurpose':
+    'Chỉ đối chiếu công việc người vận hành đã chọn với công dụng ghi trên nhãn.',
+  'evidence.doc.wheelType':
+    'Thiết kế của ứng dụng — quy tắc tốc độ/đường kính giả định là đá mài kết dính thông thường',
+  'evidence.limit.wheelType':
+    '"Không xác định" không có nghĩa là nguy hiểm, mà là ứng dụng này không thể đánh giá loại đá mài này.',
+  'evidence.doc.visibleDamage':
+    'Chỉ xác nhận hư hỏng thấy được trong ảnh — chỉ cảnh báo',
+  'evidence.limit.visibleDamage':
+    'Vết nứt nhỏ không thấy được trong ảnh. Không thấy hư hỏng không có nghĩa là hiển thị "không hư hỏng". Cách kiểm tra chuẩn là gõ nghe âm thanh.',
+  'evidence.doc.unitConsistency':
+    'Kiểm tra bằng tính toán — hai cách ghi trên nhãn có khớp nhau không',
+  'evidence.limit.unitConsistency':
+    'Không phải tiêu chuẩn an toàn. Đây là sai số cho phép (10%) để lọc lỗi đọc nhãn.',
+  'evidence.doc.mountingSpec':
+    'Hướng dẫn của nhà sản xuất — chiến dịch an toàn máy mài Bosch Korea',
+  'evidence.limit.mountingSpec':
+    'Biển máy mài không ghi quy cách trục nên không có gì để đối chiếu. Chỉ hiển thị để tham khảo, không dùng để ra kết quả.',
+  'evidence.doc.peripheralSpeed': 'Kiểm tra phạm vi hợp lý — 15–110 m/s',
+  'evidence.limit.peripheralSpeed':
+    'Không phải giới hạn an toàn. Đây là kiểm tra tính toán để lọc giá trị đọc sai chữ số.',
+  'evidence.doc.expiry':
+    'oSa "Product marking requirements for bonded abrasives" (2020-04, dựa trên EN 12413:2019)',
+  'evidence.limit.expiry':
+    'Pháp luật Hàn Quốc không có điều khoản về hạn sử dụng. Chỉ so sánh ngày ghi trên nhãn, không tính từ ngày sản xuất. Coi hạn còn đến ngày cuối tháng ghi trên nhãn là cách hiểu riêng của ứng dụng này.',
+  'evidence.doc.confidence':
+    'Thiết kế của ứng dụng — độ tin cậy thấp không bao giờ tự động đạt',
+  'evidence.limit.confidence':
+    'Cách duy nhất để giải quyết độ tin cậy thấp là để người vận hành trực tiếp xác nhận.',
+
   'ruleVersion.label': 'Phiên bản bộ quy tắc',
   'ruleVersion.note':
     'Nguồn và phạm vi áp dụng của các quy tắc dùng cho kết quả này. Đây không phải chứng nhận pháp lý hay bảo đảm tuân thủ quy định.',
@@ -274,6 +352,7 @@ export const vi: Messages = {
   'field.thickness': 'Độ dày',
   'field.purpose': 'Công dụng',
   'field.expiry': 'Hạn sử dụng',
+  'field.wheelType': 'Loại đá mài',
   'field.placeholder': 'Không đọc được — hãy tự nhập',
   'field.purposeUnknown': 'Không rõ',
   'field.confidence.high': 'Độ tin cậy khi đọc: cao',

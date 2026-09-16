@@ -67,6 +67,85 @@ export const en: Messages = {
   'expiry.source':
     'Expiry basis: only the month/year printed on the label is used. It is never calculated from the manufacturing date. The marking format follows oSa "Product marking requirements for bonded abrasives" (2020-04, based on EN 12413:2019). The EN 12413 text itself was not read. Treating the marked month as valid through its last day is this app\'s reading, not a regulation. Korea\'s Rules on Occupational Safety and Health Standards Article 122 has no expiry clause.',
 
+  'evidence.toggleShow': 'Show evidence',
+  'evidence.toggleHide': 'Hide evidence',
+  'evidence.disclaimer':
+    'This evidence is reference information, not a safety approval. "SPECS MATCH" only means the marked specs agree with each other.',
+  'evidence.fields.title': 'Spec value evidence',
+  'evidence.fields.note':
+    'Shows what the AI read, the value after normalizing units, and the value the worker confirmed, side by side.',
+  'evidence.fields.raw': 'OCR raw',
+  'evidence.fields.normalized': 'Normalized',
+  'evidence.fields.final': 'Final',
+  'evidence.fields.source': 'Source',
+  'evidence.source.ai': 'AI reading',
+  'evidence.source.converted': 'AI conversion',
+  'evidence.source.user': 'Worker entry',
+  'evidence.notRecorded': 'Not recorded',
+  'evidence.rules.title': 'Per-rule verdict evidence',
+  'evidence.rules.formula': 'Formula',
+  'evidence.rules.difference': 'Difference',
+  'evidence.rules.gapPercent': 'Difference about {percent}%',
+  'evidence.rules.expiryCompare': 'Expires {lastValid} / baseline {today}',
+  'evidence.rules.doc': 'Source document',
+  'evidence.rules.limit': 'Limits',
+  'evidence.formula.rpmSafety':
+    'Wheel max operating speed (rpm) ≥ grinder no-load speed (rpm)',
+  'evidence.formula.diameterFit':
+    'Wheel diameter (mm) ≤ grinder max wheel diameter (mm)',
+  'evidence.formula.peripheralSpeed':
+    'Peripheral speed (m/s) = π × diameter (m) × rpm ÷ 60',
+  'evidence.formula.unitConsistency':
+    "Converts the label's rpm marking to peripheral speed (m/s) and compares it with the label's m/s marking (10% tolerance)",
+  'evidence.formula.expiry':
+    'Compares the baseline date with the last day of the marked expiry month/year',
+  'evidence.doc.requiredValues':
+    "This app's design — a precondition for comparing speeds",
+  'evidence.limit.requiredValues':
+    'Not a regulatory basis. Both values must exist before the next comparison can be made.',
+  'evidence.doc.rpmSafety':
+    'Rules on Occupational Safety and Health Standards, Article 122(4) — do not exceed the marked maximum operating speed',
+  'evidence.limit.rpmSafety':
+    'Only compares the values printed on the grinder nameplate and the wheel label. It does not see actual wear or damage.',
+  'evidence.doc.diameterFit':
+    'Maximum wheel diameter printed on the grinder nameplate',
+  'evidence.limit.diameterFit':
+    'Compares the nameplate value as-is; it does not measure dimensions from a photo.',
+  'evidence.doc.purpose': 'Label marking check — advisory only',
+  'evidence.limit.purpose':
+    "Does not affect the verdict. Whether it matches today's job is decided by Work purpose match.",
+  'evidence.doc.workPurpose':
+    'Rules on Occupational Safety and Health Standards, Article 122(5) — do not use a wheel on its side for a purpose it is not marked for',
+  'evidence.limit.workPurpose':
+    'Only compares the job the worker declared with the purpose printed on the label.',
+  'evidence.doc.wheelType':
+    "This app's design — the RPM/diameter rules assume a bonded abrasive wheel",
+  'evidence.limit.wheelType':
+    'UNDETERMINED here does not mean the wheel is dangerous — it means this app cannot judge this wheel type.',
+  'evidence.doc.visibleDamage':
+    'Only damage visible in the photo — advisory only',
+  'evidence.limit.visibleDamage':
+    'Hairline cracks are not visible in photos. Not seeing damage is never shown as "no damage." The standard check is the tap test.',
+  'evidence.doc.unitConsistency':
+    "Arithmetic check — whether the label's two markings agree",
+  'evidence.limit.unitConsistency':
+    'Not a safety limit. It is a 10% tolerance for catching OCR misreads.',
+  'evidence.doc.mountingSpec':
+    'Manufacturer guidance — Bosch Korea grinder safety campaign',
+  'evidence.limit.mountingSpec':
+    'The grinder nameplate has no spindle spec to compare against. Shown for reference only, not used in the verdict.',
+  'evidence.doc.peripheralSpeed': 'Plausibility check — 15–110 m/s',
+  'evidence.limit.peripheralSpeed':
+    'Not a safety ceiling. An arithmetic check for catching values that are off by a digit.',
+  'evidence.doc.expiry':
+    'oSa "Product marking requirements for bonded abrasives" (2020-04, based on EN 12413:2019)',
+  'evidence.limit.expiry':
+    "Korean law has no expiry clause. Only compares the date printed on the label; never calculates from the manufacturing date. Treating the marked month as valid through its last day is this app's own reading.",
+  'evidence.doc.confidence':
+    "This app's design — low confidence never passes automatically",
+  'evidence.limit.confidence':
+    'The only way to resolve low confidence is for a person to confirm the value directly.',
+
   'ruleVersion.label': 'Ruleset version',
   'ruleVersion.note':
     'Where the rules used for this result come from, and what each covers. This is not a legal certification or a guarantee of regulatory compliance.',
@@ -274,6 +353,7 @@ export const en: Messages = {
   'field.thickness': 'Thickness',
   'field.purpose': 'Wheel use',
   'field.expiry': 'Expiry date',
+  'field.wheelType': 'Wheel type',
   'field.placeholder': 'Not read — enter it yourself',
   'field.purposeUnknown': 'Not sure',
   'field.confidence.high': 'Reading confidence: high',
