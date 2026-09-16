@@ -375,6 +375,86 @@ export const vi: Messages = {
   'captureCheck.useAnywayFor': 'Vẫn dùng ảnh {subject}',
   'captureCheck.usedAnyway': 'Bạn đã xem cảnh báo và chọn dùng ảnh này.',
 
+  'work.material.label': 'Vật liệu',
+  'work.material.steel': 'Thép',
+  'work.material.stainless': 'Thép không gỉ',
+  'work.material.nonFerrous': 'Kim loại màu (nhôm…)',
+  'work.material.stoneConcrete': 'Đá / bê tông',
+  'work.material.other': 'Khác',
+  'work.material.unknown': 'Không rõ',
+  'work.cooling.label': 'Khô / ướt',
+  'work.cooling.dry': 'Khô',
+  'work.cooling.wet': 'Ướt',
+  'work.cooling.unknown': 'Không rõ',
+  'work.conditionsNote':
+    'Nếu không chắc, hãy để "Không rõ". Giá trị không rõ sẽ không bao giờ được coi là phù hợp.',
+  'grinderMount.title': 'Trục và nắp che',
+  'grinderMount.note':
+    'Nếu nhãn máy không ghi, hãy xem trực tiếp trên máy. Nếu không chắc, hãy để "Không rõ".',
+  'grinderMount.spindle.label': 'Ren trục',
+  'grinderMount.spindle.m14': 'M14',
+  'grinderMount.spindle.m10': 'M10',
+  'grinderMount.spindle.unc58': '5/8-11',
+  'grinderMount.spindle.other': 'Khác',
+  'grinderMount.spindle.unknown': 'Không rõ',
+  'grinderMount.guardType.label': 'Loại nắp che',
+  'grinderMount.guardType.grinding': 'Nắp che mài (nửa vòng)',
+  'grinderMount.guardType.cutting': 'Nắp che cắt (bao kín)',
+  'grinderMount.guardType.none': 'Không có nắp che',
+  'grinderMount.guardType.other': 'Khác',
+  'grinderMount.guardType.unknown': 'Không rõ',
+  'grinderMount.guardSize.label': 'Cỡ nắp che (đường kính đá phù hợp)',
+  'grinderMount.guardSize.hint': 'Để trống nếu không chắc.',
+  'profile.title': 'Điều kiện lắp đặt và làm việc',
+  'profile.note':
+    'Các mục này không nằm trong việc đối chiếu quy cách. Ứng dụng không coi là phù hợp — hãy tự kiểm tra.',
+  'profile.version': 'Bảng điều kiện: {type} · {version}',
+  'profile.none':
+    'Không có bảng điều kiện cho loại này. Hãy xem hướng dẫn của nhà sản xuất.',
+  'profile.status.unknown': 'Chưa rõ',
+  'profile.status.manualCheck': 'Tự kiểm tra',
+  'profile.status.conflict': 'Mâu thuẫn',
+  'profile.key.material': 'Vật liệu',
+  'profile.key.cooling': 'Khô / ướt',
+  'profile.key.spindle': 'Trục',
+  'profile.key.guard': 'Nắp che',
+  'profile.key.guardSize': 'Cỡ nắp che',
+  'profile.key.rotation': 'Chiều quay',
+  'profile.code.material.unknown': 'Chưa chọn vật liệu gia công.',
+  'profile.code.material.unverified':
+    'Ứng dụng không có tiêu chí vật liệu cho loại này. Hãy tự kiểm tra ký hiệu vật liệu trên nhãn.',
+  'profile.code.material.manualCheck':
+    'Có trong danh sách vật liệu cho phép, nhưng hãy tự kiểm tra ký hiệu trên nhãn.',
+  'profile.code.material.notAllowed':
+    'Vật liệu đã chọn không được phép cho loại này.',
+  'profile.code.cooling.unknown': 'Chưa chọn khô hay ướt.',
+  'profile.code.cooling.unverified':
+    'Ứng dụng không có tiêu chí khô/ướt cho loại này. Hãy tự kiểm tra nhãn.',
+  'profile.code.cooling.manualCheck':
+    'Là cách được phép, nhưng hãy tự kiểm tra nhãn.',
+  'profile.code.cooling.notAllowed':
+    'Cách khô/ướt đã chọn không được phép cho loại này.',
+  'profile.code.spindle.unknown':
+    'Chưa rõ ren trục. Hãy tự kiểm tra lỗ đá có vừa trục không.',
+  'profile.code.spindle.manualCheck':
+    'Nhãn máy không có quy cách trục nên ứng dụng không đối chiếu với lỗ đá. Hãy tự kiểm tra.',
+  'profile.code.guard.unknown':
+    'Chưa rõ loại nắp che. Hãy tự kiểm tra đã lắp nắp che chưa.',
+  'profile.code.guard.missing':
+    'Bạn đã chọn không có nắp che. Loại này cần nắp che. Không làm việc khi chưa lắp nắp che.',
+  'profile.code.guard.manualCheck':
+    'Ứng dụng không đối chiếu nắp che có hợp công việc (cắt/mài) không. Hãy tự kiểm tra.',
+  'profile.code.guardSize.unknown':
+    'Chưa rõ cỡ nắp che. Hãy tự kiểm tra có che được đá không.',
+  'profile.code.guardSize.smallerThanWheel':
+    'Nắp che nhỏ hơn đường kính đá. Không thể che đá này.',
+  'profile.code.guardSize.manualCheck':
+    'Chỉ dựa vào kích cỡ không biết nắp che có phù hợp. Hãy tự kiểm tra cách lắp.',
+  'profile.code.rotation.unverified':
+    'Ứng dụng không có tiêu chí chiều quay. Nếu nhãn có mũi tên, hãy lắp theo chiều đó.',
+  'profile.code.rotation.followArrow':
+    'Hãy tự kiểm tra đã lắp đúng mũi tên chiều quay trên nhãn.',
+
   'wheelType.bonded_abrasive': 'Đá mài liên kết thông thường',
   'wheelType.flap_disc': 'Đĩa nhám xếp',
   'wheelType.cup_wheel': 'Đá mài dạng chén',

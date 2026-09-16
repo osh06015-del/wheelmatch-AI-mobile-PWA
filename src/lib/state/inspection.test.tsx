@@ -623,3 +623,43 @@ describe('사진 상태 확인 기록', () => {
     expect(sessionStorage.getItem('wheelmatch.captureChecks')).toBeNull();
   });
 });
+
+describe('작업 조건', () => {
+  beforeEach(() => {
+    const { result } = renderHook(() => useInspection());
+    act(() => result.current.reset());
+  });
+
+  it('작업을 고르면서 넘긴 조건을 남기고, 넘기지 않으면 고르지 않은 것으로 둔다', () => {
+    const { result } = renderHook(() => useInspection());
+
+    act(() =>
+      result.current.setPurpose('cutting', {
+        material: 'steel',
+        cooling: 'dry',
+      }),
+    );
+    expect(result.current.workConditions).toEqual({
+      material: 'steel',
+      cooling: 'dry',
+    });
+
+    act(() => result.current.setPurpose('grinding'));
+    expect(result.current.workConditions).toBeNull();
+  });
+
+  it('reset은 작업 조건도 지운다', () => {
+    const { result } = renderHook(() => useInspection());
+    act(() =>
+      result.current.setPurpose('cutting', {
+        material: 'steel',
+        cooling: 'dry',
+      }),
+    );
+
+    act(() => result.current.reset());
+
+    expect(result.current.workConditions).toBeNull();
+    expect(sessionStorage.getItem('wheelmatch.workConditions')).toBeNull();
+  });
+});

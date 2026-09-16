@@ -4,6 +4,7 @@
 // AI(OCR)는 라벨에서 값을 읽어오는 역할만 하고, 판정에는 일절 관여하지 않는다.
 // 따라서 이 파일은 외부 의존성이 없는 순수 함수로만 구성한다.
 
+import { isSupportedType } from './profiles';
 import type {
   CheckItem,
   ExpiryMonth,
@@ -38,11 +39,6 @@ const PURPOSE_LABEL: Record<WheelPurpose, string> = {
   grinding: '연삭용',
   unknown: '미확인',
 };
-
-/** 이 앱의 RPM·지름 규칙이 성립하는 종류. 나머지는 규격 체계가 다르다. */
-const SUPPORTED_WHEEL_TYPES: ReadonlySet<WheelType> = new Set<WheelType>([
-  'bonded_abrasive',
-]);
 
 /**
  * 확인 화면의 숫돌 종류 선택지와 같은 이름을 쓴다. 작업자가 고른 이름과 결과
@@ -345,7 +341,9 @@ export function checkWheelType(wheel: WheelSpec): CheckItem {
     };
   }
 
-  if (!SUPPORTED_WHEEL_TYPES.has(wheel.wheelType)) {
+  // 이 앱의 RPM·지름 규칙이 성립하는 종류는 Profile이 정한다(profiles.ts).
+  // Profile이 없는 종류는 규격 체계가 달라 대조하지 않는다.
+  if (!isSupportedType(wheel.wheelType)) {
     return {
       ...base,
       passed: null,

@@ -365,6 +365,86 @@ export const ko = {
   'captureCheck.useAnywayFor': '{subject} 사진을 그래도 사용',
   'captureCheck.usedAnyway': '경고를 확인하고 이 사진을 쓰기로 했습니다.',
 
+  'work.material.label': '재료',
+  'work.material.steel': '일반 강재',
+  'work.material.stainless': '스테인리스',
+  'work.material.nonFerrous': '비철금속(알루미늄 등)',
+  'work.material.stoneConcrete': '석재·콘크리트',
+  'work.material.other': '기타',
+  'work.material.unknown': '모름',
+  'work.cooling.label': '건식/습식',
+  'work.cooling.dry': '건식',
+  'work.cooling.wet': '습식',
+  'work.cooling.unknown': '모름',
+  'work.conditionsNote':
+    '모르면 모름으로 두세요. 모르는 값을 맞는 것으로 추정하지 않습니다.',
+  'grinderMount.title': '축·덮개 정보',
+  'grinderMount.note':
+    '명판에 없으면 실물을 보고 고르세요. 모르면 모름으로 두세요.',
+  'grinderMount.spindle.label': '스핀들(축) 나사',
+  'grinderMount.spindle.m14': 'M14',
+  'grinderMount.spindle.m10': 'M10',
+  'grinderMount.spindle.unc58': '5/8-11',
+  'grinderMount.spindle.other': '기타',
+  'grinderMount.spindle.unknown': '모름',
+  'grinderMount.guardType.label': '덮개 종류',
+  'grinderMount.guardType.grinding': '연삭용(반원형)',
+  'grinderMount.guardType.cutting': '절단용(감싸는 형)',
+  'grinderMount.guardType.none': '덮개 없음',
+  'grinderMount.guardType.other': '기타',
+  'grinderMount.guardType.unknown': '모름',
+  'grinderMount.guardSize.label': '덮개 크기(맞는 숫돌 지름)',
+  'grinderMount.guardSize.hint': '모르면 비워 두세요.',
+  'profile.title': '장착·작업 조건 확인',
+  'profile.note':
+    '이 항목들은 규격 판정에 들어가지 않습니다. 앱이 맞다고 추정하지 않으니 직접 확인하세요.',
+  'profile.version': '적용 조건표: {type} · {version}',
+  'profile.none':
+    '이 종류에 적용할 조건표가 없습니다. 제조사 취급설명서를 확인하세요.',
+  'profile.status.unknown': '모름',
+  'profile.status.manualCheck': '직접 확인',
+  'profile.status.conflict': '어긋남',
+  'profile.key.material': '재료',
+  'profile.key.cooling': '건식/습식',
+  'profile.key.spindle': '스핀들(축)',
+  'profile.key.guard': '덮개',
+  'profile.key.guardSize': '덮개 크기',
+  'profile.key.rotation': '회전방향',
+  'profile.code.material.unknown': '작업 재료를 고르지 않았습니다.',
+  'profile.code.material.unverified':
+    '이 종류에 맞는 재료 기준을 앱이 갖고 있지 않습니다. 라벨의 재료 표기를 직접 확인하세요.',
+  'profile.code.material.manualCheck':
+    '허용 재료에 들어 있지만, 라벨의 재료 표기를 직접 확인하세요.',
+  'profile.code.material.notAllowed':
+    '고른 재료가 이 종류의 허용 재료에 없습니다.',
+  'profile.code.cooling.unknown': '건식/습식을 고르지 않았습니다.',
+  'profile.code.cooling.unverified':
+    '이 종류의 건식/습식 기준을 앱이 갖고 있지 않습니다. 라벨의 표기를 직접 확인하세요.',
+  'profile.code.cooling.manualCheck':
+    '허용되는 방식이지만, 라벨의 표기를 직접 확인하세요.',
+  'profile.code.cooling.notAllowed':
+    '고른 방식(건식/습식)이 이 종류에 허용되지 않습니다.',
+  'profile.code.spindle.unknown':
+    '스핀들 나사 규격을 모릅니다. 숫돌 내경이 축에 맞는지 직접 확인하세요.',
+  'profile.code.spindle.manualCheck':
+    '명판에 축 규격이 없어 앱이 숫돌 내경과 대조하지 않습니다. 축에 맞는지 직접 확인하세요.',
+  'profile.code.guard.unknown':
+    '덮개 종류를 모릅니다. 덮개가 달려 있는지 직접 확인하세요.',
+  'profile.code.guard.missing':
+    '덮개가 없다고 고르셨습니다. 이 종류는 덮개가 필요합니다. 덮개를 달기 전에는 작업하지 마십시오.',
+  'profile.code.guard.manualCheck':
+    '덮개가 작업(절단/연삭)에 맞는 종류인지 앱이 대조하지 않습니다. 직접 확인하세요.',
+  'profile.code.guardSize.unknown':
+    '덮개 크기를 모릅니다. 숫돌을 감싸는지 직접 확인하세요.',
+  'profile.code.guardSize.smallerThanWheel':
+    '덮개 크기가 숫돌 지름보다 작습니다. 이 덮개로는 숫돌을 감쌀 수 없습니다.',
+  'profile.code.guardSize.manualCheck':
+    '크기만으로 맞는 덮개인지 알 수 없습니다. 장착 상태를 직접 확인하세요.',
+  'profile.code.rotation.unverified':
+    '회전방향 기준을 앱이 갖고 있지 않습니다. 라벨에 화살표가 있으면 그 방향에 맞춰 장착하세요.',
+  'profile.code.rotation.followArrow':
+    '라벨의 회전방향 화살표에 맞춰 장착했는지 직접 확인하세요.',
+
   'wheelType.bonded_abrasive': '일반 결합숫돌',
   'wheelType.flap_disc': '플랩디스크',
   'wheelType.cup_wheel': '컵휠',

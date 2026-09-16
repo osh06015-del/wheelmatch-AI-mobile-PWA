@@ -381,6 +381,86 @@ export const en: Messages = {
   'captureCheck.useAnywayFor': 'Use the {subject} photo anyway',
   'captureCheck.usedAnyway': 'You saw the warning and chose to use this photo.',
 
+  'work.material.label': 'Material',
+  'work.material.steel': 'Steel',
+  'work.material.stainless': 'Stainless steel',
+  'work.material.nonFerrous': 'Non-ferrous metal (aluminium etc.)',
+  'work.material.stoneConcrete': 'Stone / concrete',
+  'work.material.other': 'Other',
+  'work.material.unknown': 'Not sure',
+  'work.cooling.label': 'Dry / wet',
+  'work.cooling.dry': 'Dry',
+  'work.cooling.wet': 'Wet',
+  'work.cooling.unknown': 'Not sure',
+  'work.conditionsNote':
+    'If you are not sure, leave it as "Not sure". Unknown values are never assumed to match.',
+  'grinderMount.title': 'Spindle and guard',
+  'grinderMount.note':
+    'If it is not on the nameplate, check the tool itself. If you are not sure, leave it as "Not sure".',
+  'grinderMount.spindle.label': 'Spindle thread',
+  'grinderMount.spindle.m14': 'M14',
+  'grinderMount.spindle.m10': 'M10',
+  'grinderMount.spindle.unc58': '5/8-11',
+  'grinderMount.spindle.other': 'Other',
+  'grinderMount.spindle.unknown': 'Not sure',
+  'grinderMount.guardType.label': 'Guard type',
+  'grinderMount.guardType.grinding': 'Grinding guard (half-round)',
+  'grinderMount.guardType.cutting': 'Cutting guard (enclosing)',
+  'grinderMount.guardType.none': 'No guard',
+  'grinderMount.guardType.other': 'Other',
+  'grinderMount.guardType.unknown': 'Not sure',
+  'grinderMount.guardSize.label': 'Guard size (wheel diameter it fits)',
+  'grinderMount.guardSize.hint': 'Leave empty if you are not sure.',
+  'profile.title': 'Mounting and work conditions',
+  'profile.note':
+    'These items are not part of the spec check. The app never assumes they match — check them yourself.',
+  'profile.version': 'Condition profile: {type} · {version}',
+  'profile.none':
+    'There is no condition profile for this type. Check the manufacturer instructions.',
+  'profile.status.unknown': 'Unknown',
+  'profile.status.manualCheck': 'Check yourself',
+  'profile.status.conflict': 'Conflict',
+  'profile.key.material': 'Material',
+  'profile.key.cooling': 'Dry / wet',
+  'profile.key.spindle': 'Spindle',
+  'profile.key.guard': 'Guard',
+  'profile.key.guardSize': 'Guard size',
+  'profile.key.rotation': 'Rotation direction',
+  'profile.code.material.unknown': 'No work material was selected.',
+  'profile.code.material.unverified':
+    'The app has no material criteria for this type. Check the material marking on the label yourself.',
+  'profile.code.material.manualCheck':
+    'It is in the allowed materials, but check the material marking on the label yourself.',
+  'profile.code.material.notAllowed':
+    'The selected material is not allowed for this type.',
+  'profile.code.cooling.unknown': 'Dry or wet use was not selected.',
+  'profile.code.cooling.unverified':
+    'The app has no dry/wet criteria for this type. Check the label marking yourself.',
+  'profile.code.cooling.manualCheck':
+    'It is an allowed mode, but check the label marking yourself.',
+  'profile.code.cooling.notAllowed':
+    'The selected dry/wet mode is not allowed for this type.',
+  'profile.code.spindle.unknown':
+    'The spindle thread is unknown. Check that the wheel bore fits the spindle.',
+  'profile.code.spindle.manualCheck':
+    'The nameplate has no spindle spec, so the app does not compare it with the wheel bore. Check the fit yourself.',
+  'profile.code.guard.unknown':
+    'The guard type is unknown. Check that a guard is fitted.',
+  'profile.code.guard.missing':
+    'You selected no guard. This type needs a guard. Do not work until a guard is fitted.',
+  'profile.code.guard.manualCheck':
+    'The app does not check whether the guard suits the work (cutting/grinding). Check it yourself.',
+  'profile.code.guardSize.unknown':
+    'The guard size is unknown. Check that it covers the wheel.',
+  'profile.code.guardSize.smallerThanWheel':
+    'The guard is smaller than the wheel diameter. It cannot cover this wheel.',
+  'profile.code.guardSize.manualCheck':
+    'Size alone does not show that the guard fits. Check how it is mounted.',
+  'profile.code.rotation.unverified':
+    'The app has no rotation direction criteria. If the label has an arrow, mount it in that direction.',
+  'profile.code.rotation.followArrow':
+    'Check that it is mounted to match the rotation arrow on the label.',
+
   'wheelType.bonded_abrasive': 'Standard bonded abrasive wheel',
   'wheelType.flap_disc': 'Flap disc',
   'wheelType.cup_wheel': 'Cup wheel',

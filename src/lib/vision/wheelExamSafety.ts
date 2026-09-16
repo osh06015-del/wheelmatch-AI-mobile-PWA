@@ -11,6 +11,7 @@
 // 화면 없이 조건 하나하나를 테스트할 수 있도록 순수 함수로 둔다.
 
 import { ExtractError } from '@/lib/ocr/errors';
+import { profileFor } from '@/lib/rules/profiles';
 import type {
   VisibleDamage,
   WheelExamNotRunReason,
@@ -22,13 +23,15 @@ import type {
 /**
  * 다각도 확인을 요구하는 숫돌 종류.
  *
- * 이 앱이 규격을 대조하는 종류(일반 결합숫돌)와 같다. 다이아몬드날·플랩디스크·
- * 컵휠 등은 애초에 규격 대조 자체가 판정불가로 끝나므로(engine.ts의
- * checkWheelType) 사진을 더 받아도 결과가 달라지지 않는다. 요구하지 않는 것이
- * 판정을 완화하지 않는다 — 그 종류는 계속 판정불가다.
+ * 종류의 Profile(src/lib/rules/profiles.ts)이 앞면 말고도 사진을 요구하면
+ * 요구한다. 지금은 일반 결합숫돌만 그렇다. Profile이 없는 종류(다이아몬드날·
+ * 플랩디스크·컵휠 등)는 규격 대조 자체가 판정불가로 끝나므로 사진을 더 받아도
+ * 결과가 달라지지 않는다. 요구하지 않는 것이 판정을 완화하지 않는다 — 그 종류는
+ * 계속 판정불가다.
  */
 export function wheelExamRequired(wheelType: WheelType): boolean {
-  return wheelType === 'bonded_abrasive';
+  const photos = profileFor(wheelType)?.requiredPhotos ?? [];
+  return photos.some((view) => view !== 'front');
 }
 
 /** 앞면 외에 작업자가 더 찍어야 하는 사진. 순서가 곧 화면에 보이는 순서다. */

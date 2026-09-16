@@ -341,3 +341,40 @@ describe('이력 상세 — 기록별 삭제', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe('이력 상세 — 장착·작업 조건', () => {
+  it('저장 당시의 조건 표를 그대로 보인다', async () => {
+    const user = userEvent.setup();
+    render(
+      <HistoryList
+        records={[
+          record({
+            accessoryProfile: { type: 'bonded_abrasive', version: 'p1' },
+            profileConditions: [
+              { key: 'guard', status: 'conflict', code: 'guard.missing' },
+            ],
+          }),
+        ]}
+      />,
+    );
+    await user.click(screen.getByRole('button', { expanded: false }));
+
+    expect(
+      screen.getByRole('heading', { name: '장착·작업 조건 확인' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('⚠ 덮개 · 어긋남')).toBeInTheDocument();
+    expect(
+      screen.getByText('적용 조건표: 일반 결합숫돌 · p1'),
+    ).toBeInTheDocument();
+  });
+
+  it('이 기능 도입 전 기록에는 조건 표를 그리지 않는다', async () => {
+    const user = userEvent.setup();
+    render(<HistoryList records={[record()]} />);
+    await user.click(screen.getByRole('button', { expanded: false }));
+
+    expect(
+      screen.queryByRole('heading', { name: '장착·작업 조건 확인' }),
+    ).not.toBeInTheDocument();
+  });
+});

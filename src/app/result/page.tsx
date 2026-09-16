@@ -22,6 +22,7 @@ import { EvidencePanel } from '@/components/EvidencePanel';
 import { HazardList } from '@/components/HazardList';
 import { LanguagePicker } from '@/components/LanguagePicker';
 import { NotVerifiablePanel } from '@/components/NotVerifiablePanel';
+import { ProfileConditionsPanel } from '@/components/ProfileConditionsPanel';
 import { ResultCard } from '@/components/ResultCard';
 import { RuleVersionNote } from '@/components/RuleVersionNote';
 import { TrialRunPanel, TrialRunStopNotice } from '@/components/TrialRunPanel';
@@ -30,6 +31,11 @@ import { useLocale } from '@/lib/i18n';
 import { isQuotaExceededError, saveInspection } from '@/lib/db';
 import { elapsedSince, preTrialElapsed } from '@/lib/record/elapsed';
 import { matchSpecs, toDateOnly } from '@/lib/rules/engine';
+import {
+  profileConditions,
+  profileFor,
+  profileRef,
+} from '@/lib/rules/profiles';
 import { RULESET_VERSION } from '@/lib/rules/version';
 import { isGrinderConditionComplete } from '@/lib/safety/grinderCondition';
 import { canSaveInspection } from '@/lib/safety/saveGuard';
@@ -54,6 +60,7 @@ export default function ResultPage() {
   const {
     declaredPurpose,
     startedAt,
+    workConditions,
     grinder,
     wheel,
     grinderOcr,
@@ -142,6 +149,12 @@ export default function ResultPage() {
   }
 
   const failures = result.checks.filter((check) => check.passed === false);
+  // 부속품 Profile과 입력을 맞춰 본다. 판정(result)과 따로다 — 여기 결과는
+  // verdict를 바꾸지 않는다. Profile이 없는 종류는 조건표가 없다고만 알린다.
+  const profile = profileFor(wheel.wheelType);
+  const conditions = profile
+    ? profileConditions(profile, workConditions ?? undefined, grinder, wheel)
+    : null;
   const complete = isChecklistComplete(checklist);
 
   // 시험운전은 규격이 맞는 조합에서만, 그리고 체크리스트까지 끝난 뒤에만 연다.
@@ -225,6 +238,10 @@ export default function ResultPage() {
         result,
         checklist,
         declaredPurpose,
+        // 고르지 않았으면 남기지 않는다. 구기록과 같은 모양이 된다.
+        workConditions: workConditions ?? undefined,
+        accessoryProfile: profileRef(wheel.wheelType) ?? undefined,
+        profileConditions: conditions ?? undefined,
         // 저장 버튼을 누른 순간이 전체 흐름의 끝이다. 법정 시험운전이 들어 있다.
         elapsedMs: elapsedSince(startedAt, savedAt) ?? undefined,
         // 「30초 사전점검」 목표는 이 값으로 잰다. 시험운전을 했으면 시작 직전에서,
@@ -315,6 +332,11 @@ export default function ResultPage() {
           edge: wheelEdgeImage,
           bore: wheelBoreImage,
         }}
+      />
+
+      <ProfileConditionsPanel
+        profile={profileRef(wheel.wheelType)}
+        conditions={conditions}
       />
 
       <ActionGuide failures={failures} />

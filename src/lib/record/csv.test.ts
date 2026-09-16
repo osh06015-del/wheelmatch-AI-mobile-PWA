@@ -330,6 +330,14 @@ describe('toCsv', () => {
       ...telemetryColumns('wheel'),
       ...examColumns,
       ...captureCheckColumns,
+      'workMaterial',
+      'workCooling',
+      'grinderSpindleThread',
+      'grinderGuardType',
+      'grinderGuardSize',
+      'accessoryProfileType',
+      'accessoryProfileVersion',
+      'profileConflicts',
     ]);
   });
 
@@ -739,6 +747,54 @@ describe('다각도 외관 확인 열', () => {
     const [, row] = parse(toCsv([record()]));
     const start = CSV_COLUMNS.indexOf('captureCheckVersion');
     expect(start).toBe(92);
+    for (const column of CSV_COLUMNS.slice(start)) {
+      expect(row[CSV_COLUMNS.indexOf(column)]).toBe('');
+    }
+  });
+  it('작업 조건·축·덮개·Profile·어긋남을 맨 뒤 열에 적는다', () => {
+    const [, row] = parse(
+      toCsv([
+        record({
+          grinder: {
+            ...record().grinder,
+            spindleThread: 'M14',
+            guardType: 'none',
+            guardSize: 125,
+          },
+          workConditions: { material: 'steel', cooling: 'unknown' },
+          accessoryProfile: { type: 'bonded_abrasive', version: 'p1' },
+          profileConditions: [
+            {
+              key: 'material',
+              status: 'manual_check',
+              code: 'material.unverified',
+            },
+            { key: 'guard', status: 'conflict', code: 'guard.missing' },
+            { key: 'cooling', status: 'unknown', code: 'cooling.unknown' },
+          ],
+        }),
+      ]),
+    );
+    const at = (column: (typeof CSV_COLUMNS)[number]) =>
+      row[CSV_COLUMNS.indexOf(column)];
+
+    expect(at('workMaterial')).toBe('steel');
+    // 물었지만 모른 값은 빈 칸이 아니라 unknown이다.
+    expect(at('workCooling')).toBe('unknown');
+    expect(at('grinderSpindleThread')).toBe('M14');
+    expect(at('grinderGuardType')).toBe('none');
+    expect(at('grinderGuardSize')).toBe('125');
+    expect(at('accessoryProfileType')).toBe('bonded_abrasive');
+    expect(at('accessoryProfileVersion')).toBe('p1');
+    // 어긋남만 적는다.
+    expect(at('profileConflicts')).toBe('guard.missing');
+  });
+
+  it('Profile 도입 전 기록은 새 열이 모두 빈 칸이다', () => {
+    const [, row] = parse(toCsv([record()]));
+    const start = CSV_COLUMNS.indexOf('workMaterial');
+    expect(start).toBe(108);
+    expect(CSV_COLUMNS.slice(start)).toHaveLength(8);
     for (const column of CSV_COLUMNS.slice(start)) {
       expect(row[CSV_COLUMNS.indexOf(column)]).toBe('');
     }

@@ -191,3 +191,53 @@ describe('그라인더 명판 — 촬영 직후 사진 상태 확인', () => {
     expect(result.current.grinderCaptureMetrics).toEqual(CLEAN);
   });
 });
+
+describe('그라인더 명판 — 축·덮개 입력', () => {
+  async function openConfirm() {
+    render(<GrinderScanPage />);
+    pick();
+    await screen.findByText('읽어낸 값을 확인하세요');
+  }
+
+  function proceed() {
+    for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+      fireEvent.click(button);
+    }
+    fireEvent.click(screen.getByRole('button', { name: '확인 후 숫돌 촬영' }));
+  }
+
+  it('고르지 않으면 모름·빈 값으로 저장한다 — 흔한 값으로 채우지 않는다', async () => {
+    const result = store();
+    await openConfirm();
+    proceed();
+
+    expect(result.current.grinder).toMatchObject({
+      spindleThread: 'unknown',
+      guardType: 'unknown',
+      guardSize: null,
+    });
+  });
+
+  it('고른 축·덮개 값을 명판 값과 함께 저장한다', async () => {
+    const result = store();
+    await openConfirm();
+
+    fireEvent.change(screen.getByLabelText('스핀들(축) 나사'), {
+      target: { value: 'M14' },
+    });
+    fireEvent.change(screen.getByLabelText('덮개 종류'), {
+      target: { value: 'grinding' },
+    });
+    fireEvent.change(screen.getByLabelText('덮개 크기(맞는 숫돌 지름)'), {
+      target: { value: '125' },
+    });
+    proceed();
+
+    expect(result.current.grinder).toMatchObject({
+      noLoadRPM: 11000,
+      spindleThread: 'M14',
+      guardType: 'grinding',
+      guardSize: 125,
+    });
+  });
+});

@@ -395,6 +395,87 @@ export const id: Messages = {
   'captureCheck.usedAnyway':
     'Anda sudah melihat peringatan dan memilih memakai foto ini.',
 
+  'work.material.label': 'Material',
+  'work.material.steel': 'Baja',
+  'work.material.stainless': 'Baja tahan karat',
+  'work.material.nonFerrous': 'Logam non-besi (aluminium dll.)',
+  'work.material.stoneConcrete': 'Batu / beton',
+  'work.material.other': 'Lainnya',
+  'work.material.unknown': 'Tidak tahu',
+  'work.cooling.label': 'Kering / basah',
+  'work.cooling.dry': 'Kering',
+  'work.cooling.wet': 'Basah',
+  'work.cooling.unknown': 'Tidak tahu',
+  'work.conditionsNote':
+    'Jika tidak yakin, biarkan "Tidak tahu". Nilai yang tidak diketahui tidak pernah dianggap cocok.',
+  'grinderMount.title': 'Spindel dan pelindung',
+  'grinderMount.note':
+    'Jika tidak ada di pelat nama, periksa alatnya langsung. Jika tidak yakin, biarkan "Tidak tahu".',
+  'grinderMount.spindle.label': 'Ulir spindel',
+  'grinderMount.spindle.m14': 'M14',
+  'grinderMount.spindle.m10': 'M10',
+  'grinderMount.spindle.unc58': '5/8-11',
+  'grinderMount.spindle.other': 'Lainnya',
+  'grinderMount.spindle.unknown': 'Tidak tahu',
+  'grinderMount.guardType.label': 'Jenis pelindung',
+  'grinderMount.guardType.grinding': 'Pelindung gerinda (setengah lingkaran)',
+  'grinderMount.guardType.cutting': 'Pelindung potong (menutup)',
+  'grinderMount.guardType.none': 'Tanpa pelindung',
+  'grinderMount.guardType.other': 'Lainnya',
+  'grinderMount.guardType.unknown': 'Tidak tahu',
+  'grinderMount.guardSize.label':
+    'Ukuran pelindung (diameter batu yang sesuai)',
+  'grinderMount.guardSize.hint': 'Kosongkan jika tidak yakin.',
+  'profile.title': 'Kondisi pemasangan dan kerja',
+  'profile.note':
+    'Butir ini tidak termasuk pemeriksaan spesifikasi. Aplikasi tidak menganggapnya cocok — periksa sendiri.',
+  'profile.version': 'Profil kondisi: {type} · {version}',
+  'profile.none':
+    'Tidak ada profil kondisi untuk jenis ini. Periksa petunjuk pabrikan.',
+  'profile.status.unknown': 'Belum diketahui',
+  'profile.status.manualCheck': 'Periksa sendiri',
+  'profile.status.conflict': 'Bertentangan',
+  'profile.key.material': 'Material',
+  'profile.key.cooling': 'Kering / basah',
+  'profile.key.spindle': 'Spindel',
+  'profile.key.guard': 'Pelindung',
+  'profile.key.guardSize': 'Ukuran pelindung',
+  'profile.key.rotation': 'Arah putaran',
+  'profile.code.material.unknown': 'Material kerja belum dipilih.',
+  'profile.code.material.unverified':
+    'Aplikasi tidak memiliki kriteria material untuk jenis ini. Periksa sendiri tanda material pada label.',
+  'profile.code.material.manualCheck':
+    'Termasuk material yang diizinkan, tetapi periksa sendiri tanda pada label.',
+  'profile.code.material.notAllowed':
+    'Material yang dipilih tidak diizinkan untuk jenis ini.',
+  'profile.code.cooling.unknown': 'Kering atau basah belum dipilih.',
+  'profile.code.cooling.unverified':
+    'Aplikasi tidak memiliki kriteria kering/basah untuk jenis ini. Periksa sendiri tanda pada label.',
+  'profile.code.cooling.manualCheck':
+    'Cara ini diizinkan, tetapi periksa sendiri tanda pada label.',
+  'profile.code.cooling.notAllowed':
+    'Cara kering/basah yang dipilih tidak diizinkan untuk jenis ini.',
+  'profile.code.spindle.unknown':
+    'Ulir spindel tidak diketahui. Periksa sendiri apakah lubang batu cocok dengan spindel.',
+  'profile.code.spindle.manualCheck':
+    'Pelat nama tidak mencantumkan spesifikasi spindel, jadi aplikasi tidak membandingkannya dengan lubang batu. Periksa sendiri.',
+  'profile.code.guard.unknown':
+    'Jenis pelindung tidak diketahui. Periksa sendiri apakah pelindung terpasang.',
+  'profile.code.guard.missing':
+    'Anda memilih tanpa pelindung. Jenis ini memerlukan pelindung. Jangan bekerja sebelum pelindung terpasang.',
+  'profile.code.guard.manualCheck':
+    'Aplikasi tidak memeriksa apakah pelindung sesuai pekerjaan (potong/gerinda). Periksa sendiri.',
+  'profile.code.guardSize.unknown':
+    'Ukuran pelindung tidak diketahui. Periksa sendiri apakah menutupi batu.',
+  'profile.code.guardSize.smallerThanWheel':
+    'Pelindung lebih kecil dari diameter batu. Tidak dapat menutupi batu ini.',
+  'profile.code.guardSize.manualCheck':
+    'Ukuran saja tidak menunjukkan pelindung cocok. Periksa sendiri pemasangannya.',
+  'profile.code.rotation.unverified':
+    'Aplikasi tidak memiliki kriteria arah putaran. Jika label memiliki panah, pasang sesuai arah itu.',
+  'profile.code.rotation.followArrow':
+    'Periksa sendiri apakah dipasang sesuai panah arah putaran pada label.',
+
   'wheelType.bonded_abrasive': 'Batu gerinda bonded biasa',
   'wheelType.flap_disc': 'Flap disc (amplas susun)',
   'wheelType.cup_wheel': 'Batu gerinda mangkuk',

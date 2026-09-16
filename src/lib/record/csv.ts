@@ -155,6 +155,17 @@ export const CSV_COLUMNS = [
   'wheelBoreCaptureWarnings',
   'wheelBoreCaptureUsedDespiteWarning',
   'wheelBoreCaptureRetakeCount',
+  // 부속품 Profile과 새 입력. 이 기능 도입 전 기록은 빈 칸이다. 앞선 열의
+  // 자리를 지키기 위해 맨 뒤에 붙인다. 모르는 값은 unknown으로 적힌다 —
+  // 빈 칸(입력 기능 없음)과 unknown(물었지만 모름)을 구분하기 위해서다.
+  'workMaterial',
+  'workCooling',
+  'grinderSpindleThread',
+  'grinderGuardType',
+  'grinderGuardSize',
+  'accessoryProfileType',
+  'accessoryProfileVersion',
+  'profileConflicts',
 ] as const;
 
 /**
@@ -344,6 +355,18 @@ function row(record: InspectionRecord): string {
         check?.retakeCount,
       ];
     }),
+    record.workConditions?.material,
+    record.workConditions?.cooling,
+    record.grinder.spindleThread,
+    record.grinder.guardType,
+    record.grinder.guardSize,
+    record.accessoryProfile?.type,
+    record.accessoryProfile?.version,
+    // 어긋남만 코드로 적는다. 조건 표를 저장하지 않은 기록은 빈 칸이다.
+    record.profileConditions
+      ?.filter((condition) => condition.status === 'conflict')
+      .map((condition) => condition.code)
+      .join(' '),
   ];
 
   return values.map(cell).join(',');

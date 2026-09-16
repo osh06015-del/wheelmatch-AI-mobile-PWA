@@ -16,6 +16,11 @@ import {
   type FieldSpec,
 } from '@/components/FieldConfirm';
 import { GrinderConditionGate } from '@/components/GrinderConditionGate';
+import {
+  GrinderMountingInputs,
+  UNKNOWN_GRINDER_MOUNTING,
+  type GrinderMountingValue,
+} from '@/components/GrinderMountingInputs';
 import { ManualConfirmToggle } from '@/components/ManualConfirmToggle';
 import { ScanHeader } from '@/components/ScanHeader';
 import { GRINDER_FIELD_GUIDE } from '@/lib/guide/fieldGuide';
@@ -67,6 +72,10 @@ export default function GrinderScanPage() {
     maxWheelDiameter: '',
   });
   const [userConfirmed, setUserConfirmed] = useState(false);
+  // 스핀들·덮개. 명판에 거의 없어 OCR이 채우지 않는다. 기본값은 모름이다.
+  const [mounting, setMounting] = useState<GrinderMountingValue>(
+    UNKNOWN_GRINDER_MOUNTING,
+  );
   const [condition, setCondition] = useState<GrinderCondition>({
     ...EMPTY_GRINDER_CONDITION,
   });
@@ -132,6 +141,8 @@ export default function GrinderScanPage() {
       setUserConfirmed(false);
       // 새 사진은 다른 기계일 수 있다. 이전 기계의 직접 확인을 이어 쓰지 않는다.
       setCondition({ ...EMPTY_GRINDER_CONDITION });
+      // 축·덮개도 그 기계를 보고 고른 값이다. 같은 이유로 버린다.
+      setMounting(UNKNOWN_GRINDER_MOUNTING);
       setPhase('confirm');
     } catch (caught) {
       setError(caught);
@@ -164,6 +175,10 @@ export default function GrinderScanPage() {
       model: toTextOrNull(form.model),
       noLoadRPM: toNumberOrNull(form.noLoadRPM),
       maxWheelDiameter: toNumberOrNull(form.maxWheelDiameter),
+      // 모르면 unknown·null로 남긴다. 흔한 값으로 채우지 않는다.
+      spindleThread: mounting.spindleThread,
+      guardType: mounting.guardType,
+      guardSize: toNumberOrNull(mounting.guardSize),
       rawText: ocr?.rawText ?? '',
       // 사용자가 직접 확인했으면 그 확인을 신뢰한다. 아니면 OCR 신뢰도를 그대로 쓴다.
       confidence: userConfirmed ? 'high' : (ocr?.confidence ?? 'low'),
@@ -297,6 +312,7 @@ export default function GrinderScanPage() {
         checked={userConfirmed}
         onChange={setUserConfirmed}
       />
+      <GrinderMountingInputs value={mounting} onChange={setMounting} />
       <GrinderConditionGate
         condition={condition}
         onChange={(key, value) =>

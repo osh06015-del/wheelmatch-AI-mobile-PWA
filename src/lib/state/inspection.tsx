@@ -23,6 +23,7 @@ import type {
   WheelExamNotRun,
   WheelExamResult,
   WheelSpec,
+  WorkConditions,
   WorkPurpose,
 } from '@/lib/rules/types';
 
@@ -40,6 +41,7 @@ const WHEEL_CAPTURE_METRICS_KEY = 'wheelmatch.wheelCaptureMetrics';
 const GRINDER_OCR_TELEMETRY_KEY = 'wheelmatch.grinderOcrTelemetry';
 const WHEEL_OCR_TELEMETRY_KEY = 'wheelmatch.wheelOcrTelemetry';
 const CAPTURE_CHECKS_KEY = 'wheelmatch.captureChecks';
+const WORK_CONDITIONS_KEY = 'wheelmatch.workConditions';
 
 /** 다각도 확인에서 작업자가 더 찍는 세 자리. */
 type ExamSlotValues<T> = { back: T; edge: T; bore: T };
@@ -66,6 +68,11 @@ interface InspectionState {
   declaredPurpose: WorkPurpose | null;
   /** 점검을 시작한 시각(epoch ms). 작업을 고른 순간이다. */
   startedAt: number | null;
+  /**
+   * 작업자가 고른 재료·건식/습식. 고르지 않았으면 null이다 — 화면·기록에서는
+   * unknown으로 읽는다. 규격 판정에는 들어가지 않는다(profileConditions).
+   */
+  workConditions: WorkConditions | null;
   grinder: GrinderSpec | null;
   wheel: WheelSpec | null;
   /**
@@ -130,6 +137,7 @@ interface InspectionState {
 const SERVER_SNAPSHOT: InspectionState = {
   declaredPurpose: null,
   startedAt: null,
+  workConditions: null,
   grinder: null,
   wheel: null,
   grinderOcr: null,
@@ -176,6 +184,7 @@ function initialClientState(): InspectionState {
   return {
     declaredPurpose: readStored<WorkPurpose>(PURPOSE_KEY),
     startedAt: readStored<number>(STARTED_KEY),
+    workConditions: readStored<WorkConditions>(WORK_CONDITIONS_KEY),
     grinder: readStored<GrinderSpec>(GRINDER_KEY),
     wheel: readStored<WheelSpec>(WHEEL_KEY),
     grinderOcr: readStored<GrinderSpec>(GRINDER_OCR_KEY),
@@ -235,7 +244,12 @@ function getServerSnapshot(): InspectionState {
 export interface InspectionStore extends InspectionState {
   /** 브라우저 값이 아직 반영되지 않은 렌더인지 여부 */
   hydrating: boolean;
-  setPurpose: (purpose: WorkPurpose) => void;
+  /**
+   * 작업을 고른다. 이 순간이 점검 시작이다.
+   *
+   * @param conditions 재료·건식/습식. 넘기지 않으면 고르지 않은 것(null)으로 둔다.
+   */
+  setPurpose: (purpose: WorkPurpose, conditions?: WorkConditions) => void;
   setGrinder: (
     spec: GrinderSpec,
     image?: Blob | null,
@@ -291,12 +305,20 @@ export function useInspection(): InspectionStore {
   // 작업을 고르는 것이 곧 점검 시작이다. 여기서 시계를 켠다.
   // 되돌아와 다시 고르면 처음부터 다시 잰다 — 중간에 그만둔 시도까지
   // 합산하면 "한 건에 걸린 시간"이 아니게 된다.
-  const setPurpose = useCallback((purpose: WorkPurpose) => {
-    const startedAt = Date.now();
-    writeStored(PURPOSE_KEY, purpose);
-    writeStored(STARTED_KEY, startedAt);
-    setState({ declaredPurpose: purpose, startedAt });
-  }, []);
+  const setPurpose = useCallback(
+    (purpose: WorkPurpose, conditions?: WorkConditions) => {
+      const startedAt = Date.now();
+      writeStored(PURPOSE_KEY, purpose);
+      writeStored(STARTED_KEY, startedAt);
+      writeStored(WORK_CONDITIONS_KEY, conditions ?? null);
+      setState({
+        declaredPurpose: purpose,
+        startedAt,
+        workConditions: conditions ?? null,
+      });
+    },
+    [],
+  );
 
   const setGrinder = useCallback(
     (
@@ -500,6 +522,7 @@ export function useInspection(): InspectionStore {
     try {
       window.sessionStorage.removeItem(PURPOSE_KEY);
       window.sessionStorage.removeItem(STARTED_KEY);
+      window.sessionStorage.removeItem(WORK_CONDITIONS_KEY);
       window.sessionStorage.removeItem(GRINDER_KEY);
       window.sessionStorage.removeItem(WHEEL_KEY);
       window.sessionStorage.removeItem(GRINDER_OCR_KEY);
@@ -518,6 +541,7 @@ export function useInspection(): InspectionStore {
     setState({
       declaredPurpose: null,
       startedAt: null,
+      workConditions: null,
       grinder: null,
       wheel: null,
       grinderOcr: null,

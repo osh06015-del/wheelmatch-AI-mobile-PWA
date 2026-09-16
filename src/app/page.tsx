@@ -10,14 +10,16 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { BuildInfo } from '@/components/BuildInfo';
 import { Disclaimer } from '@/components/Disclaimer';
 import { LanguagePicker } from '@/components/LanguagePicker';
+import { WorkConditionsPicker } from '@/components/WorkConditionsPicker';
 import { useLocale, type MessageKey } from '@/lib/i18n';
 import { useInspection } from '@/lib/state/inspection';
-import type { WorkPurpose } from '@/lib/rules/types';
+import { UNKNOWN_WORK_CONDITIONS } from '@/lib/rules/profiles';
+import type { WorkConditions, WorkPurpose } from '@/lib/rules/types';
 
 const CHOICES: Array<{
   value: WorkPurpose;
@@ -43,6 +45,11 @@ export default function Home() {
   const router = useRouter();
   const { reset, setPurpose } = useInspection();
   const { t } = useLocale();
+  // 재료·건식/습식. 작업을 고르기 전에 정해 두면 작업을 누를 때 함께 넘어간다.
+  // 기본값은 모름이다 — 고르지 않아도 시작할 수 있다.
+  const [conditions, setConditions] = useState<WorkConditions>(
+    UNKNOWN_WORK_CONDITIONS,
+  );
 
   // 메인으로 돌아오면 이전 점검 값을 비운다.
   // 지난 촬영 값이 남아 다음 점검에 섞여 들어가면 안 된다.
@@ -51,7 +58,7 @@ export default function Home() {
   }, [reset]);
 
   function start(purpose: WorkPurpose) {
-    setPurpose(purpose);
+    setPurpose(purpose, conditions);
     router.push('/scan/grinder');
   }
 
@@ -68,6 +75,8 @@ export default function Home() {
         <h2 className="text-2xl font-bold text-slate-100">
           {t('home.question')}
         </h2>
+
+        <WorkConditionsPicker value={conditions} onChange={setConditions} />
 
         <div className="grid grid-cols-2 gap-4">
           {CHOICES.map((choice) => (

@@ -6,8 +6,55 @@ export interface GrinderSpec {
   model: string | null; // 모델명
   noLoadRPM: number | null; // 무부하 회전속도 (rpm)
   maxWheelDiameter: number | null; // 허용 숫돌 최대 지름 (mm)
+  /**
+   * 스핀들(축) 나사 규격. 명판에 적히지 않는 경우가 많아 작업자가 고른다.
+   * 모르면 'unknown'이다. 이 기능 도입 전 기록에는 없다 — 없으면 unknown으로 읽는다.
+   */
+  spindleThread?: SpindleThread;
+  /** 장착된 덮개 종류. 모르면 'unknown'. 도입 전 기록에는 없다 */
+  guardType?: GuardType;
+  /** 덮개가 맞춰진 숫돌 지름(mm). 모르면 null. 도입 전 기록에는 없다 */
+  guardSize?: number | null;
   rawText: string; // OCR 원문 (디버깅용)
   confidence: 'high' | 'medium' | 'low';
+}
+
+/**
+ * 그라인더 스핀들(축) 나사 규격.
+ *
+ * 흔한 것만 둔다. 목록에 없으면 'other', 모르면 'unknown'이다. 모르는 것을
+ * 흔한 값(M14 등)으로 채우지 않는다 — 규격 대조가 아니라 관행 추정이 된다.
+ */
+export type SpindleThread = 'M14' | 'M10' | '5/8-11' | 'other' | 'unknown';
+
+/**
+ * 그라인더에 달린 덮개 종류.
+ *
+ *   grinding — 연삭용(한쪽이 열린 반원형)
+ *   cutting  — 절단용(양쪽을 감싸는 형)
+ *   none     — 덮개 없음
+ */
+export type GuardType = 'grinding' | 'cutting' | 'none' | 'other' | 'unknown';
+
+/** 오늘 작업하는 재료. 모르면 'unknown'. */
+export type WorkMaterial =
+  | 'steel'
+  | 'stainless'
+  | 'non_ferrous'
+  | 'stone_concrete'
+  | 'other'
+  | 'unknown';
+
+/** 건식/습식. 모르면 'unknown'. */
+export type CoolingMode = 'dry' | 'wet' | 'unknown';
+
+/**
+ * 작업자가 시작할 때 고르는 작업 조건. 작업(절단/연삭)과 따로 둔다 —
+ * 작업 목적 일치 규칙(Rule 5)은 작업만 본다.
+ */
+export interface WorkConditions {
+  material: WorkMaterial;
+  cooling: CoolingMode;
 }
 
 // 숫돌 라벨에서 추출하는 값
@@ -110,6 +157,126 @@ export type WheelType =
   | 'wire_brush'
   | 'other'
   | 'unknown';
+
+// ─────────────────────────────────────────────────────────────
+// 부속품 Profile
+//
+// 숫돌·디스크 종류마다 "무엇이 맞아야 쓸 수 있는가"가 다르다. 그 차이를
+// 규칙엔진 곳곳의 if 문이 아니라 종류별 Profile 한 곳에 모은다. 새 종류를
+// 지원하려면 Profile을 더하고, 근거 출처를 함께 적는다.
+//
+// **Profile에 적힌 요구는 판정을 완화하는 데 쓰지 않는다.** 모르는 값은 통과가
+// 아니고, 근거를 확인하지 못한 항목은 'unverified'로 둔 채 작업자 확인으로 남긴다.
+// ─────────────────────────────────────────────────────────────
+
+/** 부속품 계열. 규격 체계가 같은 것끼리 묶는다. */
+export type AccessoryFamily =
+  | 'bonded_abrasive' // 결합숫돌(절단날·연삭석)
+  | 'coated_abrasive' // 플랩디스크 등 연마포
+  | 'superabrasive' // 다이아몬드·CBN
+  | 'brush'
+  | 'other';
+
+/**
+ * 항목 하나에 대한 Profile의 요구 수준.
+ *
+ *   required        — 반드시 맞아야 한다. 값을 모르면 판정불가다
+ *   advisory        — 확인해야 하지만 앱이 대조할 상대가 없다(작업자 확인)
+ *   not_applicable  — 이 종류에는 해당하지 않는다(근거가 있을 때만 쓴다)
+ *   unverified      — 근거를 아직 확인하지 못했다. 적합으로 추정하지 않는다
+ */
+export type RequirementLevel =
+  'required' | 'advisory' | 'not_applicable' | 'unverified';
+
+/** 허용 목록형 정책. 근거를 확인하지 못했으면 'unverified'다. */
+export type AllowList<T> = readonly T[] | 'unverified';
+
+export interface AccessoryProfile {
+  type: WheelType;
+  family: AccessoryFamily;
+  /** 이 앱이 규격을 대조하는 종류인가. 아니면 종류 규칙이 판정불가로 막는다 */
+  supported: boolean;
+  /** 허용 작업(절단/연삭) */
+  allowedWork: readonly WorkPurpose[];
+  /** 허용 재료 */
+  allowedMaterials: AllowList<WorkMaterial>;
+  /** 규격 값 요구 */
+  specs: {
+    rpm: RequirementLevel;
+    diameter: RequirementLevel;
+    /** 장착 구멍·스핀들 */
+    mounting: RequirementLevel;
+  };
+  /** 장착 부품 요구 */
+  equipment: {
+    guard: RequirementLevel;
+    flange: RequirementLevel;
+    backingPad: RequirementLevel;
+    adapter: RequirementLevel;
+  };
+  /** 허용 건식/습식 */
+  cooling: AllowList<Exclude<CoolingMode, 'unknown'>>;
+  /** 회전방향 표시 정책 */
+  rotationDirection: 'any' | 'follow_marked_arrow' | 'unverified';
+  /** 유효기한 정책. label_marked_month = 라벨에 표시된 월/연만 본다 */
+  expiryPolicy: 'label_marked_month' | 'not_applicable' | 'unverified';
+  /** 시험운전 정책. kr_osh_122 = 산업안전보건기준에 관한 규칙 제122조 ② */
+  trialRunPolicy: 'kr_osh_122' | 'unverified';
+  /** 작업자 상태 확인 Gate. wheel_condition_v1 = WheelConditionGate 다섯 항목 */
+  conditionGate: 'wheel_condition_v1' | 'unverified';
+  /** 필요한 사진. front는 라벨 사진이다 */
+  requiredPhotos: readonly WheelExamView[];
+  /** 근거 문서. version.ts의 RULE_SOURCES 식별자 */
+  sources: readonly AccessorySourceId[];
+  /** Profile 버전. 요구를 바꾸면 올린다 */
+  version: string;
+}
+
+/** Profile 근거 문서 식별자. RULE_SOURCES의 순서·키와 맞춘다 */
+export type AccessorySourceId = 'krOsh' | 'kosha' | 'osa';
+
+/** 기록에 남기는 Profile 참조 */
+export interface AccessoryProfileRef {
+  type: WheelType;
+  version: string;
+}
+
+/**
+ * Profile과 작업·그라인더 입력을 맞춰 본 결과 한 줄.
+ *
+ * **"맞다"는 상태가 없다.** 이 앱은 여기 항목들을 대조할 근거가 충분하지 않다.
+ * 할 수 있는 말은 셋뿐이다 — 모른다, 직접 확인하라, 입력끼리 어긋난다.
+ * 판정(verdict)은 기존 12개 규칙만 낸다.
+ */
+export interface ProfileCondition {
+  key: ProfileConditionKey;
+  status: 'unknown' | 'manual_check' | 'conflict';
+  /** 화면이 고르는 사유 코드 */
+  code: ProfileConditionCode;
+}
+
+export type ProfileConditionKey =
+  'material' | 'cooling' | 'spindle' | 'guard' | 'guardSize' | 'rotation';
+
+export type ProfileConditionCode =
+  | 'material.unknown'
+  | 'material.unverified'
+  | 'material.manualCheck'
+  | 'material.notAllowed'
+  | 'cooling.unknown'
+  | 'cooling.unverified'
+  | 'cooling.manualCheck'
+  | 'cooling.notAllowed'
+  | 'spindle.unknown'
+  | 'spindle.manualCheck'
+  | 'guard.unknown'
+  | 'guard.missing'
+  | 'guard.manualCheck'
+  | 'guardSize.unknown'
+  | 'guardSize.smallerThanWheel'
+  | 'guardSize.manualCheck'
+  | 'rotation.unverified'
+  | 'rotation.followArrow';
 
 /**
  * 사진에서 보이는 손상 여부.
@@ -524,6 +691,18 @@ export interface InspectionRecord {
   trialRun?: TrialRun;
   /** 작업자가 고른 오늘의 작업. 이 기능 도입 전 기록에는 없다. */
   declaredPurpose?: WorkPurpose | null;
+  /** 작업자가 고른 재료·건식/습식. 이 기능 도입 전 기록에는 없다 */
+  workConditions?: WorkConditions;
+  /**
+   * 판정에 쓰인 부속품 Profile. 어느 정책(버전)으로 조건을 보았는지 되짚는 데
+   * 쓴다. 이 기능 도입 전 기록과 Profile이 없는 종류에는 없다.
+   */
+  accessoryProfile?: AccessoryProfileRef;
+  /**
+   * 저장 당시 Profile과 입력을 맞춰 본 결과. 이력은 이것을 그대로 보인다 —
+   * 지금 Profile로 다시 계산하면 그때 무엇을 보았는지 거짓으로 적게 된다.
+   */
+  profileConditions?: ProfileCondition[];
   /**
    * 사용자가 고치기 전의 OCR 원본값. 인식률·정정률을 재는 데만 쓴다.
    * 이 기능 도입 전 기록에는 없다.

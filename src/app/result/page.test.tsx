@@ -902,4 +902,64 @@ describe('결과 화면 — 저장 함수 내부 재검사와 저장공간 오�
     expect(saved.captureChecks).toBeUndefined();
     expect(saved.wheelBackCaptureMetrics).toBeUndefined();
   });
+  it('작업 조건·Profile·조건 표를 저장하고, 판정은 바꾸지 않는다', async () => {
+    const wheel = { ...WHEEL, maxRPM: 8500 };
+    const result = ready(wheel);
+    act(() => {
+      result.current.setPurpose('cutting', {
+        material: 'steel',
+        cooling: 'unknown',
+      });
+      result.current.setGrinder({ ...GRINDER, guardType: 'none' });
+      result.current.setGrinderCondition(GRINDER_OK);
+      result.current.setWheel(wheel);
+      result.current.setWheelCondition(CONFIRMED);
+    });
+
+    render(<ResultPage />);
+
+    // 덮개 없음은 어긋남으로 보인다. 그래도 판정은 기존 규칙(RPM 부족 → 부적합) 그대로다.
+    expect(
+      screen.getByText(
+        '덮개가 없다고 고르셨습니다. 이 종류는 덮개가 필요합니다. 덮개를 달기 전에는 작업하지 마십시오.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText('부적합')).toBeInTheDocument();
+
+    checkAll();
+    fireEvent.click(screen.getByRole('button', { name: /점검 완료 및 저장/ }));
+    await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
+
+    const saved = vi.mocked(saveInspection).mock.calls[0][0];
+    expect(saved.workConditions).toEqual({
+      material: 'steel',
+      cooling: 'unknown',
+    });
+    expect(saved.accessoryProfile?.type).toBe('bonded_abrasive');
+    expect(saved.profileConditions).toContainEqual({
+      key: 'guard',
+      status: 'conflict',
+      code: 'guard.missing',
+    });
+    expect(saved.result.verdict).toBe('INCOMPATIBLE');
+  });
+
+  it('Profile이 없는 종류는 조건표가 없다고 알리고 Profile을 저장하지 않는다', async () => {
+    ready({ ...WHEEL, maxRPM: 8500, wheelType: 'diamond' });
+
+    render(<ResultPage />);
+    expect(
+      screen.getByText(
+        '이 종류에 적용할 조건표가 없습니다. 제조사 취급설명서를 확인하세요.',
+      ),
+    ).toBeInTheDocument();
+
+    checkAll();
+    fireEvent.click(screen.getByRole('button', { name: /점검 완료 및 저장/ }));
+    await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
+
+    const saved = vi.mocked(saveInspection).mock.calls[0][0];
+    expect(saved.accessoryProfile).toBeUndefined();
+    expect(saved.profileConditions).toBeUndefined();
+  });
 });

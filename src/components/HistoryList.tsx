@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import { ZoomablePhoto } from './BlobPhoto';
 import { EvidencePanel } from './EvidencePanel';
+import { ProfileConditionsPanel } from './ProfileConditionsPanel';
 import { RuleVersionNote } from './RuleVersionNote';
 import { WheelExamEvidence } from './WheelExamEvidence';
 
@@ -195,6 +196,15 @@ export function HistoryList({
                       bore: record.wheelBoreImage,
                     }}
                   />
+
+                  {/* 저장 당시의 조건 표. 기능 도입 전 기록에는 그리지 않는다 —
+                      없는 입력을 "모름" 목록으로 채우면 그때 물어본 것처럼 보인다. */}
+                  {record.profileConditions && (
+                    <ProfileConditionsPanel
+                      profile={record.accessoryProfile ?? null}
+                      conditions={record.profileConditions}
+                    />
+                  )}
 
                   <EvidencePanel
                     grinder={record.grinder}
