@@ -465,7 +465,7 @@ describe('점검 흐름 E2E — Gate와 시험운전', () => {
     ).toBeInTheDocument();
 
     await f.user.click(screen.getByRole('button', { expanded: false }));
-    expect(screen.getByText(/RPM 안전/)).toBeInTheDocument();
+    expect(screen.getByText(/RPM 상한 대조/)).toBeInTheDocument();
     expect(
       screen.getByText(
         '숫돌 최고사용회전속도(12200rpm)가 그라인더 무부하 회전속도(11000rpm) 이상입니다.',

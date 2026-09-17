@@ -276,7 +276,7 @@ describe('EvidencePanel — 안전 경계', () => {
 });
 
 describe('EvidencePanel — 계산식과 차이', () => {
-  it('RPM 안전 항목에 계산식과 여유율을 함께 보여준다', async () => {
+  it('RPM 상한 대조 항목에 계산식과 여유율을 함께 보여준다', async () => {
     const user = userEvent.setup();
     const g = grinder({ noLoadRPM: 11000 });
     const w = wheel({ maxRPM: 12200 });
@@ -295,7 +295,7 @@ describe('EvidencePanel — 계산식과 차이', () => {
 
     await user.click(screen.getByRole('button', { name: '근거 보기' }));
 
-    const rpmRule = screen.getByText('RPM 안전').closest('li');
+    const rpmRule = screen.getByText('RPM 상한 대조').closest('li');
     expect(rpmRule).toHaveTextContent('계산식');
     expect(rpmRule).toHaveTextContent('차이');
     expect(rpmRule).toHaveTextContent('근거 문서');

@@ -243,7 +243,7 @@ describe('이력 상세 — 다각도 외관 확인', () => {
     await user.click(screen.getByRole('button', { expanded: false }));
 
     // 규칙엔진이 낸 항목 수는 그대로다 — AI 결과가 확인된 항목으로 세어지지 않는다.
-    expect(screen.getByText(/RPM 안전/)).toBeInTheDocument();
+    expect(screen.getByText(/RPM 상한 대조/)).toBeInTheDocument();
     expect(screen.getByText('다각도 외관 확인 기록')).toBeInTheDocument();
     expect(
       screen.getByText(

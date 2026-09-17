@@ -120,7 +120,7 @@ describe('ResultCard — 검사 항목', () => {
 
     for (const rule of [
       '필수값 존재',
-      'RPM 안전',
+      'RPM 상한 대조',
       '지름 호환',
       '용도 확인',
       '신뢰도 검증',

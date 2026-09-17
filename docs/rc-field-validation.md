@@ -7,7 +7,7 @@
 | ------------------------------- | ----------------------------------------------- |
 | 지표를 무엇으로 정의하나        | [validation-plan.md](validation-plan.md)        |
 | 화면·보고서에 쓰면 안 되는 표현 | [safety-boundaries.md](safety-boundaries.md)    |
-| 규칙 12종의 조건                | README 「판정 규칙」, `src/lib/rules/engine.ts` |
+| 규칙 조건                       | README 「판정 규칙」, `src/lib/rules/engine.ts` |
 | 키가 노출됐을 때                | [SECURITY.md](../SECURITY.md)                   |
 
 ## 이 문서를 쓰는 규칙
@@ -509,7 +509,7 @@ D06·D07은 그라인더를 돌리지 않는 **화면 시험**이다. D06은 저
 
 | 덮는 것                                                               | 파일                                                                           |
 | --------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| 규칙 12종, 경계값, 미지원 종류·모르겠음은 판정불가                    | `src/lib/rules/engine.test.ts`                                                 |
+| 규칙별 경계값, 미지원·근거 부족 종류와 모르겠음은 판정불가            | `src/lib/rules/engine.test.ts`                                                 |
 | 숫돌 종류 선택, AI 제안과 다를 때 직접 확인                           | `src/app/scan/wheel/page.test.tsx`, `src/components/WheelTypeConfirm.test.tsx` |
 | 유효기한 경계                                                         | `src/lib/rules/expiry.test.ts`                                                 |
 | m/s → rpm 내림 환산, 단위 파싱                                        | `src/lib/ocr/parser.test.ts`                                                   |

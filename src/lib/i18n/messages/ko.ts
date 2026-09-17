@@ -66,7 +66,7 @@ export const ko = {
 
   'checks.title': '검사 항목별 결과',
   'rule.requiredValues': '필수값 존재',
-  'rule.rpmSafety': 'RPM 안전',
+  'rule.rpmSafety': 'RPM 상한 대조',
   'rule.diameterFit': '지름 호환',
   'rule.purpose': '용도 확인',
   'rule.workPurpose': '작업 목적 일치',
