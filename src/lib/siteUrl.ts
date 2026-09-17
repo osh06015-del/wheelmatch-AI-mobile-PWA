@@ -2,27 +2,36 @@
 //
 // 카카오톡 같은 메신저는 og:image / og:url이 **절대 URL**이어야 미리보기 카드를
 // 만든다. 상대 경로면 카드가 깨진다. Next는 metadataBase가 있어야 상대 경로를
-// 절대 URL로 바꿔준다.
+// 절대 URL로 바꿔준다. metadataBase가 아예 없으면(undefined) Next가 빌드마다
+// 경고를 내고 자기 나름의 기본값(http://localhost:3000)으로 채운다 — 우리가
+// 쓸 값을 명시적으로 정해 그 경고를 없앤다.
 //
-// Vercel이 넣어주는 VERCEL_PROJECT_PRODUCTION_URL을 쓴다. 이 값은
-// "가장 짧은 프로덕션 도메인"을 고르므로, 나중에 짧은 도메인을 붙이면
-// 코드를 고치지 않아도 카드 주소가 따라간다. 프로토콜은 포함되지 않는다.
-
-/** 직접 지정하고 싶을 때 쓰는 환경변수. 없으면 Vercel 값을 쓴다. */
-const EXPLICIT = process.env.NEXT_PUBLIC_APP_URL;
-
-/** Vercel이 자동으로 넣어주는 프로덕션 도메인 (프로토콜 없음). */
-const VERCEL_PRODUCTION = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+// 순서:
+//   1. NEXT_PUBLIC_APP_URL — 직접 지정하고 싶을 때 쓰는 선택적 환경변수.
+//   2. VERCEL_PROJECT_PRODUCTION_URL — Vercel이 모든 환경(Production·Preview)에
+//      자동으로 넣어주는 "가장 짧은 프로덕션 도메인"이다. Preview 빌드에도
+//      들어 있어, PR 미리보기에서도 카드 주소가 실제 배포 주소가 아니라
+//      엉뚱한 상대 경로가 되는 일이 없다.
+//   3. 위 둘 다 없는 로컬·CI 빌드 — README에 적힌 실제 배포 주소를 안전한
+//      기본값으로 쓴다. 새 환경변수를 요구하지 않으면서 경고만 없앤다.
+//      실제 Vercel 빌드에서는 2번이 항상 채워지므로 이 값까지 오지 않는다.
 
 /**
- * 메타데이터에 쓸 기준 URL을 만든다.
- *
- * 로컬 개발처럼 아무것도 없을 때는 null을 돌려준다. 그 경우 Next는
- * metadataBase 경고를 내지만 개발에는 지장이 없다. 임의의 URL을 지어내면
- * 잘못된 절대 주소가 만들어져 더 나쁘다.
+ * 위 둘 다 없을 때만 쓰는 마지막 기본값. README.md의 "배포 주소"와 같은,
+ * 이미 문서에 실제 주소로 적혀 있는 값이다 — 지어낸 도메인이 아니다.
+ * API 키 등 서버 비밀값을 담지 않는 공개 상수라 클라이언트에 노출돼도 안전하다.
  */
-export function resolveSiteUrl(): URL | null {
-  const explicit = EXPLICIT?.trim();
+const FALLBACK_PRODUCTION_URL = 'https://wheelmatch-nu.vercel.app';
+
+/**
+ * 메타데이터에 쓸 기준 URL을 만든다. 항상 유효한 https URL을 돌려준다.
+ *
+ * NEXT_PUBLIC_ 값은 `next build` 때 번들에 박힌다. process.env[이름]처럼
+ * 동적으로 읽으면 박히지 않으니(researchMode.ts와 같은 이유) 아래처럼
+ * process.env.NEXT_PUBLIC_APP_URL을 그대로 적는다.
+ */
+export function resolveSiteUrl(): URL {
+  const explicit = process.env.NEXT_PUBLIC_APP_URL?.trim();
   if (explicit) {
     try {
       const url = new URL(explicit);
@@ -33,14 +42,14 @@ export function resolveSiteUrl(): URL | null {
     }
   }
 
-  const vercel = VERCEL_PRODUCTION?.trim();
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
   if (vercel) {
     try {
       return new URL(`https://${vercel}`);
     } catch {
-      return null;
+      // 형식이 잘못된 값(있을 수 없지만)도 아래 기본값으로 넘어간다.
     }
   }
 
-  return null;
+  return new URL(FALLBACK_PRODUCTION_URL);
 }

@@ -15,8 +15,9 @@ const siteUrl = resolveSiteUrl();
 
 export const metadata: Metadata = {
   // 카카오톡 등 메신저 카드는 절대 URL이 필요하다.
+  // resolveSiteUrl()은 항상 값을 돌려준다(로컬·CI 빌드도 안전한 기본값으로 채운다) —
   // 이 값이 없으면 og:image가 상대 경로로 나가서 카드가 깨진다.
-  ...(siteUrl ? { metadataBase: siteUrl } : {}),
+  metadataBase: siteUrl,
   title: TITLE,
   description: DESCRIPTION,
   manifest: '/manifest.json',
@@ -34,7 +35,7 @@ export const metadata: Metadata = {
     siteName: 'WheelMatch AI',
     title: TITLE,
     description: DESCRIPTION,
-    ...(siteUrl ? { url: siteUrl.toString() } : {}),
+    url: siteUrl.toString(),
     // 이미지는 app/opengraph-image.tsx가 빌드 시점에 만든다.
   },
   twitter: {
