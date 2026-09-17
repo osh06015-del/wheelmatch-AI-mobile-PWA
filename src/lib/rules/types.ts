@@ -136,6 +136,12 @@ export interface WheelSpec {
    * 읽지 못했거나 형식이 모호하면 null이다. 이 기능 도입 전 기록에는 없다.
    */
   expiry?: ExpiryMonth | null;
+  /**
+   * 부속품 이름(선택). Profile이 세부 형식을 모르는 종류(other·unknown)에서
+   * 작업자가 적어 두는 식별용 문구다. 판정에 쓰지 않는다 — RPM·지름 규칙과
+   * 무관하다. 이 기능 도입 전 기록에는 없다.
+   */
+  accessoryName?: string | null;
   rawText: string;
   confidence: 'high' | 'medium' | 'low';
 }
@@ -580,7 +586,6 @@ export type ReasonCode =
   | 'workPurpose.match'
   | 'workPurpose.manualCheck'
   | 'workPurpose.profileMismatch'
-  | 'wheelType.unknown'
   | 'wheelType.unsupported'
   | 'wheelType.supported'
   | 'wheelType.supportedProfile'

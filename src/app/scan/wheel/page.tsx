@@ -91,6 +91,8 @@ interface FormState {
   expiry: string;
   /** 작업자가 실물을 보고 고른 종류. 처음에는 AI 제안값이 들어간다. */
   wheelType: WheelType;
+  /** 부속품 이름(선택). 종류를 특정하지 못했을 때(other·unknown)만 보여준다. */
+  accessoryName: string;
 }
 
 export default function WheelScanPage() {
@@ -120,6 +122,7 @@ export default function WheelScanPage() {
     purpose: 'unknown',
     expiry: '',
     wheelType: 'unknown',
+    accessoryName: '',
   });
   const [userConfirmed, setUserConfirmed] = useState(false);
   const [condition, setCondition] = useState<WheelCondition>({
@@ -243,6 +246,8 @@ export default function WheelScanPage() {
         expiry: spec.markings?.expiryRaw ?? '',
         // AI 판별은 초기 제안값으로만 넣는다. 최종값은 작업자가 고른다.
         wheelType: spec.wheelType,
+        // 새 사진은 새 부속품일 수 있다. 이전 이름을 이어 쓰지 않는다.
+        accessoryName: '',
       });
       setUserConfirmed(false);
       // 새 사진은 새 숫돌일 수 있다. 이전 숫돌의 직접 확인을 이어 쓰지 않는다.
@@ -366,6 +371,7 @@ export default function WheelScanPage() {
       purpose: form.purpose as WheelPurpose,
       wheelType: form.wheelType,
       expiryText: form.expiry,
+      accessoryName: form.accessoryName,
       userConfirmed,
       // 다각도 확인은 의심을 더하는 방향으로만 반영된다(mergeVisibleDamage).
       examVisibleDamage: examVisibleDamage(exam),
@@ -464,6 +470,18 @@ export default function WheelScanPage() {
       value: form.expiry,
       guide: WHEEL_FIELD_GUIDE.expiry,
     },
+    // 종류를 특정하지 못했을 때만 보여준다. 이름이 있는 종류는 종류 자체가
+    // 식별값이라 따로 물을 필요가 없다.
+    ...(form.wheelType === 'other' || form.wheelType === 'unknown'
+      ? [
+          {
+            key: 'accessoryName',
+            label: t('field.accessoryName'),
+            kind: 'text',
+            value: form.accessoryName,
+          } satisfies FieldSpec,
+        ]
+      : []),
   ];
 
   // 리다이렉트가 걸리는 동안에도 촬영 화면을 열어주지 않는다.

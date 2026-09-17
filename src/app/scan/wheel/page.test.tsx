@@ -299,14 +299,15 @@ describe('숫돌 촬영 화면 — 숫돌 종류 직접 확인', () => {
     expect(result.current.wheelExam?.status).toBe('not_observed');
   });
 
-  it('AI가 기타로 읽으면 판정불가로 끝난다고 알리고 그 종류로 넘긴다', async () => {
-    // 플랩디스크는 이제 Profile이 있어 대조하는 종류다. Profile이 없는 기타로 본다.
+  it('AI가 기타로 읽으면 RPM·지름은 대조하는 종류라고 알리고 그 종류로 넘긴다', async () => {
+    // 기타도 대체 Profile로 RPM·지름은 대조한다(scope: 'limited'). 적합에는
+    // 이르지 못하지만 판정 자체를 거부하지는 않는다.
     const result = await openConfirm({ ...OCR, wheelType: 'other' });
 
     expect(typeSelect()).toHaveValue('other');
     expect(
       screen.getByText(
-        '이 앱이 판정하지 않는 종류입니다. 규격 대조는 판정불가로 끝납니다. 제조사 취급설명서를 확인하세요.',
+        '이 종류는 회전속도·지름을 대조합니다. 종류별 상태 확인은 작업자가 직접 해야 합니다.',
       ),
     ).toBeInTheDocument();
 
@@ -368,7 +369,7 @@ describe('숫돌 촬영 화면 — 숫돌 종류 직접 확인', () => {
     expect(typeSelect()).toHaveValue('unknown');
     expect(
       screen.getByText(
-        '종류를 확인하지 못하면 규격 대조가 판정불가로 끝납니다. 실물을 보고 고르세요.',
+        '이 종류는 회전속도·지름을 대조합니다. 종류별 상태 확인은 작업자가 직접 해야 합니다.',
       ),
     ).toBeInTheDocument();
 

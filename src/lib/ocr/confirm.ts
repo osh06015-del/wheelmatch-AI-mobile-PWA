@@ -60,6 +60,11 @@ export interface ConfirmedWheelFields {
    * 넘기지 않으면 기존 동작 그대로다.
    */
   examVisibleDamage?: VisibleDamage;
+  /**
+   * 부속품 이름(선택). 종류를 특정하지 못한 경우(other·unknown)에 작업자가
+   * 적는 식별용 문구다. 판정에 쓰지 않는다.
+   */
+  accessoryName?: string | null;
 }
 
 /**
@@ -113,6 +118,10 @@ export function confirmedWheelSpec(
     purpose: fields.purpose,
     // 종류는 작업자가 실물을 보고 고른 값이다. AI 판별은 제안으로만 쓰였다.
     wheelType: fields.wheelType,
+    // 판정에 쓰지 않는 식별용 문구. 비어 있으면 null로 남긴다.
+    accessoryName: fields.accessoryName?.trim()
+      ? fields.accessoryName.trim()
+      : null,
     // 외관 손상은 사진에서 판별한 값이고 확인 화면에 없다. 사용자가 숫자를
     // 고쳐도 그대로 이어간다. 값이 없으면 'unknown'으로 둔다.
     //

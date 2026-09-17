@@ -85,13 +85,11 @@ const ALL_TYPES: WheelType[] = [
   'unknown',
 ];
 
-/** Profile이 없는 종류 — 이번 범위에서 바꾸지 않았다 */
-const NO_PROFILE_TYPES: WheelType[] = [
-  'cup_wheel',
-  'diamond',
-  'other',
-  'unknown',
-];
+/** Profile이 없는 종류 — 세부 형식을 몰라 굵은 분류로만 남는다 */
+const NO_PROFILE_TYPES: WheelType[] = ['cup_wheel', 'diamond'];
+
+/** 종류를 특정하지 못한 부속품 — 대체(fallback) Profile로 RPM·지름은 대조한다 */
+const FALLBACK_TYPES: WheelType[] = ['other', 'unknown'];
 
 /** 결합숫돌이 아닌, 근거를 확인하지 못한 기본값을 쓰는 종류 */
 const UNVERIFIED_TYPES: WheelType[] = [
@@ -161,7 +159,7 @@ describe('일반 결합숫돌 Profile — 기존 동작 이전', () => {
 });
 
 describe('Profile이 없는 종류', () => {
-  it('굵은 분류(컵휠·다이아몬드)와 기타·모름에는 Profile이 없고 지원하지 않는다', () => {
+  it('굵은 분류(컵휠·다이아몬드)에는 Profile이 없고 지원하지 않는다', () => {
     for (const type of NO_PROFILE_TYPES) {
       expect(profileFor(type)).toBeNull();
       expect(isSupportedType(type)).toBe(false);
@@ -190,6 +188,46 @@ describe('Profile이 없는 종류', () => {
     const draft = profile({ type: 'diamond', supported: false });
     expect(draft.supported).toBe(false);
     expect(isSupportedType('diamond')).toBe(false);
+  });
+});
+
+describe('종류를 특정하지 못한 부속품(other·unknown) — 대체 Profile', () => {
+  it('supported이고 scope는 limited다 — RPM·지름은 대조하되 적합은 내지 않는다', () => {
+    for (const type of FALLBACK_TYPES) {
+      const p = profileFor(type);
+      expect(p).not.toBeNull();
+      expect(p?.supported).toBe(true);
+      expect(p?.scope).toBe('limited');
+      expect(p?.family).toBe('other');
+      expect(profileRef(type)).toEqual({
+        type,
+        version: p?.version,
+        scope: 'limited',
+      });
+    }
+  });
+
+  it('상태 확인 항목은 손상·변형·장착부·라벨 식별 네 가지다 — 유효기한은 묻지 않는다', () => {
+    for (const type of FALLBACK_TYPES) {
+      expect(conditionItemsFor(type)).toEqual([
+        'damageFree',
+        'notDeformed',
+        'mountingAreaUndamaged',
+        'labelLegible',
+      ]);
+    }
+  });
+
+  it('작업·덮개·재료·유효기한·시험운전 근거가 없다 — 앞면 사진만 요구한다', () => {
+    for (const type of FALLBACK_TYPES) {
+      const p = profileFor(type);
+      expect(p?.allowedWork).toBe('unverified');
+      expect(p?.allowedMaterials).toBe('unverified');
+      expect(p?.equipment.guard).toBe('unverified');
+      expect(p?.expiryPolicy).toBe('unverified');
+      expect(p?.trialRunPolicy).toBe('unverified');
+      expect(p?.requiredPhotos).toEqual(['front']);
+    }
   });
 });
 

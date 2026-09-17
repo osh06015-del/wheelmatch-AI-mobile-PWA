@@ -13,10 +13,19 @@
  * **판정 규칙을 바꾸면 반드시 올린다.** 안 올리면 서로 다른 규칙으로 나온
  * 기록이 같은 버전을 달고 섞인다.
  */
-export const RULESET_VERSION = '2026.09.17-r3';
+export const RULESET_VERSION = '2026.09.17-r4';
 
 // 변경 이력 (판정이 달라진 것만)
 //
+// 2026.09.17-r4 — 종류를 특정하지 못한 부속품(other·unknown)도 RPM·지름은
+//   대조한다. 이전에는 Profile이 아예 없어 종류 규칙(checkWheelType)이 곧바로
+//   판정불가로 막았다 — RPM·지름이 맞는지조차 화면에 보이지 않았다. 그 상태에서
+//   other·unknown은 유효기한 정책도 없이 만료 판정을 그대로 받는 결함이 있었다
+//   (profile===null이면 checkExpiry의 noPolicy 분기를 타지 않았다). 이제 두
+//   종류에 scope: 'limited'인 대체(fallback) Profile을 준다 — RPM·지름은 공통
+//   규칙으로 대조하고, checkProfileScope가 그 이상은 판정불가로 막는다. 유효
+//   기한·시험운전·사진 AI 확인은 근거가 없어 요구하지 않는다(profiles.ts의
+//   OTHER_PROFILE·UNKNOWN_PROFILE). RPM·지름 위반이 있으면 그대로 부적합이다.
 // 2026.09.17-r3 — 판정 범위(scope)가 제한적인 Profile은 적합을 내지 않는다.
 //   r2에서 추가한 플랩디스크·다이아몬드·와이어 브러시·샌딩 계열 등은 작업·덮개·
 //   재료의 근거가 없는데도(profiles.ts의 UNVERIFIED_BASE) RPM·지름만 맞으면

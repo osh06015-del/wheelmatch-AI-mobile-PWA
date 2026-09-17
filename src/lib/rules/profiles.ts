@@ -156,6 +156,17 @@ const COMMON_ITEMS: readonly WheelConditionKey[] = [
   'labelLegible',
 ];
 
+/**
+ * 종류를 특정하지 못한 부속품(other·unknown)의 상태 항목.
+ * 손상·변형·장착부·라벨 식별 — 형식을 몰라도 눈으로 볼 수 있는 것만 묻는다.
+ */
+const FALLBACK_ITEMS: readonly WheelConditionKey[] = [
+  'damageFree',
+  'notDeformed',
+  'mountingAreaUndamaged',
+  'labelLegible',
+];
+
 /** 컵 형식: 나사·어댑터, 편마모, 전용 덮개 */
 const CUP_ITEMS: readonly WheelConditionKey[] = [
   'threadAdapterFit',
@@ -302,6 +313,35 @@ export const POLISHING_PAD_PROFILE: AccessoryProfile = {
 };
 
 /**
+ * 종류를 특정하지 못한 부속품(other·unknown)의 대체 Profile.
+ *
+ * 이름 있는 종류의 Profile이 없다는 것과, 종류를 아예 모른다는 것은 다르다.
+ * 전자는 이 앱이 판정 근거를 갖추지 못한 것이고, 후자는 작업자가 라벨을
+ * 보고도 무엇인지 특정하지 못한 것이다. 어느 쪽이든 RPM·지름은 공통 규칙으로
+ * 대조할 수 있으므로(checkRequiredValues·checkRpmSafety·checkDiameterFit은
+ * Profile을 보지 않는다), Profile을 아예 두지 않고 "이 앱이 다루지 않는
+ * 종류"로 막기보다 이 대체 Profile로 규격 대조는 시키고 그 이상은 판정불가로
+ * 막는다(scope: 'limited', checkProfileScope). 작업·덮개·재료의 근거가 없는
+ * 것은 다른 limited Profile과 같다.
+ */
+export const OTHER_PROFILE: AccessoryProfile = {
+  ...UNVERIFIED_BASE,
+  type: 'other',
+  family: 'other',
+  conditionItems: FALLBACK_ITEMS,
+  aiSuggestions: [],
+};
+
+/** unknown 전용. 항목 내용은 OTHER_PROFILE과 같다 — type만 다르다. */
+export const UNKNOWN_PROFILE: AccessoryProfile = {
+  ...UNVERIFIED_BASE,
+  type: 'unknown',
+  family: 'other',
+  conditionItems: FALLBACK_ITEMS,
+  aiSuggestions: [],
+};
+
+/**
  * Profile 필드가 실제로 어디에 쓰이는가.
  *
  *   verdict     — 규칙엔진이 이 필드(또는 그와 같은 조건)로 판정을 막는다
@@ -359,6 +399,8 @@ export const ACCESSORY_PROFILES: Readonly<
   fibre_disc: FIBRE_DISC_PROFILE,
   nonwoven_disc: NONWOVEN_DISC_PROFILE,
   polishing_pad: POLISHING_PAD_PROFILE,
+  other: OTHER_PROFILE,
+  unknown: UNKNOWN_PROFILE,
 };
 
 /** 종류의 Profile. 없으면 null이다 — 기본 Profile로 대신하지 않는다. */

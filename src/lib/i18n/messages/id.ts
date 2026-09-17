@@ -668,6 +668,7 @@ export const id: Messages = {
   'field.purpose': 'Kegunaan',
   'field.expiry': 'Tanggal kedaluwarsa',
   'field.wheelType': 'Jenis batu gerinda',
+  'field.accessoryName': 'Nama aksesori (opsional)',
   'field.placeholder': 'Tidak terbaca — isi sendiri',
   'field.purposeUnknown': 'Tidak yakin',
   'field.confidence.high': 'Keyakinan pembacaan: tinggi',
@@ -776,8 +777,6 @@ export const id: Messages = {
     'Pekerjaan hari ini: {work}. Batu gerinda ini: {purpose}. Batu gerinda yang tidak sesuai kegunaannya bisa pecah karena beban samping.',
   'reason.workPurpose.match':
     'Pekerjaan hari ini ({work}) sesuai dengan kegunaan batu gerinda.',
-  'reason.wheelType.unknown':
-    'Jenis batu gerinda belum dipastikan. Spesifikasi hanya dicocokkan untuk batu gerinda bonded biasa yang sudah dipastikan. Lihat batu yang sebenarnya dan pilih jenisnya di layar pemeriksaan nilai.',
   'reason.wheelType.unsupported':
     '{type}: aplikasi ini tidak menangani jenis ini. Sistem spesifikasinya berbeda sehingga tidak dapat dinilai. Ikuti petunjuk produsen.',
   'reason.wheelType.supported':

@@ -22,7 +22,7 @@ import type {
   MatchResult,
   WheelSpec,
 } from './types';
-import { BONDED_ABRASIVE_PROFILE } from './profiles';
+import { BONDED_ABRASIVE_PROFILE, profileFor } from './profiles';
 
 /**
  * 기준일. 엔진은 시계를 읽지 않으므로 여기서 고정한다.
@@ -357,9 +357,13 @@ describe('규칙엔진 — 숫돌 종류 (작업자가 확인한 종류)', () =>
     ['flap_disc', '플랩디스크'],
     ['wire_brush', '와이어 브러시'],
     ['other', '기타'],
+    ['unknown', '확인 안 됨'],
   ] as const)('%s 는 이 앱이 다루지 않으므로 UNDETERMINED', (type, label) => {
     // 규격 체계가 달라 같은 규칙을 적용하면 조용히 틀린 답이 나온다.
     // 부적합이 아니라 판정불가다. 위험하다는 뜻이 아니라 판단할 수 없다는 뜻이다.
+    // 여기서는 넘긴 Profile(일반 결합숫돌)이 종류와 맞지 않는 경우를 본다 —
+    // 실제 화면은 profileFor(wheel.wheelType)로 종류에 맞는 대체 Profile을
+    // 찾아 넘기므로 other·unknown도 RPM·지름은 대조한다(engine.test.ts 10번).
     const result = match(grinder(), wheel({ wheelType: type }));
     expect(result.verdict).toBe('UNDETERMINED');
     const check = checkOf(result, RULE.WHEEL_TYPE);
@@ -368,18 +372,18 @@ describe('규칙엔진 — 숫돌 종류 (작업자가 확인한 종류)', () =>
     expect(check.wheelValue).toBe(label);
   });
 
-  it('종류를 확인하지 못했으면(모르겠음) 규격이 다 맞아도 적합으로 끝나지 않는다', () => {
-    // 일반 결합숫돌임이 확인되지 않은 상태다. 이 앱의 회전속도·지름 규칙이
-    // 성립하는지 모르는 채로 "규격이 맞습니다"를 낼 수 없다. 예전에는 Tesseract
-    // 경로 때문에 경고로만 두었지만, 이제 작업자가 확인 화면에서 종류를 직접 고른다.
+  it('종류를 확인하지 못했으면(모르겠음) 맞는 Profile을 넘기지 않는 한 적합으로 끝나지 않는다', () => {
+    // Profile을 넘기지 않았거나(null) 종류가 다른 Profile을 넘기면 이 앱이
+    // 다루지 않는 종류와 같은 문구로 막는다 — unknown만 따로 말하지 않는다.
     const result = match(grinder(), wheel({ wheelType: 'unknown' }));
     const check = checkOf(result, RULE.WHEEL_TYPE);
     expect(check.passed).toBeNull();
     expect(check.advisory).toBeUndefined();
     expect(check.wheelValue).toBe('확인 안 됨');
     expect(check.reason).toBe(
-      '숫돌 종류가 확인되지 않았습니다. 일반 결합숫돌로 확인된 경우에만 규격을 대조합니다. 값 확인 화면에서 실물을 보고 종류를 고르세요.',
+      '확인 안 됨은 이 앱이 다루지 않는 종류입니다. 규격 체계가 달라 판정할 수 없으니 제조사 취급설명서를 확인하세요.',
     );
+    expect(check.detail?.code).toBe('wheelType.unsupported');
     expect(result.verdict).toBe('UNDETERMINED');
   });
 
@@ -885,5 +889,75 @@ describe('9. 판정 범위(scope)가 제한적인 Profile은 적합을 내지 �
     // 종류 규칙(checkWheelType)이 이미 판정불가로 막는 경로다 — 중복해서 막지 않는다.
     expect(checkProfileScope(flap(), null)).toBeNull();
     expect(checkProfileScope(marked(), LIMITED)).toBeNull();
+  });
+});
+
+describe('10. 종류를 특정하지 못한 부속품(other·unknown)도 RPM·지름은 대조한다', () => {
+  // 실제 화면(result/page.tsx)이 넘기는 것과 같다 — profileFor로 찾은
+  // 종류별 Profile을 그대로 쓴다. 여기서는 대체 Profile(fallback)이 나온다.
+  const other = (overrides: Partial<WheelSpec> = {}) =>
+    marked({ wheelType: 'other', ...overrides });
+  const unknown = (overrides: Partial<WheelSpec> = {}) =>
+    marked({ wheelType: 'unknown', ...overrides });
+
+  it('other — 대체 Profile은 limited다', () => {
+    const profile = profileFor('other');
+    expect(profile?.scope).toBe('limited');
+    expect(profile?.supported).toBe(true);
+  });
+
+  it('unknown — 대체 Profile도 limited다', () => {
+    const profile = profileFor('unknown');
+    expect(profile?.scope).toBe('limited');
+    expect(profile?.supported).toBe(true);
+  });
+
+  it('other — RPM·지름이 맞아도 적합이 아니라 판정불가 + 제한적 규격 대조', () => {
+    const result = match(grinder(), other(), { profile: profileFor('other') });
+    expect(result.verdict).toBe('UNDETERMINED');
+    const check = result.checks.find((c) => c.rule === RULE.PROFILE_SCOPE);
+    expect(check).toMatchObject({
+      passed: null,
+      reason:
+        'RPM과 지름만 대조했습니다. 작업·덮개·장착 적합성은 확인되지 않아 적합 판정을 제공하지 않습니다.',
+      detail: { code: 'profileScope.limited' },
+    });
+  });
+
+  it('unknown — RPM·지름이 맞아도 적합이 아니라 판정불가 + 제한적 규격 대조', () => {
+    const result = match(grinder(), unknown(), {
+      profile: profileFor('unknown'),
+    });
+    expect(result.verdict).toBe('UNDETERMINED');
+    const check = result.checks.find((c) => c.rule === RULE.PROFILE_SCOPE);
+    expect(check?.detail?.code).toBe('profileScope.limited');
+  });
+
+  it('other — RPM 위반이 있으면 판정 범위와 무관하게 부적합이 먼저다', () => {
+    const result = match(grinder(), other({ maxRPM: 8500 }), {
+      profile: profileFor('other'),
+    });
+    expect(result.verdict).toBe('INCOMPATIBLE');
+  });
+
+  it('unknown — RPM 위반이 있으면 판정 범위와 무관하게 부적합이 먼저다', () => {
+    const result = match(grinder(), unknown({ maxRPM: 8500 }), {
+      profile: profileFor('unknown'),
+    });
+    expect(result.verdict).toBe('INCOMPATIBLE');
+  });
+
+  it('other — 필수값이 없으면 판정불가다', () => {
+    const result = match(grinder(), other({ maxRPM: null }), {
+      profile: profileFor('other'),
+    });
+    expect(result.verdict).toBe('UNDETERMINED');
+  });
+
+  it('other — 유효기한 근거가 없어 만료 판정을 적용하지 않는다', () => {
+    const result = match(grinder(), other(), { profile: profileFor('other') });
+    const check = result.checks.find((c) => c.rule === RULE.EXPIRY);
+    expect(check?.detail?.code).toBe('expiry.noPolicy');
+    expect(check?.advisory).toBe(true);
   });
 });

@@ -136,21 +136,6 @@ describe('WheelTypeConfirm — AI 제안과 적용 대상 안내', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it.each(['other'] as const)(
-    '%s 를 고르면 판정불가로 끝난다고 적는다',
-    (type) => {
-      render(
-        <WheelTypeConfirm value={type} suggested={type} onChange={vi.fn()} />,
-      );
-
-      expect(
-        screen.getByText(
-          '이 앱이 판정하지 않는 종류입니다. 규격 대조는 판정불가로 끝납니다. 제조사 취급설명서를 확인하세요.',
-        ),
-      ).toBeInTheDocument();
-    },
-  );
-
   it.each(['cup_wheel', 'diamond'] as const)(
     '%s 는 세부 종류를 골라야 대조한다고 적는다',
     (type) => {
@@ -173,6 +158,10 @@ describe('WheelTypeConfirm — AI 제안과 적용 대상 안내', () => {
     'wire_brush',
     'fibre_disc',
     'polishing_pad',
+    // 종류를 특정하지 못한 부속품도 이제 대체 Profile로 RPM·지름은 대조한다
+    // (scope: 'limited') — 판정할 수 없다고 거부하지 않는다.
+    'other',
+    'unknown',
   ] as const)(
     '%s 는 대조하는 종류이지만 종류별 상태 확인은 직접 해야 한다고 적는다',
     (type) => {
@@ -187,22 +176,6 @@ describe('WheelTypeConfirm — AI 제안과 적용 대상 안내', () => {
       ).toBeInTheDocument();
     },
   );
-
-  it('모르겠음을 고르면 판정불가로 끝난다고 적는다', () => {
-    render(
-      <WheelTypeConfirm
-        value="unknown"
-        suggested="unknown"
-        onChange={vi.fn()}
-      />,
-    );
-
-    expect(
-      screen.getByText(
-        '종류를 확인하지 못하면 규격 대조가 판정불가로 끝납니다. 실물을 보고 고르세요.',
-      ),
-    ).toBeInTheDocument();
-  });
 });
 
 describe('WheelTypeConfirm — AI 제안과 다른 선택', () => {

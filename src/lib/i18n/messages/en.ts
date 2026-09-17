@@ -652,6 +652,7 @@ export const en: Messages = {
   'field.purpose': 'Wheel use',
   'field.expiry': 'Expiry date',
   'field.wheelType': 'Wheel type',
+  'field.accessoryName': 'Accessory name (optional)',
   'field.placeholder': 'Not read — enter it yourself',
   'field.purposeUnknown': 'Not sure',
   'field.confidence.high': 'Reading confidence: high',
@@ -759,8 +760,6 @@ export const en: Messages = {
   'reason.workPurpose.mismatch':
     "Today's job: {work}. This wheel: {purpose}. A wheel made for a different job can break under side loads.",
   'reason.workPurpose.match': "Today's job ({work}) matches the wheel use.",
-  'reason.wheelType.unknown':
-    'The wheel type is not confirmed. Specifications are compared only for a confirmed standard bonded abrasive wheel. Look at the actual wheel and choose its type on the value check screen.',
   'reason.wheelType.unsupported':
     '{type}: this app does not handle this type of wheel. Its specification system is different, so no judgement can be made. Follow the manufacturer instructions.',
   'reason.wheelType.supported':

@@ -348,6 +348,7 @@ describe('toCsv', () => {
       'conditionWiresIntact',
       'conditionBackingPadUndamaged',
       'accessoryProfileScope',
+      'wheelAccessoryName',
     ]);
   });
 
@@ -804,10 +805,10 @@ describe('다각도 외관 확인 열', () => {
     const [, row] = parse(toCsv([record()]));
     const start = CSV_COLUMNS.indexOf('workMaterial');
     expect(start).toBe(108);
-    // Profile 열 8개, 종류별 상태 항목 열 9개, 판정 범위 열 1개.
+    // Profile 열 8개, 종류별 상태 항목 열 9개, 판정 범위 열 1개, 부속품 이름 열 1개.
     expect(CSV_COLUMNS.indexOf('conditionDiamondRimIntact')).toBe(116);
     expect(CSV_COLUMNS.indexOf('accessoryProfileScope')).toBe(125);
-    expect(CSV_COLUMNS.slice(start)).toHaveLength(18);
+    expect(CSV_COLUMNS.slice(start)).toHaveLength(19);
     for (const column of CSV_COLUMNS.slice(start)) {
       expect(row[CSV_COLUMNS.indexOf(column)]).toBe('');
     }
@@ -873,5 +874,25 @@ describe('다각도 외관 확인 열', () => {
     // Profile을 저장하지 않은(구기록) 기록은 빈 칸이다.
     const [, legacyRow] = parse(toCsv([record()]));
     expect(legacyRow[CSV_COLUMNS.indexOf('accessoryProfileScope')]).toBe('');
+  });
+
+  it('부속품 이름(선택)을 맨 뒤 열에 적는다 — 없으면 빈 칸이다', () => {
+    const [, row] = parse(
+      toCsv([
+        record({
+          wheel: {
+            ...WHEEL,
+            wheelType: 'other',
+            accessoryName: '수동 연마 롤러',
+          },
+        }),
+      ]),
+    );
+    expect(row[CSV_COLUMNS.indexOf('wheelAccessoryName')]).toBe(
+      '수동 연마 롤러',
+    );
+
+    const [, emptyRow] = parse(toCsv([record()]));
+    expect(emptyRow[CSV_COLUMNS.indexOf('wheelAccessoryName')]).toBe('');
   });
 });

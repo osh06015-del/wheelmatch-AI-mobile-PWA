@@ -180,6 +180,9 @@ export const CSV_COLUMNS = [
   // 저장 당시 Profile로 적합까지 낼 수 있었는지(full/limited). 이 기능 도입
   // 전 기록은 빈 칸이다. 앞선 열의 자리를 지키기 위해 맨 뒤에 붙인다.
   'accessoryProfileScope',
+  // 부속품 이름(선택). other·unknown에서만 작업자가 적는다. 이 기능 도입 전
+  // 기록과 묻지 않은 종류는 빈 칸이다. 앞선 열의 자리를 지키기 위해 맨 뒤에 붙인다.
+  'wheelAccessoryName',
 ] as const;
 
 /**
@@ -391,6 +394,7 @@ function row(record: InspectionRecord): string {
     tick(record.wheelCondition?.wiresIntact),
     tick(record.wheelCondition?.backingPadUndamaged),
     record.accessoryProfile?.scope,
+    wheel.accessoryName,
   ];
 
   return values.map(cell).join(',');

@@ -631,6 +631,7 @@ export const ko = {
   'field.purpose': '용도',
   'field.expiry': '유효기한',
   'field.wheelType': '숫돌 종류',
+  'field.accessoryName': '부속품 이름(선택)',
   'field.placeholder': '인식하지 못함 — 직접 입력',
   'field.purposeUnknown': '모르겠음',
   'field.confidence.high': '인식 신뢰도 높음',
@@ -734,8 +735,6 @@ export const ko = {
   'reason.workPurpose.mismatch':
     '오늘 작업은 {work}인데 이 숫돌은 {purpose}입니다. 용도에 맞지 않는 숫돌은 측면 하중으로 파손될 수 있습니다.',
   'reason.workPurpose.match': '오늘 작업({work})과 숫돌 용도가 일치합니다.',
-  'reason.wheelType.unknown':
-    '숫돌 종류가 확인되지 않았습니다. 일반 결합숫돌로 확인된 경우에만 규격을 대조합니다. 값 확인 화면에서 실물을 보고 종류를 고르세요.',
   'reason.wheelType.unsupported':
     '{type}은(는) 이 앱이 다루지 않는 종류입니다. 규격 체계가 달라 판정할 수 없으니 제조사 취급설명서를 확인하세요.',
   'reason.wheelType.supported':

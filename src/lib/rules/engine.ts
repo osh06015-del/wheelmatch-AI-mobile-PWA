@@ -385,24 +385,16 @@ export function checkWheelType(
     wheelValue: WHEEL_TYPE_LABEL[wheel.wheelType],
   };
 
-  // 종류를 확인하지 못한 것도 막는다. 일반 결합숫돌임이 확인되지 않았는데
-  // 회전속도·지름 규칙이 성립한다고 가정하면 "규격이 맞습니다"가 근거 없이 나온다.
-  //
-  // 예전에는 경고로만 두었다. 글자만 읽는 Tesseract 경로는 생김새를 볼 수 없어
-  // 항상 unknown이라, 막으면 오프라인 모드가 통째로 쓸모없어졌기 때문이다.
-  // 이제는 작업자가 확인 화면에서 종류를 직접 고르므로 그 이유가 사라졌다.
   const params = { type: wheel.wheelType };
 
-  if (wheel.wheelType === 'unknown') {
-    return {
-      ...base,
-      passed: null,
-      reason:
-        '숫돌 종류가 확인되지 않았습니다. 일반 결합숫돌로 확인된 경우에만 규격을 대조합니다. 값 확인 화면에서 실물을 보고 종류를 고르세요.',
-      detail: { code: 'wheelType.unknown', params },
-    };
-  }
-
+  // 종류를 확인하지 못한 것(unknown)도 다른 미지원 종류와 같은 길로 막는다 —
+  // profiles.ts의 UNKNOWN_PROFILE이 종류에 맞게 넘어오면 아래 일반 분기가
+  // RPM·지름은 대조하고(scope: 'limited') checkProfileScope가 그 이상을 막는다.
+  // 호출자가 Profile을 넘기지 않았거나 다른 종류의 Profile을 넘겼으면 이
+  // 앱이 다루지 않는 종류와 똑같이 취급한다 — 예전에는 unknown만 별도
+  // 문구로 막았지만, 작업자가 확인 화면에서 종류를 직접 고르는 지금은
+  // 그 종류만 다르게 말할 이유가 없다.
+  //
   // 이 앱의 RPM·지름 규칙이 성립하는 종류는 호출자가 넘긴 Profile이 정한다
   // (profiles.ts의 profileFor). 엔진이 Profile 표를 직접 불러오지 않는 이유는
   // engine.ts를 import 없는 순수 함수로 두기 위해서다(safety-invariants.md §1).

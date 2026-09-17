@@ -643,6 +643,7 @@ export const vi: Messages = {
   'field.purpose': 'Công dụng',
   'field.expiry': 'Hạn sử dụng',
   'field.wheelType': 'Loại đá mài',
+  'field.accessoryName': 'Tên phụ kiện (tùy chọn)',
   'field.placeholder': 'Không đọc được — hãy tự nhập',
   'field.purposeUnknown': 'Không rõ',
   'field.confidence.high': 'Độ tin cậy khi đọc: cao',
@@ -748,8 +749,6 @@ export const vi: Messages = {
     'Công việc hôm nay: {work}. Đá mài này: {purpose}. Đá mài sai công dụng có thể vỡ do chịu lực ngang.',
   'reason.workPurpose.match':
     'Công việc hôm nay ({work}) đúng với công dụng của đá mài.',
-  'reason.wheelType.unknown':
-    'Chưa xác nhận loại đá mài. Ứng dụng chỉ đối chiếu thông số khi đã xác nhận là đá mài liên kết thông thường. Hãy nhìn đá thật và chọn loại ở màn hình kiểm tra giá trị.',
   'reason.wheelType.unsupported':
     '{type}: ứng dụng không xử lý loại đá này. Hệ thông số khác nên không thể xác định. Hãy làm theo hướng dẫn của nhà sản xuất.',
   'reason.wheelType.supported':

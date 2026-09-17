@@ -41,7 +41,6 @@ export const REASON_MESSAGE_KEY: Readonly<Record<ReasonCode, MessageKey>> = {
   'workPurpose.match': 'reason.workPurpose.match',
   'workPurpose.manualCheck': 'reason.workPurpose.manualCheck',
   'workPurpose.profileMismatch': 'reason.workPurpose.profileMismatch',
-  'wheelType.unknown': 'reason.wheelType.unknown',
   'wheelType.unsupported': 'reason.wheelType.unsupported',
   'wheelType.supported': 'reason.wheelType.supported',
   'wheelType.supportedProfile': 'reason.wheelType.supportedProfile',

@@ -153,7 +153,9 @@ describe('점검 흐름 E2E — 결과까지', () => {
     );
   });
 
-  it('숫돌 종류 미지원 — 확인 화면에서 알리고 판정불가로 끝나며 시험운전을 열지 않는다', async () => {
+  it('숫돌 종류 기타 — RPM·지름은 대조하되 제한적 규격 대조로 판정불가로 끝난다', async () => {
+    // 종류를 특정하지 못한 부속품(other)도 이제 대체 Profile로 RPM·지름은
+    // 대조한다(scope: 'limited'). 그래도 적합에는 이르지 못한다.
     const f = inspector('ko');
     await openWheelConfirm(
       f,
@@ -162,7 +164,7 @@ describe('점검 흐름 E2E — 결과까지', () => {
         .wheel(wheelLabel({ wheelType: 'other' })),
     );
     expect(document.body).toHaveTextContent(
-      f.t('wheelTypeConfirm.unsupported'),
+      f.t('wheelTypeConfirm.supportedProfile'),
     );
 
     await f.answerWheelCondition();
@@ -173,7 +175,7 @@ describe('점검 흐름 E2E — 결과까지', () => {
       await screen.findByText(f.t('verdict.undetermined')),
     ).toBeInTheDocument();
     expect(document.body).toHaveTextContent(
-      '기타는 이 앱이 다루지 않는 종류입니다. 규격 체계가 달라 판정할 수 없으니 제조사 취급설명서를 확인하세요.',
+      'RPM과 지름만 대조했습니다. 작업·덮개·장착 적합성은 확인되지 않아 적합 판정을 제공하지 않습니다.',
     );
     await f.completeChecklist();
     expect(
@@ -184,7 +186,7 @@ describe('점검 흐름 E2E — 결과까지', () => {
     ).toBeInTheDocument();
   });
 
-  it('숫돌 종류 unknown — 종류를 고르지 않으면 판정불가로 끝난다', async () => {
+  it('숫돌 종류 unknown — RPM·지름은 대조하되 제한적 규격 대조로 판정불가로 끝난다', async () => {
     const f = inspector('ko');
     await openWheelConfirm(
       f,
@@ -192,7 +194,9 @@ describe('점검 흐름 E2E — 결과까지', () => {
         .grinder(GRINDER)
         .wheel(wheelLabel({ wheelType: 'unknown' })),
     );
-    expect(document.body).toHaveTextContent(f.t('wheelTypeConfirm.unknown'));
+    expect(document.body).toHaveTextContent(
+      f.t('wheelTypeConfirm.supportedProfile'),
+    );
 
     await f.answerWheelCondition();
     await f.user.click(f.button('scan.wheel.proceed'));
@@ -202,7 +206,7 @@ describe('점검 흐름 E2E — 결과까지', () => {
       await screen.findByText(f.t('verdict.undetermined')),
     ).toBeInTheDocument();
     expect(document.body).toHaveTextContent(
-      '숫돌 종류가 확인되지 않았습니다. 일반 결합숫돌로 확인된 경우에만 규격을 대조합니다.',
+      'RPM과 지름만 대조했습니다. 작업·덮개·장착 적합성은 확인되지 않아 적합 판정을 제공하지 않습니다.',
     );
     await f.completeChecklist();
     expect(

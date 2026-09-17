@@ -569,6 +569,7 @@ export const zh: Messages = {
   'field.purpose': '用途',
   'field.expiry': '有效期',
   'field.wheelType': '砂轮种类',
+  'field.accessoryName': '配件名称(选填)',
   'field.placeholder': '未识别 — 请手动输入',
   'field.purposeUnknown': '不确定',
   'field.confidence.high': '识别可信度：高',
@@ -661,8 +662,6 @@ export const zh: Messages = {
   'reason.workPurpose.mismatch':
     '今天的作业：{work}。这片砂轮：{purpose}。用途不符的砂轮可能因侧向力而破裂。',
   'reason.workPurpose.match': '今天的作业（{work}）与砂轮用途相符。',
-  'reason.wheelType.unknown':
-    '未确认砂轮种类。只有确认是普通砂轮（固结磨具）时才核对规格。请查看实物，在数值确认页面选择种类。',
   'reason.wheelType.unsupported':
     '{type}：本应用不处理这种砂轮。规格体系不同，无法判定。请按照制造商说明书操作。',
   'reason.wheelType.supported':
