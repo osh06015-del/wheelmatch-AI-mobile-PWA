@@ -221,7 +221,9 @@ export default function WheelScanPage() {
         fields: form,
         photo,
         ocr,
-        offline,
+        // 로컬 OCR(localOnly)은 draft에 따로 남지 않는다. 새로고침 뒤 복구된 값이
+        // 서버 대조를 거친 것처럼 판정되지 않도록 제한 판정 표시로 합쳐 남긴다.
+        offline: offline || localOnly,
         exam: {
           photos: examPhotos,
           metrics: examMetrics,
@@ -237,6 +239,7 @@ export default function WheelScanPage() {
     photo,
     ocr,
     offline,
+    localOnly,
     examPhotos,
     examMetrics,
     exam,

@@ -142,11 +142,13 @@ export default function GrinderScanPage() {
         fields: { ...form, ...mounting },
         photo,
         ocr,
-        offline,
+        // 로컬 OCR(localOnly)은 draft에 따로 남지 않는다. 새로고침 뒤 복구된 값이
+        // 서버 대조를 거친 것처럼 판정되지 않도록 제한 판정 표시로 합쳐 남긴다.
+        offline: offline || localOnly,
       });
     }, FORM_DRAFT_SAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [phase, form, mounting, photo, ocr, offline]);
+  }, [phase, form, mounting, photo, ocr, offline, localOnly]);
 
   /**
    * 새 사진을 받는다.

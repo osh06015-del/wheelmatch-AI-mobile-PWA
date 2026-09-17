@@ -10,6 +10,7 @@ import {
   render,
   renderHook,
   screen,
+  waitFor,
 } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -238,5 +239,29 @@ describe('그라인더 확인 화면 — 로컬 OCR 제한 판정', () => {
 
     expect(result.current.offlineSlots.grinder).toBe(false);
     expect(result.current.analysisMode).toBe('online');
+  });
+
+  it('로컬 OCR로 읽은 확인 화면 draft는 제한 판정 표시를 잃지 않는다(새로고침 복구)', async () => {
+    // 새로고침하면 localOnly 상태는 사라지고 draft의 offline만 남는다. 여기서
+    // false로 저장되면 복구 후 서버 대조 없이 읽은 값이 온라인 대조로 판정된다.
+    getLastTelemetry.mockReturnValue({
+      engine: 'tesseract',
+      model: null,
+      inputTokens: null,
+      outputTokens: null,
+      cacheReadTokens: null,
+      cacheCreationTokens: null,
+      durationMs: 90,
+    });
+    render(<GrinderScanPage />);
+    fireEvent.click(screen.getByRole('button', { name: '테스트 사진 고르기' }));
+    await screen.findByText('읽어낸 값을 확인하세요');
+
+    await waitFor(() => expect(formSave).toHaveBeenCalled(), {
+      timeout: 3000,
+    });
+    for (const [draft] of formSave.mock.calls) {
+      expect(draft).toMatchObject({ offline: true });
+    }
   });
 });
