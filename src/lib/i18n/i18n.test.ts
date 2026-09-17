@@ -169,6 +169,7 @@ describe('비통과 문구', () => {
       'offline.limit',
       'scan.offline.continueHint',
       'scan.offline.notice',
+      'scan.localOcr.notice',
     ] as const;
 
     for (const { code } of LOCALES) {

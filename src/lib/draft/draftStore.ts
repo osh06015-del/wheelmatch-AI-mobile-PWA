@@ -13,15 +13,22 @@ import Dexie, { type Table } from 'dexie';
 
 import { researchToolsEnabled } from '@/lib/record/researchMode';
 import { DRAFT_ID, type InspectionDraft } from './draftModel';
+import type { ScanFormDraft, ScanFormSlot } from './formDraftModel';
 
 /**
  * draft 데이터베이스 스키마. 버전을 올릴 때는 이전 버전 줄을 지우지 말고 새 줄을
  * 더한다(Dexie 규칙) — 지우면 이미 만들어진 draft 데이터베이스를 열지 못한다.
+ *
+ * v2 — 확인 화면 입력 draft(formDrafts) 추가. drafts(진행 중 점검)와는 다른
+ * 표다 — 그쪽은 proceed()를 눌러 확정된 값만 담는다.
  */
 export const DRAFT_DB_VERSIONS: ReadonlyArray<{
   version: number;
   stores: Readonly<Record<string, string>>;
-}> = [{ version: 1, stores: { drafts: 'id' } }];
+}> = [
+  { version: 1, stores: { drafts: 'id' } },
+  { version: 2, stores: { drafts: 'id', formDrafts: 'slot' } },
+];
 
 /**
  * 검증 빌드와 현장판은 draft도 다른 데이터베이스에 둔다 — 최종 기록 DB
@@ -136,8 +143,81 @@ export function createDraftStore(
   };
 }
 
+/** 확인 화면 입력 draft가 쓰는 최소한의 표 기능 */
+export interface FormDraftTable {
+  get(slot: ScanFormSlot): Promise<unknown>;
+  put(draft: ScanFormDraft): Promise<unknown>;
+  delete(slot: ScanFormSlot): Promise<void>;
+}
+
+export type FormDraftLoadResult =
+  | { status: 'none' }
+  | { status: 'found'; draft: unknown }
+  | { status: 'error' };
+
+export type FormDraftSaveResult =
+  | 'saved'
+  | 'savedWithoutPhoto' // 저장 공간이 모자라 사진을 빼고 저장했다
+  | 'failed'
+  | 'skipped';
+
+export interface FormDraftStore {
+  load(slot: ScanFormSlot): Promise<FormDraftLoadResult>;
+  save(draft: ScanFormDraft): Promise<FormDraftSaveResult>;
+  /** 새 사진 촬영·종류 변경(작업 다시 고름)·명시적 draft 삭제에서만 부른다 */
+  remove(slot: ScanFormSlot): Promise<boolean>;
+}
+
+export function createFormDraftStore(
+  openTable: () => FormDraftTable | null,
+): FormDraftStore {
+  return {
+    async load(slot) {
+      const table = openTable();
+      if (!table) return { status: 'none' };
+      try {
+        const draft = await table.get(slot);
+        return draft === undefined
+          ? { status: 'none' }
+          : { status: 'found', draft };
+      } catch {
+        return { status: 'error' };
+      }
+    },
+
+    async save(draft) {
+      const table = openTable();
+      if (!table) return 'skipped';
+      try {
+        await table.put(draft);
+        return 'saved';
+      } catch (error) {
+        if (!isQuotaError(error)) return 'failed';
+      }
+      try {
+        await table.put({ ...draft, photo: null });
+        return 'savedWithoutPhoto';
+      } catch {
+        return 'failed';
+      }
+    },
+
+    async remove(slot) {
+      const table = openTable();
+      if (!table) return true;
+      try {
+        await table.delete(slot);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  };
+}
+
 class DraftDatabase extends Dexie {
   drafts!: Table<InspectionDraft, string>;
+  formDrafts!: Table<ScanFormDraft, ScanFormSlot>;
 
   constructor() {
     super(draftDbName());
@@ -156,4 +236,12 @@ function openDraftTable(): DraftTable | null {
   return database.drafts;
 }
 
+function openFormDraftTable(): FormDraftTable | null {
+  if (typeof indexedDB === 'undefined') return null;
+  database ??= new DraftDatabase();
+  return database.formDrafts;
+}
+
 export const draftStore: DraftStore = createDraftStore(openDraftTable);
+export const formDraftStore: FormDraftStore =
+  createFormDraftStore(openFormDraftTable);

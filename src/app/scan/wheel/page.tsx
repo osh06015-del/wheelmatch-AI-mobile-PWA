@@ -3,7 +3,7 @@
 // 2단계 — 숫돌 라벨 촬영과 값 확인. 확인이 끝나면 규칙엔진이 대조한다.
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { ZoomablePhoto } from '@/components/BlobPhoto';
 import { CameraView } from '@/components/CameraView';
@@ -23,6 +23,12 @@ import {
   type ExtraExamView,
 } from '@/components/WheelExamPanel';
 import { WheelTypeConfirm } from '@/components/WheelTypeConfirm';
+import { formDraftStore } from '@/lib/draft/draftStore';
+import {
+  FORM_DRAFT_SAVE_DELAY_MS,
+  FORM_DRAFT_SCHEMA_VERSION,
+  recoverWheelFormDraft,
+} from '@/lib/draft/formDraftModel';
 import { WHEEL_FIELD_GUIDE } from '@/lib/guide/fieldGuide';
 import { useLocale, type MessageKey } from '@/lib/i18n';
 import { analysisErrorText } from '@/lib/i18n/errors';
@@ -136,6 +142,12 @@ export default function WheelScanPage() {
   const [labelReview, setLabelReview] = useState<CaptureReview | null>(null);
   // 서버에 닿지 못해 작업자가 라벨 값을 직접 넣는 중인가(오프라인 제한 대조).
   const [offline, setOffline] = useState(false);
+  // 서버 분석이 아니라 로컬 OCR(tesseract)로 읽었거나 기기가 오프라인이었는가.
+  // 값은 있지만 서버라는 두 번째 눈이 없었던 것이라 offline과 같은 제한 판정으로 남긴다.
+  const [localOnly, setLocalOnly] = useState(false);
+  // 새로고침 경합 방지: 사용자가 이미 새 사진을 찍거나 직접 입력을 골랐으면
+  // 뒤늦게 도착한 draft 복원을 적용하지 않는다.
+  const actedRef = useRef(false);
 
   // ── 다각도 외관 확인 ──
   // 사진은 이 화면이 들고 있다가 proceed()에서 한 번에 저장소로 넘긴다
@@ -160,6 +172,53 @@ export default function WheelScanPage() {
     useState<Record<ExtraExamView, CaptureQualityMetrics | null>>(
       EMPTY_EXAM_SLOTS,
     );
+
+  // 확인 화면에서 수정 중인 입력값을 새로고침 넘어 복원한다. "다음"을 누르기
+  // 전까지는 이 저장소에만 남는다. 복원해도 userConfirmed·Gate·다각도 확인은
+  // 다시 받는다(자동 완료 금지) — 사진과 같은 수명이라 새로고침으로 어차피 사라진다.
+  useEffect(() => {
+    let cancelled = false;
+    void formDraftStore.load('wheel').then((result) => {
+      if (cancelled || actedRef.current || result.status !== 'found') return;
+      const recovered = recoverWheelFormDraft(result.draft);
+      if (!recovered) return;
+      setForm({
+        maxRPM: recovered.fields.maxRPM,
+        diameter: recovered.fields.diameter,
+        thickness: recovered.fields.thickness,
+        purpose: recovered.fields.purpose,
+        expiry: recovered.fields.expiry,
+        wheelType: recovered.fields.wheelType as WheelType,
+        accessoryName: recovered.fields.accessoryName,
+      });
+      setOcr(recovered.ocr);
+      setOffline(recovered.offline);
+      if (recovered.photo) {
+        setPhoto(recovered.photo);
+        setPhase('confirm');
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // 확인 화면에 있는 동안 입력을 모아 저장한다(debounce).
+  useEffect(() => {
+    if (phase !== 'confirm') return;
+    const timer = window.setTimeout(() => {
+      void formDraftStore.save({
+        slot: 'wheel',
+        schemaVersion: FORM_DRAFT_SCHEMA_VERSION,
+        savedAt: new Date().toISOString(),
+        fields: form,
+        photo,
+        ocr,
+        offline,
+      });
+    }, FORM_DRAFT_SAVE_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [phase, form, photo, ocr, offline]);
 
   // 그라인더를 찍지 않았거나 장비 상태를 직접 확인하지 않은 경우 1단계로 되돌린다.
   // 화면 이동으로 Gate를 건너뛸 수 있으면 Gate가 아니다.
@@ -198,6 +257,8 @@ export default function WheelScanPage() {
    * 않는다. 경고가 없으면 곧바로 판독으로 넘어간다.
    */
   async function analyze(source: Blob) {
+    // 새로고침 복원보다 사용자의 새 촬영이 우선한다. 뒤늦게 도착한 복원을 막는다.
+    actedRef.current = true;
     setPhase('analyzing');
     setError(null);
     // 새 사진이다. 이전 사진으로 읽은 값과 확인은 버린다. 라벨 사진은 다각도
@@ -208,7 +269,10 @@ export default function WheelScanPage() {
     setCaptureMetrics(null);
     setUserConfirmed(false);
     setOffline(false);
+    setLocalOnly(false);
     resetExam();
+    // 이전 사진에 대한 확인 화면 draft는 이제 근거가 없다.
+    void formDraftStore.remove('wheel');
     try {
       // 원본 사진은 Vercel 함수의 4.5MB 요청 한도를 넘길 수 있다. 먼저 줄인다.
       const prepared = await prepareCapture(source);
@@ -239,9 +303,13 @@ export default function WheelScanPage() {
     try {
       const extractor = getExtractor();
       const spec = await extractor.extractWheel(blob);
+      const telemetry = extractor.getLastTelemetry?.() ?? null;
       setOcr(spec);
-      setOcrTelemetry(extractor.getLastTelemetry?.() ?? null);
+      setOcrTelemetry(telemetry);
       setOffline(false);
+      // 서버 분석이 아니라 로컬 OCR로 읽었거나(엔진이 tesseract) 기기가
+      // 오프라인이면 직접 입력(offline)과 같은 제한 판정으로 남긴다.
+      setLocalOnly(telemetry?.engine === 'tesseract' || !navigator.onLine);
       setForm({
         maxRPM: fromNumber(spec.maxRPM),
         diameter: fromNumber(spec.diameter),
@@ -272,7 +340,9 @@ export default function WheelScanPage() {
    * 시작한다. 라벨 사진은 남겨 둔다(결과 화면의 서버 재분석에 쓴다).
    */
   function continueOffline() {
+    actedRef.current = true;
     setOffline(true);
+    setLocalOnly(false);
     setOcr(null);
     setOcrTelemetry(null);
     setForm({
@@ -427,7 +497,10 @@ export default function WheelScanPage() {
     setWheel(spec, photo, ocr, captureMetrics, ocrTelemetry);
     setCaptureCheck('wheel', toCaptureQualityCheck(labelReview));
     // setWheel이 숫돌 쪽 오프라인 표시를 지운다. 그 뒤에 이번 라벨의 판독 경로를 넣는다.
-    setOfflineSlot('wheel', offline);
+    // 직접 입력(offline)과 로컬 OCR(localOnly) 모두 서버 대조 없이 읽은 값이다.
+    setOfflineSlot('wheel', offline || localOnly);
+    // 확정됐다. 확인 화면 draft는 더 이상 필요 없다.
+    void formDraftStore.remove('wheel');
     setWheelExam({
       exam,
       // 확인하지 못한 채 진행하는 경우에만 채운다. 결과와 둘 중 하나다 —
@@ -655,6 +728,14 @@ export default function WheelScanPage() {
           className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-base leading-relaxed text-yellow-100"
         >
           ⚠ {t('scan.offline.notice')}
+        </p>
+      )}
+      {localOnly && !offline && (
+        <p
+          role="status"
+          className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-base leading-relaxed text-yellow-100"
+        >
+          ⚠ {t('scan.localOcr.notice')}
         </p>
       )}
       {grinder && (

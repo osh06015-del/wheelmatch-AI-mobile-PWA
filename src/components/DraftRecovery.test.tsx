@@ -7,11 +7,12 @@
 import { act, render, renderHook, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { push, load, save, remove } = vi.hoisted(() => ({
+const { push, load, save, remove, formRemove } = vi.hoisted(() => ({
   push: vi.fn(),
   load: vi.fn(),
   save: vi.fn(),
   remove: vi.fn(),
+  formRemove: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -25,6 +26,8 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/lib/draft/draftStore', () => ({
   draftStore: { load, save, remove },
+  // 확인 화면 입력 draft. 이 파일의 시나리오와는 다른 저장소라 항상 성공만 가정한다.
+  formDraftStore: { remove: formRemove },
 }));
 
 import { DRAFT_SAVE_DELAY_MS, DraftRecovery } from './DraftRecovery';

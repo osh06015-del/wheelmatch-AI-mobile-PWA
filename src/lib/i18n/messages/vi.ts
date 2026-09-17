@@ -983,6 +983,8 @@ export const vi: Messages = {
     'Không kết nối được máy chủ. Bạn có thể tự nhập giá trị để tiếp tục, nhưng lần kiểm tra này không thể nhận kết luận khớp.',
   'scan.offline.notice':
     'Đối chiếu hạn chế ngoại tuyến — không phân tích được ảnh trên máy chủ. Hãy nhìn nhãn và tự nhập giá trị.',
+  'scan.localOcr.notice':
+    'Đối chiếu hạn chế ngoại tuyến — đã đọc trên chính thiết bị này, không phải trên máy chủ. Khi có kết nối, bạn có thể chọn phân tích lại trên máy chủ ở màn hình kết quả.',
   'offline.limit':
     'Kết quả này chỉ đối chiếu giá trị người làm việc nhập. Vi phạm tốc độ quay và đường kính được kết luận không khớp, nhưng không kết luận khớp và không mở chạy thử.',
   'offline.reanalyze': 'Phân tích lại trên máy chủ',

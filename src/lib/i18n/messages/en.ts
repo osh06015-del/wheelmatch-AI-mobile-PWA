@@ -994,6 +994,8 @@ export const en: Messages = {
     'The server could not be reached. You can continue by entering values yourself, but this inspection cannot receive a fit conclusion.',
   'scan.offline.notice':
     'Offline limited check — the photo could not be analyzed on the server. Look at the label and enter the values yourself.',
+  'scan.localOcr.notice':
+    'Offline limited check — read on this device, not on the server. Once connected, you can have the server re-analyze it on the result screen.',
   'offline.limit':
     'This result compares only the values the worker entered. RPM and diameter violations are judged as a mismatch, but no fit conclusion is given and the trial run does not open.',
   'offline.reanalyze': 'Reanalyze on the server',

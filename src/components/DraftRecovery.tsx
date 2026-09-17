@@ -24,7 +24,11 @@ import {
   type DraftRecovery as Recovery,
   type DraftWarning,
 } from '@/lib/draft/draftModel';
-import { draftStore, type DraftSaveResult } from '@/lib/draft/draftStore';
+import {
+  draftStore,
+  formDraftStore,
+  type DraftSaveResult,
+} from '@/lib/draft/draftStore';
 import { formatDateTime } from '@/lib/record/datetime';
 import { useInspection, useInspectionState } from '@/lib/state/inspection';
 
@@ -110,6 +114,10 @@ export function DraftRecovery() {
       return;
     }
     reset();
+    // 진행 중 점검 draft를 지우면서, 확인 화면에 남아 있을 수 있는 입력 draft도
+    // 함께 지운다 — 명시적 삭제 트리거이므로 같이 정리한다.
+    void formDraftStore.remove('grinder');
+    void formDraftStore.remove('wheel');
     setPending(null);
     setStatus('ready');
     router.push('/');

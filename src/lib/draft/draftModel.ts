@@ -135,7 +135,10 @@ const isNumberOrNull = (value: unknown): value is number | null =>
 const isConfidence = (value: unknown): boolean =>
   value === 'high' || value === 'medium' || value === 'low';
 
-const isGrinderSpec: Guard<GrinderSpec> = (value): value is GrinderSpec =>
+/** formDraftModel.ts(확인 화면 입력 draft)도 이 두 guard를 그대로 쓴다 */
+export const isGrinderSpec: Guard<GrinderSpec> = (
+  value,
+): value is GrinderSpec =>
   isObject(value) &&
   isNumberOrNull(value.noLoadRPM) &&
   isNumberOrNull(value.maxWheelDiameter) &&
@@ -143,7 +146,7 @@ const isGrinderSpec: Guard<GrinderSpec> = (value): value is GrinderSpec =>
   typeof value.rawText === 'string' &&
   isConfidence(value.confidence);
 
-const isWheelSpec: Guard<WheelSpec> = (value): value is WheelSpec =>
+export const isWheelSpec: Guard<WheelSpec> = (value): value is WheelSpec =>
   isObject(value) &&
   isNumberOrNull(value.maxRPM) &&
   isNumberOrNull(value.diameter) &&

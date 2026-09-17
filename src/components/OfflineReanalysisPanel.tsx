@@ -58,7 +58,10 @@ export function OfflineReanalysisPanel({
     setPhase('analyzing');
     setAi(null);
     try {
-      const extractor = getExtractor();
+      // 오프라인/로컬 OCR 제한을 풀 수 있는 유일한 경로는 서버(Claude) 대조다.
+      // 빌드가 tesseract 모드여도 재분석만큼은 getExtractor()의 기본값을 따르지
+      // 않고 명시적으로 claude를 부른다 — 안 그러면 다시 로컬로 읽어 제한이 풀리지 않는다.
+      const extractor = getExtractor('claude');
       const next: ReanalysisInput = {};
       if (offlineSlots.grinder && grinderImage) {
         next.grinderOcr = await extractor.extractGrinder(grinderImage);

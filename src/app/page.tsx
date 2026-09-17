@@ -16,6 +16,7 @@ import { BuildInfo } from '@/components/BuildInfo';
 import { Disclaimer } from '@/components/Disclaimer';
 import { LanguagePicker } from '@/components/LanguagePicker';
 import { WorkConditionsPicker } from '@/components/WorkConditionsPicker';
+import { formDraftStore } from '@/lib/draft/draftStore';
 import { useLocale, type MessageKey } from '@/lib/i18n';
 import { useInspection } from '@/lib/state/inspection';
 import { UNKNOWN_WORK_CONDITIONS } from '@/lib/rules/profiles';
@@ -53,8 +54,13 @@ export default function Home() {
 
   // 메인으로 돌아오면 이전 점검 값을 비운다.
   // 지난 촬영 값이 남아 다음 점검에 섞여 들어가면 안 된다.
+  // 확인 화면에 남아 있을 수 있는 입력 draft도 같이 비운다 — 여기로 돌아오는
+  // 것은 새 작업을 고르는 것이고(=종류 변경), 이전 화면의 미확정 입력을
+  // 다음 점검으로 이어 쓰면 안 된다.
   useEffect(() => {
     reset();
+    void formDraftStore.remove('grinder');
+    void formDraftStore.remove('wheel');
   }, [reset]);
 
   function start(purpose: WorkPurpose) {

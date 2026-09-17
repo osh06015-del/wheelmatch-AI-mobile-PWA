@@ -1014,6 +1014,8 @@ export const id: Messages = {
     'Server tidak terjangkau. Anda dapat melanjutkan dengan memasukkan nilai sendiri, tetapi pemeriksaan ini tidak bisa mendapat kesimpulan sesuai.',
   'scan.offline.notice':
     'Pemeriksaan terbatas luring — foto tidak dapat dianalisis di server. Lihat label dan masukkan nilainya sendiri.',
+  'scan.localOcr.notice':
+    'Pemeriksaan terbatas luring — dibaca di perangkat ini, bukan di server. Setelah tersambung, Anda dapat memilih analisis ulang di server pada layar hasil.',
   'offline.limit':
     'Hasil ini hanya membandingkan nilai yang dimasukkan pekerja. Pelanggaran kecepatan dan diameter dinilai tidak sesuai, tetapi tidak ada kesimpulan sesuai dan uji jalan tidak dibuka.',
   'offline.reanalyze': 'Analisis ulang di server',

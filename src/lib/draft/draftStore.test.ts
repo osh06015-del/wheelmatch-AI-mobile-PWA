@@ -7,12 +7,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { DRAFT_ID, type InspectionDraft } from './draftModel';
+import type { GrinderFormDraft } from './formDraftModel';
 import {
   DRAFT_DB_VERSIONS,
   createDraftStore,
+  createFormDraftStore,
   draftDbName,
   isQuotaError,
   type DraftTable,
+  type FormDraftTable,
 } from './draftStore';
 
 function draft(overrides: Partial<InspectionDraft> = {}): InspectionDraft {
@@ -26,6 +29,45 @@ function draft(overrides: Partial<InspectionDraft> = {}): InspectionDraft {
     photoSlots: ['grinder'],
     photosOmitted: false,
     ...overrides,
+  };
+}
+
+function grinderFormDraft(
+  overrides: Partial<GrinderFormDraft> = {},
+): GrinderFormDraft {
+  return {
+    slot: 'grinder',
+    schemaVersion: 1,
+    savedAt: '2026-09-17T03:00:00.000Z',
+    fields: {
+      model: 'GWS 750-125',
+      noLoadRPM: '11000',
+      maxWheelDiameter: '125',
+      spindleThread: 'unknown',
+      guardType: 'unknown',
+      guardSize: '',
+    },
+    photo: new Blob(['plate']),
+    ocr: null,
+    offline: false,
+    ...overrides,
+  };
+}
+
+/** 확인 화면 입력 draft용 메모리 표 */
+function memoryFormTable(): FormDraftTable & {
+  rows: Map<string, GrinderFormDraft>;
+} {
+  const rows = new Map<string, GrinderFormDraft>();
+  return {
+    rows,
+    get: vi.fn(async (slot: string) => rows.get(slot)),
+    put: vi.fn(async (value: GrinderFormDraft) => {
+      rows.set(value.slot, value);
+    }),
+    delete: vi.fn(async (slot: string) => {
+      rows.delete(slot);
+    }),
   };
 }
 
@@ -173,6 +215,78 @@ describe('createDraftStore', () => {
       throw new Error('blocked');
     });
     expect(await createDraftStore(() => table).remove()).toBe(false);
+  });
+});
+
+describe('스키마 — 확인 화면 입력 draft(v2)', () => {
+  it('v2가 formDrafts 표를 더한다 — 이전 버전 줄은 그대로 둔다', () => {
+    const v2 = DRAFT_DB_VERSIONS.find((entry) => entry.version === 2);
+    expect(v2?.stores).toEqual({ drafts: 'id', formDrafts: 'slot' });
+    // v1 줄이 남아 있어야 이미 만들어진 draft DB를 열 수 있다(Dexie 규칙).
+    expect(
+      DRAFT_DB_VERSIONS.find((entry) => entry.version === 1)?.stores,
+    ).toEqual({ drafts: 'id' });
+  });
+});
+
+describe('createFormDraftStore', () => {
+  it('draft가 없으면 none, 있으면 found를 돌려준다', async () => {
+    const table = memoryFormTable();
+    const store = createFormDraftStore(() => table);
+    expect(await store.load('grinder')).toEqual({ status: 'none' });
+
+    await store.save(grinderFormDraft());
+    expect((await store.load('grinder')).status).toBe('found');
+  });
+
+  it('읽기에 실패해도 던지지 않는다', async () => {
+    const table = memoryFormTable();
+    table.get = vi.fn(async () => {
+      throw new Error('broken');
+    });
+    expect(await createFormDraftStore(() => table).load('grinder')).toEqual({
+      status: 'error',
+    });
+  });
+
+  it('IndexedDB가 없는 환경에서는 저장하지 않고 조용히 넘어간다', async () => {
+    const store = createFormDraftStore(() => null);
+    expect(await store.load('grinder')).toEqual({ status: 'none' });
+    expect(await store.save(grinderFormDraft())).toBe('skipped');
+    expect(await store.remove('grinder')).toBe(true);
+  });
+
+  it('저장 공간이 모자라면 사진을 빼고 다시 저장한다', async () => {
+    const table = memoryFormTable();
+    const put = table.put;
+    table.put = vi.fn(async (value: GrinderFormDraft) => {
+      if (value.photo !== null) throw quotaError();
+      return put(value);
+    });
+    const store = createFormDraftStore(() => table);
+
+    expect(await store.save(grinderFormDraft())).toBe('savedWithoutPhoto');
+    expect(table.rows.get('grinder')?.photo).toBeNull();
+  });
+
+  it('사진을 빼도 실패하면 failed다', async () => {
+    const table = memoryFormTable();
+    table.put = vi.fn(async () => {
+      throw quotaError();
+    });
+    expect(
+      await createFormDraftStore(() => table).save(grinderFormDraft()),
+    ).toBe('failed');
+  });
+
+  it('지우기에 실패하면 false를 돌려준다', async () => {
+    const table = memoryFormTable();
+    table.delete = vi.fn(async () => {
+      throw new Error('blocked');
+    });
+    expect(await createFormDraftStore(() => table).remove('grinder')).toBe(
+      false,
+    );
   });
 });
 

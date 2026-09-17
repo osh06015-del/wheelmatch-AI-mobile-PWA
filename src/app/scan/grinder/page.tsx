@@ -3,7 +3,7 @@
 // 1단계 — 그라인더 명판 촬영과 값 확인.
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { ZoomablePhoto } from '@/components/BlobPhoto';
 import { CameraView } from '@/components/CameraView';
@@ -23,6 +23,12 @@ import {
 } from '@/components/GrinderMountingInputs';
 import { ManualConfirmToggle } from '@/components/ManualConfirmToggle';
 import { ScanHeader } from '@/components/ScanHeader';
+import { formDraftStore } from '@/lib/draft/draftStore';
+import {
+  FORM_DRAFT_SAVE_DELAY_MS,
+  FORM_DRAFT_SCHEMA_VERSION,
+  recoverGrinderFormDraft,
+} from '@/lib/draft/formDraftModel';
 import { GRINDER_FIELD_GUIDE } from '@/lib/guide/fieldGuide';
 import { useLocale } from '@/lib/i18n';
 import { analysisErrorText } from '@/lib/i18n/errors';
@@ -88,6 +94,57 @@ export default function GrinderScanPage() {
   // 서버에 닿지 못해 작업자가 값을 직접 넣는 중인가(오프라인 제한 대조).
   // 이 명판 값으로 대조한 결과는 적합이 될 수 없다(engine.ts의 checkAnalysisMode).
   const [offline, setOffline] = useState(false);
+  // 서버 분석이 아니라 로컬 OCR(tesseract)로 읽었거나 기기가 오프라인이었는가.
+  // 값은 있지만(직접 입력이 아니다) 두 번째 눈(서버 대조) 없이 읽은 값이라
+  // offline과 같은 제한 판정으로 취급한다(setOfflineSlot에서 합친다).
+  const [localOnly, setLocalOnly] = useState(false);
+  // 새로고침 경합 방지: 사용자가 이미 새 사진을 찍거나 직접 입력을 골랐으면
+  // 뒤늦게 도착한 draft 복원을 적용하지 않는다.
+  const actedRef = useRef(false);
+
+  // 확인 화면에서 수정 중인 입력값을 새로고침 넘어 복원한다. "다음"을 누르기
+  // 전까지는 이 저장소에만 남는다 — 진행 중 점검 복구(draft)는 proceed() 이후의
+  // 확정값만 다룬다. 복원해도 userConfirmed·Gate는 다시 받는다(자동 완료 금지).
+  useEffect(() => {
+    let cancelled = false;
+    void formDraftStore.load('grinder').then((result) => {
+      if (cancelled || actedRef.current || result.status !== 'found') return;
+      const recovered = recoverGrinderFormDraft(result.draft);
+      if (!recovered) return;
+      const { spindleThread, guardType, guardSize, ...fields } =
+        recovered.fields;
+      setForm(fields);
+      setMounting({ spindleThread, guardType, guardSize });
+      setOcr(recovered.ocr);
+      setOffline(recovered.offline);
+      if (recovered.photo) {
+        setPhoto(recovered.photo);
+        setPhase('confirm');
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // 확인 화면에 있는 동안 입력을 모아 저장한다(debounce). "다음"을 누르기 전에
+  // 새로고침해도 입력칸이 비지 않게 하기 위해서다. DraftRecovery의 진행 중 점검
+  // 저장과 같은 간격을 쓴다.
+  useEffect(() => {
+    if (phase !== 'confirm') return;
+    const timer = window.setTimeout(() => {
+      void formDraftStore.save({
+        slot: 'grinder',
+        schemaVersion: FORM_DRAFT_SCHEMA_VERSION,
+        savedAt: new Date().toISOString(),
+        fields: { ...form, ...mounting },
+        photo,
+        ocr,
+        offline,
+      });
+    }, FORM_DRAFT_SAVE_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [phase, form, mounting, photo, ocr, offline]);
 
   /**
    * 새 사진을 받는다.
@@ -98,6 +155,8 @@ export default function GrinderScanPage() {
    * 좋다는 뜻은 아니므로 "좋은 사진" 같은 안내는 띄우지 않는다.
    */
   async function analyze(source: Blob) {
+    // 새로고침 복원보다 사용자의 새 촬영이 우선한다. 뒤늦게 도착한 복원을 막는다.
+    actedRef.current = true;
     setPhase('analyzing');
     setError(null);
     // 새 사진이다. 이전 사진으로 읽은 값과 그 값을 보고 한 확인은 버린다.
@@ -107,6 +166,9 @@ export default function GrinderScanPage() {
     setCaptureMetrics(null);
     setUserConfirmed(false);
     setOffline(false);
+    setLocalOnly(false);
+    // 이전 사진에 대한 확인 화면 draft는 이제 근거가 없다.
+    void formDraftStore.remove('grinder');
     try {
       // 원본 사진은 Vercel 함수의 4.5MB 요청 한도를 넘길 수 있다. 먼저 줄인다.
       const prepared = await prepareCapture(source);
@@ -137,9 +199,14 @@ export default function GrinderScanPage() {
     try {
       const extractor = getExtractor();
       const spec = await extractor.extractGrinder(blob);
+      const telemetry = extractor.getLastTelemetry?.() ?? null;
       setOcr(spec);
-      setOcrTelemetry(extractor.getLastTelemetry?.() ?? null);
+      setOcrTelemetry(telemetry);
       setOffline(false);
+      // 서버 분석이 아니라 로컬 OCR로 읽었거나(엔진이 tesseract) 기기가
+      // 오프라인이면, 값은 있어도 서버라는 두 번째 눈이 없었던 것이다.
+      // 직접 입력(offline)과 같은 제한 판정으로 남긴다.
+      setLocalOnly(telemetry?.engine === 'tesseract' || !navigator.onLine);
       setForm({
         model: spec.model ?? '',
         noLoadRPM: fromNumber(spec.noLoadRPM),
@@ -164,7 +231,9 @@ export default function GrinderScanPage() {
    * 남겨 둔다. 연결이 돌아오면 결과 화면에서 작업자가 서버 재분석을 고를 수 있다.
    */
   function continueOffline() {
+    actedRef.current = true;
     setOffline(true);
+    setLocalOnly(false);
     setOcr(null);
     setOcrTelemetry(null);
     setForm({ model: '', noLoadRPM: '', maxWheelDiameter: '' });
@@ -213,7 +282,10 @@ export default function GrinderScanPage() {
     setGrinderCondition(condition);
     setCaptureCheck('grinder', toCaptureQualityCheck(review));
     // setGrinder가 오프라인 표시를 지운다. 그 뒤에 이번 명판의 판독 경로를 넣는다.
-    setOfflineSlot('grinder', offline);
+    // 직접 입력(offline)과 로컬 OCR(localOnly) 모두 서버 대조 없이 읽은 값이다.
+    setOfflineSlot('grinder', offline || localOnly);
+    // 확정됐다. 확인 화면 draft는 더 이상 필요 없다 — 진행 중 점검 복구가 이 값을 대신 지킨다.
+    void formDraftStore.remove('grinder');
     router.push('/scan/wheel');
   }
 
@@ -348,6 +420,14 @@ export default function GrinderScanPage() {
           className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-base leading-relaxed text-yellow-100"
         >
           ⚠ {t('scan.offline.notice')}
+        </p>
+      )}
+      {localOnly && !offline && (
+        <p
+          role="status"
+          className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-base leading-relaxed text-yellow-100"
+        >
+          ⚠ {t('scan.localOcr.notice')}
         </p>
       )}
       <FieldConfirm
