@@ -11,6 +11,9 @@
 //     기본값이 있으면 모르는 종류가 조용히 그 기본값으로 대조된다.
 //   · 요구를 바꾸면 version을 올리고, 판정 규칙이 바뀌면 RULESET_VERSION도 올린다.
 //   · 판정에 쓰는 필드를 늘리면 PROFILE_FIELD_USE와 엔진 규칙을 함께 고친다.
+//   · scope('full'|'limited')는 이 Profile로 적합까지 낼 수 있는지를 가른다.
+//     작업·덮개·재료 중 하나라도 unverified면 limited다 — RPM·지름이 맞아도
+//     엔진의 checkProfileScope가 판정불가로 막는다(engine.ts).
 //
 // 엔진(engine.ts)은 이 파일을 불러오지 않는다. 화면이 profileFor로 Profile을
 // 찾아 matchSpecs의 인자로 넘긴다 — engine.ts를 import 없는 순수 함수로 두기
@@ -60,6 +63,9 @@ export const BONDED_ABRASIVE_PROFILE: AccessoryProfile = {
   type: 'bonded_abrasive',
   family: 'bonded_abrasive',
   supported: true,
+  // 작업·덮개·유효기한·시험운전까지 근거가 갖춰진 유일한 계열이다 — RPM·지름이
+  // 맞으면 적합을 낼 수 있다(checkProfileScope).
+  scope: 'full',
   allowedWork: ['cutting', 'grinding'],
   // 라벨의 절단용/연삭용 표기로 작업을 대조해 왔다. 그대로 둔다.
   workCheck: 'label_purpose',
@@ -114,6 +120,10 @@ const UNVERIFIED_BASE: Omit<
   'type' | 'family' | 'conditionItems' | 'aiSuggestions'
 > = {
   supported: true,
+  // 작업·덮개·재료의 근거가 없다 — RPM·지름이 맞아도 적합을 내지 않는다
+  // (checkProfileScope가 판정불가로 막는다). "일부만 검증된 종류"를 "검증된
+  // 종류"처럼 통과시키지 않기 위한 구분이다.
+  scope: 'limited',
   allowedWork: 'unverified',
   // 라벨에 절단용/연삭용 표기가 없는 종류다. 라벨 용도로 대조하지 않는다.
   workCheck: 'allowed_work',
@@ -305,6 +315,7 @@ export const POLISHING_PAD_PROFILE: AccessoryProfile = {
  */
 export const PROFILE_FIELD_USE = {
   supported: 'verdict', // 숫돌 종류 규칙(checkWheelType)
+  scope: 'verdict', // 판정 범위(checkProfileScope) — limited는 적합을 내지 않는다
   'specs.rpm': 'verdict', // 필수값 존재·RPM 안전
   'specs.diameter': 'verdict', // 지름 호환
   'specs.mounting': 'guidance', // 장착 규격 — 경고 수준, 대조 상대 없음
@@ -398,7 +409,9 @@ export function needsSubtype(type: WheelType): boolean {
 /** 기록에 남길 참조. Profile이 없으면 null이다. */
 export function profileRef(type: WheelType): AccessoryProfileRef | null {
   const profile = profileFor(type);
-  return profile ? { type: profile.type, version: profile.version } : null;
+  return profile
+    ? { type: profile.type, version: profile.version, scope: profile.scope }
+    : null;
 }
 
 /** 모르는 작업 조건. 입력하지 않은 기록·화면의 기본값이다. */

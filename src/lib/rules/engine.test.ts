@@ -6,6 +6,7 @@ import {
   RULE,
   checkMountingSpec,
   checkPeripheralSpeed,
+  checkProfileScope,
   checkUnitConsistency,
   failureReasons,
   matchSpecs,
@@ -14,7 +15,13 @@ import {
   withParticle,
   type MatchOptions,
 } from './engine';
-import type { CheckItem, GrinderSpec, MatchResult, WheelSpec } from './types';
+import type {
+  AccessoryProfile,
+  CheckItem,
+  GrinderSpec,
+  MatchResult,
+  WheelSpec,
+} from './types';
 import { BONDED_ABRASIVE_PROFILE } from './profiles';
 
 /**
@@ -835,5 +842,48 @@ describe('8. 정상 fixture 회귀', () => {
     expect(checkUnitConsistency(old)).toBeNull();
     expect(checkMountingSpec(old)).toBeNull();
     expect(match(grinder(), old).verdict).toBe('COMPATIBLE');
+  });
+});
+
+describe('9. 판정 범위(scope)가 제한적인 Profile은 적합을 내지 않는다', () => {
+  /** bonded_abrasive를 바탕으로 scope만 바꾼 가짜 Profile. 종류는 맞춰 준다 */
+  const LIMITED: AccessoryProfile = {
+    ...BONDED_ABRASIVE_PROFILE,
+    type: 'flap_disc',
+    scope: 'limited',
+  };
+  const flap = (overrides: Partial<WheelSpec> = {}) =>
+    marked({ wheelType: 'flap_disc', ...overrides });
+
+  it('RPM·지름이 둘 다 맞아도 적합이 아니라 판정불가다', () => {
+    const result = match(grinder(), flap(), { profile: LIMITED });
+    expect(result.verdict).toBe('UNDETERMINED');
+    const check = result.checks.find((c) => c.rule === RULE.PROFILE_SCOPE);
+    expect(check).toMatchObject({
+      passed: null,
+      reason:
+        'RPM과 지름만 대조했습니다. 작업·덮개·장착 적합성은 확인되지 않아 적합 판정을 제공하지 않습니다.',
+      detail: { code: 'profileScope.limited' },
+    });
+    // 경고(advisory)가 아니다 — 전체 판정을 실제로 판정불가로 끌어내려야 한다.
+    expect(check?.advisory).toBeFalsy();
+  });
+
+  it('RPM·지름 위반이 있으면 판정 범위와 무관하게 부적합이 먼저다', () => {
+    const result = match(grinder(), flap({ maxRPM: 8500 }), {
+      profile: LIMITED,
+    });
+    expect(result.verdict).toBe('INCOMPATIBLE');
+  });
+
+  it('scope가 full이면(bonded_abrasive) 항목 자체를 만들지 않는다', () => {
+    expect(checkProfileScope(marked(), BONDED_ABRASIVE_PROFILE)).toBeNull();
+    expect(match(grinder(), marked()).verdict).toBe('COMPATIBLE');
+  });
+
+  it('Profile을 넘기지 않았거나(null) 종류가 다르면 이 규칙은 관여하지 않는다', () => {
+    // 종류 규칙(checkWheelType)이 이미 판정불가로 막는 경로다 — 중복해서 막지 않는다.
+    expect(checkProfileScope(flap(), null)).toBeNull();
+    expect(checkProfileScope(marked(), LIMITED)).toBeNull();
   });
 });

@@ -45,6 +45,8 @@ export const id: Messages = {
     'Informasi pelindung saling bertentangan. Periksa kembali kondisi gerinda dan pilihan pelindung Anda.',
   'result.undetermined.guardSize':
     'Tidak dapat dipastikan apakah pelindung yang dipilih sesuai dengan kondisi aksesori. Periksa petunjuk pabrikan.',
+  'result.undetermined.limitedScope':
+    'Hanya kecepatan dan diameter yang dibandingkan. Kesesuaian untuk pekerjaan, pelindung, dan pemasangan belum dikonfirmasi, sehingga hasil cocok tidak diberikan.',
   'result.recheckGuard': 'Periksa ulang informasi pelindung',
   'result.save': 'Selesai dan simpan',
   'result.saving': 'Menyimpan...',
@@ -482,16 +484,23 @@ export const id: Messages = {
     'Periksa sendiri apakah dipasang sesuai panah arah putaran pada label.',
 
   'rule.guard': 'Kondisi pelindung',
+  'rule.profileScope': 'Pemeriksaan spesifikasi terbatas',
   'reason.guard.missing':
     'Anda memasukkan tanpa pelindung. Jenis ini memerlukan pelindung. Tidak dapat dinilai sampai pelindung dipasang dan isian diperbaiki.',
   'reason.guard.smallerThanWheel':
     'Ukuran pelindung yang dimasukkan lebih kecil dari diameter batu. Pelindung ini tidak dapat menutupi batu, jadi tidak dapat dinilai sampai pelindung dan isian diperiksa.',
   'reason.guard.manualCheck':
     'Aplikasi tidak memeriksa apakah jenis dan ukuran pelindung sesuai dengan batu ini. Periksa sendiri pemasangannya.',
+  'reason.profileScope.limited':
+    'Hanya kecepatan dan diameter yang dibandingkan. Kesesuaian untuk pekerjaan, pelindung, dan pemasangan belum dikonfirmasi, sehingga hasil cocok tidak diberikan.',
   'evidence.doc.guard':
     'Peraturan Standar Keselamatan dan Kesehatan Kerja Pasal 122(1) — pemasangan pelindung batu gerinda',
   'evidence.limit.guard':
     'Hanya memblokir isian pekerja berupa tanpa pelindung atau pelindung lebih kecil dari batu. Dasar kriteria ukuran pelindung belum diverifikasi, jadi hasilnya tidak dapat ditentukan, bukan tidak cocok. Adanya pelindung tidak berarti pelindungnya tepat.',
+  'evidence.doc.profileScope':
+    'Desain aplikasi — untuk jenis yang tidak memiliki dasar untuk kondisi inti seperti pekerjaan, pelindung, atau material, hanya kecepatan dan diameter yang dibandingkan dengan aturan umum',
+  'evidence.limit.profileScope':
+    'Meskipun kecepatan dan diameter cocok, ini tidak menghasilkan hasil cocok. Aplikasi belum mengonfirmasi apakah jenis ini sesuai untuk pekerjaan, apakah pelindung sesuai untuk jenis ini, atau apakah pemasangannya benar. Ikuti petunjuk pabrikan dan pengawas Anda.',
 
   'wheelType.bonded_abrasive': 'Batu gerinda bonded biasa',
   'wheelType.flap_disc': 'Flap disc (amplas susun)',

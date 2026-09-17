@@ -42,6 +42,8 @@ export const en: Messages = {
     'The guard entries conflict with each other. Recheck the grinder condition and your guard selection.',
   'result.undetermined.guardSize':
     'It cannot be confirmed that the selected guard matches the accessory conditions. Check the manufacturer instructions.',
+  'result.undetermined.limitedScope':
+    'Only RPM and diameter were compared. Suitability for the work, guard, and mounting was not confirmed, so no compatible result is given.',
   'result.recheckGuard': 'Recheck guard information',
   'result.save': 'Finish and save',
   'result.saving': 'Saving...',
@@ -467,16 +469,23 @@ export const en: Messages = {
     'Check that it is mounted to match the rotation arrow on the label.',
 
   'rule.guard': 'Guard condition',
+  'rule.profileScope': 'Limited spec check',
   'reason.guard.missing':
     'You entered no guard. This type needs a guard. The specs cannot be judged until a guard is fitted and the entry is corrected.',
   'reason.guard.smallerThanWheel':
     'The guard size entered is smaller than the wheel diameter. This guard cannot cover the wheel, so the specs cannot be judged until the guard and the entry are checked.',
   'reason.guard.manualCheck':
     'The app does not check whether the guard type and size suit this wheel. Check how it is mounted yourself.',
+  'reason.profileScope.limited':
+    'Only RPM and diameter were compared. Suitability for the work, guard, and mounting was not confirmed, so no compatible result is given.',
   'evidence.doc.guard':
     'Rules on Occupational Safety and Health Standards, Article 122(1) — install a guard on grinding wheels',
   'evidence.limit.guard':
     'Only blocks a worker entry of no guard or a guard smaller than the wheel. The basis for a guard size criterion was not verified, so this is undetermined, not a mismatch. Having a guard does not mean it is the right guard.',
+  'evidence.doc.profileScope':
+    'App design — for types with no basis for core conditions such as work, guard, or material, only speed and diameter are compared using the common rule',
+  'evidence.limit.profileScope':
+    'Even when speed and diameter match, this does not produce a compatible result. The app has not confirmed whether the type suits the work, whether the guard suits this type, or whether it is mounted correctly. Follow the manufacturer instructions and your supervisor.',
 
   'wheelType.bonded_abrasive': 'Standard bonded abrasive wheel',
   'wheelType.flap_disc': 'Flap disc',

@@ -45,6 +45,8 @@ export const vi: Messages = {
     'Thông tin nắp che đang mâu thuẫn với nhau. Hãy kiểm tra lại tình trạng máy mài và lựa chọn nắp che.',
   'result.undetermined.guardSize':
     'Không thể xác nhận nắp che đã chọn có phù hợp với điều kiện phụ kiện hay không. Hãy xem hướng dẫn của nhà sản xuất.',
+  'result.undetermined.limitedScope':
+    'Chỉ đối chiếu tốc độ quay và đường kính. Chưa xác nhận được sự phù hợp về công việc, nắp che và cách lắp nên không đưa ra kết quả phù hợp.',
   'result.recheckGuard': 'Kiểm tra lại thông tin nắp che',
   'result.save': 'Hoàn tất và lưu',
   'result.saving': 'Đang lưu...',
@@ -461,16 +463,23 @@ export const vi: Messages = {
     'Hãy tự kiểm tra đã lắp đúng mũi tên chiều quay trên nhãn.',
 
   'rule.guard': 'Điều kiện nắp che',
+  'rule.profileScope': 'Đối chiếu quy cách hạn chế',
   'reason.guard.missing':
     'Bạn đã nhập không có nắp che. Loại này cần nắp che. Không thể đánh giá cho đến khi lắp nắp che và sửa lại thông tin đã nhập.',
   'reason.guard.smallerThanWheel':
     'Cỡ nắp che đã nhập nhỏ hơn đường kính đá. Nắp che này không thể che đá, nên không thể đánh giá cho đến khi kiểm tra nắp che và thông tin đã nhập.',
   'reason.guard.manualCheck':
     'Ứng dụng không đối chiếu loại và cỡ nắp che có hợp với đá này không. Hãy tự kiểm tra cách lắp.',
+  'reason.profileScope.limited':
+    'Chỉ đối chiếu tốc độ quay và đường kính. Chưa xác nhận được sự phù hợp về công việc, nắp che và cách lắp nên không đưa ra kết quả phù hợp.',
   'evidence.doc.guard':
     'Điều 122 khoản 1, Quy định về tiêu chuẩn an toàn vệ sinh lao động — lắp nắp che cho đá mài',
   'evidence.limit.guard':
     'Chỉ chặn khi người thợ nhập không có nắp che hoặc nắp che nhỏ hơn đá. Chưa xác minh được căn cứ cho tiêu chí kích cỡ nắp che, nên đây là chưa xác định chứ không phải không phù hợp. Có nắp che không có nghĩa là nắp che phù hợp.',
+  'evidence.doc.profileScope':
+    'Thiết kế của ứng dụng — với các loại không có căn cứ cho điều kiện cốt lõi như công việc, nắp che, vật liệu, chỉ đối chiếu tốc độ quay và đường kính theo quy tắc chung',
+  'evidence.limit.profileScope':
+    'Dù tốc độ quay và đường kính khớp, điều này không tạo ra kết quả phù hợp. Ứng dụng chưa xác nhận loại có hợp với công việc không, nắp che có hợp với loại này không, hay đã lắp đúng chưa. Hãy làm theo hướng dẫn của nhà sản xuất và người quản lý giám sát.',
 
   'wheelType.bonded_abrasive': 'Đá mài liên kết thông thường',
   'wheelType.flap_disc': 'Đĩa nhám xếp',

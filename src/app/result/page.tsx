@@ -173,6 +173,12 @@ export default function ResultPage() {
     guardCode === 'guard.missing' || guardCode === 'guard.smallerThanWheel'
       ? guardCode
       : null;
+  // 판정 범위가 제한적이라 판정불가인가(profiles.ts의 scope='limited').
+  // 덮개처럼 구체적인 원인이 없을 때만 이 문장으로 이유를 알린다 — 둘 다
+  // 있으면 덮개 문장이 더 구체적이라 그것을 먼저 보인다.
+  const scopeLimited = result.checks.some(
+    (check) => check.detail?.code === 'profileScope.limited',
+  );
   // 부속품 Profile과 입력을 맞춰 본다. 판정(result)과 따로다 — 여기 결과는
   // verdict를 바꾸지 않는다. Profile이 없는 종류는 조건표가 없다고만 알린다.
   const profile = profileFor(wheel.wheelType);
@@ -387,7 +393,9 @@ export default function ResultPage() {
               ? t('result.undetermined.guardMissing')
               : guardBlocking === 'guard.smallerThanWheel'
                 ? t('result.undetermined.guardSize')
-                : t('result.undetermined.help')}
+                : scopeLimited
+                  ? t('result.undetermined.limitedScope')
+                  : t('result.undetermined.help')}
           </p>
           <div className="flex flex-col gap-3">
             {guardBlocking ? (

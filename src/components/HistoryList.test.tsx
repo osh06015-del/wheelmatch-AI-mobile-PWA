@@ -378,3 +378,72 @@ describe('이력 상세 — 장착·작업 조건', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe('이력 상세 — 판정 범위가 제한적인 기록', () => {
+  it('RPM·지름이 맞아도 저장 당시 판정불가로 남고 적합·안전 표현이 없다', async () => {
+    // flap_disc처럼 scope가 limited인 종류는 RPM·지름만 맞아도 적합을 내지
+    // 않는다(checkProfileScope). 이력에도 그 판정이 그대로 남아야 한다 —
+    // 지금 다시 계산해 적합처럼 보이면 저장 당시의 근거를 잃는다.
+    const user = userEvent.setup();
+    render(
+      <HistoryList
+        records={[
+          record({
+            wheel: {
+              maxRPM: 12200,
+              diameter: 125,
+              thickness: 1.6,
+              purpose: 'unknown',
+              wheelType: 'flap_disc',
+              visibleDamage: 'unknown',
+              rawText: '',
+              confidence: 'high',
+            },
+            result: {
+              verdict: 'UNDETERMINED',
+              checks: [
+                {
+                  rule: 'RPM 안전',
+                  passed: true,
+                  reason: '숫돌이 더 빠릅니다.',
+                  grinderValue: '11000rpm',
+                  wheelValue: '12200rpm',
+                },
+                {
+                  rule: '제한적 규격 대조',
+                  passed: null,
+                  reason:
+                    'RPM과 지름만 대조했습니다. 작업·덮개·장착 적합성은 확인되지 않아 적합 판정을 제공하지 않습니다.',
+                  grinderValue: null,
+                  wheelValue: null,
+                  detail: { code: 'profileScope.limited' },
+                },
+              ],
+              timestamp: '2026-09-01T09:00:00.000Z',
+            },
+            accessoryProfile: {
+              type: 'flap_disc',
+              version: 'v1',
+              scope: 'limited',
+            },
+          }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByText('판정불가')).toBeInTheDocument();
+    expect(screen.queryByText('적합')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { expanded: false }));
+
+    expect(screen.getByText('⚠ 제한적 규격 대조')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'RPM과 지름만 대조했습니다. 작업·덮개·장착 적합성은 확인되지 않아 적합 판정을 제공하지 않습니다.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/안전합니다|사용해도 됩니다|검사 통과/),
+    ).not.toBeInTheDocument();
+  });
+});

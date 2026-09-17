@@ -996,6 +996,7 @@ describe('결과 화면 — 저장 함수 내부 재검사와 저장공간 오�
     expect(saved.accessoryProfile).toEqual({
       type: 'bonded_abrasive',
       version: BONDED_ABRASIVE_PROFILE.version,
+      scope: 'full',
     });
     expect(saved.profileConditions).toContainEqual({
       key: 'guard',
@@ -1166,7 +1167,10 @@ describe('결과 화면 — 알려진 액세서리 Profile', () => {
     expect(replace).toHaveBeenCalledWith('/scan/wheel');
   });
 
-  it('시험운전 근거가 없는 종류는 적합이어도 시험운전을 열지 않고 그 사실을 알린 뒤 저장할 수 있다', async () => {
+  it('판정 범위가 제한적인 종류는 RPM·지름이 맞아도 판정불가이며, 그 사실을 알린 뒤 저장할 수 있다', async () => {
+    // flap_disc는 scope가 limited다 — 작업·덮개·재료의 근거가 없어 RPM·지름이
+    // 맞아도 적합을 내지 않는다(checkProfileScope). 시험운전 근거 부재 안내는
+    // 적합 조합에서만 뜨므로, 판정불가로 바뀐 이 조합에서는 뜨지 않는다.
     const result = store();
     act(() => {
       result.current.setPurpose('grinding');
@@ -1178,15 +1182,27 @@ describe('결과 화면 — 알려진 액세서리 Profile', () => {
 
     render(<ResultPage />);
 
-    expect(screen.getByText('적합')).toBeInTheDocument();
+    expect(screen.getByText('판정불가')).toBeInTheDocument();
+    expect(screen.queryByText('적합')).not.toBeInTheDocument();
+    // 초록·적합·안전 표현을 쓰지 않는다.
+    expect(
+      screen.queryByText(/안전합니다|사용해도 됩니다|검사 통과/),
+    ).not.toBeInTheDocument();
+    // 같은 문장이 검사 항목 사유와 안내 배너 양쪽에 나온다.
+    expect(
+      screen.getAllByText(
+        'RPM과 지름만 대조했습니다. 작업·덮개·장착 적합성은 확인되지 않아 적합 판정을 제공하지 않습니다.',
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByText('제한적 규격 대조')).toBeInTheDocument();
     checkAll();
     expect(screen.queryByText('시험운전')).not.toBeInTheDocument();
     expect(
-      screen.getByText(
+      screen.queryByText(
         '이 종류에는 시험운전 기준의 근거가 이 앱에 없어 시험운전을 요구하거나 기록하지 않습니다. 제조사 취급설명서의 시운전 안내를 따르세요.',
       ),
-    ).toBeInTheDocument();
-    // 근거 없는 작업·유효기한은 통과가 아니라 직접 확인 항목으로 보인다.
+    ).not.toBeInTheDocument();
+    // 근거 없는 작업·유효기한은 여전히 통과가 아니라 직접 확인 항목으로 보인다.
     expect(
       screen.getByText(/이 종류에 맞는 작업인지 대조할 근거가/),
     ).toBeInTheDocument();
@@ -1194,13 +1210,22 @@ describe('결과 화면 — 알려진 액세서리 Profile', () => {
       screen.getByText(/이 종류에 유효기한 기준을 적용할 근거가/),
     ).toBeInTheDocument();
 
+    // 판정불가는 저장을 막지 않는다 — 시험운전 미정산도 적합 조합에만 해당한다.
     fireEvent.click(screen.getByRole('button', { name: /점검 완료 및 저장/ }));
     await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
     const saved = vi.mocked(saveInspection).mock.calls[0][0];
     expect(saved.trialRun).toBeUndefined();
-    expect(saved.accessoryProfile?.type).toBe('flap_disc');
+    expect(saved.accessoryProfile).toEqual({
+      type: 'flap_disc',
+      version: expect.any(String),
+      scope: 'limited',
+    });
     expect(saved.wheelCondition?.flapsIntact).toBe(true);
-    expect(saved.result.verdict).toBe('COMPATIBLE');
+    expect(saved.result.verdict).toBe('UNDETERMINED');
+    expect(
+      saved.result.checks.find((check) => check.rule === '제한적 규격 대조')
+        ?.detail?.code,
+    ).toBe('profileScope.limited');
   });
 
   it('결합숫돌 세부 형식은 기존처럼 시험운전 전에는 저장할 수 없다', () => {

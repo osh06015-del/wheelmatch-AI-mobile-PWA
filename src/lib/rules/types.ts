@@ -210,6 +210,20 @@ export interface AccessoryProfile {
   family: AccessoryFamily;
   /** 이 앱이 규격을 대조하는 종류인가. 아니면 종류 규칙이 판정불가로 막는다 */
   supported: boolean;
+  /**
+   * 이 Profile로 최종 적합(COMPATIBLE)까지 낼 수 있는가.
+   *
+   *   full    — 작업·덮개·재료 등 핵심 조건까지 근거가 갖춰졌다. RPM·지름이
+   *             맞으면 적합을 낼 수 있다. 지금은 bonded_abrasive와 결합숫돌
+   *             세부 형식(Type 1/41·27/28·27/42·6/11)뿐이다.
+   *   limited — RPM·지름만 공통 규칙으로 대조했다. 작업·덮개·장착 적합성의
+   *             근거가 없어, RPM·지름이 맞아도 적합을 내지 않는다
+   *             (checkProfileScope가 판정불가로 막는다).
+   *
+   * required로 선언한 필드가 있어도 scope가 limited면 적합에 이르지 못한다 —
+   * "부분적으로 검증된 종류"를 "검증된 종류"처럼 통과시키지 않기 위해서다.
+   */
+  scope: 'full' | 'limited';
   /** 허용 작업(절단/연삭). 근거가 없으면 'unverified' — 작업을 막지도 통과시키지도 않는다 */
   allowedWork: AllowList<WorkPurpose>;
   /**
@@ -271,6 +285,8 @@ export type AccessorySourceId = 'krOsh' | 'kosha' | 'osa';
 export interface AccessoryProfileRef {
   type: WheelType;
   version: string;
+  /** 저장 당시의 판정 범위(AccessoryProfile.scope). 이 기능 도입 전 기록에는 없다 */
+  scope?: 'full' | 'limited';
 }
 
 /**
@@ -587,7 +603,8 @@ export type ReasonCode =
   | 'expiry.noPolicy'
   | 'guard.missing'
   | 'guard.smallerThanWheel'
-  | 'guard.manualCheck';
+  | 'guard.manualCheck'
+  | 'profileScope.limited';
 
 /**
  * 사유를 고른 언어로 다시 만들기 위한 코드와 값.

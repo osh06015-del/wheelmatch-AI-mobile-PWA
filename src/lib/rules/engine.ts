@@ -33,6 +33,7 @@ export const RULE = {
   EXPIRY: '유효기한',
   CONFIDENCE: '신뢰도 검증',
   GUARD: '덮개 조건',
+  PROFILE_SCOPE: '제한적 규격 대조',
 } as const;
 
 const PURPOSE_LABEL: Record<WheelPurpose, string> = {
@@ -595,6 +596,38 @@ export function checkGuard(
 }
 
 /**
+ * Rule 13 — 판정 범위(부분 검증 Profile은 적합을 내지 않는다)
+ *
+ * Profile의 `scope`가 'limited'면 작업·덮개·재료 같은 핵심 조건 중 근거를
+ * 확인하지 못한 것이 있다는 뜻이다(profiles.ts). 이런 종류는 RPM·지름이
+ * 둘 다 맞아도 **적합으로 끝내지 않는다** — "일부만 검증된 종류"가 "검증된
+ * 종류"와 같은 결론에 이르면, 화면에서 두 경우를 구분할 수 없게 된다.
+ *
+ * 부적합(false)은 이 규칙보다 항상 앞선다 — decideVerdict가 false를 먼저
+ * 본다. 이 항목은 RPM·지름 위반이 없을 때만 "그래도 적합은 아니다"를 만든다.
+ *
+ * scope가 'full'(bonded_abrasive와 결합숫돌 세부 형식)이면 항목을 만들지
+ * 않는다 — 기존 결합숫돌 판정에 새 항목을 더해 흔들지 않기 위해서다.
+ */
+export function checkProfileScope(
+  wheel: WheelSpec,
+  profile: AccessoryProfile | null,
+): CheckItem | null {
+  const applied = appliedProfile(wheel, profile);
+  if (applied === null || applied.scope !== 'limited') return null;
+
+  return {
+    rule: RULE.PROFILE_SCOPE,
+    grinderValue: null,
+    wheelValue: null,
+    passed: null,
+    reason:
+      'RPM과 지름만 대조했습니다. 작업·덮개·장착 적합성은 확인되지 않아 적합 판정을 제공하지 않습니다.',
+    detail: { code: 'profileScope.limited' },
+  };
+}
+
+/**
  * Rule 8 — 신뢰도 검증
  * 어느 한쪽이라도 인식 신뢰도가 낮으면, 나머지 항목이 통과하더라도
  * 그 값을 믿고 적합 판정을 내릴 수 없다. 전체를 판정불가로 되돌린다.
@@ -1093,6 +1126,8 @@ export function matchSpecs(
   const mountingSpec = checkMountingSpec(wheel);
   // 덮개를 아무것도 입력하지 않았으면(구기록 포함) 항목이 생기지 않는다.
   const guard = checkGuard(grinder, wheel, profile);
+  // scope가 'full'이면(bonded_abrasive·결합숫돌 세부 형식) 항목이 생기지 않는다.
+  const profileScope = checkProfileScope(wheel, profile);
 
   const checks: CheckItem[] = [
     checkRequiredValues(grinder, wheel),
@@ -1111,6 +1146,7 @@ export function matchSpecs(
     ...(unitConsistency ? [unitConsistency] : []),
     ...(mountingSpec ? [mountingSpec] : []),
     ...(guard ? [guard] : []),
+    ...(profileScope ? [profileScope] : []),
     checkConfidence(grinder, wheel),
   ];
 

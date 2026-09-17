@@ -37,6 +37,7 @@ export const RULE_MESSAGE_KEY: Readonly<Record<string, MessageKey>> = {
   [RULE.EXPIRY]: 'rule.expiry',
   [RULE.CONFIDENCE]: 'rule.confidence',
   [RULE.GUARD]: 'rule.guard',
+  [RULE.PROFILE_SCOPE]: 'rule.profileScope',
 };
 
 /**

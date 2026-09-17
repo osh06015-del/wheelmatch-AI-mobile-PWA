@@ -41,6 +41,8 @@ export const zh: Messages = {
     '护罩信息相互冲突。请重新检查角磨机状态和护罩选择。',
   'result.undetermined.guardSize':
     '无法确认所选护罩是否符合配件条件。请查看制造商说明书。',
+  'result.undetermined.limitedScope':
+    '仅对照了转速和直径。作业、护罩和安装的适用性尚未确认，因此不提供相符判定。',
   'result.recheckGuard': '重新检查护罩信息',
   'result.save': '完成并保存',
   'result.saving': '正在保存...',
@@ -408,15 +410,22 @@ export const zh: Messages = {
     '请亲自确认已按标签上的旋转方向箭头安装。',
 
   'rule.guard': '护罩条件',
+  'rule.profileScope': '有限规格对照',
   'reason.guard.missing':
     '您输入了没有护罩。此类型需要护罩。在装上护罩并更正输入之前无法判定。',
   'reason.guard.smallerThanWheel':
     '输入的护罩尺寸小于砂轮直径。此护罩无法罩住砂轮，在核对护罩和输入之前无法判定。',
   'reason.guard.manualCheck':
     '应用不核对护罩类型和尺寸是否适合此砂轮。请亲自确认安装状态。',
+  'reason.profileScope.limited':
+    '仅对照了转速和直径。作业、护罩和安装的适用性尚未确认，因此不提供相符判定。',
   'evidence.doc.guard': '《产业安全保健基准规则》第122条第1项 — 砂轮须设护罩',
   'evidence.limit.guard':
     '仅在作业者输入没有护罩或护罩小于砂轮时阻止。护罩尺寸标准的依据尚未核实，因此判为无法判定，而非不相符。有护罩并不代表护罩合适。',
+  'evidence.doc.profileScope':
+    '本应用的设计 — 对于作业、护罩、材料等核心条件缺乏依据的类型，仅按通用规则对照转速和直径',
+  'evidence.limit.profileScope':
+    '即使转速和直径相符，也不会得出相符（COMPATIBLE）结果。本应用未确认该类型是否适合此作业、护罩是否适合该类型、安装是否正确。请遵循制造商说明书和管理监督者的确认。',
 
   'wheelType.bonded_abrasive': '普通砂轮（固结磨具）',
   'wheelType.flap_disc': '百叶片',

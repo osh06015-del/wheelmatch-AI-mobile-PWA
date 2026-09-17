@@ -151,7 +151,12 @@ describe('일반 결합숫돌 Profile — 기존 동작 이전', () => {
     expect(profileRef('bonded_abrasive')).toEqual({
       type: 'bonded_abrasive',
       version: BONDED_ABRASIVE_PROFILE.version,
+      scope: 'full',
     });
+  });
+
+  it('판정 범위(scope)는 full이다 — RPM·지름이 맞으면 적합을 낼 수 있다', () => {
+    expect(BONDED_ABRASIVE_PROFILE.scope).toBe('full');
   });
 });
 
@@ -588,6 +593,7 @@ describe('덮개 조건 — 조건 표와 최종 판정이 어긋나지 않는�
 describe('Profile 필드 사용 구분', () => {
   const FIELD_VALUE: Record<string, unknown> = {
     supported: BONDED_ABRASIVE_PROFILE.supported,
+    scope: BONDED_ABRASIVE_PROFILE.scope,
     'specs.rpm': BONDED_ABRASIVE_PROFILE.specs.rpm,
     'specs.diameter': BONDED_ABRASIVE_PROFILE.specs.diameter,
     'specs.mounting': BONDED_ABRASIVE_PROFILE.specs.mounting,
@@ -749,7 +755,14 @@ describe('알려진 그라인더 액세서리 Profile', () => {
       expect(checkOf(result, RULE.WHEEL_TYPE)?.detail?.code).toBe(
         'wheelType.supportedProfile',
       );
-      expect(result.verdict).toBe('COMPATIBLE');
+      // scope가 limited라 RPM·지름이 맞아도 적합에 이르지 못한다 — 작업·유효
+      // 기한의 근거 미확인과 별개로, 판정 범위 자체가 이미 판정불가를 만든다.
+      expect(checkOf(result, RULE.PROFILE_SCOPE)).toMatchObject({
+        passed: null,
+        detail: { code: 'profileScope.limited' },
+      });
+      expect(checkOf(result, RULE.PROFILE_SCOPE)?.advisory).toBeFalsy();
+      expect(result.verdict).toBe('UNDETERMINED');
     },
   );
 
@@ -832,12 +845,20 @@ describe('알려진 그라인더 액세서리 Profile', () => {
       g: grinder({ guardType: 'none' }),
     });
     expect(checkOf(none, RULE.GUARD)?.detail?.code).toBe('guard.manualCheck');
-    expect(none.verdict).toBe('COMPATIBLE');
+    // 덮개 자체는 막지 않지만, 이 종류는 scope가 limited라 판정불가로 남는다
+    // (RULE.PROFILE_SCOPE) — 덮개 부재가 이유가 아니라는 것이 핵심이다.
+    expect(none.verdict).toBe('UNDETERMINED');
+    expect(checkOf(none, RULE.PROFILE_SCOPE)?.detail?.code).toBe(
+      'profileScope.limited',
+    );
 
     const small = run(valid({ wheelType: 'diamond_segmented' }), {
       g: grinder({ guardSize: 115 }),
     });
     expect(small.verdict).toBe('UNDETERMINED');
+    expect(checkOf(small, RULE.GUARD)?.detail?.code).toBe(
+      'guard.smallerThanWheel',
+    );
   });
 
   it('종류마다 필요한 상태 항목을 묻는다', () => {

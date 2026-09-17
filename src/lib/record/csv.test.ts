@@ -347,6 +347,7 @@ describe('toCsv', () => {
       'conditionDedicatedGuardFitted',
       'conditionWiresIntact',
       'conditionBackingPadUndamaged',
+      'accessoryProfileScope',
     ]);
   });
 
@@ -803,9 +804,10 @@ describe('다각도 외관 확인 열', () => {
     const [, row] = parse(toCsv([record()]));
     const start = CSV_COLUMNS.indexOf('workMaterial');
     expect(start).toBe(108);
-    // Profile 열 8개, 뒤이어 종류별 상태 항목 열 9개.
+    // Profile 열 8개, 종류별 상태 항목 열 9개, 판정 범위 열 1개.
     expect(CSV_COLUMNS.indexOf('conditionDiamondRimIntact')).toBe(116);
-    expect(CSV_COLUMNS.slice(start)).toHaveLength(17);
+    expect(CSV_COLUMNS.indexOf('accessoryProfileScope')).toBe(125);
+    expect(CSV_COLUMNS.slice(start)).toHaveLength(18);
     for (const column of CSV_COLUMNS.slice(start)) {
       expect(row[CSV_COLUMNS.indexOf(column)]).toBe('');
     }
@@ -839,5 +841,37 @@ describe('다각도 외관 확인 열', () => {
     expect(at('conditionDiamondRimIntact')).toBe('');
     // 기존 열의 자리는 그대로다.
     expect(at('wheelType')).toBe('flap_disc');
+  });
+
+  it('저장 당시 판정 범위(full/limited)를 맨 뒤 열에 적는다', () => {
+    const [, row] = parse(
+      toCsv([
+        record({
+          accessoryProfile: {
+            type: 'flap_disc',
+            version: 'v1',
+            scope: 'limited',
+          },
+        }),
+      ]),
+    );
+    expect(row[CSV_COLUMNS.indexOf('accessoryProfileScope')]).toBe('limited');
+
+    const [, fullRow] = parse(
+      toCsv([
+        record({
+          accessoryProfile: {
+            type: 'bonded_abrasive',
+            version: 'v1',
+            scope: 'full',
+          },
+        }),
+      ]),
+    );
+    expect(fullRow[CSV_COLUMNS.indexOf('accessoryProfileScope')]).toBe('full');
+
+    // Profile을 저장하지 않은(구기록) 기록은 빈 칸이다.
+    const [, legacyRow] = parse(toCsv([record()]));
+    expect(legacyRow[CSV_COLUMNS.indexOf('accessoryProfileScope')]).toBe('');
   });
 });

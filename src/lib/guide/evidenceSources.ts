@@ -61,6 +61,10 @@ export const EVIDENCE_SOURCE: Readonly<Record<string, EvidenceSource>> = {
     docKey: 'evidence.doc.guard',
     limitKey: 'evidence.limit.guard',
   },
+  [RULE.PROFILE_SCOPE]: {
+    docKey: 'evidence.doc.profileScope',
+    limitKey: 'evidence.limit.profileScope',
+  },
   [RULE.MOUNTING_SPEC]: {
     docKey: 'evidence.doc.mountingSpec',
     limitKey: 'evidence.limit.mountingSpec',

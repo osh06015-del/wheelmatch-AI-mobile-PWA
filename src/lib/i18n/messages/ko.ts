@@ -42,6 +42,8 @@ export const ko = {
     '덮개 정보가 서로 충돌합니다. 그라인더 상태와 덮개 선택을 다시 확인하세요.',
   'result.undetermined.guardSize':
     '선택한 덮개가 액세서리 조건과 맞는지 확인할 수 없습니다. 제조사 설명서를 확인하세요.',
+  'result.undetermined.limitedScope':
+    'RPM과 지름만 대조했습니다. 작업·덮개·장착 적합성은 확인되지 않아 적합 판정을 제공하지 않습니다.',
   'result.recheckGuard': '덮개 정보 다시 확인',
   'result.save': '점검 완료 및 저장',
   'result.saving': '저장 중...',
@@ -451,16 +453,23 @@ export const ko = {
     '라벨의 회전방향 화살표에 맞춰 장착했는지 직접 확인하세요.',
 
   'rule.guard': '덮개 조건',
+  'rule.profileScope': '제한적 규격 대조',
   'reason.guard.missing':
     '덮개가 없다고 입력했습니다. 이 종류는 덮개가 필요합니다. 덮개를 달고 입력을 바로잡기 전에는 판정할 수 없습니다.',
   'reason.guard.smallerThanWheel':
     '덮개 크기가 숫돌 지름보다 작게 입력됐습니다. 이 덮개로는 숫돌을 감쌀 수 없으니 덮개와 입력을 확인하기 전에는 판정할 수 없습니다.',
   'reason.guard.manualCheck':
     '덮개 종류와 크기가 이 숫돌에 맞는지 앱이 대조하지 않습니다. 장착 상태를 직접 확인하세요.',
+  'reason.profileScope.limited':
+    'RPM과 지름만 대조했습니다. 작업·덮개·장착 적합성은 확인되지 않아 적합 판정을 제공하지 않습니다.',
   'evidence.doc.guard':
     '산업안전보건기준에 관한 규칙 제122조 ① — 연삭숫돌 덮개 설치',
   'evidence.limit.guard':
     '작업자가 입력한 덮개 없음·덮개 크기 부족만 막습니다. 덮개 크기 기준의 근거는 확인하지 못해 부적합이 아니라 판정불가로 둡니다. 덮개가 있다고 맞는 덮개라는 뜻은 아닙니다.',
+  'evidence.doc.profileScope':
+    '이 앱의 설계 — 작업·덮개·재료 등 핵심 조건의 근거가 없는 종류는 회전속도·지름만 공통 규칙으로 대조합니다',
+  'evidence.limit.profileScope':
+    '회전속도·지름이 맞아도 적합(COMPATIBLE)을 내지 않습니다. 작업에 맞는 종류인지, 덮개가 이 종류에 맞는지, 장착이 올바른지는 이 앱이 확인하지 않았습니다. 제조사 취급설명서와 관리감독자의 확인을 따르세요.',
 
   'wheelType.bonded_abrasive': '일반 결합숫돌',
   'wheelType.flap_disc': '플랩디스크',

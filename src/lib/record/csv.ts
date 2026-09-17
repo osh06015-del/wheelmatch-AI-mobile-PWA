@@ -177,6 +177,9 @@ export const CSV_COLUMNS = [
   'conditionDedicatedGuardFitted',
   'conditionWiresIntact',
   'conditionBackingPadUndamaged',
+  // 저장 당시 Profile로 적합까지 낼 수 있었는지(full/limited). 이 기능 도입
+  // 전 기록은 빈 칸이다. 앞선 열의 자리를 지키기 위해 맨 뒤에 붙인다.
+  'accessoryProfileScope',
 ] as const;
 
 /**
@@ -387,6 +390,7 @@ function row(record: InspectionRecord): string {
     tick(record.wheelCondition?.dedicatedGuardFitted),
     tick(record.wheelCondition?.wiresIntact),
     tick(record.wheelCondition?.backingPadUndamaged),
+    record.accessoryProfile?.scope,
   ];
 
   return values.map(cell).join(',');
