@@ -351,9 +351,25 @@ export default function WheelScanPage() {
   }
 
   function updateWheelType(next: WheelType) {
-    setForm((current) => ({ ...current, wheelType: next }));
+    setForm((current) => ({
+      ...current,
+      wheelType: next,
+      // 부속품 이름은 other·unknown에서만 보이는 입력이다. 종류를 바꾼 뒤에도
+      // 남으면 이름이 다른 종류의 기록에 섞이거나(예: 결합숫돌로 바꿨는데
+      // 예전 이름이 그대로 저장), 되돌아왔을 때 이전 부속품의 이름이 이번
+      // 부속품 것처럼 보인다.
+      accessoryName: '',
+    }));
     // 앞서 한 직접 확인은 다른 종류를 두고 한 확인이었다. 다시 받는다.
     setUserConfirmed(false);
+    // 종류마다 Wheel Condition Gate 항목 구성이 다르다(conditionItemsFor).
+    // 초기화하지 않으면 이전 종류에서 확인한 damageFree 같은 공통 키가 새
+    // 종류에서도 이미 확인된 것처럼 남는다 — 다시 누르지 않아도 통과한다.
+    setCondition({ ...EMPTY_WHEEL_CONDITION });
+    // 다각도 확인은 이전 종류를 보고 한 것이다. 새 종류가 요구하지 않아
+    // 화면에서 사라져도 내부 상태가 남으면 proceed()가 그 결과를 그대로
+    // 저장한다 — 평형 결합숫돌용 확인이 다른 종류의 기록에 섞인다.
+    resetExam();
   }
 
   function proceed() {

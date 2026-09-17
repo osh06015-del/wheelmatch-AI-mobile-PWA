@@ -12,6 +12,7 @@ import {
   render,
   renderHook,
   screen,
+  within,
 } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -356,6 +357,69 @@ describe('숫돌 촬영 화면 — 숫돌 종류 직접 확인', () => {
     fireEvent.change(typeSelect(), { target: { value: 'cup_wheel' } });
 
     expect(manualToggle()).not.toBeChecked();
+  });
+
+  it('종류를 바꾸면 이전 종류에서 확인한 상태 Gate 항목이 새 종류에서 이미 확인된 것처럼 남지 않는다', async () => {
+    // 결합숫돌과 플랩디스크는 둘 다 damageFree를 묻는다(공통 항목). 이전
+    // 종류에서 확인한 값이 그대로 남으면 새 종류에서 다시 누르지 않아도
+    // 확인된 것처럼 보인다.
+    await openConfirm(OCR); // bonded_abrasive
+    answerWheelCondition();
+
+    const damageGroup = () =>
+      screen.getByRole('group', {
+        name: '깨짐·갈라짐·잔금·모서리 파손이 없는가?',
+      });
+    expect(
+      within(damageGroup()).getByRole('button', { name: /확인함/ }),
+    ).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.change(typeSelect(), { target: { value: 'flap_disc' } });
+
+    expect(
+      within(damageGroup()).getByRole('button', { name: /확인함/ }),
+    ).toHaveAttribute('aria-pressed', 'false');
+    expect(proceedButton()).toBeDisabled();
+  });
+
+  it('종류를 바꾸면 이전 종류에서 마친 다각도 확인 결과가 새 종류의 기록에 섞이지 않는다', async () => {
+    // 결합숫돌은 다각도 확인을 요구하지만 플랩디스크는 요구하지 않는다.
+    // 결합숫돌로 확인을 마친 뒤 플랩디스크로 바꾸면, 화면에서 패널은
+    // 사라져도 내부 상태가 남아 있으면 그 결과가 플랩디스크 기록으로
+    // 저장될 수 있다.
+    const result = await openConfirm(OCR); // bonded_abrasive
+    answerWheelCondition();
+    await completeExam();
+
+    fireEvent.change(typeSelect(), { target: { value: 'flap_disc' } });
+    fireEvent.click(manualToggle());
+    answerWheelCondition();
+    expect(proceedButton()).toBeEnabled();
+    fireEvent.click(proceedButton());
+
+    expect(push).toHaveBeenCalledWith('/result');
+    expect(result.current.wheel?.wheelType).toBe('flap_disc');
+    expect(result.current.wheelExam).toBeNull();
+    expect(result.current.wheelExamNotRun).toBeNull();
+  });
+
+  it('종류를 바꾸면 부속품 이름 입력이 새 종류로 넘어가지 않는다', async () => {
+    const result = await openConfirm({ ...OCR, wheelType: 'other' });
+    const nameInput = () => screen.getByLabelText('부속품 이름(선택)');
+    fireEvent.change(nameInput(), { target: { value: '수동 연마 롤러' } });
+    expect(nameInput()).toHaveValue('수동 연마 롤러');
+
+    fireEvent.change(typeSelect(), { target: { value: 'unknown' } });
+
+    expect(nameInput()).toHaveValue('');
+
+    fireEvent.click(manualToggle());
+    answerWheelCondition();
+    fireEvent.click(proceedButton());
+
+    expect(push).toHaveBeenCalledWith('/result');
+    expect(result.current.wheel?.wheelType).toBe('unknown');
+    expect(result.current.wheel?.accessoryName).toBeNull();
   });
 
   it('Tesseract가 종류를 모르겠음으로 남겨도 작업자가 일반 결합숫돌을 골라 계속할 수 있다', async () => {
