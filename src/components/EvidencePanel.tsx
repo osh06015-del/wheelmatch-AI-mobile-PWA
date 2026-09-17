@@ -390,6 +390,19 @@ export function EvidencePanel({
         wheel.expiry ? formatExpiry(wheel.expiry) : null,
       ),
     },
+    {
+      key: 'accessoryName',
+      label: t('field.accessoryName'),
+      // OCR은 이 값을 읽은 적이 없다 — 작업자가 other·unknown에서만 직접 적는
+      // 식별용 문구다(profiles.ts). raw·normalized는 항상 '미기록'이다.
+      raw: t('evidence.notRecorded'),
+      normalized: t('evidence.notRecorded'),
+      final:
+        wheel.accessoryName === undefined
+          ? t('evidence.notRecorded')
+          : finalCell(wheel.accessoryName),
+      source: wheel.accessoryName ? 'user' : 'unrecorded',
+    },
   ];
 
   return (

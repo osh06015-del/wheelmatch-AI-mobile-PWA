@@ -33,6 +33,12 @@ export interface HistoryFilterState {
   wheelType: WheelType | null;
   /** null이면 전체. TRIAL_RUN_NONE이면 시험운전 자체가 없는 기록만 */
   trialRunOutcome: TrialRunOutcome | typeof TRIAL_RUN_NONE | null;
+  /**
+   * 저장 당시 Profile로 적합까지 낼 수 있었는지(full/limited). null이면 전체.
+   * 이 기능 도입 전 기록은 scope가 없으므로 걸러진다 — 있는 기록만 이 필터에
+   * 걸린다는 뜻이지, "제한적이 아니다"로 단정하지 않는다.
+   */
+  scope: 'full' | 'limited' | null;
 }
 
 /** 아무것도 거르지 않는 시작 상태. */
@@ -43,6 +49,7 @@ export const EMPTY_HISTORY_FILTER: HistoryFilterState = {
   dateTo: null,
   wheelType: null,
   trialRunOutcome: null,
+  scope: null,
 };
 
 /** 필터 중 하나라도 걸려 있는지. 초기화 버튼을 보여줄지 정하는 데 쓴다. */
@@ -105,6 +112,12 @@ export function matchesFilter<T extends InspectionRecord>(
     return false;
   }
   if (!matchesTrialRun(record, filter.trialRunOutcome)) return false;
+  if (
+    filter.scope !== null &&
+    record.accessoryProfile?.scope !== filter.scope
+  ) {
+    return false;
+  }
   if (!matchesDateRange(record.createdAt, filter.dateFrom, filter.dateTo)) {
     return false;
   }

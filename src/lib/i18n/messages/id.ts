@@ -437,6 +437,10 @@ export const id: Messages = {
   'profile.note':
     'Pertentangan pelindung memblokir hasil menjadi tidak dapat ditentukan. Butir lainnya tidak termasuk pemeriksaan spesifikasi, dan aplikasi tidak menganggapnya cocok — periksa sendiri.',
   'profile.version': 'Profil kondisi: {type} · {version}',
+  'profile.scope.full':
+    'Cakupan penilaian: kondisi lengkap (termasuk pekerjaan, pelindung, material)',
+  'profile.scope.limited':
+    'Cakupan penilaian: terbatas (hanya kecepatan dan diameter dibandingkan)',
   'profile.none':
     'Tidak ada profil kondisi untuk jenis ini. Periksa petunjuk pabrikan.',
   'profile.status.unknown': 'Belum diketahui',
@@ -905,6 +909,10 @@ export const id: Messages = {
   'history.filter.verdictAll': 'Semua',
   'history.filter.wheelType': 'Jenis batu gerinda',
   'history.filter.wheelTypeAll': 'Semua',
+  'history.filter.scope': 'Cakupan penilaian',
+  'history.filter.scopeAll': 'Semua',
+  'history.filter.scopeFull': 'Kondisi lengkap',
+  'history.filter.scopeLimited': 'Terbatas',
   'history.filter.trialRun': 'Hasil uji jalan',
   'history.filter.trialRunAll': 'Semua',
   'history.filter.trialRunNormal': 'Tidak ada masalah',

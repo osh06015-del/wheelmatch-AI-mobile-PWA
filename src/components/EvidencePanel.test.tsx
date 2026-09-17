@@ -149,6 +149,55 @@ describe('EvidencePanel — 구기록의 없는 값', () => {
   });
 });
 
+describe('EvidencePanel — 부속품 입력값(accessoryName)', () => {
+  it('이 필드가 없는 기록(도입 전)은 미기록으로 적는다', async () => {
+    const user = userEvent.setup();
+    const g = grinder();
+    const w = wheel({ wheelType: 'other' });
+    render(
+      <EvidencePanel
+        grinder={g}
+        wheel={w}
+        result={matchSpecs(g, w, {
+          profile: BONDED_ABRASIVE_PROFILE,
+          today: TODAY,
+        })}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: '근거 보기' }));
+
+    const row = screen.getByText('부속품 이름(선택)').closest('li');
+    expect(row).toHaveTextContent('미기록');
+  });
+
+  it('작업자가 적은 이름을 최종값·출처와 함께 보여준다 — OCR은 이 값을 읽은 적이 없다', async () => {
+    const user = userEvent.setup();
+    const g = grinder();
+    const w = wheel({ wheelType: 'other', accessoryName: '수동 연마 롤러' });
+    render(
+      <EvidencePanel
+        grinder={g}
+        wheel={w}
+        result={matchSpecs(g, w, {
+          profile: BONDED_ABRASIVE_PROFILE,
+          today: TODAY,
+        })}
+        grinderOcr={g}
+        wheelOcr={w}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: '근거 보기' }));
+
+    const row = screen.getByText('부속품 이름(선택)').closest('li');
+    expect(row).toHaveTextContent('수동 연마 롤러');
+    expect(row).toHaveTextContent('작업자 입력');
+    // raw·normalized는 OCR이 읽은 적 없는 필드라 항상 미기록이다.
+    expect(row).toHaveTextContent('미기록');
+  });
+});
+
 describe('EvidencePanel — 안전 경계', () => {
   it('시스템 프롬프트나 API 원문을 노출하지 않는다', async () => {
     const user = userEvent.setup();

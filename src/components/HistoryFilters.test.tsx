@@ -97,8 +97,30 @@ describe('HistoryFilters', () => {
     expect(screen.getByLabelText('작업')).toBeInTheDocument();
     expect(screen.getByLabelText('판정')).toBeInTheDocument();
     expect(screen.getByLabelText('숫돌 종류')).toBeInTheDocument();
+    expect(screen.getByLabelText('판정 범위')).toBeInTheDocument();
     expect(screen.getByLabelText('Trial Run 결과')).toBeInTheDocument();
     expect(screen.getByLabelText('시작일')).toBeInTheDocument();
     expect(screen.getByLabelText('종료일')).toBeInTheDocument();
+  });
+
+  it('판정 범위(full/limited)를 고르면 다른 필드는 그대로 둔 채 onChange를 부른다', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const filter = {
+      ...EMPTY_HISTORY_FILTER,
+      verdict: 'UNDETERMINED' as const,
+    };
+    render(
+      <HistoryFilters
+        filter={filter}
+        onChange={onChange}
+        total={5}
+        count={3}
+      />,
+    );
+
+    await user.selectOptions(screen.getByLabelText('판정 범위'), '제한적');
+
+    expect(onChange).toHaveBeenCalledWith({ ...filter, scope: 'limited' });
   });
 });

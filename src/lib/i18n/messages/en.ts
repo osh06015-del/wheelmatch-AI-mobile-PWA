@@ -422,6 +422,10 @@ export const en: Messages = {
   'profile.note':
     'A guard conflict blocks the result as undetermined. The other items are not part of the spec check, and the app never assumes they match — check them yourself.',
   'profile.version': 'Condition profile: {type} · {version}',
+  'profile.scope.full':
+    'Judgment scope: full conditions (work, guard, material included)',
+  'profile.scope.limited':
+    'Judgment scope: limited (only RPM and diameter compared)',
   'profile.none':
     'There is no condition profile for this type. Check the manufacturer instructions.',
   'profile.status.unknown': 'Unknown',
@@ -886,6 +890,10 @@ export const en: Messages = {
   'history.filter.verdictAll': 'All',
   'history.filter.wheelType': 'Wheel type',
   'history.filter.wheelTypeAll': 'All',
+  'history.filter.scope': 'Judgment scope',
+  'history.filter.scopeAll': 'All',
+  'history.filter.scopeFull': 'Full conditions',
+  'history.filter.scopeLimited': 'Limited',
   'history.filter.trialRun': 'Trial run result',
   'history.filter.trialRunAll': 'All',
   'history.filter.trialRunNormal': 'No issues',

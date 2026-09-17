@@ -150,6 +150,37 @@ describe('숫돌 종류 필터', () => {
   });
 });
 
+describe('판정 범위(scope) 필터', () => {
+  it('scope가 일치하는 기록만 남긴다', () => {
+    const filter: HistoryFilterState = {
+      ...EMPTY_HISTORY_FILTER,
+      scope: 'limited',
+    };
+    const full = record({
+      accessoryProfile: {
+        type: 'bonded_abrasive',
+        version: 'v1',
+        scope: 'full',
+      },
+    });
+    const limited = record({
+      accessoryProfile: { type: 'flap_disc', version: 'v1', scope: 'limited' },
+    });
+    expect(matchesFilter(full, filter)).toBe(false);
+    expect(matchesFilter(limited, filter)).toBe(true);
+  });
+
+  it('scope를 저장하지 않은 기록(도입 전)은 걸러진다 — 있는 것으로 단정하지 않는다', () => {
+    const filter: HistoryFilterState = {
+      ...EMPTY_HISTORY_FILTER,
+      scope: 'full',
+    };
+    expect(matchesFilter(record({ accessoryProfile: undefined }), filter)).toBe(
+      false,
+    );
+  });
+});
+
 describe('Trial Run 결과 필터', () => {
   const trialRun = (outcome: 'normal' | 'abnormal') => ({
     wheelReplaced: false,

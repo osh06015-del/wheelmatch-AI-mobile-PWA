@@ -148,6 +148,27 @@ export function HistoryFilters({
 
         <label className="flex flex-col gap-1">
           <span className="text-sm text-slate-400">
+            {t('history.filter.scope')}
+          </span>
+          <select
+            value={filter.scope ?? ''}
+            onChange={(event) =>
+              onChange({
+                ...filter,
+                scope: (event.target.value || null) as
+                  'full' | 'limited' | null,
+              })
+            }
+            className="min-h-12 rounded-lg border border-slate-600 bg-slate-800 px-3 text-base text-slate-100"
+          >
+            <option value="">{t('history.filter.scopeAll')}</option>
+            <option value="full">{t('history.filter.scopeFull')}</option>
+            <option value="limited">{t('history.filter.scopeLimited')}</option>
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-sm text-slate-400">
             {t('history.filter.trialRun')}
           </span>
           <select

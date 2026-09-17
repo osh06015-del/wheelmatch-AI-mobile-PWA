@@ -158,6 +158,9 @@ describe('비통과 문구', () => {
       'profile.code.guardSize.smallerThanWheel',
       'profile.status.conflict',
       'verdict.undetermined',
+      // 판정 범위(scope)가 제한적이라는 사실이 적합·안전으로 읽히면 안 된다.
+      'profile.scope.limited',
+      'history.filter.scopeLimited',
     ] as const;
 
     for (const { code } of LOCALES) {

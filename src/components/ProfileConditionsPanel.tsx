@@ -89,6 +89,18 @@ export function ProfileConditionsPanel({
               version: profile.version,
             })}
           </p>
+          {/* 저장 당시 기록에는 없을 수 있다(scope 도입 전) — 그때는 아무것도
+              적지 않는다. limited를 부적합·미승인으로 읽히게 하지 않는다 —
+              "판정 범위"라는 사실만 중립적으로 적는다. */}
+          {profile.scope && (
+            <p className="text-sm text-slate-500">
+              {t(
+                profile.scope === 'full'
+                  ? 'profile.scope.full'
+                  : 'profile.scope.limited',
+              )}
+            </p>
+          )}
         </>
       )}
     </section>

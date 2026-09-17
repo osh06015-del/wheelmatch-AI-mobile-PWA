@@ -416,6 +416,10 @@ export const vi: Messages = {
   'profile.note':
     'Mâu thuẫn về nắp che sẽ chặn kết quả ở mức chưa xác định. Các mục còn lại không nằm trong việc đối chiếu quy cách, và ứng dụng không coi là phù hợp — hãy tự kiểm tra.',
   'profile.version': 'Bảng điều kiện: {type} · {version}',
+  'profile.scope.full':
+    'Phạm vi đối chiếu: đầy đủ điều kiện (gồm công việc, nắp che, vật liệu)',
+  'profile.scope.limited':
+    'Phạm vi đối chiếu: hạn chế (chỉ đối chiếu tốc độ quay và đường kính)',
   'profile.none':
     'Không có bảng điều kiện cho loại này. Hãy xem hướng dẫn của nhà sản xuất.',
   'profile.status.unknown': 'Chưa rõ',
@@ -874,6 +878,10 @@ export const vi: Messages = {
   'history.filter.verdictAll': 'Tất cả',
   'history.filter.wheelType': 'Loại đá mài',
   'history.filter.wheelTypeAll': 'Tất cả',
+  'history.filter.scope': 'Phạm vi đối chiếu',
+  'history.filter.scopeAll': 'Tất cả',
+  'history.filter.scopeFull': 'Đầy đủ điều kiện',
+  'history.filter.scopeLimited': 'Hạn chế',
   'history.filter.trialRun': 'Kết quả chạy thử',
   'history.filter.trialRunAll': 'Tất cả',
   'history.filter.trialRunNormal': 'Không có bất thường',

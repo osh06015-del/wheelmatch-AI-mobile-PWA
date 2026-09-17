@@ -54,6 +54,37 @@ describe('ProfileConditionsPanel', () => {
     ).toBeInTheDocument();
   });
 
+  it('판정 범위(full/limited)를 중립적인 말로 적는다', () => {
+    render(
+      <ProfileConditionsPanel
+        profile={{ ...REF, scope: 'full' }}
+        conditions={CONDITIONS}
+      />,
+    );
+    expect(
+      screen.getByText('판정 범위: 전체 조건(작업·덮개·재료 포함)'),
+    ).toBeInTheDocument();
+
+    render(
+      <ProfileConditionsPanel
+        profile={{ type: 'flap_disc', version: 'v1', scope: 'limited' }}
+        conditions={CONDITIONS}
+      />,
+    );
+    expect(
+      screen.getByText('판정 범위: 제한적(RPM·지름만 대조)'),
+    ).toBeInTheDocument();
+    // limited를 적합·안전·정상으로 읽히게 하지 않는다.
+    expect(
+      screen.queryByText(/적합|안전합니다|정상입니다/),
+    ).not.toBeInTheDocument();
+  });
+
+  it('scope가 없는 기록(도입 전)은 판정 범위 줄을 그리지 않는다', () => {
+    render(<ProfileConditionsPanel profile={REF} conditions={CONDITIONS} />);
+    expect(screen.queryByText(/판정 범위/)).not.toBeInTheDocument();
+  });
+
   it('Profile이 없는 종류는 조건표가 없다고만 알린다', () => {
     render(<ProfileConditionsPanel profile={null} conditions={null} />);
 

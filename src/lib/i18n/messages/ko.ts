@@ -406,6 +406,8 @@ export const ko = {
   'profile.note':
     '덮개 어긋남은 판정을 판정불가로 막습니다. 나머지 항목은 규격 판정에 들어가지 않으며, 앱이 맞다고 추정하지 않으니 직접 확인하세요.',
   'profile.version': '적용 조건표: {type} · {version}',
+  'profile.scope.full': '판정 범위: 전체 조건(작업·덮개·재료 포함)',
+  'profile.scope.limited': '판정 범위: 제한적(RPM·지름만 대조)',
   'profile.none':
     '이 종류에 적용할 조건표가 없습니다. 제조사 취급설명서를 확인하세요.',
   'profile.status.unknown': '모름',
@@ -857,6 +859,10 @@ export const ko = {
   'history.filter.verdictAll': '전체',
   'history.filter.wheelType': '숫돌 종류',
   'history.filter.wheelTypeAll': '전체',
+  'history.filter.scope': '판정 범위',
+  'history.filter.scopeAll': '전체',
+  'history.filter.scopeFull': '전체 조건',
+  'history.filter.scopeLimited': '제한적',
   'history.filter.trialRun': 'Trial Run 결과',
   'history.filter.trialRunAll': '전체',
   'history.filter.trialRunNormal': '이상 없음',

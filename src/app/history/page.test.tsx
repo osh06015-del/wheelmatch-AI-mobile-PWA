@@ -191,12 +191,17 @@ function record(overrides: Partial<InspectionRecord> = {}): InspectionRecord {
 }
 
 describe('이력 화면 — 필터', () => {
-  const cutting = record({ id: 1, declaredPurpose: 'cutting' });
+  const cutting = record({
+    id: 1,
+    declaredPurpose: 'cutting',
+    accessoryProfile: { type: 'bonded_abrasive', version: 'v1', scope: 'full' },
+  });
   const grinding = record({
     id: 2,
     declaredPurpose: 'grinding',
     result: { verdict: 'INCOMPATIBLE', checks: [], timestamp: '' },
     wheel: { ...WHEEL, wheelType: 'flap_disc' },
+    accessoryProfile: { type: 'flap_disc', version: 'v1', scope: 'limited' },
   });
 
   const all = [cutting, grinding];
@@ -223,6 +228,18 @@ describe('이력 화면 — 필터', () => {
     expect(within(list).getByText('연삭')).toBeInTheDocument();
     expect(within(list).queryByText('절단')).not.toBeInTheDocument();
     expect(screen.getByText('전체 2건 중 1건')).toBeInTheDocument();
+  });
+
+  it('판정 범위(full/limited)로 걸러도 조건에 맞는 기록만 남는다', async () => {
+    const user = userEvent.setup();
+    render(<HistoryPage />);
+
+    await user.selectOptions(screen.getByLabelText('판정 범위'), '제한적');
+
+    const list = screen.getByRole('list');
+    expect(within(list).getAllByRole('listitem')).toHaveLength(1);
+    expect(within(list).getByText('연삭')).toBeInTheDocument();
+    expect(within(list).queryByText('절단')).not.toBeInTheDocument();
   });
 
   it('기록 하나를 확인창을 거쳐 지운다', async () => {
