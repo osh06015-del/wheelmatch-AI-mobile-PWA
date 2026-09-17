@@ -1058,4 +1058,29 @@ export const id: Messages = {
   'draft.photosOmitted': 'Penyimpanan penuh, jadi progres disimpan tanpa foto.',
   'draft.discardFailed': 'Progres tidak dapat dihapus. Coba lagi.',
   'draft.dismiss': 'Tutup',
+
+  'savedGrinder.title': 'Gerinda tersimpan',
+  'savedGrinder.loading': 'Memuat...',
+  'savedGrinder.empty': 'Belum ada gerinda tersimpan.',
+  'savedGrinder.summary': '{model} · {rpm}rpm · Φ{diameter}mm',
+  'savedGrinder.select': 'Pilih',
+  'savedGrinder.edit': 'Ubah',
+  'savedGrinder.delete': 'Hapus',
+  'savedGrinder.save': 'Simpan',
+  'savedGrinder.cancel': 'Batal',
+  'savedGrinder.applyConfirm':
+    'Terapkan nilai ini ke kolom isian? Anda tetap harus konfirmasi dan memeriksa kondisi alat lagi.',
+  'savedGrinder.applyConfirmDiffers':
+    'Nilai ini berbeda dari nilai yang baru dibaca. Ganti dengan nilai tersimpan? Anda tetap harus konfirmasi dan memeriksa kondisi alat lagi.',
+  'savedGrinder.applyConfirmButton': 'Terapkan',
+  'savedGrinder.editConfirm':
+    'Timpa item tersimpan ini dengan nilai yang baru dimasukkan?',
+  'savedGrinder.editConfirmButton': 'Timpa',
+  'savedGrinder.deleteConfirm':
+    'Hapus item tersimpan ini? Tidak dapat dibatalkan.',
+  'savedGrinder.deleteConfirmButton': 'Hapus',
+  'savedGrinder.saveCurrent': 'Simpan nilai saat ini sebagai baru',
+  'savedGrinder.aliasLabel': 'Nama',
+  'savedGrinder.aliasPlaceholder': 'contoh: Gerinda #1',
+  'savedGrinder.aliasRequired': 'Masukkan nama.',
 };

@@ -913,4 +913,27 @@ export const zh: Messages = {
   'draft.photosOmitted': '存储空间不足，仅临时保存了进度，未保存照片。',
   'draft.discardFailed': '无法删除进度。请重试。',
   'draft.dismiss': '关闭',
+
+  'savedGrinder.title': '已保存的砂轮机',
+  'savedGrinder.loading': '正在加载...',
+  'savedGrinder.empty': '还没有保存的砂轮机。',
+  'savedGrinder.summary': '{model} · {rpm}rpm · Φ{diameter}mm',
+  'savedGrinder.select': '选择',
+  'savedGrinder.edit': '编辑',
+  'savedGrinder.delete': '删除',
+  'savedGrinder.save': '保存',
+  'savedGrinder.cancel': '取消',
+  'savedGrinder.applyConfirm':
+    '将此数值应用到输入框吗？应用后仍需重新确认并检查设备状态。',
+  'savedGrinder.applyConfirmDiffers':
+    '此数值与刚读取的数值不同。要替换为已保存的数值吗？应用后仍需重新确认并检查设备状态。',
+  'savedGrinder.applyConfirmButton': '应用',
+  'savedGrinder.editConfirm': '要用刚输入的数值覆盖这条保存项吗？',
+  'savedGrinder.editConfirmButton': '覆盖',
+  'savedGrinder.deleteConfirm': '要删除这条保存项吗？此操作无法撤销。',
+  'savedGrinder.deleteConfirmButton': '删除',
+  'savedGrinder.saveCurrent': '将当前输入值另存为新项',
+  'savedGrinder.aliasLabel': '别名',
+  'savedGrinder.aliasPlaceholder': '例：1号砂轮机',
+  'savedGrinder.aliasRequired': '请输入别名。',
 };

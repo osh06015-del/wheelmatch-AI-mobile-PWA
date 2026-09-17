@@ -1039,4 +1039,29 @@ export const en: Messages = {
     'Storage is full, so progress was saved without photos.',
   'draft.discardFailed': 'The progress could not be deleted. Try again.',
   'draft.dismiss': 'Close',
+
+  'savedGrinder.title': 'Saved grinders',
+  'savedGrinder.loading': 'Loading...',
+  'savedGrinder.empty': 'No saved grinders yet.',
+  'savedGrinder.summary': '{model} · {rpm}rpm · Φ{diameter}mm',
+  'savedGrinder.select': 'Select',
+  'savedGrinder.edit': 'Edit',
+  'savedGrinder.delete': 'Delete',
+  'savedGrinder.save': 'Save',
+  'savedGrinder.cancel': 'Cancel',
+  'savedGrinder.applyConfirm':
+    'Apply this to the fields? You still need to confirm and check the equipment condition again.',
+  'savedGrinder.applyConfirmDiffers':
+    'This differs from the value just read. Replace it with the saved value? You still need to confirm and check the equipment condition again.',
+  'savedGrinder.applyConfirmButton': 'Apply',
+  'savedGrinder.editConfirm':
+    'Overwrite this saved entry with the values you just entered?',
+  'savedGrinder.editConfirmButton': 'Overwrite',
+  'savedGrinder.deleteConfirm':
+    'Delete this saved entry? This cannot be undone.',
+  'savedGrinder.deleteConfirmButton': 'Delete',
+  'savedGrinder.saveCurrent': 'Save current values as new',
+  'savedGrinder.aliasLabel': 'Name',
+  'savedGrinder.aliasPlaceholder': 'e.g. Grinder #1',
+  'savedGrinder.aliasRequired': 'Enter a name.',
 };

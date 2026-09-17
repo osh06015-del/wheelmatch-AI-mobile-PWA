@@ -22,8 +22,10 @@ import {
   type GrinderMountingValue,
 } from '@/components/GrinderMountingInputs';
 import { ManualConfirmToggle } from '@/components/ManualConfirmToggle';
+import { SavedGrinderPanel } from '@/components/SavedGrinderPanel';
 import { ScanHeader } from '@/components/ScanHeader';
 import { formDraftStore } from '@/lib/draft/draftStore';
+import type { SavedGrinderFields } from '@/lib/db/savedGrinderModel';
 import {
   FORM_DRAFT_SAVE_DELAY_MS,
   FORM_DRAFT_SCHEMA_VERSION,
@@ -263,6 +265,27 @@ export default function GrinderScanPage() {
     // 만든다. 숫돌 쪽과 다른 이유는 그쪽 4·5번이 라벨 자체를 묻기 때문이다.
   }
 
+  /**
+   * 저장해 둔 그라인더를 골라 입력칸만 채운다.
+   *
+   * "저장된 이름을 골랐다"는 "지금 이 기계를 확인했다"는 뜻이 아니다 — 값을
+   * 읽었을 때와 똑같이 확인(userConfirmed)과 장비 상태 Gate를 다시 받는다.
+   */
+  function applySavedGrinder(fields: SavedGrinderFields) {
+    setForm({
+      model: fields.model,
+      noLoadRPM: fields.noLoadRPM,
+      maxWheelDiameter: fields.maxWheelDiameter,
+    });
+    setMounting({
+      spindleThread: fields.spindleThread,
+      guardType: fields.guardType,
+      guardSize: fields.guardSize,
+    });
+    setUserConfirmed(false);
+    setCondition({ ...EMPTY_GRINDER_CONDITION });
+  }
+
   function proceed() {
     if (!isGrinderConditionComplete(condition)) return;
     const spec: GrinderSpec = {
@@ -430,6 +453,17 @@ export default function GrinderScanPage() {
           ⚠ {t('scan.localOcr.notice')}
         </p>
       )}
+      <SavedGrinderPanel
+        currentFields={{
+          model: form.model,
+          noLoadRPM: form.noLoadRPM,
+          maxWheelDiameter: form.maxWheelDiameter,
+          spindleThread: mounting.spindleThread,
+          guardType: mounting.guardType,
+          guardSize: mounting.guardSize,
+        }}
+        onApply={applySavedGrinder}
+      />
       <FieldConfirm
         title={t('scan.confirmTitle')}
         fields={fields}

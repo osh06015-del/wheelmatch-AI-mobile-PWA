@@ -1028,4 +1028,27 @@ export const vi: Messages = {
     'Bộ nhớ đầy nên chỉ lưu tạm tiến trình, không kèm ảnh.',
   'draft.discardFailed': 'Không xóa được tiến trình. Hãy thử lại.',
   'draft.dismiss': 'Đóng',
+
+  'savedGrinder.title': 'Máy mài đã lưu',
+  'savedGrinder.loading': 'Đang tải...',
+  'savedGrinder.empty': 'Chưa có máy mài nào được lưu.',
+  'savedGrinder.summary': '{model} · {rpm}rpm · Φ{diameter}mm',
+  'savedGrinder.select': 'Chọn',
+  'savedGrinder.edit': 'Sửa',
+  'savedGrinder.delete': 'Xóa',
+  'savedGrinder.save': 'Lưu',
+  'savedGrinder.cancel': 'Hủy',
+  'savedGrinder.applyConfirm':
+    'Áp dụng giá trị này vào ô nhập? Bạn vẫn phải xác nhận và kiểm tra tình trạng thiết bị lại.',
+  'savedGrinder.applyConfirmDiffers':
+    'Giá trị này khác với giá trị vừa đọc được. Thay bằng giá trị đã lưu? Bạn vẫn phải xác nhận và kiểm tra tình trạng thiết bị lại.',
+  'savedGrinder.applyConfirmButton': 'Áp dụng',
+  'savedGrinder.editConfirm': 'Ghi đè mục đã lưu này bằng giá trị vừa nhập?',
+  'savedGrinder.editConfirmButton': 'Ghi đè',
+  'savedGrinder.deleteConfirm': 'Xóa mục đã lưu này? Không thể hoàn tác.',
+  'savedGrinder.deleteConfirmButton': 'Xóa',
+  'savedGrinder.saveCurrent': 'Lưu giá trị hiện tại thành mục mới',
+  'savedGrinder.aliasLabel': 'Tên gọi',
+  'savedGrinder.aliasPlaceholder': 'VD: Máy mài số 1',
+  'savedGrinder.aliasRequired': 'Hãy nhập tên gọi.',
 };

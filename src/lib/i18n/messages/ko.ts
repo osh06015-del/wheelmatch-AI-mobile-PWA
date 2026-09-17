@@ -1004,6 +1004,29 @@ export const ko = {
     '저장 공간이 부족해 사진 없이 진행 상태만 임시 저장했습니다.',
   'draft.discardFailed': '진행 상태를 삭제하지 못했습니다. 다시 시도하세요.',
   'draft.dismiss': '닫기',
+
+  'savedGrinder.title': '저장된 그라인더',
+  'savedGrinder.loading': '불러오는 중...',
+  'savedGrinder.empty': '저장된 그라인더가 없습니다.',
+  'savedGrinder.summary': '{model} · {rpm}rpm · Φ{diameter}mm',
+  'savedGrinder.select': '선택',
+  'savedGrinder.edit': '수정',
+  'savedGrinder.delete': '삭제',
+  'savedGrinder.save': '저장',
+  'savedGrinder.cancel': '취소',
+  'savedGrinder.applyConfirm':
+    '이 값을 입력칸에 적용할까요? 적용해도 확인과 장비 상태 점검은 다시 해야 합니다.',
+  'savedGrinder.applyConfirmDiffers':
+    '지금 읽은 값과 다릅니다. 저장된 값으로 바꿀까요? 적용해도 확인과 장비 상태 점검은 다시 해야 합니다.',
+  'savedGrinder.applyConfirmButton': '적용',
+  'savedGrinder.editConfirm': '이 저장 항목을 지금 입력한 값으로 덮어쓸까요?',
+  'savedGrinder.editConfirmButton': '덮어쓰기',
+  'savedGrinder.deleteConfirm': '이 저장 항목을 지울까요? 되돌릴 수 없습니다.',
+  'savedGrinder.deleteConfirmButton': '삭제',
+  'savedGrinder.saveCurrent': '현재 입력값을 새로 저장',
+  'savedGrinder.aliasLabel': '별칭',
+  'savedGrinder.aliasPlaceholder': '예: 1번 그라인더',
+  'savedGrinder.aliasRequired': '별칭을 입력하세요.',
 } as const;
 
 /** 메시지 키. ko가 원본이므로 여기서 파생시킨다. */
