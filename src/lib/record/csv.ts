@@ -183,6 +183,9 @@ export const CSV_COLUMNS = [
   // 부속품 이름(선택). other·unknown에서만 작업자가 적는다. 이 기능 도입 전
   // 기록과 묻지 않은 종류는 빈 칸이다. 앞선 열의 자리를 지키기 위해 맨 뒤에 붙인다.
   'wheelAccessoryName',
+  // 판독 경로(online/offline_limited). 이 기능 도입 전 기록은 빈 칸이다 —
+  // online으로 채우지 않는다. 앞선 열의 자리를 지키기 위해 맨 뒤에 붙인다.
+  'analysisMode',
 ] as const;
 
 /**
@@ -395,6 +398,7 @@ function row(record: InspectionRecord): string {
     tick(record.wheelCondition?.backingPadUndamaged),
     record.accessoryProfile?.scope,
     wheel.accessoryName,
+    record.analysisMode,
   ];
 
   return values.map(cell).join(',');

@@ -6,6 +6,7 @@ import {
   RULE,
   checkMountingSpec,
   checkPeripheralSpeed,
+  checkAnalysisMode,
   checkProfileScope,
   checkUnitConsistency,
   failureReasons,
@@ -959,5 +960,63 @@ describe('10. 종류를 특정하지 못한 부속품(other·unknown)도 RPM·�
     const check = result.checks.find((c) => c.rule === RULE.EXPIRY);
     expect(check?.detail?.code).toBe('expiry.noPolicy');
     expect(check?.advisory).toBe(true);
+  });
+});
+
+describe('11. 오프라인 제한 대조(analysisMode: offline_limited)', () => {
+  const OFFLINE_REASON =
+    '서버 분석 없이 작업자가 입력·확인한 값으로만 대조했습니다. RPM·지름 위반만 부적합으로 판정하며 적합 판정은 제공하지 않습니다.';
+
+  it('online(기본)이면 항목을 만들지 않고 기존 판정 그대로다', () => {
+    expect(checkAnalysisMode('online')).toBeNull();
+    const result = match(grinder(), wheel());
+    expect(result.verdict).toBe('COMPATIBLE');
+    expect(result.checks.map((c) => c.rule)).not.toContain(
+      RULE.OFFLINE_LIMITED,
+    );
+  });
+
+  it('위반이 없어도 적합이 아니라 판정불가 + 오프라인 제한 대조다', () => {
+    const result = match(grinder(), wheel(), {
+      analysisMode: 'offline_limited',
+    });
+    expect(result.verdict).toBe('UNDETERMINED');
+    const check = checkOf(result, RULE.OFFLINE_LIMITED);
+    expect(check).toMatchObject({
+      passed: null,
+      reason: OFFLINE_REASON,
+      detail: { code: 'analysisMode.offlineLimited' },
+    });
+    // 경고가 아니다 — 전체 판정을 실제로 끌어내려야 한다.
+    expect(check.advisory).toBeUndefined();
+  });
+
+  it('확정된 RPM 위반은 오프라인이어도 부적합이다 — 1rpm 부족 경계 포함', () => {
+    expect(
+      match(grinder(), wheel({ maxRPM: 8500 }), {
+        analysisMode: 'offline_limited',
+      }).verdict,
+    ).toBe('INCOMPATIBLE');
+    expect(
+      match(grinder({ noLoadRPM: 12201 }), wheel(), {
+        analysisMode: 'offline_limited',
+      }).verdict,
+    ).toBe('INCOMPATIBLE');
+  });
+
+  it('확정된 지름 위반도 오프라인이어도 부적합이다', () => {
+    expect(
+      match(grinder(), wheel({ diameter: 126 }), {
+        analysisMode: 'offline_limited',
+      }).verdict,
+    ).toBe('INCOMPATIBLE');
+  });
+
+  it('값이 없으면(확정되지 않았으면) 부적합으로 단정하지 않고 판정불가다', () => {
+    expect(
+      match(grinder(), wheel({ maxRPM: null }), {
+        analysisMode: 'offline_limited',
+      }).verdict,
+    ).toBe('UNDETERMINED');
   });
 });

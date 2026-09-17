@@ -609,7 +609,17 @@ export type ReasonCode =
   | 'guard.missing'
   | 'guard.smallerThanWheel'
   | 'guard.manualCheck'
-  | 'profileScope.limited';
+  | 'profileScope.limited'
+  | 'analysisMode.offlineLimited';
+
+/**
+ * 판독 경로.
+ *
+ *   online          — 서버 분석(또는 기존 로컬 OCR)으로 읽은 값을 작업자가 확인했다
+ *   offline_limited — 서버에 닿지 못해 작업자가 직접 넣은 값으로만 대조했다.
+ *                     RPM·지름 위반은 부적합으로 막되 적합은 내지 않는다
+ */
+export type AnalysisMode = 'online' | 'offline_limited';
 
 /**
  * 사유를 고른 언어로 다시 만들기 위한 코드와 값.
@@ -852,5 +862,10 @@ export interface InspectionRecord {
    * 없는 것을 특정 버전으로 채우면 어느 규칙으로 나온 판정인지 알 수 없게 된다.
    */
   ruleVersion?: string;
+  /**
+   * 판독 경로. 이 기능 도입 전 기록에는 없다 — 없다고 online으로 채우지 않는다.
+   * offline_limited 기록은 적합을 낼 수 없었던 판정이다.
+   */
+  analysisMode?: AnalysisMode;
   createdAt: string;
 }

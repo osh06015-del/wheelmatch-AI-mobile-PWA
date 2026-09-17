@@ -47,6 +47,7 @@ import {
   confirmedWheelSpec,
   wheelTypeDiffersFromSuggestion,
 } from '@/lib/ocr/confirm';
+import { isNetworkFailure } from '@/lib/ocr/errors';
 import { getExtractor } from '@/lib/ocr/extractor';
 import { normalizeExpiry } from '@/lib/ocr/parser';
 import { isGrinderConditionComplete } from '@/lib/safety/grinderCondition';
@@ -107,6 +108,7 @@ export default function WheelScanPage() {
     setWheelCondition,
     setWheelExam,
     setCaptureCheck,
+    setOfflineSlot,
   } = useInspection();
 
   const [phase, setPhase] = useState<Phase>('capture');
@@ -132,6 +134,8 @@ export default function WheelScanPage() {
   const [error, setError] = useState<unknown>(null);
   // 라벨 사진 한 자리의 사진 상태 경고와 넣은 횟수.
   const [labelReview, setLabelReview] = useState<CaptureReview | null>(null);
+  // 서버에 닿지 못해 작업자가 라벨 값을 직접 넣는 중인가(오프라인 제한 대조).
+  const [offline, setOffline] = useState(false);
 
   // ── 다각도 외관 확인 ──
   // 사진은 이 화면이 들고 있다가 proceed()에서 한 번에 저장소로 넘긴다
@@ -203,6 +207,7 @@ export default function WheelScanPage() {
     setOcrTelemetry(null);
     setCaptureMetrics(null);
     setUserConfirmed(false);
+    setOffline(false);
     resetExam();
     try {
       // 원본 사진은 Vercel 함수의 4.5MB 요청 한도를 넘길 수 있다. 먼저 줄인다.
@@ -236,6 +241,7 @@ export default function WheelScanPage() {
       const spec = await extractor.extractWheel(blob);
       setOcr(spec);
       setOcrTelemetry(extractor.getLastTelemetry?.() ?? null);
+      setOffline(false);
       setForm({
         maxRPM: fromNumber(spec.maxRPM),
         diameter: fromNumber(spec.diameter),
@@ -257,6 +263,31 @@ export default function WheelScanPage() {
       setError(caught);
       setPhase('error');
     }
+  }
+
+  /**
+   * 서버에 닿지 못했을 때 작업자가 라벨을 직접 보고 값을 넣는다.
+   *
+   * 값을 지어내지 않는다 — 입력칸과 종류는 비어 있고(모르겠음) 신뢰도는 낮음에서
+   * 시작한다. 라벨 사진은 남겨 둔다(결과 화면의 서버 재분석에 쓴다).
+   */
+  function continueOffline() {
+    setOffline(true);
+    setOcr(null);
+    setOcrTelemetry(null);
+    setForm({
+      maxRPM: '',
+      diameter: '',
+      thickness: '',
+      purpose: 'unknown',
+      expiry: '',
+      wheelType: 'unknown',
+      accessoryName: '',
+    });
+    setUserConfirmed(false);
+    setCondition({ ...EMPTY_WHEEL_CONDITION });
+    setError(null);
+    setPhase('confirm');
   }
 
   /** 경고를 보고도 이 라벨 사진을 쓴다. 열지 못한 사진에는 이 길이 없다. */
@@ -395,6 +426,8 @@ export default function WheelScanPage() {
     // setWheel이 이전 숫돌의 다각도 확인을 지운다. 그 뒤에 이번 결과를 넣는다.
     setWheel(spec, photo, ocr, captureMetrics, ocrTelemetry);
     setCaptureCheck('wheel', toCaptureQualityCheck(labelReview));
+    // setWheel이 숫돌 쪽 오프라인 표시를 지운다. 그 뒤에 이번 라벨의 판독 경로를 넣는다.
+    setOfflineSlot('wheel', offline);
     setWheelExam({
       exam,
       // 확인하지 못한 채 진행하는 경우에만 채운다. 결과와 둘 중 하나다 —
@@ -580,6 +613,20 @@ export default function WheelScanPage() {
           >
             {analysisErrorText(error, 'scan.wheel.failed', t)}
           </p>
+          {isNetworkFailure(error) && (
+            <div className="flex flex-col gap-2 rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3">
+              <p className="text-base leading-relaxed text-yellow-100">
+                {t('scan.offline.continueHint')}
+              </p>
+              <button
+                type="button"
+                onClick={continueOffline}
+                className="min-h-14 rounded-lg border border-yellow-500/60 text-lg font-semibold text-yellow-100 active:bg-yellow-500/20"
+              >
+                {t('scan.offline.continue')}
+              </button>
+            </div>
+          )}
           <button
             type="button"
             onClick={() => photo && void extract(photo)}
@@ -602,6 +649,14 @@ export default function WheelScanPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 px-6 py-6">
       <ScanHeader step="2 / 2" title={t('scan.wheel.title')} bare />
+      {offline && (
+        <p
+          role="status"
+          className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-base leading-relaxed text-yellow-100"
+        >
+          ⚠ {t('scan.offline.notice')}
+        </p>
+      )}
       {grinder && (
         <RequirementBanner
           grinder={grinder}

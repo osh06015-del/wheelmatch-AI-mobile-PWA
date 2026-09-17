@@ -33,6 +33,7 @@ import {
   toCaptureQualityCheck,
   type CaptureReview,
 } from '@/lib/image/captureCheck';
+import { isNetworkFailure } from '@/lib/ocr/errors';
 import { getExtractor } from '@/lib/ocr/extractor';
 import {
   EMPTY_GRINDER_CONDITION,
@@ -58,7 +59,8 @@ interface FormState {
 export default function GrinderScanPage() {
   const router = useRouter();
   const { t } = useLocale();
-  const { setGrinder, setGrinderCondition, setCaptureCheck } = useInspection();
+  const { setGrinder, setGrinderCondition, setCaptureCheck, setOfflineSlot } =
+    useInspection();
 
   const [phase, setPhase] = useState<Phase>('capture');
   const [photo, setPhoto] = useState<Blob | null>(null);
@@ -83,6 +85,9 @@ export default function GrinderScanPage() {
   const [error, setError] = useState<unknown>(null);
   // 사진 상태 경고와 이 자리에서 사진을 넣은 횟수. 명판 사진 한 자리에 대한 것이다.
   const [review, setReview] = useState<CaptureReview | null>(null);
+  // 서버에 닿지 못해 작업자가 값을 직접 넣는 중인가(오프라인 제한 대조).
+  // 이 명판 값으로 대조한 결과는 적합이 될 수 없다(engine.ts의 checkAnalysisMode).
+  const [offline, setOffline] = useState(false);
 
   /**
    * 새 사진을 받는다.
@@ -101,6 +106,7 @@ export default function GrinderScanPage() {
     setOcrTelemetry(null);
     setCaptureMetrics(null);
     setUserConfirmed(false);
+    setOffline(false);
     try {
       // 원본 사진은 Vercel 함수의 4.5MB 요청 한도를 넘길 수 있다. 먼저 줄인다.
       const prepared = await prepareCapture(source);
@@ -133,6 +139,7 @@ export default function GrinderScanPage() {
       const spec = await extractor.extractGrinder(blob);
       setOcr(spec);
       setOcrTelemetry(extractor.getLastTelemetry?.() ?? null);
+      setOffline(false);
       setForm({
         model: spec.model ?? '',
         noLoadRPM: fromNumber(spec.noLoadRPM),
@@ -148,6 +155,24 @@ export default function GrinderScanPage() {
       setError(caught);
       setPhase('error');
     }
+  }
+
+  /**
+   * 서버에 닿지 못했을 때 작업자가 명판을 직접 보고 값을 넣는다.
+   *
+   * 값을 지어내지 않는다 — 입력칸은 비어 있고 신뢰도는 낮음에서 시작한다. 사진은
+   * 남겨 둔다. 연결이 돌아오면 결과 화면에서 작업자가 서버 재분석을 고를 수 있다.
+   */
+  function continueOffline() {
+    setOffline(true);
+    setOcr(null);
+    setOcrTelemetry(null);
+    setForm({ model: '', noLoadRPM: '', maxWheelDiameter: '' });
+    setUserConfirmed(false);
+    setCondition({ ...EMPTY_GRINDER_CONDITION });
+    setMounting(UNKNOWN_GRINDER_MOUNTING);
+    setError(null);
+    setPhase('confirm');
   }
 
   /** 경고를 보고도 이 사진을 쓴다. 열지 못한 사진에는 이 길이 없다. */
@@ -187,6 +212,8 @@ export default function GrinderScanPage() {
     setGrinder(spec, photo, ocr, captureMetrics, ocrTelemetry);
     setGrinderCondition(condition);
     setCaptureCheck('grinder', toCaptureQualityCheck(review));
+    // setGrinder가 오프라인 표시를 지운다. 그 뒤에 이번 명판의 판독 경로를 넣는다.
+    setOfflineSlot('grinder', offline);
     router.push('/scan/wheel');
   }
 
@@ -279,6 +306,20 @@ export default function GrinderScanPage() {
           >
             {analysisErrorText(error, 'scan.grinder.failed', t)}
           </p>
+          {isNetworkFailure(error) && (
+            <div className="flex flex-col gap-2 rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3">
+              <p className="text-base leading-relaxed text-yellow-100">
+                {t('scan.offline.continueHint')}
+              </p>
+              <button
+                type="button"
+                onClick={continueOffline}
+                className="min-h-14 rounded-lg border border-yellow-500/60 text-lg font-semibold text-yellow-100 active:bg-yellow-500/20"
+              >
+                {t('scan.offline.continue')}
+              </button>
+            </div>
+          )}
           <button
             type="button"
             onClick={() => photo && void extract(photo)}
@@ -301,6 +342,14 @@ export default function GrinderScanPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 px-6 py-6">
       <ScanHeader step="1 / 2" title={t('scan.grinder.title')} bare />
+      {offline && (
+        <p
+          role="status"
+          className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-base leading-relaxed text-yellow-100"
+        >
+          ⚠ {t('scan.offline.notice')}
+        </p>
+      )}
       <FieldConfirm
         title={t('scan.confirmTitle')}
         fields={fields}

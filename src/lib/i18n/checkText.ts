@@ -65,6 +65,7 @@ export const REASON_MESSAGE_KEY: Readonly<Record<ReasonCode, MessageKey>> = {
   'guard.smallerThanWheel': 'reason.guard.smallerThanWheel',
   'guard.manualCheck': 'reason.guard.manualCheck',
   'profileScope.limited': 'reason.profileScope.limited',
+  'analysisMode.offlineLimited': 'reason.analysisMode.offlineLimited',
 };
 
 export const WHEEL_PURPOSE_LABEL: Readonly<Record<WheelPurpose, MessageKey>> = {

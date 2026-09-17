@@ -967,4 +967,63 @@ export const vi: Messages = {
 
   'translation.notice':
     'Bản dịch này chưa được hiệu đính. Nếu nghĩa chưa rõ, hãy theo bản tiếng Hàn và hỏi người quản lý.',
+
+  // 오프라인 제한 대조·진행 중 점검 복구
+  'rule.offlineLimited': 'Đối chiếu hạn chế ngoại tuyến',
+  'reason.analysisMode.offlineLimited':
+    'Chỉ đối chiếu các giá trị do người làm việc nhập và kiểm tra, không có phân tích máy chủ. Chỉ vi phạm tốc độ quay và đường kính được kết luận là không khớp; không đưa ra kết luận khớp quy cách.',
+  'evidence.doc.offlineLimited':
+    'Thiết kế ứng dụng — khi không kết nối được máy chủ, chỉ đối chiếu giá trị người làm việc nhập, không phân tích ảnh',
+  'evidence.limit.offlineLimited':
+    'Giá trị đã nhập chưa được đối chiếu với nhãn bằng AI. Vi phạm tốc độ quay và đường kính bị chặn là không khớp, nhưng dù không vi phạm cũng không kết luận khớp và không mở chạy thử.',
+  'result.undetermined.offlineLimited':
+    'Đây là đối chiếu hạn chế ngoại tuyến. Chỉ đối chiếu giá trị người làm việc nhập nên không đưa ra kết luận khớp. Khi có kết nối, bạn có thể chọn phân tích lại trên máy chủ.',
+  'scan.offline.continue': 'Nhập thủ công (đối chiếu hạn chế ngoại tuyến)',
+  'scan.offline.continueHint':
+    'Không kết nối được máy chủ. Bạn có thể tự nhập giá trị để tiếp tục, nhưng lần kiểm tra này không thể nhận kết luận khớp.',
+  'scan.offline.notice':
+    'Đối chiếu hạn chế ngoại tuyến — không phân tích được ảnh trên máy chủ. Hãy nhìn nhãn và tự nhập giá trị.',
+  'offline.limit':
+    'Kết quả này chỉ đối chiếu giá trị người làm việc nhập. Vi phạm tốc độ quay và đường kính được kết luận không khớp, nhưng không kết luận khớp và không mở chạy thử.',
+  'offline.reanalyze': 'Phân tích lại trên máy chủ',
+  'offline.reanalyzeHint':
+    'Đã có kết nối lại. Phân tích lại không thay đổi giá trị bạn đã nhập, chỉ đặt cạnh giá trị AI để so sánh.',
+  'offline.stillOffline':
+    'Vẫn đang ngoại tuyến. Khi có kết nối, bạn có thể chọn phân tích lại trên máy chủ.',
+  'offline.noPhotos':
+    'Không có ảnh đã lưu nên không thể phân tích lại trên máy chủ.',
+  'offline.analyzing': 'Đang phân tích trên máy chủ...',
+  'offline.failed':
+    'Phân tích lại trên máy chủ thất bại. Kết quả ngoại tuyến được giữ nguyên.',
+  'offline.compareTitle': 'So sánh giá trị đã nhập và giá trị AI',
+  'offline.compareRow': '{field}: đã nhập {worker} / AI {ai}',
+  'offline.compareSame': 'giống nhau',
+  'offline.compareDiffers': 'khác nhau',
+  'offline.mismatch':
+    'Có giá trị đã nhập khác giá trị AI hoặc AI không đọc được, nên không thể chuyển sang đối chiếu trực tuyến. Hãy giữ kết quả ngoại tuyến hoặc chụp lại.',
+  'offline.accept':
+    'Xác nhận giá trị giống giá trị AI và chuyển sang đối chiếu trực tuyến',
+  'offline.cancel': 'Hủy và giữ kết quả ngoại tuyến',
+  'draft.title': 'Có một lần kiểm tra đang dở',
+  'draft.body':
+    'Bạn có thể tiếp tục, hoặc xóa tiến trình đã lưu và bắt đầu lại. Ứng dụng không tự tiếp tục hay tự xóa.',
+  'draft.savedAt': 'Lưu lần cuối: {time}',
+  'draft.resume': 'Tiếp tục',
+  'draft.discard': 'Xóa và bắt đầu lại',
+  'draft.warn.schema':
+    'Định dạng lưu khác nên chỉ khôi phục được một phần giá trị. Hãy nhập lại giá trị còn thiếu.',
+  'draft.warn.photos':
+    'Không khôi phục được một số ảnh. Hãy chụp lại các ảnh cần thiết.',
+  'draft.warn.exam':
+    'Thiếu ảnh kiểm tra nhiều góc nên phải làm lại bước đá mài.',
+  'draft.warn.trialRun':
+    'Không thể tiếp tục lần chạy thử đang dở. Hãy làm lại từ đầu.',
+  'draft.warn.unreadable':
+    'Không đọc được tiến trình đã lưu. Hãy xóa và bắt đầu lại.',
+  'draft.saveFailed':
+    'Không lưu tạm được tiến trình trên thiết bị. Bạn vẫn có thể kiểm tra tiếp, nhưng đóng ứng dụng thì không thể tiếp tục.',
+  'draft.photosOmitted':
+    'Bộ nhớ đầy nên chỉ lưu tạm tiến trình, không kèm ảnh.',
+  'draft.discardFailed': 'Không xóa được tiến trình. Hãy thử lại.',
+  'draft.dismiss': 'Đóng',
 };

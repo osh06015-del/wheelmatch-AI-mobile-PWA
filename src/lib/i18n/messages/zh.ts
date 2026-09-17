@@ -862,4 +862,53 @@ export const zh: Messages = {
 
   'translation.notice':
     '此译文尚未校对。若含义不清，请以韩文原文为准并向管理人员确认。',
+
+  // 오프라인 제한 대조·진행 중 점검 복구
+  'rule.offlineLimited': '离线有限对照',
+  'reason.analysisMode.offlineLimited':
+    '未经服务器分析，仅对照了作业人员输入并确认的数值。仅将转速和直径违规判定为不符，不给出规格一致的结论。',
+  'evidence.doc.offlineLimited':
+    '应用设计 — 无法连接服务器时，不分析照片，仅对照作业人员输入的数值',
+  'evidence.limit.offlineLimited':
+    '输入的数值未经AI读取与标签核对。转速和直径违规会判为不符，但即使没有违规也不给出一致结论，也不开启试运转。',
+  'result.undetermined.offlineLimited':
+    '这是离线有限对照。仅对照了作业人员输入的数值，因此不给出一致结论。连接后可自行选择在服务器重新分析。',
+  'scan.offline.continue': '手动输入（离线有限对照）',
+  'scan.offline.continueHint':
+    '无法连接服务器。可以自行输入数值继续，但本次检查无法得到一致结论。',
+  'scan.offline.notice':
+    '离线有限对照 — 无法在服务器分析照片。请查看标签并自行输入数值。',
+  'offline.limit':
+    '本结果仅对照了作业人员输入的数值。转速和直径违规判为不符，但不给出一致结论，也不开启试运转。',
+  'offline.reanalyze': '在服务器重新分析',
+  'offline.reanalyzeHint':
+    '连接已恢复。重新分析不会更改您输入的数值，只会与AI数值并列比较。',
+  'offline.stillOffline': '仍处于离线状态。连接后可选择在服务器重新分析。',
+  'offline.noPhotos': '没有保存的照片，无法在服务器重新分析。',
+  'offline.analyzing': '正在服务器分析...',
+  'offline.failed': '服务器重新分析失败。保留离线结果。',
+  'offline.compareTitle': '输入值与AI值比较',
+  'offline.compareRow': '{field}：输入 {worker} / AI {ai}',
+  'offline.compareSame': '相同',
+  'offline.compareDiffers': '不同',
+  'offline.mismatch':
+    '部分输入值与AI值不同或AI未能读取，无法切换为在线对照。请保留离线结果或重新拍摄。',
+  'offline.accept': '确认与AI数值相同并切换为在线对照',
+  'offline.cancel': '取消并保留离线结果',
+  'draft.title': '有未完成的检查',
+  'draft.body':
+    '可以继续，或删除已保存的进度并重新开始。应用不会自行继续或删除。',
+  'draft.savedAt': '最后保存：{time}',
+  'draft.resume': '继续',
+  'draft.discard': '删除并重新开始',
+  'draft.warn.schema': '保存格式不同，仅恢复了部分数值。请重新输入缺少的数值。',
+  'draft.warn.photos': '部分照片未能恢复。请重新拍摄所需照片。',
+  'draft.warn.exam': '缺少多角度检查照片，需要重新进行砂轮步骤。',
+  'draft.warn.trialRun': '进行中的试运转无法继续。请从头重新开始。',
+  'draft.warn.unreadable': '无法读取已保存的进度。请删除后重新开始。',
+  'draft.saveFailed':
+    '无法在设备上临时保存进度。可以继续检查，但关闭应用后无法继续。',
+  'draft.photosOmitted': '存储空间不足，仅临时保存了进度，未保存照片。',
+  'draft.discardFailed': '无法删除进度。请重试。',
+  'draft.dismiss': '关闭',
 };

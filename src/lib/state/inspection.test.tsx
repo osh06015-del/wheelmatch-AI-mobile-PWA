@@ -663,3 +663,116 @@ describe('작업 조건', () => {
     expect(sessionStorage.getItem('wheelmatch.workConditions')).toBeNull();
   });
 });
+
+describe('오프라인 제한 대조 표시와 진행 중 점검 복구', () => {
+  beforeEach(() => {
+    const { result } = renderHook(() => useInspection());
+    act(() => result.current.reset());
+  });
+
+  it('단계 하나라도 오프라인으로 넣으면 점검 전체가 offline_limited다', () => {
+    const { result } = renderHook(() => useInspection());
+    expect(result.current.analysisMode).toBe('online');
+
+    act(() => {
+      result.current.setGrinder(GRINDER);
+      result.current.setOfflineSlot('grinder', true);
+    });
+    expect(result.current.analysisMode).toBe('offline_limited');
+    // 새로고침을 넘어간다.
+    expect(
+      JSON.parse(sessionStorage.getItem('wheelmatch.offlineSlots') ?? 'null'),
+    ).toEqual({ grinder: true, wheel: false });
+
+    // 숫돌을 새로 넣어도 오프라인으로 넣은 명판 표시는 풀리지 않는다.
+    act(() => result.current.setWheel(WHEEL));
+    expect(result.current.analysisMode).toBe('offline_limited');
+
+    // 명판을 새로 넣으면(온라인으로 다시 읽으면) 풀린다.
+    act(() => result.current.setGrinder(GRINDER));
+    expect(result.current.analysisMode).toBe('online');
+  });
+
+  it('서버 재분석을 받아들이면 AI 값은 원본 자리에만 들어가고 최종값은 그대로다', () => {
+    const { result } = renderHook(() => useInspection());
+    const typed: GrinderSpec = { ...GRINDER, rawText: '', confidence: 'high' };
+    act(() => {
+      result.current.setGrinder(typed, null, null);
+      result.current.setOfflineSlot('grinder', true);
+    });
+
+    const ai: GrinderSpec = { ...GRINDER, rawText: 'AI', confidence: 'medium' };
+    act(() =>
+      result.current.applyReanalysis({
+        grinderOcr: ai,
+        grinderOcrTelemetry: null,
+      }),
+    );
+
+    expect(result.current.grinder).toBe(typed);
+    expect(result.current.grinderOcr).toEqual(ai);
+    expect(result.current.analysisMode).toBe('online');
+  });
+
+  it('체크리스트와 마친 시험운전은 메모리에만 두고, 새 숫돌이 들어오면 버린다', () => {
+    const { result } = renderHook(() => useInspection());
+    act(() => {
+      result.current.setChecklist({
+        guardCover: true,
+        auxiliaryHandle: true,
+        wheelDamage: true,
+        ppe: true,
+      });
+    });
+    expect(result.current.checklist?.guardCover).toBe(true);
+    expect(
+      Object.keys(sessionStorage).some((key) => key.includes('checklist')),
+    ).toBe(false);
+
+    act(() => result.current.setWheel(WHEEL));
+    expect(result.current.checklist).toBeNull();
+    expect(result.current.trialRunRecord).toBeNull();
+  });
+
+  it('restore는 되살린 상태로 바꾸고 새로고침용 저장도 그 상태로 맞춘다', () => {
+    const { result } = renderHook(() => useInspection());
+    act(() => result.current.setPurpose('grinding'));
+
+    act(() =>
+      result.current.restore({
+        ...result.current,
+        declaredPurpose: 'cutting',
+        grinder: GRINDER,
+        grinderCondition: GRINDER_CONDITION,
+        wheel: null,
+        wheelOcr: null,
+        offlineSlots: { grinder: true, wheel: false },
+        checklist: null,
+        trialRunRecord: null,
+      }),
+    );
+
+    expect(result.current.declaredPurpose).toBe('cutting');
+    expect(result.current.grinder).toEqual(GRINDER);
+    expect(result.current.analysisMode).toBe('offline_limited');
+    expect(sessionStorage.getItem('wheelmatch.purpose')).toBe('"cutting"');
+    expect(sessionStorage.getItem('wheelmatch.wheel')).toBeNull();
+  });
+
+  it('reset은 오프라인 표시·체크리스트도 지운다', () => {
+    const { result } = renderHook(() => useInspection());
+    act(() => {
+      result.current.setOfflineSlot('wheel', true);
+      result.current.setChecklist({
+        guardCover: true,
+        auxiliaryHandle: null,
+        wheelDamage: null,
+        ppe: null,
+      });
+      result.current.reset();
+    });
+    expect(result.current.analysisMode).toBe('online');
+    expect(result.current.checklist).toBeNull();
+    expect(sessionStorage.getItem('wheelmatch.offlineSlots')).toBeNull();
+  });
+});

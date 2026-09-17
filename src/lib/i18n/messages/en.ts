@@ -978,4 +978,63 @@ export const en: Messages = {
 
   'translation.notice':
     'This translation has not been reviewed yet. If the meaning is unclear, follow the Korean text and ask your supervisor.',
+
+  // 오프라인 제한 대조·진행 중 점검 복구
+  'rule.offlineLimited': 'Offline limited check',
+  'reason.analysisMode.offlineLimited':
+    'Only values the worker entered and checked were compared, without server analysis. Only RPM and diameter violations are judged as a mismatch, and no conclusion that the specs fit is given.',
+  'evidence.doc.offlineLimited':
+    'App design — when the server could not be reached, only the values the worker entered are compared, without photo analysis',
+  'evidence.limit.offlineLimited':
+    'The entered values were not cross-checked against the label by AI reading. RPM and diameter violations are blocked as a mismatch, but even without a violation there is no fit conclusion and the trial run does not open.',
+  'result.undetermined.offlineLimited':
+    'This is an offline limited check. Only the values the worker entered were compared, so no fit conclusion is given. When connected, you can choose to reanalyze on the server.',
+  'scan.offline.continue': 'Enter values manually (offline limited check)',
+  'scan.offline.continueHint':
+    'The server could not be reached. You can continue by entering values yourself, but this inspection cannot receive a fit conclusion.',
+  'scan.offline.notice':
+    'Offline limited check — the photo could not be analyzed on the server. Look at the label and enter the values yourself.',
+  'offline.limit':
+    'This result compares only the values the worker entered. RPM and diameter violations are judged as a mismatch, but no fit conclusion is given and the trial run does not open.',
+  'offline.reanalyze': 'Reanalyze on the server',
+  'offline.reanalyzeHint':
+    'The connection is back. Reanalyzing does not change the values you entered; it only shows them next to the AI values.',
+  'offline.stillOffline':
+    'Still offline. When connected, you can choose to reanalyze on the server.',
+  'offline.noPhotos':
+    'There is no saved photo, so server reanalysis is not possible.',
+  'offline.analyzing': 'Analyzing on the server...',
+  'offline.failed':
+    'Server reanalysis failed. The offline result stays as it is.',
+  'offline.compareTitle': 'Entered values vs AI values',
+  'offline.compareRow': '{field}: entered {worker} / AI {ai}',
+  'offline.compareSame': 'same',
+  'offline.compareDiffers': 'different',
+  'offline.mismatch':
+    'Some entered values differ from the AI values or the AI could not read them, so this cannot switch to an online check. Keep the offline result or take the photos again.',
+  'offline.accept':
+    'Confirm the values equal the AI values and switch to an online check',
+  'offline.cancel': 'Cancel and keep the offline result',
+  'draft.title': 'There is an inspection in progress',
+  'draft.body':
+    'You can continue it, or delete the saved progress and start over. The app does not continue or delete it on its own.',
+  'draft.savedAt': 'Last saved: {time}',
+  'draft.resume': 'Continue',
+  'draft.discard': 'Delete and start over',
+  'draft.warn.schema':
+    'The saved format differs, so only some values were recovered. Enter the missing values again.',
+  'draft.warn.photos':
+    'Some photos could not be recovered. Take the needed photos again.',
+  'draft.warn.exam':
+    'The multi-angle check photos are missing, so the wheel step must be done again.',
+  'draft.warn.trialRun':
+    'The trial run that was in progress cannot be continued. Start it again from the beginning.',
+  'draft.warn.unreadable':
+    'The saved progress cannot be read. Delete it and start over.',
+  'draft.saveFailed':
+    'Progress could not be saved on this device. You can keep inspecting, but you cannot continue after closing the app.',
+  'draft.photosOmitted':
+    'Storage is full, so progress was saved without photos.',
+  'draft.discardFailed': 'The progress could not be deleted. Try again.',
+  'draft.dismiss': 'Close',
 };

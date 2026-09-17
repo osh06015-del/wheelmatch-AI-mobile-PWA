@@ -856,3 +856,86 @@ describe('숫돌 촬영 화면 — 종류별 상태 확인 항목', () => {
     expect(proceedButton()).toBeDisabled();
   });
 });
+
+describe('숫돌 촬영 화면 — 오프라인 제한 대조로 직접 입력', () => {
+  beforeEach(() => {
+    replace.mockClear();
+    push.mockClear();
+    extractWheel.mockReset();
+    const result = store();
+    act(() => result.current.reset());
+  });
+
+  async function openFailure(error: unknown) {
+    const result = store();
+    act(() => {
+      result.current.setGrinder(GRINDER);
+      result.current.setGrinderCondition(CONFIRMED);
+    });
+    extractWheel.mockRejectedValue(error);
+    render(<WheelScanPage />);
+    fireEvent.click(screen.getByRole('button', { name: '테스트 사진 고르기' }));
+    await screen.findByRole('alert');
+    return result;
+  }
+
+  it('서버에 닿지 못했을 때만 직접 입력을 제안하고, 값을 지어내지 않는다', async () => {
+    const result = await openFailure(new ExtractError('network'));
+
+    expect(
+      screen.getByText(
+        '서버에 닿지 못했습니다. 값을 직접 입력해 계속할 수 있지만, 이 점검은 적합 판정을 받을 수 없습니다.',
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: '오프라인 제한 대조로 직접 입력' }),
+    );
+
+    await screen.findByText('읽어낸 값을 확인하세요');
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '오프라인 제한 대조 — 사진을 서버로 분석하지 못했습니다.',
+    );
+    // 입력칸은 비어 있다. 추정값으로 채우지 않는다.
+    for (const input of screen.getAllByPlaceholderText(
+      '인식하지 못함 — 직접 입력',
+    )) {
+      expect(input).toHaveValue(
+        input.getAttribute('type') === 'number' ? null : '',
+      );
+    }
+    expect(extractWheel).toHaveBeenCalledTimes(1);
+
+    // 작업자가 라벨을 보고 직접 넣는다.
+    const [maxRPM, diameter] =
+      screen.getAllByPlaceholderText('인식하지 못함 — 직접 입력');
+    fireEvent.change(maxRPM, { target: { value: '12200' } });
+    fireEvent.change(diameter, { target: { value: '125' } });
+    fireEvent.change(screen.getByRole('combobox', { name: '숫돌 종류' }), {
+      target: { value: 'flap_disc' },
+    });
+    fireEvent.click(
+      screen.getByRole('checkbox', {
+        name: /라벨을 직접 보고 위 값을 확인했습니다/,
+      }),
+    );
+    for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+      fireEvent.click(button);
+    }
+    fireEvent.click(screen.getByRole('button', { name: '확인 후 규격 대조' }));
+
+    expect(push).toHaveBeenCalledWith('/result');
+    expect(result.current.wheel?.maxRPM).toBe(12200);
+    // OCR 원본이 없다 — AI가 읽은 것처럼 남기지 않는다.
+    expect(result.current.wheelOcr).toBeNull();
+    expect(result.current.offlineSlots.wheel).toBe(true);
+    expect(result.current.analysisMode).toBe('offline_limited');
+  });
+
+  it('서버가 오류를 돌려준 경우(연결 문제가 아님)에는 직접 입력을 제안하지 않는다', async () => {
+    await openFailure(new ExtractError('rate_limited', 429));
+
+    expect(
+      screen.queryByRole('button', { name: '오프라인 제한 대조로 직접 입력' }),
+    ).not.toBeInTheDocument();
+  });
+});

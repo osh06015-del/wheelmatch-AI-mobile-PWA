@@ -946,6 +946,62 @@ export const ko = {
 
   'translation.notice':
     '번역문은 검수 전입니다. 뜻이 갈리면 한국어 원문을 따르고, 관리감독자에게 확인하세요.',
+
+  // 오프라인 제한 대조·진행 중 점검 복구
+  'rule.offlineLimited': '오프라인 제한 대조',
+  'reason.analysisMode.offlineLimited':
+    '서버 분석 없이 작업자가 입력·확인한 값으로만 대조했습니다. RPM·지름 위반만 부적합으로 판정하며 적합 판정은 제공하지 않습니다.',
+  'evidence.doc.offlineLimited':
+    '앱 설계 — 서버에 닿지 못해 사진 분석 없이 작업자가 입력한 값으로만 대조한 경우',
+  'evidence.limit.offlineLimited':
+    '입력한 값이 라벨과 같은지 AI 판독으로 대조하지 않았습니다. RPM·지름 위반은 부적합으로 막지만, 위반이 없어도 적합 판정을 내지 않고 시험운전을 열지 않습니다.',
+  'result.undetermined.offlineLimited':
+    '오프라인 제한 대조입니다. 작업자가 입력한 값으로만 대조해 적합 판정을 제공하지 않습니다. 연결되면 서버 재분석을 직접 선택할 수 있습니다.',
+  'scan.offline.continue': '오프라인 제한 대조로 직접 입력',
+  'scan.offline.continueHint':
+    '서버에 닿지 못했습니다. 값을 직접 입력해 계속할 수 있지만, 이 점검은 적합 판정을 받을 수 없습니다.',
+  'scan.offline.notice':
+    '오프라인 제한 대조 — 사진을 서버로 분석하지 못했습니다. 라벨을 직접 보고 값을 입력하세요.',
+  'offline.limit':
+    '이 결과는 작업자가 입력한 값으로만 대조했습니다. RPM·지름 위반은 부적합으로 판정하지만 적합 판정은 제공하지 않고 시험운전도 열지 않습니다.',
+  'offline.reanalyze': '서버로 다시 분석하기',
+  'offline.reanalyzeHint':
+    '연결이 돌아왔습니다. 다시 분석해도 입력한 값은 바뀌지 않고 AI 값과 나란히 비교만 합니다.',
+  'offline.stillOffline':
+    '아직 오프라인입니다. 연결되면 서버 재분석을 선택할 수 있습니다.',
+  'offline.noPhotos': '저장된 사진이 없어 서버 재분석을 할 수 없습니다.',
+  'offline.analyzing': '서버로 분석하는 중...',
+  'offline.failed':
+    '서버 재분석에 실패했습니다. 오프라인 결과를 그대로 유지합니다.',
+  'offline.compareTitle': '입력값과 AI 값 비교',
+  'offline.compareRow': '{field}: 작업자 입력 {worker} / AI 값 {ai}',
+  'offline.compareSame': '같음',
+  'offline.compareDiffers': '다름',
+  'offline.mismatch':
+    '입력값과 AI 값이 다르거나 AI가 읽지 못한 값이 있어 온라인 대조로 바꿀 수 없습니다. 오프라인 결과를 유지하거나 다시 촬영하세요.',
+  'offline.accept': 'AI 값과 같음을 확인하고 온라인 대조로 전환',
+  'offline.cancel': '취소하고 오프라인 결과 유지',
+  'draft.title': '진행 중이던 점검이 있습니다',
+  'draft.body':
+    '이어서 하거나, 저장해 둔 진행 상태를 삭제하고 새로 시작할 수 있습니다. 앱이 알아서 이어가거나 지우지 않습니다.',
+  'draft.savedAt': '마지막 저장: {time}',
+  'draft.resume': '이어하기',
+  'draft.discard': '삭제하고 새로 시작',
+  'draft.warn.schema':
+    '저장 형식이 달라 일부 값만 복구했습니다. 빠진 값은 다시 입력하세요.',
+  'draft.warn.photos':
+    '일부 사진을 복구하지 못했습니다. 필요한 사진은 다시 찍어야 합니다.',
+  'draft.warn.exam': '다각도 확인 사진이 없어 숫돌 단계를 다시 해야 합니다.',
+  'draft.warn.trialRun':
+    '진행 중이던 시험운전은 이어갈 수 없습니다. 처음부터 다시 하세요.',
+  'draft.warn.unreadable':
+    '저장된 진행 상태를 읽을 수 없습니다. 삭제하고 새로 시작하세요.',
+  'draft.saveFailed':
+    '진행 상태를 기기에 임시 저장하지 못했습니다. 점검은 계속할 수 있지만 앱을 닫으면 이어할 수 없습니다.',
+  'draft.photosOmitted':
+    '저장 공간이 부족해 사진 없이 진행 상태만 임시 저장했습니다.',
+  'draft.discardFailed': '진행 상태를 삭제하지 못했습니다. 다시 시도하세요.',
+  'draft.dismiss': '닫기',
 } as const;
 
 /** 메시지 키. ko가 원본이므로 여기서 파생시킨다. */

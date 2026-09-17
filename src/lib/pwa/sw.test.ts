@@ -60,6 +60,19 @@ describe('public/sw.js — 업데이트 불변조건', () => {
     expect(source).toMatch(/\/api\//);
   });
 
+  it('캐시에 넣는 곳은 정적 자산과 화면(navigation) 응답뿐이다 — draft·사진·API 응답은 넣지 않는다', () => {
+    const code = withoutLineComments(source);
+    // cache.put은 정적 자산 분기와 화면 분기에 하나씩만 있다.
+    expect(code.match(/cache\.put\(/g)).toHaveLength(2);
+    // 진행 중 점검(draft)은 IndexedDB에만 있고 서비스 워커는 알지 못한다.
+    expect(code).not.toMatch(/draft|indexedDB|blob:/i);
+    const staticAsset = code.slice(
+      code.indexOf('function isStaticAsset'),
+      code.indexOf("addEventListener('fetch'"),
+    );
+    expect(staticAsset).not.toMatch(/api/);
+  });
+
   it('GET이 아닌 요청(POST 등)은 캐시 로직에 닿기 전에 흘려보낸다', () => {
     // 사용자 사진·OCR 응답은 POST로 오간다(/api/extract). 캐시 판단보다
     // 먼저 걸러야 어떤 분기로도 캐시에 닿지 않는다.

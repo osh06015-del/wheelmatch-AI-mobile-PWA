@@ -998,4 +998,62 @@ export const id: Messages = {
 
   'translation.notice':
     'Terjemahan ini belum diperiksa. Jika artinya kurang jelas, ikuti teks bahasa Korea dan tanyakan kepada pengawas Anda.',
+
+  // 오프라인 제한 대조·진행 중 점검 복구
+  'rule.offlineLimited': 'Pemeriksaan terbatas luring',
+  'reason.analysisMode.offlineLimited':
+    'Hanya nilai yang dimasukkan dan diperiksa pekerja yang dibandingkan, tanpa analisis server. Hanya pelanggaran kecepatan dan diameter yang dinilai tidak sesuai; tidak ada kesimpulan bahwa spesifikasi sesuai.',
+  'evidence.doc.offlineLimited':
+    'Desain aplikasi — saat server tidak terjangkau, hanya nilai yang dimasukkan pekerja yang dibandingkan, tanpa analisis foto',
+  'evidence.limit.offlineLimited':
+    'Nilai yang dimasukkan tidak diperiksa silang dengan label oleh pembacaan AI. Pelanggaran kecepatan dan diameter diblokir sebagai tidak sesuai, tetapi tanpa pelanggaran pun tidak ada kesimpulan sesuai dan uji jalan tidak dibuka.',
+  'result.undetermined.offlineLimited':
+    'Ini pemeriksaan terbatas luring. Hanya nilai yang dimasukkan pekerja yang dibandingkan, jadi tidak ada kesimpulan sesuai. Saat terhubung, Anda dapat memilih analisis ulang di server.',
+  'scan.offline.continue': 'Masukkan manual (pemeriksaan terbatas luring)',
+  'scan.offline.continueHint':
+    'Server tidak terjangkau. Anda dapat melanjutkan dengan memasukkan nilai sendiri, tetapi pemeriksaan ini tidak bisa mendapat kesimpulan sesuai.',
+  'scan.offline.notice':
+    'Pemeriksaan terbatas luring — foto tidak dapat dianalisis di server. Lihat label dan masukkan nilainya sendiri.',
+  'offline.limit':
+    'Hasil ini hanya membandingkan nilai yang dimasukkan pekerja. Pelanggaran kecepatan dan diameter dinilai tidak sesuai, tetapi tidak ada kesimpulan sesuai dan uji jalan tidak dibuka.',
+  'offline.reanalyze': 'Analisis ulang di server',
+  'offline.reanalyzeHint':
+    'Koneksi sudah kembali. Analisis ulang tidak mengubah nilai yang Anda masukkan; hanya menampilkannya berdampingan dengan nilai AI.',
+  'offline.stillOffline':
+    'Masih luring. Saat terhubung, Anda dapat memilih analisis ulang di server.',
+  'offline.noPhotos':
+    'Tidak ada foto tersimpan, jadi analisis ulang server tidak dapat dilakukan.',
+  'offline.analyzing': 'Menganalisis di server...',
+  'offline.failed':
+    'Analisis ulang server gagal. Hasil luring tetap dipertahankan.',
+  'offline.compareTitle': 'Perbandingan nilai masukan dan nilai AI',
+  'offline.compareRow': '{field}: masukan {worker} / AI {ai}',
+  'offline.compareSame': 'sama',
+  'offline.compareDiffers': 'berbeda',
+  'offline.mismatch':
+    'Ada nilai masukan yang berbeda dari nilai AI atau tidak terbaca AI, jadi tidak dapat beralih ke pemeriksaan daring. Pertahankan hasil luring atau ambil foto ulang.',
+  'offline.accept':
+    'Konfirmasi nilai sama dengan nilai AI dan beralih ke pemeriksaan daring',
+  'offline.cancel': 'Batal dan pertahankan hasil luring',
+  'draft.title': 'Ada pemeriksaan yang sedang berlangsung',
+  'draft.body':
+    'Anda dapat melanjutkannya, atau menghapus progres tersimpan dan memulai ulang. Aplikasi tidak melanjutkan atau menghapusnya sendiri.',
+  'draft.savedAt': 'Terakhir disimpan: {time}',
+  'draft.resume': 'Lanjutkan',
+  'draft.discard': 'Hapus dan mulai ulang',
+  'draft.warn.schema':
+    'Format simpanan berbeda, jadi hanya sebagian nilai yang dipulihkan. Masukkan lagi nilai yang hilang.',
+  'draft.warn.photos':
+    'Beberapa foto tidak dapat dipulihkan. Ambil ulang foto yang diperlukan.',
+  'draft.warn.exam':
+    'Foto pemeriksaan multi-sudut hilang, jadi langkah batu gerinda harus diulang.',
+  'draft.warn.trialRun':
+    'Uji jalan yang sedang berlangsung tidak dapat dilanjutkan. Mulai lagi dari awal.',
+  'draft.warn.unreadable':
+    'Progres tersimpan tidak dapat dibaca. Hapus dan mulai ulang.',
+  'draft.saveFailed':
+    'Progres tidak dapat disimpan sementara di perangkat. Pemeriksaan tetap bisa dilanjutkan, tetapi tidak bisa dilanjutkan setelah aplikasi ditutup.',
+  'draft.photosOmitted': 'Penyimpanan penuh, jadi progres disimpan tanpa foto.',
+  'draft.discardFailed': 'Progres tidak dapat dihapus. Coba lagi.',
+  'draft.dismiss': 'Tutup',
 };

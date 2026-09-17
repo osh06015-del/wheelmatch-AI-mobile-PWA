@@ -118,17 +118,22 @@ const WHEELS: WheelSpec[] = [
 const PURPOSES: Array<WorkPurpose | null> = [null, 'cutting', 'grinding'];
 const TODAYS: Array<string | null> = [null, '2026-09-08'];
 
+const MODES = ['online', 'offline_limited'] as const;
+
 const CHECKS: CheckItem[] = GRINDERS.flatMap((g) =>
   WHEELS.flatMap((w) =>
     PURPOSES.flatMap((declaredPurpose) =>
-      TODAYS.flatMap(
-        (today) =>
-          matchSpecs(g, w, {
-            // 화면처럼 종류에 맞는 Profile을 넘긴다. 없으면 null.
-            profile: profileFor(w.wheelType),
-            declaredPurpose,
-            today,
-          }).checks,
+      TODAYS.flatMap((today) =>
+        MODES.flatMap(
+          (analysisMode) =>
+            matchSpecs(g, w, {
+              // 화면처럼 종류에 맞는 Profile을 넘긴다. 없으면 null.
+              profile: profileFor(w.wheelType),
+              declaredPurpose,
+              today,
+              analysisMode,
+            }).checks,
+        ),
       ),
     ),
   ),

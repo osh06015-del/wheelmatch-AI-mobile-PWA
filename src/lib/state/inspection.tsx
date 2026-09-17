@@ -13,12 +13,15 @@
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import type { TrialRunProgress } from '@/lib/safety/trialRun';
 import type {
+  AnalysisMode,
   CaptureQualityCheck,
   CaptureQualityMetrics,
   CaptureSlot,
   GrinderCondition,
   GrinderSpec,
   OcrTelemetry,
+  SafetyChecklist,
+  TrialRun,
   WheelCondition,
   WheelExamNotRun,
   WheelExamResult,
@@ -42,6 +45,26 @@ const GRINDER_OCR_TELEMETRY_KEY = 'wheelmatch.grinderOcrTelemetry';
 const WHEEL_OCR_TELEMETRY_KEY = 'wheelmatch.wheelOcrTelemetry';
 const CAPTURE_CHECKS_KEY = 'wheelmatch.captureChecks';
 const WORK_CONDITIONS_KEY = 'wheelmatch.workConditions';
+const OFFLINE_SLOTS_KEY = 'wheelmatch.offlineSlots';
+
+/**
+ * 어느 단계를 서버 분석 없이(오프라인 제한 대조) 작업자가 직접 입력했는가.
+ *
+ * 한 단계라도 true면 이 점검 전체가 offline_limited다(analysisModeOf). 단계별로
+ * 두는 이유: 명판을 다시 찍어 온라인으로 읽으면 명판 쪽만 풀려야 하고, 숫돌을
+ * 다시 찍었다고 오프라인으로 넣은 명판 값이 풀리면 안 된다.
+ */
+export interface OfflineSlots {
+  grinder: boolean;
+  wheel: boolean;
+}
+
+export const NO_OFFLINE_SLOTS: OfflineSlots = { grinder: false, wheel: false };
+
+/** 단계 중 하나라도 오프라인으로 넣었으면 점검 전체가 오프라인 제한 대조다. */
+export function analysisModeOf(slots: OfflineSlots): AnalysisMode {
+  return slots.grinder || slots.wheel ? 'offline_limited' : 'online';
+}
 
 /** 다각도 확인에서 작업자가 더 찍는 세 자리. */
 type ExamSlotValues<T> = { back: T; edge: T; bore: T };
@@ -129,9 +152,23 @@ interface InspectionState {
   captureChecks: CaptureChecks;
   /** 다각도 확인 사진의 원시 측정값. 사진과 수명을 같이 해 메모리에만 둔다 */
   wheelExamCaptureMetrics: ExamSlotValues<CaptureQualityMetrics | null> | null;
+  /** 서버 분석 없이 직접 입력한 단계. sessionStorage에 남는다 */
+  offlineSlots: OfflineSlots;
+  /**
+   * 결과 화면의 작업 전 체크리스트. 아직 누르지 않았으면 null.
+   *
+   * 메모리에만 둔다 — 새로고침 뒤에는 이전처럼 다시 누르게 하고, 진행 중 점검
+   * 복구(draft)를 사용자가 "이어하기"로 고른 경우에만 되살린다.
+   */
+  checklist: SafetyChecklist | null;
+  /** 마친 시험운전 기록. 같은 이유로 메모리에만 둔다 */
+  trialRunRecord: TrialRun | null;
   /** 서버 렌더 결과에서는 false. 브라우저 값이 반영된 뒤에만 true가 된다. */
   hydrated: boolean;
 }
+
+/** 진행 중 점검 복구(draft)가 저장·복원하는 전체 상태. hydrated는 화면 상태라 뺀다. */
+export type InspectionSnapshot = Omit<InspectionState, 'hydrated'>;
 
 /** 서버 렌더와 hydration에 쓰는 고정 스냅샷. 절대 바뀌지 않는다. */
 const SERVER_SNAPSHOT: InspectionState = {
@@ -159,6 +196,9 @@ const SERVER_SNAPSHOT: InspectionState = {
   wheelOcrTelemetry: null,
   captureChecks: {},
   wheelExamCaptureMetrics: null,
+  offlineSlots: NO_OFFLINE_SLOTS,
+  checklist: null,
+  trialRunRecord: null,
   hydrated: false,
 };
 
@@ -213,6 +253,10 @@ function initialClientState(): InspectionState {
     wheelOcrTelemetry: readStored<OcrTelemetry>(WHEEL_OCR_TELEMETRY_KEY),
     captureChecks: readStored<CaptureChecks>(CAPTURE_CHECKS_KEY) ?? {},
     wheelExamCaptureMetrics: null,
+    offlineSlots:
+      readStored<OfflineSlots>(OFFLINE_SLOTS_KEY) ?? NO_OFFLINE_SLOTS,
+    checklist: null,
+    trialRunRecord: null,
     hydrated: true,
   };
 }
@@ -292,7 +336,43 @@ export interface InspectionStore extends InspectionState {
     captureMetrics?: ExamSlotValues<CaptureQualityMetrics | null>;
   }) => void;
   setTrialRun: (progress: TrialRunProgress | null) => void;
+  /**
+   * 이 단계를 서버 분석 없이 직접 입력했는지. setGrinder/setWheel 뒤에 부른다 —
+   * 그 둘이 해당 단계의 표시를 지우기 때문이다.
+   */
+  setOfflineSlot: (slot: keyof OfflineSlots, offline: boolean) => void;
+  /**
+   * 연결이 돌아와 사용자가 서버 재분석 결과를 확인하고 온라인 대조로 바꾼다.
+   *
+   * 작업자 최종값(grinder·wheel)은 건드리지 않는다. AI 값은 OCR 원본 자리에만
+   * 넣고, 넣은 단계의 오프라인 표시만 푼다.
+   */
+  applyReanalysis: (input: ReanalysisInput) => void;
+  setChecklist: (checklist: SafetyChecklist | null) => void;
+  setTrialRunRecord: (record: TrialRun | null) => void;
+  /** 진행 중 점검 복구에서 사용자가 "이어하기"를 고른 경우에만 부른다 */
+  restore: (snapshot: InspectionSnapshot) => void;
+  /** 판독 경로. offlineSlots에서 파생한다 */
+  analysisMode: AnalysisMode;
   reset: () => void;
+}
+
+/** 서버 재분석으로 받은 AI 값. 다시 분석한 단계만 채운다 */
+export interface ReanalysisInput {
+  grinderOcr?: GrinderSpec;
+  grinderOcrTelemetry?: OcrTelemetry | null;
+  wheelOcr?: WheelSpec;
+  wheelOcrTelemetry?: OcrTelemetry | null;
+}
+
+/**
+ * 저장소 상태 그대로. 값이 바뀔 때만 참조가 바뀐다 — 진행 중 점검 자동 저장이
+ * "무엇이든 바뀌면 저장"을 이 참조 하나로 판단한다.
+ */
+export function useInspectionState(): Readonly<
+  InspectionSnapshot & { hydrated: boolean }
+> {
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
 export function useInspection(): InspectionStore {
@@ -350,11 +430,16 @@ export function useInspection(): InspectionStore {
         // 사진 상태 기록도 모두 지운다. 이번 명판 사진의 기록은 곧바로 이어지는
         // setCaptureCheck('grinder')가 넣는다.
         window.sessionStorage.removeItem(CAPTURE_CHECKS_KEY);
+        window.sessionStorage.removeItem(OFFLINE_SLOTS_KEY);
       } catch {
         // 메모리 상태는 아래에서 반드시 지운다.
       }
       setState({
         grinder: spec,
+        // 이번 명판이 오프라인 입력인지는 곧바로 이어지는 setOfflineSlot이 정한다.
+        offlineSlots: NO_OFFLINE_SLOTS,
+        checklist: null,
+        trialRunRecord: null,
         captureChecks: {},
         wheelExamCaptureMetrics: null,
         grinderCondition: null,
@@ -412,8 +497,14 @@ export function useInspection(): InspectionStore {
         ? { grinder: state.captureChecks.grinder }
         : {};
       persistCaptureChecks(kept);
+      // 숫돌 쪽 오프라인 표시만 지운다. 명판을 오프라인으로 넣었다는 사실은 남는다.
+      const offlineSlots = { ...state.offlineSlots, wheel: false };
+      writeStored(OFFLINE_SLOTS_KEY, offlineSlots);
       setState({
         wheel: spec,
+        offlineSlots,
+        checklist: null,
+        trialRunRecord: null,
         wheelCondition: null,
         trialRun: null,
         captureChecks: kept,
@@ -518,6 +609,80 @@ export function useInspection(): InspectionStore {
     setState({ trialRun: progress });
   }, []);
 
+  const setOfflineSlot = useCallback(
+    (slot: keyof OfflineSlots, offline: boolean) => {
+      const offlineSlots = { ...state.offlineSlots, [slot]: offline };
+      writeStored(OFFLINE_SLOTS_KEY, offlineSlots);
+      setState({ offlineSlots });
+    },
+    [],
+  );
+
+  const applyReanalysis = useCallback((input: ReanalysisInput) => {
+    const offlineSlots = {
+      grinder: input.grinderOcr ? false : state.offlineSlots.grinder,
+      wheel: input.wheelOcr ? false : state.offlineSlots.wheel,
+    };
+    const next: Partial<InspectionState> = { offlineSlots };
+    if (input.grinderOcr) {
+      next.grinderOcr = input.grinderOcr;
+      next.grinderOcrTelemetry = input.grinderOcrTelemetry ?? null;
+      writeStored(GRINDER_OCR_KEY, input.grinderOcr);
+      writeStored(GRINDER_OCR_TELEMETRY_KEY, next.grinderOcrTelemetry);
+    }
+    if (input.wheelOcr) {
+      next.wheelOcr = input.wheelOcr;
+      next.wheelOcrTelemetry = input.wheelOcrTelemetry ?? null;
+      writeStored(WHEEL_OCR_KEY, input.wheelOcr);
+      writeStored(WHEEL_OCR_TELEMETRY_KEY, next.wheelOcrTelemetry);
+    }
+    writeStored(OFFLINE_SLOTS_KEY, offlineSlots);
+    setState(next);
+  }, []);
+
+  const setChecklist = useCallback((checklist: SafetyChecklist | null) => {
+    setState({ checklist });
+  }, []);
+
+  const setTrialRunRecord = useCallback((record: TrialRun | null) => {
+    setState({ trialRunRecord: record });
+  }, []);
+
+  const restore = useCallback((snapshot: InspectionSnapshot) => {
+    // 새로고침을 넘어가는 값은 sessionStorage에도 다시 쓴다 — 복구 뒤 한 번 더
+    // 새로고침해도 복구한 상태가 기준이 되게 한다. 사진·다각도 확인은 메모리에만 둔다.
+    const stored: Array<[string, unknown]> = [
+      [PURPOSE_KEY, snapshot.declaredPurpose],
+      [STARTED_KEY, snapshot.startedAt],
+      [WORK_CONDITIONS_KEY, snapshot.workConditions],
+      [GRINDER_KEY, snapshot.grinder],
+      [WHEEL_KEY, snapshot.wheel],
+      [GRINDER_OCR_KEY, snapshot.grinderOcr],
+      [WHEEL_OCR_KEY, snapshot.wheelOcr],
+      [GRINDER_CONDITION_KEY, snapshot.grinderCondition],
+      [WHEEL_CONDITION_KEY, snapshot.wheelCondition],
+      [TRIAL_RUN_KEY, snapshot.trialRun],
+      [GRINDER_CAPTURE_METRICS_KEY, snapshot.grinderCaptureMetrics],
+      [WHEEL_CAPTURE_METRICS_KEY, snapshot.wheelCaptureMetrics],
+      [GRINDER_OCR_TELEMETRY_KEY, snapshot.grinderOcrTelemetry],
+      [WHEEL_OCR_TELEMETRY_KEY, snapshot.wheelOcrTelemetry],
+      [OFFLINE_SLOTS_KEY, snapshot.offlineSlots],
+    ];
+    for (const [key, value] of stored) {
+      if (value === null) {
+        try {
+          window.sessionStorage.removeItem(key);
+        } catch {
+          // 메모리 상태는 아래에서 반드시 바꾼다.
+        }
+      } else {
+        writeStored(key, value);
+      }
+    }
+    persistCaptureChecks(snapshot.captureChecks);
+    setState({ ...snapshot });
+  }, []);
+
   const reset = useCallback(() => {
     try {
       window.sessionStorage.removeItem(PURPOSE_KEY);
@@ -535,6 +700,7 @@ export function useInspection(): InspectionStore {
       window.sessionStorage.removeItem(GRINDER_OCR_TELEMETRY_KEY);
       window.sessionStorage.removeItem(WHEEL_OCR_TELEMETRY_KEY);
       window.sessionStorage.removeItem(CAPTURE_CHECKS_KEY);
+      window.sessionStorage.removeItem(OFFLINE_SLOTS_KEY);
     } catch {
       // 무시한다.
     }
@@ -563,6 +729,9 @@ export function useInspection(): InspectionStore {
       wheelOcrTelemetry: null,
       captureChecks: {},
       wheelExamCaptureMetrics: null,
+      offlineSlots: NO_OFFLINE_SLOTS,
+      checklist: null,
+      trialRunRecord: null,
     });
   }, []);
 
@@ -570,6 +739,12 @@ export function useInspection(): InspectionStore {
     () => ({
       ...snapshot,
       hydrating: !snapshot.hydrated,
+      analysisMode: analysisModeOf(snapshot.offlineSlots),
+      setOfflineSlot,
+      applyReanalysis,
+      setChecklist,
+      setTrialRunRecord,
+      restore,
       setPurpose,
       setGrinder,
       setWheel,
@@ -582,6 +757,11 @@ export function useInspection(): InspectionStore {
     }),
     [
       snapshot,
+      setOfflineSlot,
+      applyReanalysis,
+      setChecklist,
+      setTrialRunRecord,
+      restore,
       setPurpose,
       setGrinder,
       setWheel,

@@ -17,10 +17,15 @@ import {
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { replace, push } = vi.hoisted(() => ({
-  replace: vi.fn(),
-  push: vi.fn(),
-}));
+const { replace, push, removeDraft, extractGrinder, extractWheel } = vi.hoisted(
+  () => ({
+    replace: vi.fn(),
+    push: vi.fn(),
+    removeDraft: vi.fn(async () => true),
+    extractGrinder: vi.fn(),
+    extractWheel: vi.fn(),
+  }),
+);
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace, push, back: vi.fn(), refresh: vi.fn() }),
@@ -45,6 +50,24 @@ vi.mock('@/lib/db', () => ({
   saveInspection: vi.fn(),
   isQuotaExceededError: (error: unknown) =>
     error instanceof Error && error.name === 'QuotaExceededError',
+}));
+
+// 진행 중 점검(draft)은 IndexedDB 대신 지우기 호출만 본다.
+vi.mock('@/lib/draft/draftStore', () => ({
+  draftStore: {
+    load: vi.fn(async () => ({ status: 'none' })),
+    save: vi.fn(async () => 'saved'),
+    remove: removeDraft,
+  },
+}));
+
+// 서버 재분석은 실제 서버를 부르지 않는다.
+vi.mock('@/lib/ocr/extractor', () => ({
+  getExtractor: () => ({
+    extractGrinder,
+    extractWheel,
+    getLastTelemetry: () => null,
+  }),
 }));
 
 import ResultPage from './page';
@@ -1323,5 +1346,220 @@ describe('결과 화면 — 알려진 액세서리 Profile', () => {
     expect(
       screen.getByRole('button', { name: /점검 완료 및 저장/ }),
     ).toBeDisabled();
+  });
+});
+
+describe('결과 화면 — 오프라인 제한 대조와 서버 재분석', () => {
+  beforeEach(() => {
+    replace.mockClear();
+    push.mockClear();
+    removeDraft.mockClear();
+    extractGrinder.mockReset();
+    extractWheel.mockReset();
+    vi.mocked(saveInspection).mockReset();
+    const result = store();
+    act(() => result.current.reset());
+  });
+
+  /** 명판을 오프라인으로 직접 넣고 두 Gate를 마친 상태. 규격은 서로 맞는다 */
+  function readyOffline(wheel: WheelSpec = WHEEL) {
+    const result = store();
+    act(() => {
+      result.current.setGrinder(
+        GRINDER,
+        new Blob(['plate'], { type: 'image/jpeg' }),
+        null,
+      );
+      result.current.setOfflineSlot('grinder', true);
+      result.current.setGrinderCondition(GRINDER_OK);
+      result.current.setWheel(wheel);
+      result.current.setWheelCondition(CONFIRMED);
+    });
+    return result;
+  }
+
+  function checkAll() {
+    for (const box of screen.getAllByRole('checkbox')) {
+      if (!(box as HTMLInputElement).checked) fireEvent.click(box);
+    }
+  }
+
+  it('규격이 맞아도 적합이 아니라 판정불가 + 오프라인 제한 대조이고 시험운전을 열지 않는다', () => {
+    readyOffline();
+    render(<ResultPage />);
+    checkAll();
+
+    expect(screen.getByText('판정불가')).toBeInTheDocument();
+    expect(screen.queryByText('적합')).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '오프라인 제한 대조입니다. 작업자가 입력한 값으로만 대조해 적합 판정을 제공하지 않습니다. 연결되면 서버 재분석을 직접 선택할 수 있습니다.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('시험운전')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: '⚠ 오프라인 제한 대조' }),
+    ).toBeInTheDocument();
+  });
+
+  it('확정된 RPM 위반은 오프라인이어도 부적합이다', () => {
+    readyOffline({ ...WHEEL, maxRPM: 8500 });
+    render(<ResultPage />);
+    expect(screen.getByText('부적합')).toBeInTheDocument();
+  });
+
+  it('저장하면 판독 경로를 함께 남기고, 저장에 성공한 뒤에만 draft를 지운다', async () => {
+    readyOffline();
+    vi.mocked(saveInspection).mockResolvedValueOnce(1);
+    render(<ResultPage />);
+    checkAll();
+    fireEvent.click(screen.getByRole('button', { name: /점검 완료 및 저장/ }));
+
+    await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
+    const saved = vi.mocked(saveInspection).mock.calls[0][0];
+    expect(saved.analysisMode).toBe('offline_limited');
+    expect(saved.result.verdict).toBe('UNDETERMINED');
+    expect(saved.trialRun).toBeUndefined();
+    await waitFor(() => expect(removeDraft).toHaveBeenCalledTimes(1));
+  });
+
+  it('최종 저장이 실패하면 draft를 지우지 않는다', async () => {
+    readyOffline();
+    vi.mocked(saveInspection).mockRejectedValueOnce(new Error('disk'));
+    render(<ResultPage />);
+    checkAll();
+    fireEvent.click(screen.getByRole('button', { name: /점검 완료 및 저장/ }));
+
+    await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /점검 완료 및 저장/ }),
+      ).toBeEnabled(),
+    );
+    expect(removeDraft).not.toHaveBeenCalled();
+  });
+
+  it('온라인 점검은 online으로 남긴다', async () => {
+    const result = store();
+    act(() => {
+      result.current.setGrinder(GRINDER);
+      result.current.setGrinderCondition(GRINDER_OK);
+      result.current.setWheel({ ...WHEEL, maxRPM: 8500 });
+      result.current.setWheelCondition(CONFIRMED);
+    });
+    vi.mocked(saveInspection).mockResolvedValueOnce(1);
+    render(<ResultPage />);
+    expect(
+      screen.queryByRole('heading', { name: '⚠ 오프라인 제한 대조' }),
+    ).not.toBeInTheDocument();
+    checkAll();
+    fireEvent.click(screen.getByRole('button', { name: /점검 완료 및 저장/ }));
+
+    await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(saveInspection).mock.calls[0][0].analysisMode).toBe(
+      'online',
+    );
+  });
+
+  it('연결이 돌아와도 사용자가 고르기 전에는 서버를 부르지 않는다', () => {
+    readyOffline();
+    render(<ResultPage />);
+    expect(
+      screen.getByRole('button', { name: '서버로 다시 분석하기' }),
+    ).toBeInTheDocument();
+    expect(extractGrinder).not.toHaveBeenCalled();
+  });
+
+  it('재분석 값이 입력값과 같으면 나란히 보여 준 뒤 전환을 허락하고, 입력값은 그대로다', async () => {
+    const result = readyOffline();
+    extractGrinder.mockResolvedValue({ ...GRINDER, rawText: 'AI' });
+    render(<ResultPage />);
+
+    await act(async () => {
+      screen.getByRole('button', { name: '서버로 다시 분석하기' }).click();
+    });
+
+    expect(
+      screen.getByText(
+        '무부하 회전속도: 작업자 입력 11000rpm / AI 값 11000rpm · 같음',
+      ),
+    ).toBeInTheDocument();
+    // 전환 전까지는 여전히 오프라인 결과다.
+    expect(screen.getByText('판정불가')).toBeInTheDocument();
+
+    await act(async () => {
+      screen
+        .getByRole('button', {
+          name: 'AI 값과 같음을 확인하고 온라인 대조로 전환',
+        })
+        .click();
+    });
+
+    expect(result.current.analysisMode).toBe('online');
+    expect(result.current.grinder).toEqual(GRINDER);
+    expect(result.current.grinderOcr?.rawText).toBe('AI');
+    expect(screen.getByText('적합')).toBeInTheDocument();
+  });
+
+  it('재분석 값이 다르면 전환을 막고, 취소하면 오프라인 결과를 유지한다', async () => {
+    const result = readyOffline();
+    extractGrinder.mockResolvedValue({ ...GRINDER, noLoadRPM: 13000 });
+    render(<ResultPage />);
+
+    await act(async () => {
+      screen.getByRole('button', { name: '서버로 다시 분석하기' }).click();
+    });
+
+    expect(
+      screen.getByRole('button', {
+        name: 'AI 값과 같음을 확인하고 온라인 대조로 전환',
+      }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText(
+        '입력값과 AI 값이 다르거나 AI가 읽지 못한 값이 있어 온라인 대조로 바꿀 수 없습니다. 오프라인 결과를 유지하거나 다시 촬영하세요.',
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: '취소하고 오프라인 결과 유지' }),
+    );
+    expect(result.current.analysisMode).toBe('offline_limited');
+    expect(result.current.grinder?.noLoadRPM).toBe(11000);
+    expect(screen.getByText('판정불가')).toBeInTheDocument();
+  });
+
+  it('재분석이 다시 실패하면 값을 지어내지 않고 오프라인 결과를 유지한다', async () => {
+    const result = readyOffline();
+    extractGrinder.mockRejectedValue(new Error('network'));
+    render(<ResultPage />);
+
+    await act(async () => {
+      screen.getByRole('button', { name: '서버로 다시 분석하기' }).click();
+    });
+
+    expect(
+      screen.getByText(
+        '서버 재분석에 실패했습니다. 오프라인 결과를 그대로 유지합니다.',
+      ),
+    ).toBeInTheDocument();
+    expect(result.current.analysisMode).toBe('offline_limited');
+    expect(result.current.grinderOcr).toBeNull();
+  });
+
+  it('아직 오프라인이면 재분석 버튼을 보이지 않는다', () => {
+    const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    readyOffline();
+    render(<ResultPage />);
+
+    expect(
+      screen.queryByRole('button', { name: '서버로 다시 분석하기' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '아직 오프라인입니다. 연결되면 서버 재분석을 선택할 수 있습니다.',
+      ),
+    ).toBeInTheDocument();
+    online.mockRestore();
   });
 });

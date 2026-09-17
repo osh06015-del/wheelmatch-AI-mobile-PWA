@@ -161,6 +161,14 @@ describe('비통과 문구', () => {
       // 판정 범위(scope)가 제한적이라는 사실이 적합·안전으로 읽히면 안 된다.
       'profile.scope.limited',
       'history.filter.scopeLimited',
+      // 오프라인 제한 대조는 적합을 낼 수 없는 판정이다.
+      'rule.offlineLimited',
+      'reason.analysisMode.offlineLimited',
+      'result.undetermined.offlineLimited',
+      'evidence.limit.offlineLimited',
+      'offline.limit',
+      'scan.offline.continueHint',
+      'scan.offline.notice',
     ] as const;
 
     for (const { code } of LOCALES) {

@@ -22,6 +22,7 @@ import { EvidencePanel } from '@/components/EvidencePanel';
 import { HazardList } from '@/components/HazardList';
 import { LanguagePicker } from '@/components/LanguagePicker';
 import { NotVerifiablePanel } from '@/components/NotVerifiablePanel';
+import { OfflineReanalysisPanel } from '@/components/OfflineReanalysisPanel';
 import { ProfileConditionsPanel } from '@/components/ProfileConditionsPanel';
 import { ResultCard } from '@/components/ResultCard';
 import { RuleVersionNote } from '@/components/RuleVersionNote';
@@ -29,6 +30,7 @@ import { TrialRunPanel, TrialRunStopNotice } from '@/components/TrialRunPanel';
 import { WheelExamEvidence } from '@/components/WheelExamEvidence';
 import { useLocale } from '@/lib/i18n';
 import { isQuotaExceededError, saveInspection } from '@/lib/db';
+import { draftStore } from '@/lib/draft/draftStore';
 import { elapsedSince, preTrialElapsed } from '@/lib/record/elapsed';
 import { RULE, matchSpecs, toDateOnly } from '@/lib/rules/engine';
 import {
@@ -50,7 +52,6 @@ import { isWheelConditionComplete } from '@/lib/safety/wheelCondition';
 import { useInspection } from '@/lib/state/inspection';
 import type {
   SafetyChecklist,
-  TrialRun,
   TrialRunFinding,
   TrialRunOutcome,
 } from '@/lib/rules/types';
@@ -84,11 +85,23 @@ export default function ResultPage() {
     captureChecks,
     wheelExamCaptureMetrics,
     wheelExamAcknowledged,
+    analysisMode,
+    offlineSlots,
+    applyReanalysis,
+    checklist: storedChecklist,
+    setChecklist: storeChecklist,
+    trialRunRecord,
+    setTrialRunRecord,
     hydrating,
     reset,
   } = useInspection();
+  // 체크리스트와 마친 시험운전은 저장소에 둔다 — 진행 중 점검 복구(draft)가
+  // "이어하기"를 고른 경우 되살릴 수 있게 하기 위해서다.
+  const checklist: SafetyChecklist = storedChecklist ?? EMPTY_CHECKLIST;
+  const setChecklist = (
+    update: (current: SafetyChecklist) => SafetyChecklist,
+  ) => storeChecklist(update(checklist));
 
-  const [checklist, setChecklist] = useState<SafetyChecklist>(EMPTY_CHECKLIST);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -96,7 +109,6 @@ export default function ResultPage() {
   // 사진을 앱이 알아서 지우지는 않는다.
   const [quotaHit, setQuotaHit] = useState(false);
   const [findings, setFindings] = useState<TrialRunFinding[]>([]);
-  const [trialRunRecord, setTrialRunRecord] = useState<TrialRun | null>(null);
 
   // 규격과 작업자 직접 상태 확인이 모두 없으면 대조 결과를 보여주지 않는다.
   //
@@ -142,9 +154,11 @@ export default function ResultPage() {
             profile: profileFor(wheel.wheelType),
             declaredPurpose,
             today,
+            // 서버 분석 없이 직접 넣은 단계가 있으면 적합을 내지 않는다.
+            analysisMode,
           })
         : null,
-    [grinder, wheel, declaredPurpose, today],
+    [grinder, wheel, declaredPurpose, today, analysisMode],
   );
 
   if (
@@ -179,6 +193,9 @@ export default function ResultPage() {
   const scopeLimited = result.checks.some(
     (check) => check.detail?.code === 'profileScope.limited',
   );
+  // 오프라인 제한 대조라 판정불가인가. 부속품 범위보다 먼저 알린다 — 연결이
+  // 돌아오면 작업자가 직접 풀 수 있는(재분석) 원인이기 때문이다.
+  const offlineLimited = analysisMode === 'offline_limited';
   // 부속품 Profile과 입력을 맞춰 본다. 판정(result)과 따로다 — 여기 결과는
   // verdict를 바꾸지 않는다. Profile이 없는 종류는 조건표가 없다고만 알린다.
   const profile = profileFor(wheel.wheelType);
@@ -189,7 +206,10 @@ export default function ResultPage() {
   const conditionKeys = conditionItemsFor(wheel.wheelType);
   // 시험운전 근거(제122조 ②)가 확인된 종류에만 시험운전을 열고 요구한다.
   // Profile이 없는 종류는 어차피 판정불가라 열리지 않는다.
-  const trialRunPolicyVerified = profile?.trialRunPolicy === 'kr_osh_122';
+  // 오프라인 제한 대조에서는 판정이 적합이 될 수 없지만, 시험운전 진입도 따로 막는다 —
+  // 규칙이 바뀌어도 이 경로로 시험운전이 열리지 않게 한다.
+  const trialRunPolicyVerified =
+    profile?.trialRunPolicy === 'kr_osh_122' && !offlineLimited;
 
   // 시험운전은 규격이 맞는 조합에서만, 그리고 체크리스트까지 끝난 뒤에만 연다.
   // 부적합·판정불가 조합의 시험운전을 앱이 유도하면 그 자체가 사고 경로다.
@@ -323,10 +343,14 @@ export default function ResultPage() {
         wheelEdgeImage: (withPhotos ? wheelEdgeImage : null) ?? undefined,
         wheelBoreImage: (withPhotos ? wheelBoreImage : null) ?? undefined,
         ruleVersion: RULESET_VERSION,
+        analysisMode,
         createdAt: new Date().toISOString(),
       });
       setSaved(true);
       reset();
+      // 최종 기록이 저장된 뒤에만 진행 중 점검을 지운다. 지우기에 실패해도 기록은
+      // 이미 저장됐다 — 다음에 열 때 이어하기·삭제를 다시 묻게 된다.
+      void draftStore.remove();
       router.push('/history');
     } catch (error) {
       // 저장 공간이 가득 찬 경우는 원인이 다르고 조치도 다르다 — "다시
@@ -379,6 +403,17 @@ export default function ResultPage() {
         }}
       />
 
+      {offlineLimited && (
+        <OfflineReanalysisPanel
+          grinder={grinder}
+          wheel={wheel}
+          offlineSlots={offlineSlots}
+          grinderImage={grinderImage}
+          wheelImage={wheelImage}
+          onAccept={applyReanalysis}
+        />
+      )}
+
       <ProfileConditionsPanel
         profile={profileRef(wheel.wheelType)}
         conditions={conditions}
@@ -393,9 +428,11 @@ export default function ResultPage() {
               ? t('result.undetermined.guardMissing')
               : guardBlocking === 'guard.smallerThanWheel'
                 ? t('result.undetermined.guardSize')
-                : scopeLimited
-                  ? t('result.undetermined.limitedScope')
-                  : t('result.undetermined.help')}
+                : offlineLimited
+                  ? t('result.undetermined.offlineLimited')
+                  : scopeLimited
+                    ? t('result.undetermined.limitedScope')
+                    : t('result.undetermined.help')}
           </p>
           <div className="flex flex-col gap-3">
             {guardBlocking ? (

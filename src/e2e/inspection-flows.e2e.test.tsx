@@ -15,6 +15,7 @@ import {
   FixtureExtractor,
   GRINDER,
   examNotObserved,
+  failure,
   finishTrialRun,
   inspector,
   mountApp,
@@ -561,5 +562,108 @@ describe('점검 흐름 E2E — Gate와 시험운전', () => {
     );
     expect(record.trialRun?.elapsedSeconds).toBe(60);
     expect(record.preTrialElapsedMs).toBe(10_000);
+  });
+});
+
+describe('점검 흐름 E2E — 오프라인 제한 대조와 재연결', () => {
+  /** 명판 분석이 네트워크로 실패해 직접 입력으로 넘어가고, 숫돌은 온라인으로 읽어 결과까지 간다 */
+  async function openOfflineResult(
+    f: ReturnType<typeof inspector>,
+    extractor: FixtureExtractor,
+  ) {
+    await mountApp(extractor);
+    await f.chooseJob('cutting');
+    await f.pickPhoto();
+    await f.user.click(
+      await screen.findByRole('button', {
+        name: f.t('scan.offline.continue'),
+      }),
+    );
+    await screen.findByText(f.t('scan.offline.notice'), { exact: false });
+
+    // 작업자가 명판을 보고 값을 직접 넣는다. 추정값은 없다.
+    const [, rpm, diameter] = screen.getAllByPlaceholderText(
+      f.t('field.placeholder'),
+    );
+    await f.user.type(rpm, '11000');
+    await f.user.type(diameter, '125');
+    await f.user.click(
+      screen.getByRole('checkbox', {
+        name: new RegExp(f.t('manualConfirm.label')),
+      }),
+    );
+    await f.answerGrinderCondition();
+    await f.user.click(f.button('scan.grinder.proceed'));
+    await f.atPath('/scan/wheel');
+
+    await f.pickPhoto();
+    await screen.findByText(f.t('scan.confirmTitle'));
+    if (screen.queryByText(f.t('exam.title'))) await f.completeWheelExam();
+    await f.answerWheelCondition();
+    await f.user.click(f.button('scan.wheel.proceed'));
+    await f.atPath('/result');
+    await screen.findByText(f.t('result.title'));
+  }
+
+  it('규격이 맞아도 판정불가·시험운전 없음으로 저장되고 판독 경로가 남는다', async () => {
+    const f = inspector('ko');
+    await openOfflineResult(
+      f,
+      new FixtureExtractor().grinder(failure('network')).wheel(wheelLabel()),
+    );
+
+    expect(screen.getByText(f.t('verdict.undetermined'))).toBeInTheDocument();
+    expect(document.body).toHaveTextContent(
+      f.t('result.undetermined.offlineLimited'),
+    );
+    await f.completeChecklist();
+    expect(
+      screen.queryByRole('heading', { name: f.t('trialRun.title') }),
+    ).not.toBeInTheDocument();
+
+    await f.user.click(f.button('result.save'));
+    await f.atPath('/history');
+    const [record] = savedRecords();
+    expect(record.analysisMode).toBe('offline_limited');
+    expect(record.result.verdict).toBe('UNDETERMINED');
+    expect(record.grinderOcr).toBeUndefined();
+    expect(record.trialRun).toBeUndefined();
+    expect(
+      record.result.checks.some(
+        (check) => check.detail?.code === 'analysisMode.offlineLimited',
+      ),
+    ).toBe(true);
+  });
+
+  it('재연결 후 작업자가 재분석을 골라 AI 값이 같음을 확인하면 온라인 대조로 바뀐다', async () => {
+    const f = inspector('ko');
+    await openOfflineResult(
+      f,
+      new FixtureExtractor()
+        .grinder(failure('network'), GRINDER)
+        .wheel(wheelLabel()),
+    );
+    expect(screen.getByText(f.t('verdict.undetermined'))).toBeInTheDocument();
+
+    await f.user.click(f.button('offline.reanalyze'));
+    await f.user.click(
+      await screen.findByRole('button', {
+        name: f.t('offline.accept'),
+      }),
+    );
+
+    expect(
+      await screen.findByText(f.t('verdict.compatible')),
+    ).toBeInTheDocument();
+    await f.completeChecklist();
+    await f.user.click(f.button('trialRun.startBeforeWork', { seconds: 60 }));
+    await finishTrialRun(f);
+    await f.user.click(f.button('result.save'));
+    await f.atPath('/history');
+
+    const [record] = savedRecords();
+    expect(record.analysisMode).toBe('online');
+    expect(record.grinder.noLoadRPM).toBe(11000);
+    expect(record.grinderOcr).toEqual(GRINDER);
   });
 });

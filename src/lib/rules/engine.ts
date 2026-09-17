@@ -6,6 +6,7 @@
 
 import type {
   AccessoryProfile,
+  AnalysisMode,
   CheckItem,
   ExpiryMonth,
   GrinderSpec,
@@ -34,6 +35,7 @@ export const RULE = {
   CONFIDENCE: '신뢰도 검증',
   GUARD: '덮개 조건',
   PROFILE_SCOPE: '제한적 규격 대조',
+  OFFLINE_LIMITED: '오프라인 제한 대조',
 } as const;
 
 const PURPOSE_LABEL: Record<WheelPurpose, string> = {
@@ -620,6 +622,29 @@ export function checkProfileScope(
 }
 
 /**
+ * Rule 15 — 오프라인 제한 대조
+ *
+ * 서버에 닿지 못해 사진 분석 없이 작업자가 직접 넣은 값으로만 대조한 경우다.
+ * 값을 사진과 대조해 줄 두 번째 눈(AI 판독)이 없었으므로 **적합으로 끝내지
+ * 않는다.** 확정된 RPM·지름 위반은 decideVerdict가 false를 먼저 보므로 그대로
+ * 부적합이다 — 이 항목은 "위반이 없어도 적합은 아니다"만 만든다.
+ *
+ * online이면 항목을 만들지 않는다 — 기존 판정을 흔들지 않기 위해서다.
+ */
+export function checkAnalysisMode(mode: AnalysisMode): CheckItem | null {
+  if (mode !== 'offline_limited') return null;
+  return {
+    rule: RULE.OFFLINE_LIMITED,
+    grinderValue: null,
+    wheelValue: null,
+    passed: null,
+    reason:
+      '서버 분석 없이 작업자가 입력·확인한 값으로만 대조했습니다. RPM·지름 위반만 부적합으로 판정하며 적합 판정은 제공하지 않습니다.',
+    detail: { code: 'analysisMode.offlineLimited' },
+  };
+}
+
+/**
  * Rule 8 — 신뢰도 검증
  * 어느 한쪽이라도 인식 신뢰도가 낮으면, 나머지 항목이 통과하더라도
  * 그 값을 믿고 적합 판정을 내릴 수 없다. 전체를 판정불가로 되돌린다.
@@ -1095,6 +1120,11 @@ export interface MatchOptions {
    * 판정불가로 남는다 — 조용히 건너뛰지 않는다.
    */
   today?: string | null;
+  /**
+   * 판독 경로. 넣지 않으면 online이다 — 기존 호출과 기록은 그대로 판정된다.
+   * offline_limited는 적합을 막는 방향으로만 작동한다(checkAnalysisMode).
+   */
+  analysisMode?: AnalysisMode;
   /** 테스트에서 시각을 고정하기 위한 주입점 */
   now?: Date;
 }
@@ -1108,6 +1138,7 @@ export function matchSpecs(
     profile,
     declaredPurpose = null,
     today = null,
+    analysisMode = 'online',
     now = new Date(),
   } = options;
 
@@ -1120,6 +1151,8 @@ export function matchSpecs(
   const guard = checkGuard(grinder, wheel, profile);
   // scope가 'full'이면(bonded_abrasive·결합숫돌 세부 형식) 항목이 생기지 않는다.
   const profileScope = checkProfileScope(wheel, profile);
+  // online(기본)이면 항목이 생기지 않는다.
+  const offlineLimited = checkAnalysisMode(analysisMode);
 
   const checks: CheckItem[] = [
     checkRequiredValues(grinder, wheel),
@@ -1139,6 +1172,7 @@ export function matchSpecs(
     ...(mountingSpec ? [mountingSpec] : []),
     ...(guard ? [guard] : []),
     ...(profileScope ? [profileScope] : []),
+    ...(offlineLimited ? [offlineLimited] : []),
     checkConfidence(grinder, wheel),
   ];
 
