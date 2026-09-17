@@ -26,7 +26,7 @@ describe('ProfileConditionsPanel', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        '이 항목들은 규격 판정에 들어가지 않습니다. 앱이 맞다고 추정하지 않으니 직접 확인하세요.',
+        '덮개 어긋남은 판정을 판정불가로 막습니다. 나머지 항목은 규격 판정에 들어가지 않으며, 앱이 맞다고 추정하지 않으니 직접 확인하세요.',
       ),
     ).toBeInTheDocument();
     expect(

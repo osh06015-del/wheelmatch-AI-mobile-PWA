@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest';
 import { EvidencePanel } from './EvidencePanel';
 import { matchSpecs } from '@/lib/rules/engine';
 import type { GrinderSpec, WheelSpec } from '@/lib/rules/types';
+import { BONDED_ABRASIVE_PROFILE } from '@/lib/rules/profiles';
 
 const TODAY = '2026-09-16';
 
@@ -50,7 +51,10 @@ describe('EvidencePanel — 펼치고 접기', () => {
       <EvidencePanel
         grinder={g}
         wheel={w}
-        result={matchSpecs(g, w, { today: TODAY })}
+        result={matchSpecs(g, w, {
+          profile: BONDED_ABRASIVE_PROFILE,
+          today: TODAY,
+        })}
         grinderOcr={g}
         wheelOcr={w}
       />,
@@ -71,7 +75,10 @@ describe('EvidencePanel — 펼치고 접기', () => {
       <EvidencePanel
         grinder={g}
         wheel={w}
-        result={matchSpecs(g, w, { today: TODAY })}
+        result={matchSpecs(g, w, {
+          profile: BONDED_ABRASIVE_PROFILE,
+          today: TODAY,
+        })}
         grinderOcr={g}
         wheelOcr={w}
       />,
@@ -98,7 +105,10 @@ describe('EvidencePanel — 구기록의 없는 값', () => {
       <EvidencePanel
         grinder={g}
         wheel={w}
-        result={matchSpecs(g, w, { today: TODAY })}
+        result={matchSpecs(g, w, {
+          profile: BONDED_ABRASIVE_PROFILE,
+          today: TODAY,
+        })}
         // grinderOcr·wheelOcr을 넘기지 않는다 — 이 기능 도입 전 기록과 같다.
       />,
     );
@@ -120,7 +130,10 @@ describe('EvidencePanel — 구기록의 없는 값', () => {
       <EvidencePanel
         grinder={finalGrinder}
         wheel={w}
-        result={matchSpecs(finalGrinder, w, { today: TODAY })}
+        result={matchSpecs(finalGrinder, w, {
+          profile: BONDED_ABRASIVE_PROFILE,
+          today: TODAY,
+        })}
         grinderOcr={ocrGrinder}
         wheelOcr={w}
       />,
@@ -147,7 +160,10 @@ describe('EvidencePanel — 안전 경계', () => {
       <EvidencePanel
         grinder={g}
         wheel={w}
-        result={matchSpecs(g, w, { today: TODAY })}
+        result={matchSpecs(g, w, {
+          profile: BONDED_ABRASIVE_PROFILE,
+          today: TODAY,
+        })}
         grinderOcr={g}
         wheelOcr={w}
       />,
@@ -168,7 +184,10 @@ describe('EvidencePanel — 안전 경계', () => {
       <EvidencePanel
         grinder={g}
         wheel={w}
-        result={matchSpecs(g, w, { today: TODAY })}
+        result={matchSpecs(g, w, {
+          profile: BONDED_ABRASIVE_PROFILE,
+          today: TODAY,
+        })}
         grinderOcr={g}
         wheelOcr={w}
       />,
@@ -187,7 +206,10 @@ describe('EvidencePanel — 안전 경계', () => {
       <EvidencePanel
         grinder={g}
         wheel={w}
-        result={matchSpecs(g, w, { today: TODAY })}
+        result={matchSpecs(g, w, {
+          profile: BONDED_ABRASIVE_PROFILE,
+          today: TODAY,
+        })}
         grinderOcr={g}
         wheelOcr={w}
       />,
@@ -213,7 +235,10 @@ describe('EvidencePanel — 계산식과 차이', () => {
       <EvidencePanel
         grinder={g}
         wheel={w}
-        result={matchSpecs(g, w, { today: TODAY })}
+        result={matchSpecs(g, w, {
+          profile: BONDED_ABRASIVE_PROFILE,
+          today: TODAY,
+        })}
         grinderOcr={g}
         wheelOcr={w}
       />,

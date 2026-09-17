@@ -38,6 +38,11 @@ export const en: Messages = {
     'Some values are missing or were read with low confidence. Take the photos again or enter the values yourself to get a judgement.',
   'result.retakeGrinder': 'Start again from the grinder',
   'result.retakeWheel': 'Check the wheel again',
+  'result.undetermined.guardMissing':
+    'The guard entries conflict with each other. Recheck the grinder condition and your guard selection.',
+  'result.undetermined.guardSize':
+    'It cannot be confirmed that the selected guard matches the accessory conditions. Check the manufacturer instructions.',
+  'result.recheckGuard': 'Recheck guard information',
   'result.save': 'Finish and save',
   'result.saving': 'Saving...',
   'result.saveError': 'Saving failed. Check your storage space and try again.',
@@ -50,7 +55,7 @@ export const en: Messages = {
 
   'group.confirmed': 'Confirmed',
   'group.conflicting': 'Does not match',
-  'group.unreadable': 'Could not read',
+  'group.unreadable': 'Could not be judged',
   'group.manual': 'Check these yourself',
   'notVerifiable.title': 'What this app cannot check',
   'notVerifiable.note':
@@ -413,7 +418,7 @@ export const en: Messages = {
   'grinderMount.guardSize.hint': 'Leave empty if you are not sure.',
   'profile.title': 'Mounting and work conditions',
   'profile.note':
-    'These items are not part of the spec check. The app never assumes they match — check them yourself.',
+    'A guard conflict blocks the result as undetermined. The other items are not part of the spec check, and the app never assumes they match — check them yourself.',
   'profile.version': 'Condition profile: {type} · {version}',
   'profile.none':
     'There is no condition profile for this type. Check the manufacturer instructions.',
@@ -460,6 +465,18 @@ export const en: Messages = {
     'The app has no rotation direction criteria. If the label has an arrow, mount it in that direction.',
   'profile.code.rotation.followArrow':
     'Check that it is mounted to match the rotation arrow on the label.',
+
+  'rule.guard': 'Guard condition',
+  'reason.guard.missing':
+    'You entered no guard. This type needs a guard. The specs cannot be judged until a guard is fitted and the entry is corrected.',
+  'reason.guard.smallerThanWheel':
+    'The guard size entered is smaller than the wheel diameter. This guard cannot cover the wheel, so the specs cannot be judged until the guard and the entry are checked.',
+  'reason.guard.manualCheck':
+    'The app does not check whether the guard type and size suit this wheel. Check how it is mounted yourself.',
+  'evidence.doc.guard':
+    'Rules on Occupational Safety and Health Standards, Article 122(1) — install a guard on grinding wheels',
+  'evidence.limit.guard':
+    'Only blocks a worker entry of no guard or a guard smaller than the wheel. The basis for a guard size criterion was not verified, so this is undetermined, not a mismatch. Having a guard does not mean it is the right guard.',
 
   'wheelType.bonded_abrasive': 'Standard bonded abrasive wheel',
   'wheelType.flap_disc': 'Flap disc',

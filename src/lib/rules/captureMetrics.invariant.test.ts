@@ -15,6 +15,7 @@ import type {
   OcrTelemetry,
   WheelSpec,
 } from './types';
+import { BONDED_ABRASIVE_PROFILE } from './profiles';
 
 const GRINDER: GrinderSpec = {
   model: 'GWS 750-125',
@@ -62,7 +63,9 @@ const OCR_TELEMETRY: OcrTelemetry = {
 
 describe('CaptureQualityMetrics·OcrTelemetry는 판정에 영향을 주지 않는다', () => {
   it('같은 grinder·wheel이면 검증용 메타데이터가 무엇이든 같은 판정이 나온다', () => {
-    const baseline = matchSpecs(GRINDER, WHEEL);
+    const baseline = matchSpecs(GRINDER, WHEEL, {
+      profile: BONDED_ABRASIVE_PROFILE,
+    });
 
     // matchSpecs는 그라인더·숫돌 값만 받는다. 메타데이터를 넘길 방법이
     // 시그니처 자체에 없으므로, 여기서는 같은 두 값으로 다시 불러도
@@ -70,7 +73,9 @@ describe('CaptureQualityMetrics·OcrTelemetry는 판정에 영향을 주지 않�
     // 메타데이터를 만들어 눈으로 봐도 판정에 관여할 경로가 없음을 보인다.
     void CAPTURE_METRICS;
     void OCR_TELEMETRY;
-    const result = matchSpecs(GRINDER, WHEEL);
+    const result = matchSpecs(GRINDER, WHEEL, {
+      profile: BONDED_ABRASIVE_PROFILE,
+    });
 
     expect(result.verdict).toBe(baseline.verdict);
     expect(result.checks).toEqual(baseline.checks);

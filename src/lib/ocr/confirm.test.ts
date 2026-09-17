@@ -12,6 +12,7 @@ import {
 } from './confirm';
 import { RULE, matchSpecs } from '@/lib/rules/engine';
 import type { GrinderSpec, WheelSpec } from '@/lib/rules/types';
+import { BONDED_ABRASIVE_PROFILE } from '@/lib/rules/profiles';
 
 /** 기준일을 고정한다. 엔진은 시계를 읽지 않으므로 결과가 흔들리지 않는다. */
 const TODAY = '2026-09-08';
@@ -152,9 +153,10 @@ describe('confirmedWheelSpec — 원본 표시 보존', () => {
     expect(spec.rpmSource).toBe('user');
     expect(spec.expiry).toBeNull();
 
-    const rules = matchSpecs(grinder(), spec, { today: TODAY }).checks.map(
-      (c) => c.rule,
-    );
+    const rules = matchSpecs(grinder(), spec, {
+      profile: BONDED_ABRASIVE_PROFILE,
+      today: TODAY,
+    }).checks.map((c) => c.rule);
     expect(rules).not.toContain(RULE.UNIT_CONSISTENCY);
     expect(rules).not.toContain(RULE.MOUNTING_SPEC);
   });
@@ -220,9 +222,12 @@ describe('confirmedWheelSpec — 원본 표시 보존', () => {
     expect(spec.expiry).toBeNull();
     // 라벨에 무엇이 찍혀 있었는지는 그대로 남는다.
     expect(spec.markings?.expiryRaw).toBe('04/2027');
-    expect(matchSpecs(grinder(), spec, { today: TODAY }).verdict).toBe(
-      'UNDETERMINED',
-    );
+    expect(
+      matchSpecs(grinder(), spec, {
+        profile: BONDED_ABRASIVE_PROFILE,
+        today: TODAY,
+      }).verdict,
+    ).toBe('UNDETERMINED');
   });
 
   it('사용자가 모호한 형식을 넣으면 값을 지어내지 않는다', () => {
@@ -233,9 +238,12 @@ describe('confirmedWheelSpec — 원본 표시 보존', () => {
     );
 
     expect(spec.expiry).toBeNull();
-    expect(matchSpecs(grinder(), spec, { today: TODAY }).verdict).toBe(
-      'UNDETERMINED',
-    );
+    expect(
+      matchSpecs(grinder(), spec, {
+        profile: BONDED_ABRASIVE_PROFILE,
+        today: TODAY,
+      }).verdict,
+    ).toBe('UNDETERMINED');
   });
 
   it('사용자가 지난 기한을 확정하면 부적합으로 간다', () => {
@@ -244,7 +252,10 @@ describe('confirmedWheelSpec — 원본 표시 보존', () => {
       ocr,
       untouched(ocr, { expiryText: '04/2023', userConfirmed: true }),
     );
-    const result = matchSpecs(grinder(), spec, { today: TODAY });
+    const result = matchSpecs(grinder(), spec, {
+      profile: BONDED_ABRASIVE_PROFILE,
+      today: TODAY,
+    });
 
     expect(result.checks.find((c) => c.rule === RULE.EXPIRY)?.passed).toBe(
       false,
@@ -277,8 +288,11 @@ describe('confirmedWheelSpec — 숫돌 종류는 작업자가 고른다', () =>
 
     expect(spec.wheelType).toBe('bonded_abrasive');
     expect(
-      matchSpecs(grinder(), spec, { declaredPurpose: 'cutting', today: TODAY })
-        .verdict,
+      matchSpecs(grinder(), spec, {
+        profile: BONDED_ABRASIVE_PROFILE,
+        declaredPurpose: 'cutting',
+        today: TODAY,
+      }).verdict,
     ).toBe('COMPATIBLE');
   });
 
@@ -288,8 +302,11 @@ describe('confirmedWheelSpec — 숫돌 종류는 작업자가 고른다', () =>
 
     expect(spec.wheelType).toBe('flap_disc');
     expect(
-      matchSpecs(grinder(), spec, { declaredPurpose: 'cutting', today: TODAY })
-        .verdict,
+      matchSpecs(grinder(), spec, {
+        profile: BONDED_ABRASIVE_PROFILE,
+        declaredPurpose: 'cutting',
+        today: TODAY,
+      }).verdict,
     ).toBe('UNDETERMINED');
   });
 
@@ -318,8 +335,11 @@ describe('confirmedWheelSpec — 숫돌 종류는 작업자가 고른다', () =>
     expect(spec.confidence).toBe('high');
     expect(ocr.wheelType).toBe('unknown');
     expect(
-      matchSpecs(grinder(), spec, { declaredPurpose: 'cutting', today: TODAY })
-        .verdict,
+      matchSpecs(grinder(), spec, {
+        profile: BONDED_ABRASIVE_PROFILE,
+        declaredPurpose: 'cutting',
+        today: TODAY,
+      }).verdict,
     ).toBe('COMPATIBLE');
   });
 
@@ -331,8 +351,11 @@ describe('confirmedWheelSpec — 숫돌 종류는 작업자가 고른다', () =>
     );
 
     expect(
-      matchSpecs(grinder(), spec, { declaredPurpose: 'cutting', today: TODAY })
-        .verdict,
+      matchSpecs(grinder(), spec, {
+        profile: BONDED_ABRASIVE_PROFILE,
+        declaredPurpose: 'cutting',
+        today: TODAY,
+      }).verdict,
     ).toBe('UNDETERMINED');
   });
 });
@@ -374,9 +397,10 @@ describe('확인 화면을 통과한 값으로 실제 판정하기', () => {
   it('표기 일치 검사가 결과에 실제로 나타난다', () => {
     const ocr = ocrWheel();
     const spec = confirmedWheelSpec(ocr, untouched(ocr));
-    const check = matchSpecs(grinder(), spec, { today: TODAY }).checks.find(
-      (c) => c.rule === RULE.UNIT_CONSISTENCY,
-    );
+    const check = matchSpecs(grinder(), spec, {
+      profile: BONDED_ABRASIVE_PROFILE,
+      today: TODAY,
+    }).checks.find((c) => c.rule === RULE.UNIT_CONSISTENCY);
 
     // 이전에는 markings가 새어나가 이 항목이 아예 만들어지지 않았다.
     expect(check).toBeDefined();
@@ -388,7 +412,10 @@ describe('확인 화면을 통과한 값으로 실제 판정하기', () => {
     // 어느 쪽을 잘못 읽었는지 알 수 없으므로 통과시키지 않는다.
     const ocr = ocrWheel({}, { peripheralSpeedMps: 8 });
     const spec = confirmedWheelSpec(ocr, untouched(ocr));
-    const result = matchSpecs(grinder(), spec, { today: TODAY });
+    const result = matchSpecs(grinder(), spec, {
+      profile: BONDED_ABRASIVE_PROFILE,
+      today: TODAY,
+    });
 
     const check = result.checks.find((c) => c.rule === RULE.UNIT_CONSISTENCY);
     expect(check?.passed).toBeNull();
@@ -401,7 +428,10 @@ describe('확인 화면을 통과한 값으로 실제 판정하기', () => {
     // 지워지면, 오독된 라벨이 조용히 적합으로 통과한다.
     const ocr = ocrWheel({ maxRPM: 1220 }, { labeledRPM: 1220 });
     const spec = confirmedWheelSpec(ocr, untouched(ocr, { maxRPM: 12200 }));
-    const result = matchSpecs(grinder(), spec, { today: TODAY });
+    const result = matchSpecs(grinder(), spec, {
+      profile: BONDED_ABRASIVE_PROFILE,
+      today: TODAY,
+    });
 
     expect(result.checks.find((c) => c.rule === RULE.RPM_SAFETY)?.passed).toBe(
       true,
@@ -416,9 +446,10 @@ describe('확인 화면을 통과한 값으로 실제 판정하기', () => {
     // 그래서 이 항목은 값을 보여주고 사용자에게 직접 확인을 요구하는 데서 멈춘다.
     const ocr = ocrWheel();
     const spec = confirmedWheelSpec(ocr, untouched(ocr));
-    const check = matchSpecs(grinder(), spec, { today: TODAY }).checks.find(
-      (c) => c.rule === RULE.MOUNTING_SPEC,
-    );
+    const check = matchSpecs(grinder(), spec, {
+      profile: BONDED_ABRASIVE_PROFILE,
+      today: TODAY,
+    }).checks.find((c) => c.rule === RULE.MOUNTING_SPEC);
 
     expect(check).toBeDefined();
     expect(check?.wheelValue).toBe('내경 Φ22.23mm');
@@ -429,7 +460,10 @@ describe('확인 화면을 통과한 값으로 실제 판정하기', () => {
   it('숫돌 외경이 그라인더 허용 최대 지름을 넘으면 적합으로 나오지 않는다', () => {
     const ocr = ocrWheel({ diameter: 180 });
     const spec = confirmedWheelSpec(ocr, untouched(ocr));
-    const result = matchSpecs(grinder(), spec, { today: TODAY });
+    const result = matchSpecs(grinder(), spec, {
+      profile: BONDED_ABRASIVE_PROFILE,
+      today: TODAY,
+    });
 
     expect(
       result.checks.find((c) => c.rule === RULE.DIAMETER_FIT)?.passed,
@@ -441,15 +475,19 @@ describe('확인 화면을 통과한 값으로 실제 판정하기', () => {
     const ocr = ocrWheel({ maxRPM: null }, { labeledRPM: null });
     const spec = confirmedWheelSpec(ocr, untouched(ocr));
 
-    expect(matchSpecs(grinder(), spec, { today: TODAY }).verdict).toBe(
-      'UNDETERMINED',
-    );
+    expect(
+      matchSpecs(grinder(), spec, {
+        profile: BONDED_ABRASIVE_PROFILE,
+        today: TODAY,
+      }).verdict,
+    ).toBe('UNDETERMINED');
   });
 
   it('용도가 모호하면 오늘 작업과 대조할 수 없어 판정불가로 남는다', () => {
     const ocr = ocrWheel({ purpose: 'unknown' });
     const spec = confirmedWheelSpec(ocr, untouched(ocr));
     const result = matchSpecs(grinder(), spec, {
+      profile: BONDED_ABRASIVE_PROFILE,
       declaredPurpose: 'cutting',
       today: TODAY,
     });
@@ -465,8 +503,11 @@ describe('확인 화면을 통과한 값으로 실제 판정하기', () => {
     const spec = confirmedWheelSpec(ocr, untouched(ocr));
 
     expect(
-      matchSpecs(grinder(), spec, { declaredPurpose: 'cutting', today: TODAY })
-        .verdict,
+      matchSpecs(grinder(), spec, {
+        profile: BONDED_ABRASIVE_PROFILE,
+        declaredPurpose: 'cutting',
+        today: TODAY,
+      }).verdict,
     ).toBe('COMPATIBLE');
   });
 });

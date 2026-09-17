@@ -49,6 +49,9 @@ vi.mock('@/lib/db', () => ({
 
 import ResultPage from './page';
 import { saveInspection } from '@/lib/db';
+import { CSV_COLUMNS, toCsv } from '@/lib/record/csv';
+import { BONDED_ABRASIVE_PROFILE } from '@/lib/rules/profiles';
+import { RULESET_VERSION } from '@/lib/rules/version';
 import { useResearchMode } from '@/lib/record/researchMode';
 import { useInspection } from '@/lib/state/inspection';
 import type {
@@ -961,5 +964,163 @@ describe('결과 화면 — 저장 함수 내부 재검사와 저장공간 오�
     const saved = vi.mocked(saveInspection).mock.calls[0][0];
     expect(saved.accessoryProfile).toBeUndefined();
     expect(saved.profileConditions).toBeUndefined();
+  });
+  it('덮개 없음 — 상단 판정·조건 표·저장 기록·CSV가 모두 비통과로 일치한다', async () => {
+    // 회전속도·지름·유효기한이 모두 맞는 조합이다. 덮개 입력만 어긋난다.
+    const result = ready(WHEEL);
+    act(() => {
+      result.current.setGrinder({ ...GRINDER, guardType: 'none' });
+      result.current.setGrinderCondition(GRINDER_OK);
+      result.current.setWheel(WHEEL);
+      result.current.setWheelCondition(CONFIRMED);
+    });
+
+    render(<ResultPage />);
+
+    // 상단 판정: 적합이 아니다.
+    expect(screen.getByText('판정불가')).toBeInTheDocument();
+    expect(screen.queryByText('적합')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/표시된 규격끼리는 서로 맞습니다/),
+    ).not.toBeInTheDocument();
+    // 조건 표: 어긋남.
+    expect(screen.getByText('⚠ 덮개 · 어긋남')).toBeInTheDocument();
+    // 적합 조합에서만 여는 시험운전이 열리지 않는다.
+    checkAll();
+    expect(screen.queryByText('시험운전')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /점검 완료 및 저장/ }));
+    await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
+
+    // 저장 기록: 같은 판정과 근거, 새 규칙·Profile 버전.
+    const saved = vi.mocked(saveInspection).mock.calls[0][0];
+    expect(saved.result.verdict).toBe('UNDETERMINED');
+    expect(
+      saved.result.checks.find((check) => check.rule === '덮개 조건')?.detail
+        ?.code,
+    ).toBe('guard.missing');
+    expect(saved.ruleVersion).toBe(RULESET_VERSION);
+    expect(saved.accessoryProfile).toEqual({
+      type: 'bonded_abrasive',
+      version: BONDED_ABRASIVE_PROFILE.version,
+    });
+    expect(saved.profileConditions).toContainEqual({
+      key: 'guard',
+      status: 'conflict',
+      code: 'guard.missing',
+    });
+
+    // CSV: 판정 열과 어긋남 열이 같은 말을 한다.
+    const [header, row] = toCsv([{ ...saved, id: 1 }])
+      .replace(/^\uFEFF/, '')
+      .split('\r\n');
+    expect(header.split(',')).toEqual([...CSV_COLUMNS]);
+    const cells = row.split(',');
+    expect(cells[CSV_COLUMNS.indexOf('verdict')]).toBe('UNDETERMINED');
+    expect(cells[CSV_COLUMNS.indexOf('profileConflicts')]).toBe(
+      'guard.missing',
+    );
+    expect(cells[CSV_COLUMNS.indexOf('ruleVersion')]).toBe(RULESET_VERSION);
+  });
+
+  it('숫돌보다 작은 덮개 — 화면에서 적합으로 보이지 않는다', () => {
+    const result = ready(WHEEL);
+    act(() => {
+      result.current.setGrinder({ ...GRINDER, guardSize: 115 });
+      result.current.setGrinderCondition(GRINDER_OK);
+      result.current.setWheel(WHEEL);
+      result.current.setWheelCondition(CONFIRMED);
+    });
+
+    render(<ResultPage />);
+
+    expect(screen.getByText('판정불가')).toBeInTheDocument();
+    expect(screen.queryByText('적합')).not.toBeInTheDocument();
+    expect(screen.getByText('⚠ 덮개 크기 · 어긋남')).toBeInTheDocument();
+  });
+
+  it('덮개를 입력하지 않으면 적합 조합은 그대로 적합이다', () => {
+    ready(WHEEL);
+    render(<ResultPage />);
+
+    expect(screen.getByText('적합')).toBeInTheDocument();
+  });
+
+  it('덮개 없음 — 판정불가 안내가 충돌 사유를 말하고, 덮개 재확인 버튼만 보인다', () => {
+    const result = ready(WHEEL);
+    act(() => {
+      result.current.setGrinder({ ...GRINDER, guardType: 'none' });
+      result.current.setGrinderCondition(GRINDER_OK);
+      result.current.setWheel(WHEEL);
+      result.current.setWheelCondition(CONFIRMED);
+    });
+
+    render(<ResultPage />);
+
+    expect(
+      screen.getByText(
+        '덮개 정보가 서로 충돌합니다. 그라인더 상태와 덮개 선택을 다시 확인하세요.',
+      ),
+    ).toBeInTheDocument();
+    // 상태를 대신 고치지 않는다 — 명판 확인 화면으로 보내는 이동 버튼뿐이다.
+    const recheck = screen.getByRole('link', { name: '덮개 정보 다시 확인' });
+    expect(recheck).toHaveAttribute('href', '/scan/grinder');
+    // 원인과 무관한 일반 안내·버튼은 뜨지 않는다.
+    expect(
+      screen.queryByText(
+        '값이 부족하거나 인식 신뢰도가 낮습니다. 다시 촬영하거나 값을 직접 입력하면 판정할 수 있습니다.',
+      ),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: '그라인더부터 다시 확인' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: '숫돌만 다시 확인' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('숫돌보다 작은 덮개 — 제조사 설명서를 보라는 안내와 덮개 재확인 버튼을 보인다', () => {
+    const result = ready(WHEEL);
+    act(() => {
+      result.current.setGrinder({ ...GRINDER, guardSize: 115 });
+      result.current.setGrinderCondition(GRINDER_OK);
+      result.current.setWheel(WHEEL);
+      result.current.setWheelCondition(CONFIRMED);
+    });
+
+    render(<ResultPage />);
+
+    expect(
+      screen.getByText(
+        '선택한 덮개가 액세서리 조건과 맞는지 확인할 수 없습니다. 제조사 설명서를 확인하세요.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: '덮개 정보 다시 확인' }),
+    ).toHaveAttribute('href', '/scan/grinder');
+    expect(
+      screen.queryByRole('link', { name: '그라인더부터 다시 확인' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('덮개와 무관한 판정불가는 기존 일반 안내와 두 재촬영 버튼을 그대로 보인다', () => {
+    ready({ ...WHEEL, maxRPM: null });
+    render(<ResultPage />);
+
+    expect(screen.getByText('판정불가')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '값이 부족하거나 인식 신뢰도가 낮습니다. 다시 촬영하거나 값을 직접 입력하면 판정할 수 있습니다.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: '그라인더부터 다시 확인' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: '숫돌만 다시 확인' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: '덮개 정보 다시 확인' }),
+    ).not.toBeInTheDocument();
   });
 });

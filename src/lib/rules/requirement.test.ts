@@ -18,6 +18,7 @@ import {
   wheelRequirements,
 } from './requirement';
 import type { GrinderSpec, WheelSpec } from './types';
+import { BONDED_ABRASIVE_PROFILE } from './profiles';
 
 function grinder(overrides: Partial<GrinderSpec> = {}): GrinderSpec {
   return {
@@ -98,6 +99,7 @@ describe('wheelRequirements', () => {
     });
     expect(
       matchSpecs(g, exact, {
+        profile: BONDED_ABRASIVE_PROFILE,
         declaredPurpose: 'cutting',
         today: '2026-09-08',
       }).verdict,

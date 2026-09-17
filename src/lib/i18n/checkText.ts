@@ -58,6 +58,9 @@ export const REASON_MESSAGE_KEY: Readonly<Record<ReasonCode, MessageKey>> = {
   'expiry.unreadable': 'reason.expiry.unreadable',
   'expiry.expired': 'reason.expiry.expired',
   'expiry.valid': 'reason.expiry.valid',
+  'guard.missing': 'reason.guard.missing',
+  'guard.smallerThanWheel': 'reason.guard.smallerThanWheel',
+  'guard.manualCheck': 'reason.guard.manualCheck',
 };
 
 export const WHEEL_PURPOSE_LABEL: Readonly<Record<WheelPurpose, MessageKey>> = {

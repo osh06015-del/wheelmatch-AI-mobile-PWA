@@ -57,6 +57,10 @@ export const EVIDENCE_SOURCE: Readonly<Record<string, EvidenceSource>> = {
     limitKey: 'evidence.limit.unitConsistency',
     formulaKey: 'evidence.formula.unitConsistency',
   },
+  [RULE.GUARD]: {
+    docKey: 'evidence.doc.guard',
+    limitKey: 'evidence.limit.guard',
+  },
   [RULE.MOUNTING_SPEC]: {
     docKey: 'evidence.doc.mountingSpec',
     limitKey: 'evidence.limit.mountingSpec',

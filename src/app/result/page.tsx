@@ -30,7 +30,7 @@ import { WheelExamEvidence } from '@/components/WheelExamEvidence';
 import { useLocale } from '@/lib/i18n';
 import { isQuotaExceededError, saveInspection } from '@/lib/db';
 import { elapsedSince, preTrialElapsed } from '@/lib/record/elapsed';
-import { matchSpecs, toDateOnly } from '@/lib/rules/engine';
+import { RULE, matchSpecs, toDateOnly } from '@/lib/rules/engine';
 import {
   profileConditions,
   profileFor,
@@ -129,7 +129,13 @@ export default function ResultPage() {
   const result = useMemo(
     () =>
       grinder && wheel
-        ? matchSpecs(grinder, wheel, { declaredPurpose, today })
+        ? matchSpecs(grinder, wheel, {
+            // 종류에 맞는 Profile을 찾아 넘긴다. 없으면 null — 엔진이
+            // 판정불가로 막는다. 조건 표도 같은 Profile로 계산한다.
+            profile: profileFor(wheel.wheelType),
+            declaredPurpose,
+            today,
+          })
         : null,
     [grinder, wheel, declaredPurpose, today],
   );
@@ -149,6 +155,14 @@ export default function ResultPage() {
   }
 
   const failures = result.checks.filter((check) => check.passed === false);
+  // 덮개 조건이 판정불가의 원인이면 일반 안내 대신 원인별 문장과, 상태를
+  // 자동으로 고치지 않는 이동 버튼(명판 확인 화면 재입력)만 보인다.
+  const guardCode = result.checks.find((check) => check.rule === RULE.GUARD)
+    ?.detail?.code;
+  const guardBlocking =
+    guardCode === 'guard.missing' || guardCode === 'guard.smallerThanWheel'
+      ? guardCode
+      : null;
   // 부속품 Profile과 입력을 맞춰 본다. 판정(result)과 따로다 — 여기 결과는
   // verdict를 바꾸지 않는다. Profile이 없는 종류는 조건표가 없다고만 알린다.
   const profile = profileFor(wheel.wheelType);
@@ -344,21 +358,38 @@ export default function ResultPage() {
       {result.verdict === 'UNDETERMINED' && (
         <div className="flex flex-col gap-3 rounded-xl border border-yellow-500/40 bg-yellow-500/10 px-4 py-4">
           <p className="text-lg leading-relaxed text-yellow-100">
-            {t('result.undetermined.help')}
+            {guardBlocking === 'guard.missing'
+              ? t('result.undetermined.guardMissing')
+              : guardBlocking === 'guard.smallerThanWheel'
+                ? t('result.undetermined.guardSize')
+                : t('result.undetermined.help')}
           </p>
           <div className="flex flex-col gap-3">
-            <Link
-              href="/scan/grinder"
-              className="flex min-h-14 items-center justify-center rounded-lg bg-yellow-500 text-lg font-bold text-slate-950 active:bg-yellow-400"
-            >
-              {t('result.retakeGrinder')}
-            </Link>
-            <Link
-              href="/scan/wheel"
-              className="flex min-h-14 items-center justify-center rounded-lg border border-yellow-500/60 text-lg font-semibold text-yellow-100 active:bg-yellow-500/20"
-            >
-              {t('result.retakeWheel')}
-            </Link>
+            {guardBlocking ? (
+              // 명판 확인 화면으로 보내 작업자가 직접 덮개 입력을 다시 고르게
+              // 한다. 여기서 값을 대신 고치거나 지우지 않는다.
+              <Link
+                href="/scan/grinder"
+                className="flex min-h-14 items-center justify-center rounded-lg bg-yellow-500 text-lg font-bold text-slate-950 active:bg-yellow-400"
+              >
+                {t('result.recheckGuard')}
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/scan/grinder"
+                  className="flex min-h-14 items-center justify-center rounded-lg bg-yellow-500 text-lg font-bold text-slate-950 active:bg-yellow-400"
+                >
+                  {t('result.retakeGrinder')}
+                </Link>
+                <Link
+                  href="/scan/wheel"
+                  className="flex min-h-14 items-center justify-center rounded-lg border border-yellow-500/60 text-lg font-semibold text-yellow-100 active:bg-yellow-500/20"
+                >
+                  {t('result.retakeWheel')}
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}

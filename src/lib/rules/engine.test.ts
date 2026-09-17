@@ -15,6 +15,7 @@ import {
   type MatchOptions,
 } from './engine';
 import type { CheckItem, GrinderSpec, MatchResult, WheelSpec } from './types';
+import { BONDED_ABRASIVE_PROFILE } from './profiles';
 
 /**
  * 기준일. 엔진은 시계를 읽지 않으므로 여기서 고정한다.
@@ -28,9 +29,15 @@ const TODAY = '2026-09-08';
 function match(
   grinderSpec: GrinderSpec,
   wheelSpec: WheelSpec,
-  options: MatchOptions = {},
+  options: Partial<MatchOptions> = {},
 ): MatchResult {
-  return matchSpecs(grinderSpec, wheelSpec, { today: TODAY, ...options });
+  // 결합숫돌 Profile을 기본으로 넘긴다. 실제 화면(result/page.tsx)도 종류에 맞는
+  // Profile을 찾아 넘긴다. 종류가 다르면 엔진이 Profile을 적용하지 않는다.
+  return matchSpecs(grinderSpec, wheelSpec, {
+    profile: BONDED_ABRASIVE_PROFILE,
+    today: TODAY,
+    ...options,
+  });
 }
 
 /** 적합 조합을 기본값으로 두고, 각 시나리오는 필요한 필드만 덮어쓴다. */

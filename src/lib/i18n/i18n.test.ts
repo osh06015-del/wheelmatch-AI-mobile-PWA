@@ -139,3 +139,35 @@ describe('쓰이지 않는 문구', () => {
     expect(unused).toEqual([]);
   });
 });
+
+describe('비통과 문구', () => {
+  it('덮개 어긋남 문구가 어느 언어에서도 통과·적합·안전으로 읽히지 않는다', () => {
+    // 덮개 어긋남은 판정불가로 막는 사유다. 번역에서 "맞다"·"안전하다"로
+    // 바뀌면 화면의 비통과 판정과 문장이 서로 다른 말을 한다.
+    const SUCCESS: Record<Locale, RegExp> = {
+      ko: /적합합니다|안전합니다|통과|사용해도 됩니다|맞습니다/,
+      en: /\b(safe|ok|okay|pass(ed)?|compatible|approved|specs match)\b/i,
+      vi: /an toàn|đạt|được phép sử dụng|phù hợp/i,
+      id: /\baman\b|lulus|cocok|boleh digunakan/i,
+      zh: /安全|合格|通过|相符|可以使用/,
+    };
+    const BLOCKING_KEYS = [
+      'reason.guard.missing',
+      'reason.guard.smallerThanWheel',
+      'profile.code.guard.missing',
+      'profile.code.guardSize.smallerThanWheel',
+      'profile.status.conflict',
+      'verdict.undetermined',
+    ] as const;
+
+    for (const { code } of LOCALES) {
+      for (const key of BLOCKING_KEYS) {
+        expect(CATALOG[code][key], `${code} ${key}`).not.toMatch(SUCCESS[code]);
+      }
+      // 판정불가와 적합이 같은 말로 번역되지 않는다.
+      expect(CATALOG[code]['verdict.undetermined']).not.toBe(
+        CATALOG[code]['verdict.compatible'],
+      );
+    }
+  });
+});

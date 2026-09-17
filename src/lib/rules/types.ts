@@ -246,7 +246,8 @@ export interface AccessoryProfileRef {
  *
  * **"맞다"는 상태가 없다.** 이 앱은 여기 항목들을 대조할 근거가 충분하지 않다.
  * 할 수 있는 말은 셋뿐이다 — 모른다, 직접 확인하라, 입력끼리 어긋난다.
- * 판정(verdict)은 기존 12개 규칙만 낸다.
+ * 판정(verdict)은 규칙엔진이 낸다. 덮개 어긋남(guard.missing·guardSize.smallerThanWheel)은
+ * 엔진의 덮개 조건 규칙이 같은 함수(guardConflicts)로 판정불가를 만든다.
  */
 export interface ProfileCondition {
   key: ProfileConditionKey;
@@ -525,7 +526,10 @@ export type ReasonCode =
   | 'expiry.noToday'
   | 'expiry.unreadable'
   | 'expiry.expired'
-  | 'expiry.valid';
+  | 'expiry.valid'
+  | 'guard.missing'
+  | 'guard.smallerThanWheel'
+  | 'guard.manualCheck';
 
 /**
  * 사유를 고른 언어로 다시 만들기 위한 코드와 값.

@@ -38,6 +38,11 @@ export const ko = {
     '값이 부족하거나 인식 신뢰도가 낮습니다. 다시 촬영하거나 값을 직접 입력하면 판정할 수 있습니다.',
   'result.retakeGrinder': '그라인더부터 다시 확인',
   'result.retakeWheel': '숫돌만 다시 확인',
+  'result.undetermined.guardMissing':
+    '덮개 정보가 서로 충돌합니다. 그라인더 상태와 덮개 선택을 다시 확인하세요.',
+  'result.undetermined.guardSize':
+    '선택한 덮개가 액세서리 조건과 맞는지 확인할 수 없습니다. 제조사 설명서를 확인하세요.',
+  'result.recheckGuard': '덮개 정보 다시 확인',
   'result.save': '점검 완료 및 저장',
   'result.saving': '저장 중...',
   'result.saveError':
@@ -51,7 +56,7 @@ export const ko = {
 
   'group.confirmed': '확인된 정보',
   'group.conflicting': '맞지 않는 정보',
-  'group.unreadable': '읽지 못한 정보',
+  'group.unreadable': '판정할 수 없는 정보',
   'group.manual': '직접 확인할 항목',
   'notVerifiable.title': '이 앱이 확인하지 못하는 것',
   'notVerifiable.note':
@@ -397,7 +402,7 @@ export const ko = {
   'grinderMount.guardSize.hint': '모르면 비워 두세요.',
   'profile.title': '장착·작업 조건 확인',
   'profile.note':
-    '이 항목들은 규격 판정에 들어가지 않습니다. 앱이 맞다고 추정하지 않으니 직접 확인하세요.',
+    '덮개 어긋남은 판정을 판정불가로 막습니다. 나머지 항목은 규격 판정에 들어가지 않으며, 앱이 맞다고 추정하지 않으니 직접 확인하세요.',
   'profile.version': '적용 조건표: {type} · {version}',
   'profile.none':
     '이 종류에 적용할 조건표가 없습니다. 제조사 취급설명서를 확인하세요.',
@@ -444,6 +449,18 @@ export const ko = {
     '회전방향 기준을 앱이 갖고 있지 않습니다. 라벨에 화살표가 있으면 그 방향에 맞춰 장착하세요.',
   'profile.code.rotation.followArrow':
     '라벨의 회전방향 화살표에 맞춰 장착했는지 직접 확인하세요.',
+
+  'rule.guard': '덮개 조건',
+  'reason.guard.missing':
+    '덮개가 없다고 입력했습니다. 이 종류는 덮개가 필요합니다. 덮개를 달고 입력을 바로잡기 전에는 판정할 수 없습니다.',
+  'reason.guard.smallerThanWheel':
+    '덮개 크기가 숫돌 지름보다 작게 입력됐습니다. 이 덮개로는 숫돌을 감쌀 수 없으니 덮개와 입력을 확인하기 전에는 판정할 수 없습니다.',
+  'reason.guard.manualCheck':
+    '덮개 종류와 크기가 이 숫돌에 맞는지 앱이 대조하지 않습니다. 장착 상태를 직접 확인하세요.',
+  'evidence.doc.guard':
+    '산업안전보건기준에 관한 규칙 제122조 ① — 연삭숫돌 덮개 설치',
+  'evidence.limit.guard':
+    '작업자가 입력한 덮개 없음·덮개 크기 부족만 막습니다. 덮개 크기 기준의 근거는 확인하지 못해 부적합이 아니라 판정불가로 둡니다. 덮개가 있다고 맞는 덮개라는 뜻은 아닙니다.',
 
   'wheelType.bonded_abrasive': '일반 결합숫돌',
   'wheelType.flap_disc': '플랩디스크',

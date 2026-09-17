@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { matchSpecs, RULE } from '@/lib/rules/engine';
+import { BONDED_ABRASIVE_PROFILE } from '@/lib/rules/profiles';
 import type {
   CheckItem,
   GrinderSpec,
@@ -68,6 +69,10 @@ const GRINDERS: GrinderSpec[] = [
   grinder({ noLoadRPM: 1100 }), // 가장자리 속도가 상식 밖으로 낮다
   grinder({ confidence: 'low' }),
   grinder({ confidence: 'medium' }),
+  // 덮개 조건의 세 분기(없음·숫돌보다 작음·직접 확인)
+  grinder({ guardType: 'none' }),
+  grinder({ guardType: 'grinding', guardSize: 100 }),
+  grinder({ guardType: 'grinding', guardSize: 125 }),
 ];
 
 const WHEELS: WheelSpec[] = [
@@ -103,7 +108,12 @@ const CHECKS: CheckItem[] = GRINDERS.flatMap((g) =>
   WHEELS.flatMap((w) =>
     PURPOSES.flatMap((declaredPurpose) =>
       TODAYS.flatMap(
-        (today) => matchSpecs(g, w, { declaredPurpose, today }).checks,
+        (today) =>
+          matchSpecs(g, w, {
+            profile: BONDED_ABRASIVE_PROFILE,
+            declaredPurpose,
+            today,
+          }).checks,
       ),
     ),
   ),
@@ -111,6 +121,7 @@ const CHECKS: CheckItem[] = GRINDERS.flatMap((g) =>
 
 function checkOf(g: GrinderSpec, w: WheelSpec, rule: string): CheckItem {
   const found = matchSpecs(g, w, {
+    profile: BONDED_ABRASIVE_PROFILE,
     declaredPurpose: 'cutting',
     today: '2026-09-08',
   }).checks.find((check) => check.rule === rule);

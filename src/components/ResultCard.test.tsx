@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { ResultCard } from './ResultCard';
 import { matchSpecs } from '@/lib/rules/engine';
 import type { GrinderSpec, WheelSpec } from '@/lib/rules/types';
+import { BONDED_ABRASIVE_PROFILE } from '@/lib/rules/profiles';
 
 /** 기준일을 고정한다. 엔진은 시계를 읽지 않는다. */
 const TODAY = '2026-09-08';
@@ -43,7 +44,12 @@ function wheel(overrides: Partial<WheelSpec> = {}): WheelSpec {
 describe('ResultCard — 판정 표시', () => {
   it('적합이면 "적합"만 표시하고 "부적합"은 표시하지 않는다', () => {
     render(
-      <ResultCard result={matchSpecs(grinder(), wheel(), { today: TODAY })} />,
+      <ResultCard
+        result={matchSpecs(grinder(), wheel(), {
+          profile: BONDED_ABRASIVE_PROFILE,
+          today: TODAY,
+        })}
+      />,
     );
 
     expect(screen.getByText('적합')).toBeInTheDocument();
@@ -55,6 +61,7 @@ describe('ResultCard — 판정 표시', () => {
     render(
       <ResultCard
         result={matchSpecs(grinder(), wheel({ maxRPM: 8500 }), {
+          profile: BONDED_ABRASIVE_PROFILE,
           today: TODAY,
         })}
       />,
@@ -72,6 +79,7 @@ describe('ResultCard — 판정 표시', () => {
     render(
       <ResultCard
         result={matchSpecs(grinder({ noLoadRPM: null }), wheel(), {
+          profile: BONDED_ABRASIVE_PROFILE,
           today: TODAY,
         })}
       />,
@@ -85,6 +93,7 @@ describe('ResultCard — 판정 표시', () => {
     render(
       <ResultCard
         result={matchSpecs(grinder({ maxWheelDiameter: 100 }), wheel(), {
+          profile: BONDED_ABRASIVE_PROFILE,
           today: TODAY,
         })}
       />,
@@ -101,7 +110,12 @@ describe('ResultCard — 판정 표시', () => {
 describe('ResultCard — 검사 항목', () => {
   it('5개 검사 항목을 모두 보여준다', () => {
     render(
-      <ResultCard result={matchSpecs(grinder(), wheel(), { today: TODAY })} />,
+      <ResultCard
+        result={matchSpecs(grinder(), wheel(), {
+          profile: BONDED_ABRASIVE_PROFILE,
+          today: TODAY,
+        })}
+      />,
     );
 
     for (const rule of [
@@ -117,7 +131,12 @@ describe('ResultCard — 검사 항목', () => {
 
   it('그라인더와 숫돌 값을 나란히 보여준다', () => {
     render(
-      <ResultCard result={matchSpecs(grinder(), wheel(), { today: TODAY })} />,
+      <ResultCard
+        result={matchSpecs(grinder(), wheel(), {
+          profile: BONDED_ABRASIVE_PROFILE,
+          today: TODAY,
+        })}
+      />,
     );
 
     expect(
@@ -129,6 +148,7 @@ describe('ResultCard — 검사 항목', () => {
     render(
       <ResultCard
         result={matchSpecs(grinder({ noLoadRPM: null }), wheel(), {
+          profile: BONDED_ABRASIVE_PROFILE,
           today: TODAY,
         })}
       />,
@@ -137,5 +157,24 @@ describe('ResultCard — 검사 항목', () => {
     expect(
       screen.getAllByText('그라인더 — / 숫돌 12200rpm').length,
     ).toBeGreaterThan(0);
+  });
+
+  it('실제 OCR 미판독과 덮개 입력 충돌이 "판정할 수 없는 정보" 한 묶음에 함께 보인다', () => {
+    // 성격이 다른 두 원인(값 못 읽음 / 입력 충돌)을 같은 묶음 이름으로 아우른다.
+    render(
+      <ResultCard
+        result={matchSpecs(
+          grinder({ noLoadRPM: null, guardType: 'none' }),
+          wheel(),
+          { profile: BONDED_ABRASIVE_PROFILE, today: TODAY },
+        )}
+      />,
+    );
+
+    const heading = screen.getByText('판정할 수 없는 정보', { exact: false });
+    expect(heading).toBeInTheDocument();
+    expect(screen.queryByText('읽지 못한 정보')).not.toBeInTheDocument();
+    expect(screen.getByText('필수값 존재')).toBeInTheDocument();
+    expect(screen.getByText('덮개 조건')).toBeInTheDocument();
   });
 });

@@ -41,6 +41,11 @@ export const vi: Messages = {
     'Thiếu dữ liệu hoặc độ tin cậy khi đọc nhãn thấp. Hãy chụp lại hoặc tự nhập giá trị để có kết quả.',
   'result.retakeGrinder': 'Làm lại từ máy mài',
   'result.retakeWheel': 'Chỉ chụp lại đá mài',
+  'result.undetermined.guardMissing':
+    'Thông tin nắp che đang mâu thuẫn với nhau. Hãy kiểm tra lại tình trạng máy mài và lựa chọn nắp che.',
+  'result.undetermined.guardSize':
+    'Không thể xác nhận nắp che đã chọn có phù hợp với điều kiện phụ kiện hay không. Hãy xem hướng dẫn của nhà sản xuất.',
+  'result.recheckGuard': 'Kiểm tra lại thông tin nắp che',
   'result.save': 'Hoàn tất và lưu',
   'result.saving': 'Đang lưu...',
   'result.saveError':
@@ -54,7 +59,7 @@ export const vi: Messages = {
 
   'group.confirmed': 'Đã đối chiếu',
   'group.conflicting': 'Không khớp',
-  'group.unreadable': 'Không đọc được',
+  'group.unreadable': 'Không thể đánh giá',
   'group.manual': 'Bạn phải tự kiểm tra',
   'notVerifiable.title': 'Những điều ứng dụng này không kiểm tra được',
   'notVerifiable.note':
@@ -407,7 +412,7 @@ export const vi: Messages = {
   'grinderMount.guardSize.hint': 'Để trống nếu không chắc.',
   'profile.title': 'Điều kiện lắp đặt và làm việc',
   'profile.note':
-    'Các mục này không nằm trong việc đối chiếu quy cách. Ứng dụng không coi là phù hợp — hãy tự kiểm tra.',
+    'Mâu thuẫn về nắp che sẽ chặn kết quả ở mức chưa xác định. Các mục còn lại không nằm trong việc đối chiếu quy cách, và ứng dụng không coi là phù hợp — hãy tự kiểm tra.',
   'profile.version': 'Bảng điều kiện: {type} · {version}',
   'profile.none':
     'Không có bảng điều kiện cho loại này. Hãy xem hướng dẫn của nhà sản xuất.',
@@ -454,6 +459,18 @@ export const vi: Messages = {
     'Ứng dụng không có tiêu chí chiều quay. Nếu nhãn có mũi tên, hãy lắp theo chiều đó.',
   'profile.code.rotation.followArrow':
     'Hãy tự kiểm tra đã lắp đúng mũi tên chiều quay trên nhãn.',
+
+  'rule.guard': 'Điều kiện nắp che',
+  'reason.guard.missing':
+    'Bạn đã nhập không có nắp che. Loại này cần nắp che. Không thể đánh giá cho đến khi lắp nắp che và sửa lại thông tin đã nhập.',
+  'reason.guard.smallerThanWheel':
+    'Cỡ nắp che đã nhập nhỏ hơn đường kính đá. Nắp che này không thể che đá, nên không thể đánh giá cho đến khi kiểm tra nắp che và thông tin đã nhập.',
+  'reason.guard.manualCheck':
+    'Ứng dụng không đối chiếu loại và cỡ nắp che có hợp với đá này không. Hãy tự kiểm tra cách lắp.',
+  'evidence.doc.guard':
+    'Điều 122 khoản 1, Quy định về tiêu chuẩn an toàn vệ sinh lao động — lắp nắp che cho đá mài',
+  'evidence.limit.guard':
+    'Chỉ chặn khi người thợ nhập không có nắp che hoặc nắp che nhỏ hơn đá. Chưa xác minh được căn cứ cho tiêu chí kích cỡ nắp che, nên đây là chưa xác định chứ không phải không phù hợp. Có nắp che không có nghĩa là nắp che phù hợp.',
 
   'wheelType.bonded_abrasive': 'Đá mài liên kết thông thường',
   'wheelType.flap_disc': 'Đĩa nhám xếp',

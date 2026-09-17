@@ -10,9 +10,15 @@
 //   · Profile이 없는 종류는 지원하지 않는 종류다. 기본 Profile을 두지 않는다 —
 //     기본값이 있으면 모르는 종류가 조용히 그 기본값으로 대조된다.
 //   · 요구를 바꾸면 version을 올리고, 판정 규칙이 바뀌면 RULESET_VERSION도 올린다.
+//   · 판정에 쓰는 필드를 늘리면 PROFILE_FIELD_USE와 엔진 규칙을 함께 고친다.
+//
+// 엔진(engine.ts)은 이 파일을 불러오지 않는다. 화면이 profileFor로 Profile을
+// 찾아 matchSpecs의 인자로 넘긴다 — engine.ts를 import 없는 순수 함수로 두기
+// 위해서다(safety-invariants.md §1). 이 파일은 엔진을 불러와도 된다.
 //
 // 이 폴더는 판정 계층이다. 상대 경로 import만 쓴다(eslint boundary).
 
+import { guardConflicts } from './engine';
 import type {
   AccessoryProfile,
   AccessoryProfileRef,
@@ -61,8 +67,39 @@ export const BONDED_ABRASIVE_PROFILE: AccessoryProfile = {
   conditionGate: 'wheel_condition_v1',
   requiredPhotos: ['front', 'back', 'edge', 'bore'],
   sources: ['krOsh', 'kosha', 'osa'],
-  version: '2026.09.17-r1',
+  version: '2026.09.17-r2',
 };
+
+/**
+ * Profile 필드가 실제로 어디에 쓰이는가.
+ *
+ *   verdict     — 규칙엔진이 이 필드(또는 그와 같은 조건)로 판정을 막는다
+ *   guidance    — 판정에 쓰지 않는다. 안내·조건 표·진행 Gate에서만 쓴다
+ *   unverified  — 근거를 확인하지 못했다. 판정에도 안내 기준에도 쓰지 않는다
+ *
+ * **required로 선언한 필드는 verdict여야 한다.** 선언만 하고 엔진이 무시하면
+ * Profile을 읽는 사람이 막힌다고 믿는 조건이 실제로는 통과한다(profiles.test.ts가
+ * 확인한다). 진행 Gate(conditionGate·trialRunPolicy·requiredPhotos)는 판정과
+ * 다른 계층이라 guidance로 두지만, 해당 Gate가 따로 진행을 막는다.
+ */
+export const PROFILE_FIELD_USE = {
+  supported: 'verdict', // 숫돌 종류 규칙(checkWheelType)
+  'specs.rpm': 'verdict', // 필수값 존재·RPM 안전
+  'specs.diameter': 'verdict', // 지름 호환
+  'specs.mounting': 'guidance', // 장착 규격 — 경고 수준, 대조 상대 없음
+  'equipment.guard': 'verdict', // 덮개 조건(checkGuard) — 명시적 어긋남만 막는다
+  'equipment.flange': 'unverified',
+  'equipment.backingPad': 'guidance', // not_applicable — 판정에 쓰지 않는다
+  'equipment.adapter': 'unverified',
+  allowedWork: 'guidance', // 두 작업을 모두 허용. 작업-용도 대조는 작업 목적 일치 규칙이 한다
+  allowedMaterials: 'unverified',
+  cooling: 'unverified',
+  rotationDirection: 'unverified',
+  expiryPolicy: 'verdict', // 유효기한 규칙(label_marked_month)
+  trialRunPolicy: 'guidance', // 시험운전 Gate(canStartTrialRun)
+  conditionGate: 'guidance', // Wheel Condition Gate
+  requiredPhotos: 'guidance', // 다각도 확인 Gate(wheelExamRequired)
+} as const satisfies Record<string, 'verdict' | 'guidance' | 'unverified'>;
 
 /**
  * 종류별 Profile. 없는 종류는 이 앱이 대조하지 않는 종류다.
@@ -125,8 +162,9 @@ function allowListCondition<T extends string>(
  *
  * **판정을 내지 않는다.** 결과에 "맞다"는 상태가 없다. 모르는 값은 unknown,
  * 근거가 없거나 앱이 대조할 상대가 없는 항목은 manual_check(작업자 확인),
- * 입력끼리 분명히 어긋나는 경우만 conflict다. 판정(verdict)은 기존 규칙엔진이
- * 그대로 낸다 — 여기 결과로 적합을 만들거나 완화하지 않는다.
+ * 입력끼리 분명히 어긋나는 경우만 conflict다. 판정(verdict)은 규칙엔진이 낸다 —
+ * 여기 결과로 적합을 만들거나 완화하지 않는다. 덮개 conflict는 엔진의 덮개 조건
+ * 규칙(checkGuard)과 같은 guardConflicts로 정하므로 판정불가와 함께 나온다.
  *
  * 구기록처럼 새 입력이 없으면(undefined) 모두 unknown으로 읽는다.
  */
@@ -155,7 +193,10 @@ export function profileConditions(
 
   // 덮개가 필요 없다는 근거가 있는 종류만 덮개 항목을 뺀다.
   if (profile.equipment.guard !== 'not_applicable') {
-    if (profile.equipment.guard === 'required' && guard === 'none') {
+    // 어긋남 판단은 엔진의 guardConflicts 하나로 한다. 판정 규칙(checkGuard)과
+    // 같은 함수를 써야 표는 어긋남인데 판정은 적합인 모순이 생기지 않는다.
+    const conflicts = guardConflicts(grinder, wheel, profile);
+    if (conflicts.missing) {
       // 결합숫돌은 덮개가 필요하다(제122조 ①). 없다고 답했으면 어긋난다.
       conditions.push({
         key: 'guard',
@@ -186,7 +227,7 @@ export function profileConditions(
         status: 'unknown',
         code: 'guardSize.unknown',
       });
-    } else if (wheel.diameter !== null && guardSize < wheel.diameter) {
+    } else if (conflicts.smallerThanWheel) {
       conditions.push({
         key: 'guardSize',
         status: 'conflict',

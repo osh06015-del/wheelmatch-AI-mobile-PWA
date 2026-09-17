@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { matchSpecs } from './engine';
 import { groupChecks } from './grouping';
 import type { CheckItem, GrinderSpec, WheelSpec } from './types';
+import { BONDED_ABRASIVE_PROFILE } from './profiles';
 
 /** 기준일을 고정한다. 엔진은 시계를 읽지 않는다. */
 const TODAY = '2026-09-08';
@@ -117,7 +118,10 @@ describe('실제 판정 결과를 나눈다', () => {
 
   it('적합 판정에도 사용자 확인 항목이 남는다', () => {
     // 전부 통과했다고 해서 사람이 볼 것이 없어지지 않는다.
-    const result = matchSpecs(grinder(), wheel(), { today: TODAY });
+    const result = matchSpecs(grinder(), wheel(), {
+      profile: BONDED_ABRASIVE_PROFILE,
+      today: TODAY,
+    });
     const g = groupChecks(result.checks);
 
     expect(result.verdict).toBe('COMPATIBLE');
@@ -127,6 +131,7 @@ describe('실제 판정 결과를 나눈다', () => {
 
   it('부적합 판정은 불일치 칸에 이유가 담긴다', () => {
     const result = matchSpecs(grinder(), wheel({ maxRPM: 8500 }), {
+      profile: BONDED_ABRASIVE_PROFILE,
       today: TODAY,
     });
     const g = groupChecks(result.checks);
@@ -137,11 +142,29 @@ describe('실제 판정 결과를 나눈다', () => {
 
   it('판정불가는 판독불가 칸으로 간다', () => {
     const result = matchSpecs(grinder(), wheel({ maxRPM: null }), {
+      profile: BONDED_ABRASIVE_PROFILE,
       today: TODAY,
     });
     const g = groupChecks(result.checks);
 
     expect(result.verdict).toBe('UNDETERMINED');
     expect(g.unreadable.length).toBeGreaterThan(0);
+  });
+
+  it('덮개 충돌도 실제 OCR 미판독과 같은 칸(판독불가)에 함께 들어간다', () => {
+    // 성격이 다른 두 원인 — 값을 못 읽음(maxRPM null)과 입력끼리 충돌(덮개 없음)
+    // — 이 같은 칸에 모여야 화면 라벨이 "판정할 수 없는 정보"로 둘 다 아우른다.
+    const result = matchSpecs(
+      grinder({ noLoadRPM: null, guardType: 'none' }),
+      wheel(),
+      { profile: BONDED_ABRASIVE_PROFILE, today: TODAY },
+    );
+    const g = groupChecks(result.checks);
+
+    const rules = g.unreadable.map((c) => c.rule);
+    expect(rules).toContain('필수값 존재'); // 실제 OCR 미판독
+    expect(rules).toContain('덮개 조건'); // 입력 충돌
+    // 덮개 항목이 사용자 확인(advisory) 칸으로 새지 않는다.
+    expect(g.manual.map((c) => c.rule)).not.toContain('덮개 조건');
   });
 });

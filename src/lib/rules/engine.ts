@@ -4,8 +4,8 @@
 // AI(OCR)는 라벨에서 값을 읽어오는 역할만 하고, 판정에는 일절 관여하지 않는다.
 // 따라서 이 파일은 외부 의존성이 없는 순수 함수로만 구성한다.
 
-import { isSupportedType } from './profiles';
 import type {
+  AccessoryProfile,
   CheckItem,
   ExpiryMonth,
   GrinderSpec,
@@ -32,6 +32,7 @@ export const RULE = {
   PERIPHERAL_SPEED: '원주속도 교차검증',
   EXPIRY: '유효기한',
   CONFIDENCE: '신뢰도 검증',
+  GUARD: '덮개 조건',
 } as const;
 
 const PURPOSE_LABEL: Record<WheelPurpose, string> = {
@@ -316,7 +317,10 @@ export function checkWorkPurpose(
  * wheel.wheelType은 작업자가 확인 화면에서 실물을 보고 고른 값이다. AI가 사진으로
  * 본 종류는 제안으로만 쓰였고 wheelOcr에 따로 남는다(src/lib/ocr/confirm.ts).
  */
-export function checkWheelType(wheel: WheelSpec): CheckItem {
+export function checkWheelType(
+  wheel: WheelSpec,
+  profile: AccessoryProfile | null,
+): CheckItem {
   const base = {
     rule: RULE.WHEEL_TYPE,
     grinderValue: null,
@@ -341,9 +345,16 @@ export function checkWheelType(wheel: WheelSpec): CheckItem {
     };
   }
 
-  // 이 앱의 RPM·지름 규칙이 성립하는 종류는 Profile이 정한다(profiles.ts).
-  // Profile이 없는 종류는 규격 체계가 달라 대조하지 않는다.
-  if (!isSupportedType(wheel.wheelType)) {
+  // 이 앱의 RPM·지름 규칙이 성립하는 종류는 호출자가 넘긴 Profile이 정한다
+  // (profiles.ts의 profileFor). 엔진이 Profile 표를 직접 불러오지 않는 이유는
+  // engine.ts를 import 없는 순수 함수로 두기 위해서다(safety-invariants.md §1).
+  // Profile이 없거나, 다른 종류의 Profile이거나, 지원하지 않는 Profile이면
+  // 대조하지 않는다 — 잘못 넘긴 Profile이 통과를 만들지 못하게 종류까지 맞춘다.
+  if (
+    profile === null ||
+    profile.type !== wheel.wheelType ||
+    !profile.supported
+  ) {
     return {
       ...base,
       passed: null,
@@ -400,6 +411,119 @@ export function checkVisibleDamage(wheel: WheelSpec): CheckItem {
     reason:
       '사진으로는 미세균열을 확인할 수 없습니다. 장착 전 타음검사(가볍게 두드려 소리 확인)를 하세요.',
     detail: { code: 'visibleDamage.notVerifiable' },
+  };
+}
+
+/** 덮개 입력끼리의 명시적 어긋남. 모르는 값은 어긋남이 아니다. */
+export interface GuardConflicts {
+  /** 덮개가 필요한 종류인데 작업자가 "덮개 없음"을 골랐다 */
+  missing: boolean;
+  /** 덮개 크기가 숫돌 지름보다 작다고 입력됐다 */
+  smallerThanWheel: boolean;
+}
+
+/**
+ * 덮개 어긋남을 찾는다. 판정 규칙(checkGuard)과 결과 화면의 조건 표
+ * (profiles.ts의 profileConditions)가 이 함수 하나를 함께 쓴다 — 둘이 따로
+ * 계산하면 표는 어긋남이라 하고 판정은 적합이라 하는 모순이 다시 생긴다.
+ *
+ * 모름(unknown)·입력 없음(구기록의 undefined)은 없음으로 치지 않는다.
+ * 숫돌 지름을 모르면 크기를 비교하지 않는다 — 어긋남을 지어내지 않는다.
+ */
+export function guardConflicts(
+  grinder: GrinderSpec,
+  wheel: WheelSpec,
+  profile: AccessoryProfile | null,
+): GuardConflicts {
+  const required =
+    profile !== null &&
+    profile.type === wheel.wheelType &&
+    profile.equipment.guard === 'required';
+  const guardSize = grinder.guardSize ?? null;
+  return {
+    missing: required && grinder.guardType === 'none',
+    smallerThanWheel:
+      guardSize !== null &&
+      wheel.diameter !== null &&
+      guardSize < wheel.diameter,
+  };
+}
+
+/**
+ * Rule 13 — 덮개 조건
+ *
+ * 작업자가 명판 확인 화면에서 **명시적으로** 넣은 덮개 입력이 어긋나면
+ * 적합을 내지 않는다.
+ *
+ *   덮개 없음(필수 Profile)   → 판정불가
+ *   덮개가 숫돌보다 작음        → 판정불가
+ *   그 밖에 무언가 입력함       → 경고(직접 확인) — 판정을 움직이지 않는다
+ *   아무것도 입력하지 않음      → 항목 없음(기존 흐름 그대로)
+ *
+ * 부적합이 아니라 판정불가인 이유.
+ *   · 덮개 없음: 결과 화면에 오려면 작업자가 Grinder Condition Gate의
+ *     "방호덮개 장착·고정"을 이미 확인함으로 눌렀다. 두 답이 서로 어긋난다.
+ *     서로 다른 경로의 값이 충돌하면 판정불가다(safety-critical.md §3).
+ *     제122조 ①(덮개 설치)은 근거가 있지만, 어느 답이 사실인지 앱은 모른다.
+ *   · 덮개 크기: 크기 기준의 근거를 저장소에서 확인하지 못했다. 법적
+ *     부적합으로 단정하지 않고 판정불가로 막는다.
+ *
+ * 덮개가 있다고 해서 통과(true)로 두지 않는다 — 종류·크기가 맞는 덮개인지는
+ * 근거가 없다. 덮개 장착 자체는 Gate가 사람에게 받는다(중복 규칙을 만들지 않는다).
+ */
+export function checkGuard(
+  grinder: GrinderSpec,
+  wheel: WheelSpec,
+  profile: AccessoryProfile | null,
+): CheckItem | null {
+  if (
+    profile === null ||
+    profile.type !== wheel.wheelType ||
+    profile.equipment.guard === 'not_applicable'
+  ) {
+    return null;
+  }
+
+  const guardType = grinder.guardType ?? 'unknown';
+  const guardSize = grinder.guardSize ?? null;
+  // 구기록·모름 — 입력이 없으면 기존처럼 항목을 만들지 않는다.
+  if (guardType === 'unknown' && guardSize === null) return null;
+
+  const conflicts = guardConflicts(grinder, wheel, profile);
+  const base = {
+    rule: RULE.GUARD,
+    grinderValue: guardSize === null ? null : `${guardSize}mm`,
+    wheelValue: diameterText(wheel.diameter),
+  };
+
+  if (conflicts.missing) {
+    return {
+      ...base,
+      passed: null,
+      reason:
+        '덮개가 없다고 입력했습니다. 이 종류는 덮개가 필요합니다. 덮개를 달고 입력을 바로잡기 전에는 판정할 수 없습니다.',
+      detail: { code: 'guard.missing' },
+    };
+  }
+
+  if (conflicts.smallerThanWheel) {
+    return {
+      ...base,
+      passed: null,
+      reason:
+        '덮개 크기가 숫돌 지름보다 작게 입력됐습니다. 이 덮개로는 숫돌을 감쌀 수 없으니 덮개와 입력을 확인하기 전에는 판정할 수 없습니다.',
+      detail: { code: 'guard.smallerThanWheel' },
+    };
+  }
+
+  return {
+    ...base,
+    passed: null,
+    // 입력끼리 어긋나지는 않지만 맞는 덮개라고 확인해 주지도 않는다.
+    advisory: true,
+    reason:
+      '덮개 종류와 크기가 이 숫돌에 맞는지 앱이 대조하지 않습니다. 장착 상태를 직접 확인하세요.',
+    detail: { code: 'guard.manualCheck' },
   };
 }
 
@@ -843,6 +967,13 @@ export function decideVerdict(checks: CheckItem[]): Verdict {
  * 함께 보여줘야 사용자가 무엇을 고쳐야 하는지 알 수 있다.
  */
 export interface MatchOptions {
+  /**
+   * 숫돌 종류의 부속품 Profile(profiles.ts의 profileFor). 없으면 null.
+   *
+   * 필수 인자다. 기본값을 두면 넘기는 것을 잊은 호출이 조용히 어떤 Profile로
+   * 대조된다. null을 넘기면 종류 규칙이 판정불가로 막는다.
+   */
+  profile: AccessoryProfile | null;
   /** 작업자가 고른 오늘의 작업. 고르지 않았으면 목적 대조를 건너뛴다. */
   declaredPurpose?: WorkPurpose | null;
   /**
@@ -860,15 +991,22 @@ export interface MatchOptions {
 export function matchSpecs(
   grinder: GrinderSpec,
   wheel: WheelSpec,
-  options: MatchOptions = {},
+  options: MatchOptions,
 ): MatchResult {
-  const { declaredPurpose = null, today = null, now = new Date() } = options;
+  const {
+    profile,
+    declaredPurpose = null,
+    today = null,
+    now = new Date(),
+  } = options;
 
   const workPurpose = checkWorkPurpose(wheel, declaredPurpose);
   const peripheralSpeed = checkPeripheralSpeed(grinder, wheel);
   // 원본 표시가 없는(기능 도입 전) 기록에서는 둘 다 null이라 항목이 생기지 않는다.
   const unitConsistency = checkUnitConsistency(wheel);
   const mountingSpec = checkMountingSpec(wheel);
+  // 덮개를 아무것도 입력하지 않았으면(구기록 포함) 항목이 생기지 않는다.
+  const guard = checkGuard(grinder, wheel, profile);
 
   const checks: CheckItem[] = [
     checkRequiredValues(grinder, wheel),
@@ -877,7 +1015,7 @@ export function matchSpecs(
     checkPurpose(wheel),
     // 작업을 고르지 않았으면 이 항목 자체가 없다.
     ...(workPurpose ? [workPurpose] : []),
-    checkWheelType(wheel),
+    checkWheelType(wheel, profile),
     checkVisibleDamage(wheel),
     // 기준일을 넣지 않으면 판정불가로 남는다. 항목 자체는 언제나 만든다 —
     // 조건부로 만들면 호출자가 빠뜨렸을 때 화면에 아무 흔적이 남지 않는다.
@@ -886,6 +1024,7 @@ export function matchSpecs(
     ...(peripheralSpeed ? [peripheralSpeed] : []),
     ...(unitConsistency ? [unitConsistency] : []),
     ...(mountingSpec ? [mountingSpec] : []),
+    ...(guard ? [guard] : []),
     checkConfidence(grinder, wheel),
   ];
 

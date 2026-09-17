@@ -41,6 +41,11 @@ export const id: Messages = {
     'Data kurang atau keyakinan pembacaan rendah. Foto ulang atau masukkan nilainya sendiri agar dapat dinilai.',
   'result.retakeGrinder': 'Ulangi dari gerinda',
   'result.retakeWheel': 'Ulangi batu gerinda saja',
+  'result.undetermined.guardMissing':
+    'Informasi pelindung saling bertentangan. Periksa kembali kondisi gerinda dan pilihan pelindung Anda.',
+  'result.undetermined.guardSize':
+    'Tidak dapat dipastikan apakah pelindung yang dipilih sesuai dengan kondisi aksesori. Periksa petunjuk pabrikan.',
+  'result.recheckGuard': 'Periksa ulang informasi pelindung',
   'result.save': 'Selesai dan simpan',
   'result.saving': 'Menyimpan...',
   'result.saveError':
@@ -54,7 +59,7 @@ export const id: Messages = {
 
   'group.confirmed': 'Sudah dicocokkan',
   'group.conflicting': 'Tidak cocok',
-  'group.unreadable': 'Tidak terbaca',
+  'group.unreadable': 'Tidak dapat dinilai',
   'group.manual': 'Periksa sendiri',
   'notVerifiable.title': 'Yang tidak dapat diperiksa aplikasi ini',
   'notVerifiable.note':
@@ -428,7 +433,7 @@ export const id: Messages = {
   'grinderMount.guardSize.hint': 'Kosongkan jika tidak yakin.',
   'profile.title': 'Kondisi pemasangan dan kerja',
   'profile.note':
-    'Butir ini tidak termasuk pemeriksaan spesifikasi. Aplikasi tidak menganggapnya cocok — periksa sendiri.',
+    'Pertentangan pelindung memblokir hasil menjadi tidak dapat ditentukan. Butir lainnya tidak termasuk pemeriksaan spesifikasi, dan aplikasi tidak menganggapnya cocok — periksa sendiri.',
   'profile.version': 'Profil kondisi: {type} · {version}',
   'profile.none':
     'Tidak ada profil kondisi untuk jenis ini. Periksa petunjuk pabrikan.',
@@ -475,6 +480,18 @@ export const id: Messages = {
     'Aplikasi tidak memiliki kriteria arah putaran. Jika label memiliki panah, pasang sesuai arah itu.',
   'profile.code.rotation.followArrow':
     'Periksa sendiri apakah dipasang sesuai panah arah putaran pada label.',
+
+  'rule.guard': 'Kondisi pelindung',
+  'reason.guard.missing':
+    'Anda memasukkan tanpa pelindung. Jenis ini memerlukan pelindung. Tidak dapat dinilai sampai pelindung dipasang dan isian diperbaiki.',
+  'reason.guard.smallerThanWheel':
+    'Ukuran pelindung yang dimasukkan lebih kecil dari diameter batu. Pelindung ini tidak dapat menutupi batu, jadi tidak dapat dinilai sampai pelindung dan isian diperiksa.',
+  'reason.guard.manualCheck':
+    'Aplikasi tidak memeriksa apakah jenis dan ukuran pelindung sesuai dengan batu ini. Periksa sendiri pemasangannya.',
+  'evidence.doc.guard':
+    'Peraturan Standar Keselamatan dan Kesehatan Kerja Pasal 122(1) — pemasangan pelindung batu gerinda',
+  'evidence.limit.guard':
+    'Hanya memblokir isian pekerja berupa tanpa pelindung atau pelindung lebih kecil dari batu. Dasar kriteria ukuran pelindung belum diverifikasi, jadi hasilnya tidak dapat ditentukan, bukan tidak cocok. Adanya pelindung tidak berarti pelindungnya tepat.',
 
   'wheelType.bonded_abrasive': 'Batu gerinda bonded biasa',
   'wheelType.flap_disc': 'Flap disc (amplas susun)',

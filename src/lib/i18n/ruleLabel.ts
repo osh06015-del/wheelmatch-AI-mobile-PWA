@@ -36,6 +36,7 @@ export const RULE_MESSAGE_KEY: Readonly<Record<string, MessageKey>> = {
   [RULE.PERIPHERAL_SPEED]: 'rule.peripheralSpeed',
   [RULE.EXPIRY]: 'rule.expiry',
   [RULE.CONFIDENCE]: 'rule.confidence',
+  [RULE.GUARD]: 'rule.guard',
 };
 
 /**

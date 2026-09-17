@@ -37,6 +37,11 @@ export const zh: Messages = {
     '数据不足或识别可信度低。请重新拍摄或自行输入数值后再判定。',
   'result.retakeGrinder': '从角磨机重新开始',
   'result.retakeWheel': '仅重拍砂轮',
+  'result.undetermined.guardMissing':
+    '护罩信息相互冲突。请重新检查角磨机状态和护罩选择。',
+  'result.undetermined.guardSize':
+    '无法确认所选护罩是否符合配件条件。请查看制造商说明书。',
+  'result.recheckGuard': '重新检查护罩信息',
   'result.save': '完成并保存',
   'result.saving': '正在保存...',
   'result.saveError': '保存失败。请检查存储空间后重试。',
@@ -49,7 +54,7 @@ export const zh: Messages = {
 
   'group.confirmed': '已核对',
   'group.conflicting': '不相符',
-  'group.unreadable': '未能读取',
+  'group.unreadable': '无法判定的信息',
   'group.manual': '需你亲自确认',
   'notVerifiable.title': '本应用无法确认的项目',
   'notVerifiable.note': '以下项目不包含在判定结果中。照片和标签无法得知。',
@@ -359,7 +364,8 @@ export const zh: Messages = {
   'grinderMount.guardSize.label': '护罩尺寸（适用砂轮直径）',
   'grinderMount.guardSize.hint': '不确定时请留空。',
   'profile.title': '安装与作业条件',
-  'profile.note': '这些项目不计入规格判定。应用不会推定为相符，请亲自确认。',
+  'profile.note':
+    '护罩不一致会使判定变为无法判定。其余项目不计入规格判定，应用也不会推定为相符，请亲自确认。',
   'profile.version': '条件表：{type} · {version}',
   'profile.none': '此类型没有可用的条件表。请查看制造商说明书。',
   'profile.status.unknown': '未知',
@@ -400,6 +406,17 @@ export const zh: Messages = {
     '应用没有旋转方向标准。标签上有箭头时，请按箭头方向安装。',
   'profile.code.rotation.followArrow':
     '请亲自确认已按标签上的旋转方向箭头安装。',
+
+  'rule.guard': '护罩条件',
+  'reason.guard.missing':
+    '您输入了没有护罩。此类型需要护罩。在装上护罩并更正输入之前无法判定。',
+  'reason.guard.smallerThanWheel':
+    '输入的护罩尺寸小于砂轮直径。此护罩无法罩住砂轮，在核对护罩和输入之前无法判定。',
+  'reason.guard.manualCheck':
+    '应用不核对护罩类型和尺寸是否适合此砂轮。请亲自确认安装状态。',
+  'evidence.doc.guard': '《产业安全保健基准规则》第122条第1项 — 砂轮须设护罩',
+  'evidence.limit.guard':
+    '仅在作业者输入没有护罩或护罩小于砂轮时阻止。护罩尺寸标准的依据尚未核实，因此判为无法判定，而非不相符。有护罩并不代表护罩合适。',
 
   'wheelType.bonded_abrasive': '普通砂轮（固结磨具）',
   'wheelType.flap_disc': '百叶片',

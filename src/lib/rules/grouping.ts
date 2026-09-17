@@ -28,10 +28,16 @@ export interface GroupedChecks {
  *   passed === false            → 불일치 (확인해보니 어긋났다)
  *   passed === true             → 확인됨
  *   passed === null, advisory   → 사용자 확인 (앱이 볼 수 없는 것)
- *   passed === null, 아님       → 판독불가 (읽었어야 하는데 못 읽었다)
+ *   passed === null, 아님       → 판정할 수 없음 (값이 없거나 충돌해서 못 정했다)
  *
  * 마지막 두 줄의 구분이 핵심이다. "확인하지 못했다"와 "애초에 확인할 수 없다"는
- * 사용자가 해야 할 일이 다르다. 앞은 재촬영, 뒤는 직접 점검이다.
+ * 사용자가 해야 할 일이 다르다. 앞은 재촬영·입력 확인, 뒤는 직접 점검이다.
+ *
+ * unreadable에는 성격이 다른 두 가지가 섞여 들어간다 — OCR이 값을 읽지 못한
+ * 경우(requiredValues 등)와, 작업자가 입력한 값끼리 충돌한 경우(덮개 조건의
+ * guard.missing·guard.smallerThanWheel). 둘 다 "이 앱이 판정할 수 없다"는
+ * 점에서는 같다. 화면 문구도 "읽지 못함"이 아니라 "판정할 수 없음"으로 적어
+ * 충돌 사례를 자연스럽게 포함한다(group.unreadable).
  */
 export function groupChecks(checks: CheckItem[]): GroupedChecks {
   const grouped: GroupedChecks = {
