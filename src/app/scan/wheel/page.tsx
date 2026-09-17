@@ -193,6 +193,13 @@ export default function WheelScanPage() {
       });
       setOcr(recovered.ocr);
       setOffline(recovered.offline);
+      // 다각도 확인은 지금 종류가 요구할 때만 되살아난다(recoverWheelExamDraft가
+      // Profile을 다시 본다). 사진이 없거나(손상 포함) 셋 중 하나라도 빠지면
+      // exam도 함께 비어 있다 — 재촬영해야 한다.
+      setExamPhotos(recovered.exam.photos);
+      setExamMetrics(recovered.exam.metrics);
+      setExam(recovered.exam.exam);
+      setExamNotRunReason(recovered.exam.notRunReason);
       if (recovered.photo) {
         setPhoto(recovered.photo);
         setPhase('confirm');
@@ -215,10 +222,26 @@ export default function WheelScanPage() {
         photo,
         ocr,
         offline,
+        exam: {
+          photos: examPhotos,
+          metrics: examMetrics,
+          exam,
+          notRunReason: examNotRunReason,
+        },
       });
     }, FORM_DRAFT_SAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [phase, form, photo, ocr, offline]);
+  }, [
+    phase,
+    form,
+    photo,
+    ocr,
+    offline,
+    examPhotos,
+    examMetrics,
+    exam,
+    examNotRunReason,
+  ]);
 
   // 그라인더를 찍지 않았거나 장비 상태를 직접 확인하지 않은 경우 1단계로 되돌린다.
   // 화면 이동으로 Gate를 건너뛸 수 있으면 Gate가 아니다.
@@ -471,6 +494,10 @@ export default function WheelScanPage() {
     // 화면에서 사라져도 내부 상태가 남으면 proceed()가 그 결과를 그대로
     // 저장한다 — 평형 결합숫돌용 확인이 다른 종류의 기록에 섞인다.
     resetExam();
+    // 자동 저장은 1초 뒤에나 따라온다. 그 사이 새로고침하면 이전 종류의
+    // fields·exam이 그대로 남은 draft가 복원돼 새 종류에 섞인다 — 여기서
+    // 곧바로 지운다. 다음 debounce가 새 종류로 다시 저장한다.
+    void formDraftStore.remove('wheel');
   }
 
   function proceed() {

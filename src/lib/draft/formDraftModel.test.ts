@@ -7,12 +7,48 @@ import { describe, expect, it } from 'vitest';
 
 import {
   EMPTY_GRINDER_FORM_FIELDS,
+  EMPTY_WHEEL_EXAM_DRAFT,
   EMPTY_WHEEL_FORM_FIELDS,
   FORM_DRAFT_SCHEMA_VERSION,
   recoverGrinderFormDraft,
+  recoverWheelExamDraft,
   recoverWheelFormDraft,
 } from './formDraftModel';
-import type { GrinderSpec, WheelSpec } from '@/lib/rules/types';
+import type {
+  CaptureQualityMetrics,
+  GrinderSpec,
+  WheelExamResult,
+  WheelSpec,
+} from '@/lib/rules/types';
+
+/** 다각도 확인을 요구하는 종류(일반 결합숫돌) */
+const EXAM_REQUIRED_TYPE = 'bonded_abrasive';
+/** 요구하지 않는 종류 */
+const EXAM_NOT_REQUIRED_TYPE = 'flap_disc';
+
+const METRICS: CaptureQualityMetrics = {
+  originalWidth: 4032,
+  originalHeight: 3024,
+  originalBytes: 7_500_000,
+  uploadWidth: 2048,
+  uploadHeight: 1536,
+  uploadBytes: 1_800_000,
+  meanBrightness: 130,
+  contrast: 40,
+  darkPixelRatio: 0.05,
+  brightPixelRatio: 0.05,
+  blurMetric: 400,
+  optimizeMs: 120,
+};
+
+const EXAM_RESULT: WheelExamResult = {
+  status: 'not_observed',
+  findings: [],
+  photoQuality: [],
+  model: 'claude-x',
+  promptVersion: 'v1',
+  analyzedAt: '2026-09-17T00:00:00.000Z',
+};
 
 const GRINDER_OCR: GrinderSpec = {
   model: 'GWS 750-125',
@@ -202,5 +238,146 @@ describe('recoverWheelFormDraft', () => {
       wheelType: 'flap_disc',
       accessoryName: '',
     });
+  });
+
+  it('종류가 다각도 확인을 요구하면 사진·품질·AI 결과가 모두 있어야 함께 살린다', () => {
+    const recovered = recoverWheelFormDraft({
+      fields: { ...EMPTY_WHEEL_FORM_FIELDS, wheelType: EXAM_REQUIRED_TYPE },
+      photo: null,
+      ocr: null,
+      offline: false,
+      exam: {
+        photos: {
+          back: new Blob(['back']),
+          edge: new Blob(['edge']),
+          bore: new Blob(['bore']),
+        },
+        metrics: { back: METRICS, edge: METRICS, bore: METRICS },
+        exam: EXAM_RESULT,
+        notRunReason: null,
+      },
+    });
+
+    expect(recovered?.exam.photos.back).toBeInstanceOf(Blob);
+    expect(recovered?.exam.photos.edge).toBeInstanceOf(Blob);
+    expect(recovered?.exam.photos.bore).toBeInstanceOf(Blob);
+    expect(recovered?.exam.metrics).toEqual({
+      back: METRICS,
+      edge: METRICS,
+      bore: METRICS,
+    });
+    expect(recovered?.exam.exam).toEqual(EXAM_RESULT);
+  });
+});
+
+describe('recoverWheelExamDraft', () => {
+  it('사진 세 장과 품질·AI 결과가 온전하면 그대로 살린다', () => {
+    const recovered = recoverWheelExamDraft(
+      {
+        photos: {
+          back: new Blob(['back']),
+          edge: new Blob(['edge']),
+          bore: new Blob(['bore']),
+        },
+        metrics: { back: METRICS, edge: METRICS, bore: METRICS },
+        exam: EXAM_RESULT,
+        notRunReason: null,
+      },
+      EXAM_REQUIRED_TYPE,
+    );
+
+    expect(recovered.photos.back).toBeInstanceOf(Blob);
+    expect(recovered.exam).toEqual(EXAM_RESULT);
+    expect(recovered.metrics.back).toEqual(METRICS);
+  });
+
+  it('지금 종류가 다각도 확인을 요구하지 않으면 저장된 값이 있어도 비운다', () => {
+    const recovered = recoverWheelExamDraft(
+      {
+        photos: {
+          back: new Blob(['back']),
+          edge: new Blob(['edge']),
+          bore: new Blob(['bore']),
+        },
+        metrics: { back: METRICS, edge: METRICS, bore: METRICS },
+        exam: EXAM_RESULT,
+        notRunReason: null,
+      },
+      EXAM_NOT_REQUIRED_TYPE,
+    );
+
+    expect(recovered).toEqual(EMPTY_WHEEL_EXAM_DRAFT);
+  });
+
+  it('사진 하나라도 없으면(누락) AI 분석 결과를 폐기하고 재촬영을 요구한다', () => {
+    const recovered = recoverWheelExamDraft(
+      {
+        photos: {
+          back: new Blob(['back']),
+          edge: new Blob(['edge']),
+          bore: null, // 이 자리만 없다
+        },
+        metrics: { back: METRICS, edge: METRICS, bore: METRICS },
+        exam: EXAM_RESULT,
+        notRunReason: null,
+      },
+      EXAM_REQUIRED_TYPE,
+    );
+
+    expect(recovered.photos.bore).toBeNull();
+    // 사진이 갖춰지지 않았으므로 그 사진들을 보고 낸 결과라고 믿을 수 없다.
+    expect(recovered.exam).toBeNull();
+  });
+
+  it('사진 자리에 Blob이 아닌 손상된 값이 들어 있으면 버리고 재촬영을 요구한다', () => {
+    const recovered = recoverWheelExamDraft(
+      {
+        photos: {
+          back: new Blob(['back']),
+          edge: 'data:image/png;base64,broken', // Blob이 아니다 — 손상된 값
+          bore: new Blob(['bore']),
+        },
+        metrics: { back: METRICS, edge: METRICS, bore: METRICS },
+        exam: EXAM_RESULT,
+        notRunReason: null,
+      },
+      EXAM_REQUIRED_TYPE,
+    );
+
+    expect(recovered.photos.edge).toBeNull();
+    expect(recovered.exam).toBeNull();
+  });
+
+  it('그릇 형태 자체를 읽지 못하면 빈 상태를 돌려준다', () => {
+    expect(recoverWheelExamDraft(null, EXAM_REQUIRED_TYPE)).toEqual(
+      EMPTY_WHEEL_EXAM_DRAFT,
+    );
+    expect(recoverWheelExamDraft('garbage', EXAM_REQUIRED_TYPE)).toEqual(
+      EMPTY_WHEEL_EXAM_DRAFT,
+    );
+  });
+
+  it('AI 확인을 하지 못한 사유(notRunReason)는 목록에 있는 값만 믿는다', () => {
+    const recovered = recoverWheelExamDraft(
+      {
+        photos: { back: null, edge: null, bore: null },
+        metrics: { back: null, edge: null, bore: null },
+        exam: null,
+        notRunReason: 'network_error',
+      },
+      EXAM_REQUIRED_TYPE,
+    );
+    expect(recovered.notRunReason).toBe('network_error');
+
+    const garbage = recoverWheelExamDraft(
+      {
+        photos: { back: null, edge: null, bore: null },
+        metrics: { back: null, edge: null, bore: null },
+        exam: null,
+        notRunReason: 'made_up_reason',
+      },
+      EXAM_REQUIRED_TYPE,
+    );
+    expect(garbage.notRunReason).toBeNull();
   });
 });
