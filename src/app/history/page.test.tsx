@@ -25,6 +25,13 @@ vi.mock('@/lib/db', () => ({
   listInspectionsByIds: vi.fn(),
   clearInspections: vi.fn(),
   deleteInspection: vi.fn(),
+  clearInspectionPhotos: vi.fn(),
+  inspectionCount: vi.fn().mockResolvedValue(0),
+  photoStorageStats: vi
+    .fn()
+    .mockResolvedValue({ recordsWithPhotos: 0, totalPhotoBytes: 0 }),
+  inspectionIdsPresent: vi.fn().mockResolvedValue(new Set()),
+  putInspectionWithId: vi.fn(),
 }));
 
 // Link는 App Router 컨텍스트를 요구한다. 평범한 <a>로 바꿔 둔다.

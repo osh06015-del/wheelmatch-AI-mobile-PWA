@@ -865,6 +865,10 @@ export const en: Messages = {
   'history.deleteConfirm':
     'This deletes one record. The photos saved with it go too, and it cannot be restored.',
   'history.deleteConfirmButton': 'Yes, delete it',
+  'history.deletePhotos': 'Delete photos only',
+  'history.deletePhotosConfirm':
+    'This deletes only the photos. The verdict, checks, and the record itself stay, and this cannot be undone.',
+  'history.deletePhotosConfirmButton': 'Delete photos only',
   'history.cancel': 'Cancel',
   'history.clearAll': 'Delete all records',
   'history.newInspection': 'Start a new inspection',
@@ -904,6 +908,49 @@ export const en: Messages = {
   'history.filter.resultCount': '{count} records',
   'history.filter.resultCountOf': '{count} of {total} records',
   'history.filter.noResults': 'No records match these filters.',
+
+  'dataManagement.title': 'Local data management',
+  'dataManagement.recordCount': '{count} inspection records',
+  'dataManagement.savedGrinderCount': '{count} saved grinders',
+  'dataManagement.draftExists': 'There is an inspection in progress.',
+  'dataManagement.draftNone': 'No inspection in progress.',
+  'dataManagement.photoStats':
+    '{records} records with photos · {bytes} of photos',
+  'dataManagement.storageUsage':
+    'Device storage used (estimate) {usage} / {quota}',
+  'dataManagement.storageUnsupported':
+    'This browser cannot report storage usage.',
+  'dataManagement.deleteDraft': 'Delete in-progress inspection',
+  'dataManagement.deleteDraftConfirm':
+    'This deletes the in-progress inspection (temporary save). Completed, saved records are not affected.',
+  'dataManagement.deleteDraftConfirmButton': 'Delete temporary save',
+  'dataManagement.cancel': 'Cancel',
+
+  'backup.title': 'Backup file (JSON)',
+  'backup.notice':
+    'Only inspection records and saved grinders are included. Photos are never included.',
+  'backup.export': 'Export',
+  'backup.exported': 'Exported {count} records.',
+  'backup.exportFailed': 'Export failed.',
+  'backup.importLabel': 'Import backup file',
+  'backup.importHint':
+    'The number of items that will be applied is shown before anything is imported.',
+  'backup.previewTitle': 'Import preview',
+  'backup.previewRecords':
+    'Inspection records: {valid} new · {duplicate} skipped (already exist) · {invalid} invalid',
+  'backup.previewSavedGrinders':
+    'Saved grinders: {valid} new · {duplicate} skipped (already exist) · {invalid} invalid',
+  'backup.applyButton': 'Apply import',
+  'backup.cancelButton': 'Cancel',
+  'backup.applied':
+    'Imported {records} inspection records and {saved} saved grinders.',
+  'backup.errorTooLarge': 'The file is too large.',
+  'backup.errorNotJson': 'Could not read the JSON file. It is damaged.',
+  'backup.errorBadShape': 'This is not a backup file from this app.',
+  'backup.errorBadFormat': 'This is not a backup file from this app.',
+  'backup.errorUnsupportedVersion':
+    'This backup version is not supported. Update the app and try again.',
+
   'elapsed.overHour': 'over 1 hour',
   'elapsed.seconds': '{seconds} s',
   'elapsed.minutes': '{minutes} min',

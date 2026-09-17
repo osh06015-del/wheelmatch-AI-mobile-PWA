@@ -835,6 +835,10 @@ export const ko = {
   'history.deleteConfirm':
     '이 기록 한 건을 지웁니다. 함께 저장된 사진도 지워지고 되살릴 수 없습니다.',
   'history.deleteConfirmButton': '이 기록을 지웁니다',
+  'history.deletePhotos': '사진만 삭제',
+  'history.deletePhotosConfirm':
+    '사진만 지웁니다. 판정·검사 항목·기록 자체는 그대로 남고 되돌릴 수 없습니다.',
+  'history.deletePhotosConfirmButton': '사진만 지웁니다',
   'history.cancel': '취소',
   'history.clearAll': '전체 삭제',
   'history.newInspection': '새 점검 시작',
@@ -873,6 +877,46 @@ export const ko = {
   'history.filter.resultCount': '{count}건',
   'history.filter.resultCountOf': '전체 {total}건 중 {count}건',
   'history.filter.noResults': '조건에 맞는 기록이 없습니다.',
+
+  'dataManagement.title': '로컬 데이터 관리',
+  'dataManagement.recordCount': '점검 기록 {count}건',
+  'dataManagement.savedGrinderCount': '저장된 그라인더 {count}건',
+  'dataManagement.draftExists': '이어서 하던 점검이 있습니다.',
+  'dataManagement.draftNone': '이어서 하던 점검이 없습니다.',
+  'dataManagement.photoStats': '사진 있는 기록 {records}건 · 사진 용량 {bytes}',
+  'dataManagement.storageUsage': '기기 저장공간 사용량(추정) {usage} / {quota}',
+  'dataManagement.storageUnsupported':
+    '이 브라우저에서는 저장공간 사용량을 확인할 수 없습니다.',
+  'dataManagement.deleteDraft': '이어서 하던 점검 지우기',
+  'dataManagement.deleteDraftConfirm':
+    '이어서 하던 점검(임시 저장)을 지웁니다. 완료해 저장된 기록에는 영향이 없습니다.',
+  'dataManagement.deleteDraftConfirmButton': '임시 저장 지우기',
+  'dataManagement.cancel': '취소',
+
+  'backup.title': '백업 파일(JSON)',
+  'backup.notice':
+    '점검 기록과 저장된 그라인더만 담습니다. 사진은 어떤 경우에도 포함하지 않습니다.',
+  'backup.export': '내보내기',
+  'backup.exported': '{count}건을 내보냈습니다.',
+  'backup.exportFailed': '내보내기에 실패했습니다.',
+  'backup.importLabel': '백업 파일 가져오기',
+  'backup.importHint': '가져오기 전에 몇 건이 적용되는지 먼저 보여줍니다.',
+  'backup.previewTitle': '가져오기 미리보기',
+  'backup.previewRecords':
+    '점검 기록: 새로 추가 {valid}건 · 이미 있어 건너뜀 {duplicate}건 · 무효 {invalid}건',
+  'backup.previewSavedGrinders':
+    '저장된 그라인더: 새로 추가 {valid}건 · 이미 있어 건너뜀 {duplicate}건 · 무효 {invalid}건',
+  'backup.applyButton': '가져오기 적용',
+  'backup.cancelButton': '취소',
+  'backup.applied':
+    '점검 기록 {records}건, 저장된 그라인더 {saved}건을 가져왔습니다.',
+  'backup.errorTooLarge': '파일이 너무 큽니다.',
+  'backup.errorNotJson': 'JSON 파일을 읽을 수 없습니다. 손상된 파일입니다.',
+  'backup.errorBadShape': '이 앱의 백업 파일 형식이 아닙니다.',
+  'backup.errorBadFormat': '이 앱의 백업 파일이 아닙니다.',
+  'backup.errorUnsupportedVersion':
+    '지원하지 않는 백업 버전입니다. 앱을 최신으로 맞춘 뒤 다시 시도하세요.',
+
   'elapsed.overHour': '1시간 이상',
   'elapsed.seconds': '{seconds}초',
   'elapsed.minutes': '{minutes}분',

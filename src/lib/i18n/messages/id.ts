@@ -884,6 +884,10 @@ export const id: Messages = {
   'history.deleteConfirm':
     'Ini menghapus satu catatan. Foto yang tersimpan bersamanya ikut terhapus dan tidak bisa dikembalikan.',
   'history.deleteConfirmButton': 'Ya, hapus catatan ini',
+  'history.deletePhotos': 'Hapus foto saja',
+  'history.deletePhotosConfirm':
+    'Ini hanya menghapus foto. Hasil penilaian, item pemeriksaan, dan catatan itu sendiri tetap ada dan tidak bisa dibatalkan.',
+  'history.deletePhotosConfirmButton': 'Hapus foto saja',
   'history.cancel': 'Batal',
   'history.clearAll': 'Hapus semua catatan',
   'history.newInspection': 'Mulai pemeriksaan baru',
@@ -923,6 +927,49 @@ export const id: Messages = {
   'history.filter.resultCount': '{count} catatan',
   'history.filter.resultCountOf': '{count} dari {total} catatan',
   'history.filter.noResults': 'Tidak ada catatan yang cocok dengan filter ini.',
+
+  'dataManagement.title': 'Pengelolaan data lokal',
+  'dataManagement.recordCount': '{count} catatan pemeriksaan',
+  'dataManagement.savedGrinderCount': '{count} gerinda tersimpan',
+  'dataManagement.draftExists': 'Ada pemeriksaan yang sedang berlangsung.',
+  'dataManagement.draftNone': 'Tidak ada pemeriksaan yang sedang berlangsung.',
+  'dataManagement.photoStats':
+    '{records} catatan dengan foto · ukuran foto {bytes}',
+  'dataManagement.storageUsage':
+    'Penyimpanan perangkat terpakai (perkiraan) {usage} / {quota}',
+  'dataManagement.storageUnsupported':
+    'Browser ini tidak dapat menampilkan penggunaan penyimpanan.',
+  'dataManagement.deleteDraft': 'Hapus pemeriksaan yang sedang berlangsung',
+  'dataManagement.deleteDraftConfirm':
+    'Ini menghapus pemeriksaan yang sedang berlangsung (simpan sementara). Catatan yang sudah selesai dan tersimpan tidak terpengaruh.',
+  'dataManagement.deleteDraftConfirmButton': 'Hapus simpanan sementara',
+  'dataManagement.cancel': 'Batal',
+
+  'backup.title': 'Berkas cadangan (JSON)',
+  'backup.notice':
+    'Hanya berisi catatan pemeriksaan dan gerinda tersimpan. Foto tidak pernah disertakan.',
+  'backup.export': 'Ekspor',
+  'backup.exported': 'Berhasil mengekspor {count} catatan.',
+  'backup.exportFailed': 'Ekspor gagal.',
+  'backup.importLabel': 'Impor berkas cadangan',
+  'backup.importHint':
+    'Jumlah item yang akan diterapkan ditampilkan sebelum apa pun diimpor.',
+  'backup.previewTitle': 'Pratinjau impor',
+  'backup.previewRecords':
+    'Catatan pemeriksaan: {valid} baru · {duplicate} dilewati (sudah ada) · {invalid} tidak valid',
+  'backup.previewSavedGrinders':
+    'Gerinda tersimpan: {valid} baru · {duplicate} dilewati (sudah ada) · {invalid} tidak valid',
+  'backup.applyButton': 'Terapkan impor',
+  'backup.cancelButton': 'Batal',
+  'backup.applied':
+    'Berhasil mengimpor {records} catatan pemeriksaan dan {saved} gerinda tersimpan.',
+  'backup.errorTooLarge': 'Berkas terlalu besar.',
+  'backup.errorNotJson': 'Berkas JSON tidak dapat dibaca. Berkas rusak.',
+  'backup.errorBadShape': 'Ini bukan berkas cadangan dari aplikasi ini.',
+  'backup.errorBadFormat': 'Ini bukan berkas cadangan dari aplikasi ini.',
+  'backup.errorUnsupportedVersion':
+    'Versi cadangan ini tidak didukung. Perbarui aplikasi lalu coba lagi.',
+
   'elapsed.overHour': 'lebih dari 1 jam',
   'elapsed.seconds': '{seconds} detik',
   'elapsed.minutes': '{minutes} menit',

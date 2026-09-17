@@ -758,6 +758,10 @@ export const zh: Messages = {
   'history.deleteConfirm':
     '将删除这一条记录。一并保存的照片也会删除且无法恢复。',
   'history.deleteConfirmButton': '确认删除此记录',
+  'history.deletePhotos': '仅删除照片',
+  'history.deletePhotosConfirm':
+    '此操作仅删除照片。判定结果、检查项和记录本身都会保留，且无法撤销。',
+  'history.deletePhotosConfirmButton': '仅删除照片',
   'history.cancel': '取消',
   'history.clearAll': '删除全部记录',
   'history.newInspection': '开始新的检查',
@@ -796,6 +800,42 @@ export const zh: Messages = {
   'history.filter.resultCount': '{count} 条记录',
   'history.filter.resultCountOf': '共 {total} 条中的 {count} 条',
   'history.filter.noResults': '没有符合筛选条件的记录。',
+
+  'dataManagement.title': '本地数据管理',
+  'dataManagement.recordCount': '点检记录 {count} 件',
+  'dataManagement.savedGrinderCount': '已保存的砂轮机 {count} 台',
+  'dataManagement.draftExists': '有正在进行中的点检。',
+  'dataManagement.draftNone': '没有正在进行中的点检。',
+  'dataManagement.photoStats': '含照片的记录 {records} 件 · 照片总容量 {bytes}',
+  'dataManagement.storageUsage': '设备存储用量(估算) {usage} / {quota}',
+  'dataManagement.storageUnsupported': '此浏览器无法查看存储用量。',
+  'dataManagement.deleteDraft': '删除进行中的点检',
+  'dataManagement.deleteDraftConfirm':
+    '此操作将删除正在进行中的点检(临时保存)。已完成并保存的记录不受影响。',
+  'dataManagement.deleteDraftConfirmButton': '删除临时保存',
+  'dataManagement.cancel': '取消',
+
+  'backup.title': '备份文件(JSON)',
+  'backup.notice': '仅包含点检记录和已保存的砂轮机。不包含照片。',
+  'backup.export': '导出',
+  'backup.exported': '已导出 {count} 件记录。',
+  'backup.exportFailed': '导出失败。',
+  'backup.importLabel': '导入备份文件',
+  'backup.importHint': '导入前会先显示将应用多少条数据。',
+  'backup.previewTitle': '导入预览',
+  'backup.previewRecords':
+    '点检记录：新增 {valid} 件 · 已存在跳过 {duplicate} 件 · 无效 {invalid} 件',
+  'backup.previewSavedGrinders':
+    '已保存的砂轮机：新增 {valid} 件 · 已存在跳过 {duplicate} 件 · 无效 {invalid} 件',
+  'backup.applyButton': '应用导入',
+  'backup.cancelButton': '取消',
+  'backup.applied': '已导入点检记录 {records} 件、已保存砂轮机 {saved} 件。',
+  'backup.errorTooLarge': '文件过大。',
+  'backup.errorNotJson': '无法读取 JSON 文件，文件已损坏。',
+  'backup.errorBadShape': '不是本应用的备份文件格式。',
+  'backup.errorBadFormat': '不是本应用的备份文件。',
+  'backup.errorUnsupportedVersion': '不支持此备份版本。请更新应用后重试。',
+
   'elapsed.overHour': '超过 1 小时',
   'elapsed.seconds': '{seconds} 秒',
   'elapsed.minutes': '{minutes} 分钟',

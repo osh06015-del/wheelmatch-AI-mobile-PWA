@@ -15,10 +15,12 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
+import { DataManagementPanel } from '@/components/DataManagementPanel';
 import { HistoryFilters } from '@/components/HistoryFilters';
 import { HistoryList } from '@/components/HistoryList';
 import { ResearchPanel } from '@/components/ResearchPanel';
 import {
+  clearInspectionPhotos,
   clearInspections,
   deleteInspection,
   listAllInspectionsWithoutPhotos,
@@ -136,6 +138,7 @@ export default function HistoryPage() {
           <HistoryList
             records={pageRecords}
             onDelete={(id) => void deleteInspection(id)}
+            onDeletePhotos={(id) => void clearInspectionPhotos(id)}
           />
           {hasMore && (
             <button
@@ -185,6 +188,10 @@ export default function HistoryPage() {
           )}
         </div>
       )}
+
+      {/* 백업·저장공간 관리는 현장판·검증판 모두에서 그린다 — 연구 도구가
+          아니라 기기 저장공간을 다루는 일반 기능이다. */}
+      <DataManagementPanel />
 
       {/* 연구 도구는 검증 빌드에서만 그린다. CSS로 숨기지 않고 문서에서 뺀다 —
           숨긴 요소는 스크린리더와 인쇄로 새어 나온다. 사진 없는 전체 기록을

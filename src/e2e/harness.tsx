@@ -164,6 +164,47 @@ export function dbModule() {
     },
     isQuotaExceededError: (error: unknown): boolean =>
       error instanceof Error && error.name === 'QuotaExceededError',
+    inspectionCount: async (): Promise<number> => browser().records.length,
+    inspectionIdsPresent: async (
+      ids: readonly number[],
+    ): Promise<Set<number>> => {
+      const existing = new Set(browser().records.map((record) => record.id));
+      return new Set(ids.filter((id) => existing.has(id)));
+    },
+    putInspectionWithId: async (record: StoredInspection): Promise<void> => {
+      const records = browser().records;
+      const index = records.findIndex((row) => row.id === record.id);
+      if (index >= 0) records[index] = record;
+      else records.push(record);
+    },
+    clearInspectionPhotos: async (id: number): Promise<void> => {
+      const record = browser().records.find((row) => row.id === id);
+      if (!record) return;
+      delete record.grinderImage;
+      delete record.wheelImage;
+      delete record.wheelBackImage;
+      delete record.wheelEdgeImage;
+      delete record.wheelBoreImage;
+    },
+    photoStorageStats: async (): Promise<{
+      recordsWithPhotos: number;
+      totalPhotoBytes: number;
+    }> => {
+      let recordsWithPhotos = 0;
+      let totalPhotoBytes = 0;
+      for (const record of browser().records) {
+        const blobs = [
+          record.grinderImage,
+          record.wheelImage,
+          record.wheelBackImage,
+          record.wheelEdgeImage,
+          record.wheelBoreImage,
+        ].filter((blob): blob is Blob => blob instanceof Blob);
+        if (blobs.length > 0) recordsWithPhotos += 1;
+        totalPhotoBytes += blobs.reduce((sum, blob) => sum + blob.size, 0);
+      }
+      return { recordsWithPhotos, totalPhotoBytes };
+    },
   };
 }
 

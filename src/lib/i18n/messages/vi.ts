@@ -854,6 +854,10 @@ export const vi: Messages = {
   'history.deleteConfirm':
     'Thao tác này xóa một bản ghi. Ảnh lưu kèm cũng bị xóa và không thể khôi phục.',
   'history.deleteConfirmButton': 'Xóa bản ghi',
+  'history.deletePhotos': 'Chỉ xóa ảnh',
+  'history.deletePhotosConfirm':
+    'Thao tác này chỉ xóa ảnh. Kết quả đánh giá, các mục kiểm tra và bản ghi vẫn được giữ lại, không thể hoàn tác.',
+  'history.deletePhotosConfirmButton': 'Chỉ xóa ảnh',
   'history.cancel': 'Hủy',
   'history.clearAll': 'Xóa toàn bộ hồ sơ',
   'history.newInspection': 'Bắt đầu kiểm tra mới',
@@ -892,6 +896,49 @@ export const vi: Messages = {
   'history.filter.resultCount': '{count} bản ghi',
   'history.filter.resultCountOf': '{count}/{total} bản ghi',
   'history.filter.noResults': 'Không có bản ghi nào khớp với bộ lọc này.',
+
+  'dataManagement.title': 'Quản lý dữ liệu cục bộ',
+  'dataManagement.recordCount': '{count} bản ghi kiểm tra',
+  'dataManagement.savedGrinderCount': '{count} máy mài đã lưu',
+  'dataManagement.draftExists': 'Có một lượt kiểm tra đang dang dở.',
+  'dataManagement.draftNone': 'Không có lượt kiểm tra nào đang dang dở.',
+  'dataManagement.photoStats':
+    '{records} bản ghi có ảnh · dung lượng ảnh {bytes}',
+  'dataManagement.storageUsage':
+    'Dung lượng thiết bị đã dùng (ước tính) {usage} / {quota}',
+  'dataManagement.storageUnsupported':
+    'Trình duyệt này không thể hiển thị dung lượng lưu trữ.',
+  'dataManagement.deleteDraft': 'Xóa lượt kiểm tra đang dang dở',
+  'dataManagement.deleteDraftConfirm':
+    'Thao tác này xóa lượt kiểm tra đang dang dở (lưu tạm). Các bản ghi đã lưu hoàn chỉnh không bị ảnh hưởng.',
+  'dataManagement.deleteDraftConfirmButton': 'Xóa bản lưu tạm',
+  'dataManagement.cancel': 'Hủy',
+
+  'backup.title': 'Tệp sao lưu (JSON)',
+  'backup.notice':
+    'Chỉ chứa bản ghi kiểm tra và máy mài đã lưu. Không bao giờ chứa ảnh.',
+  'backup.export': 'Xuất ra',
+  'backup.exported': 'Đã xuất {count} bản ghi.',
+  'backup.exportFailed': 'Xuất thất bại.',
+  'backup.importLabel': 'Nhập tệp sao lưu',
+  'backup.importHint':
+    'Số mục sẽ được áp dụng được hiển thị trước khi nhập bất cứ thứ gì.',
+  'backup.previewTitle': 'Xem trước khi nhập',
+  'backup.previewRecords':
+    'Bản ghi kiểm tra: mới {valid} · bỏ qua (đã có) {duplicate} · không hợp lệ {invalid}',
+  'backup.previewSavedGrinders':
+    'Máy mài đã lưu: mới {valid} · bỏ qua (đã có) {duplicate} · không hợp lệ {invalid}',
+  'backup.applyButton': 'Áp dụng nhập',
+  'backup.cancelButton': 'Hủy',
+  'backup.applied':
+    'Đã nhập {records} bản ghi kiểm tra và {saved} máy mài đã lưu.',
+  'backup.errorTooLarge': 'Tệp quá lớn.',
+  'backup.errorNotJson': 'Không thể đọc tệp JSON. Tệp bị hỏng.',
+  'backup.errorBadShape': 'Đây không phải tệp sao lưu của ứng dụng này.',
+  'backup.errorBadFormat': 'Đây không phải tệp sao lưu của ứng dụng này.',
+  'backup.errorUnsupportedVersion':
+    'Phiên bản sao lưu này không được hỗ trợ. Hãy cập nhật ứng dụng rồi thử lại.',
+
   'elapsed.overHour': 'hơn 1 giờ',
   'elapsed.seconds': '{seconds} giây',
   'elapsed.minutes': '{minutes} phút',

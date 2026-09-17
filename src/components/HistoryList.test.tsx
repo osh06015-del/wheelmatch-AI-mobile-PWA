@@ -342,6 +342,59 @@ describe('이력 상세 — 기록별 삭제', () => {
   });
 });
 
+describe('이력 상세 — 사진만 삭제', () => {
+  it('사진이 있는 기록에서만 버튼이 보이고, 확인 전에는 지우지 않는다', async () => {
+    const user = userEvent.setup();
+    const onDeletePhotos = vi.fn();
+    render(
+      <HistoryList
+        records={[
+          record({ grinderImage: new Blob(['g'], { type: 'image/jpeg' }) }),
+        ]}
+        onDeletePhotos={onDeletePhotos}
+      />,
+    );
+    await user.click(screen.getByRole('button', { expanded: false }));
+
+    await user.click(screen.getByRole('button', { name: '사진만 삭제' }));
+    expect(onDeletePhotos).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(
+        '사진만 지웁니다. 판정·검사 항목·기록 자체는 그대로 남고 되돌릴 수 없습니다.',
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '사진만 지웁니다' }));
+    expect(onDeletePhotos).toHaveBeenCalledWith(1);
+  });
+
+  it('사진이 없는 기록에는 버튼을 그리지 않는다', async () => {
+    const user = userEvent.setup();
+    render(<HistoryList records={[record()]} onDeletePhotos={vi.fn()} />);
+    await user.click(screen.getByRole('button', { expanded: false }));
+
+    expect(
+      screen.queryByRole('button', { name: '사진만 삭제' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('핸들러를 주지 않으면 버튼을 그리지 않는다', async () => {
+    const user = userEvent.setup();
+    render(
+      <HistoryList
+        records={[
+          record({ grinderImage: new Blob(['g'], { type: 'image/jpeg' }) }),
+        ]}
+      />,
+    );
+    await user.click(screen.getByRole('button', { expanded: false }));
+
+    expect(
+      screen.queryByRole('button', { name: '사진만 삭제' }),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe('이력 상세 — 장착·작업 조건', () => {
   it('저장 당시의 조건 표를 그대로 보인다', async () => {
     const user = userEvent.setup();

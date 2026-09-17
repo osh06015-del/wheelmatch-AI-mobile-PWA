@@ -53,10 +53,16 @@ function summarize(record: InspectionRecord, t: Translate): string {
 export function HistoryList({
   records,
   onDelete,
+  onDeletePhotos,
 }: {
   records: InspectionRecord[];
   /** 기록 하나를 지운다. 넘기지 않으면 삭제 버튼을 그리지 않는다 */
   onDelete?: (id: number) => void | Promise<void>;
+  /**
+   * 사진만 지운다(판정·Evidence·기록 자체는 남는다). 넘기지 않으면
+   * 버튼을 그리지 않는다 — 저장공간 관리 기능이 없는 화면에서는 안 보인다.
+   */
+  onDeletePhotos?: (id: number) => void | Promise<void>;
 }) {
   const { t, locale } = useLocale();
   const [openId, setOpenId] = useState<number | null>(null);
@@ -64,6 +70,9 @@ export function HistoryList({
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<number | null>(
     null,
   );
+  const [confirmingPhotoDeleteId, setConfirmingPhotoDeleteId] = useState<
+    number | null
+  >(null);
 
   if (records.length === 0) {
     return (
@@ -88,7 +97,15 @@ export function HistoryList({
           const elapsed = formatElapsed(record.elapsedMs ?? null, t);
           const preTrial = formatElapsed(record.preTrialElapsedMs ?? null, t);
           const hasPhoto = Boolean(record.grinderImage ?? record.wheelImage);
+          const hasAnyPhoto = Boolean(
+            record.grinderImage ??
+            record.wheelImage ??
+            record.wheelBackImage ??
+            record.wheelEdgeImage ??
+            record.wheelBoreImage,
+          );
           const confirmingDelete = confirmingDeleteId === record.id;
+          const confirmingPhotoDelete = confirmingPhotoDeleteId === record.id;
 
           return (
             <li key={record.id} className="rounded-lg bg-slate-800">
@@ -217,6 +234,45 @@ export function HistoryList({
                   {/* 저장 당시의 버전을 보여준다. 지금 버전으로 채우면
                     어느 규칙으로 나온 판정인지 거짓으로 적게 된다. */}
                   <RuleVersionNote version={record.ruleVersion ?? null} />
+
+                  {onDeletePhotos && hasAnyPhoto && record.id !== undefined && (
+                    <div className="flex flex-col gap-3 border-t border-slate-700 pt-4">
+                      {confirmingPhotoDelete ? (
+                        <>
+                          <p className="text-base leading-relaxed text-yellow-100">
+                            {t('history.deletePhotosConfirm')}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setConfirmingPhotoDeleteId(null);
+                              void onDeletePhotos(record.id as number);
+                            }}
+                            className="min-h-14 rounded-lg bg-yellow-500 text-lg font-bold text-slate-950 active:bg-yellow-400"
+                          >
+                            {t('history.deletePhotosConfirmButton')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmingPhotoDeleteId(null)}
+                            className="min-h-14 rounded-lg border border-slate-600 text-lg font-semibold text-slate-200 active:bg-slate-700"
+                          >
+                            {t('history.cancel')}
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setConfirmingPhotoDeleteId(record.id ?? null)
+                          }
+                          className="min-h-14 rounded-lg border border-slate-600 text-lg font-semibold text-slate-300 active:bg-slate-700"
+                        >
+                          {t('history.deletePhotos')}
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   {onDelete && record.id !== undefined && (
                     <div className="flex flex-col gap-3 border-t border-slate-700 pt-4">
