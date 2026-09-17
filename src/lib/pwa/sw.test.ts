@@ -59,4 +59,32 @@ describe('public/sw.js — 업데이트 불변조건', () => {
   it('OCR API는 캐시하지 않는다', () => {
     expect(source).toMatch(/\/api\//);
   });
+
+  it('GET이 아닌 요청(POST 등)은 캐시 로직에 닿기 전에 흘려보낸다', () => {
+    // 사용자 사진·OCR 응답은 POST로 오간다(/api/extract). 캐시 판단보다
+    // 먼저 걸러야 어떤 분기로도 캐시에 닿지 않는다.
+    const fetchStart = source.indexOf("addEventListener('fetch'");
+    expect(fetchStart).toBeGreaterThan(-1);
+    const fetchBody = source.slice(fetchStart);
+    const methodCheckIndex = fetchBody.indexOf("request.method !== 'GET'");
+    const apiCheckIndex = fetchBody.indexOf("'/api/'");
+    const firstRespondWith = fetchBody.indexOf('respondWith');
+    expect(methodCheckIndex).toBeGreaterThan(-1);
+    expect(methodCheckIndex).toBeLessThan(apiCheckIndex);
+    expect(apiCheckIndex).toBeLessThan(firstRespondWith);
+  });
+
+  it('activate에서 지금 버전과 이름이 다른 캐시를 모두 지운다', () => {
+    // CACHE 이름을 올리지 않으면 새 배포가 활성화돼도 이전 정적 자산·화면
+    // 캐시가 지워지지 않는다. activate가 이름이 다른 캐시를 모두 지워야
+    // "새 빌드 활성화 후 이전 캐시가 남지 않는다"는 불변조건이 유지된다.
+    const activateStart = source.indexOf("addEventListener('activate'");
+    expect(activateStart).toBeGreaterThan(-1);
+    const activateBody = withoutLineComments(
+      source.slice(activateStart, source.indexOf('function isStaticAsset')),
+    );
+    expect(activateBody).toMatch(/caches\s*\.\s*keys\(\)/);
+    expect(activateBody).toMatch(/key !== CACHE/);
+    expect(activateBody).toMatch(/caches\.delete\(/);
+  });
 });
