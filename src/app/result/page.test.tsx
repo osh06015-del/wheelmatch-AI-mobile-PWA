@@ -898,6 +898,84 @@ describe('결과 화면 — 저장 함수 내부 재검사와 저장공간 오�
     expect(saved.captureChecks).toBeUndefined();
     expect(saved.wheelBackCaptureMetrics).toBeUndefined();
   });
+
+  it('촬영 품질 측정값과 OCR telemetry를 저장한다 — 사진을 빼고 저장해도 남는다', async () => {
+    // 검증용 실측 데이터(safety-critical.md 2번과 별개)다. 판정에는 쓰지
+    // 않지만, 사진을 빼고 저장해도 숫자 자체는 남아야 인식률·정정률을
+    // 나중에 잴 수 있다.
+    const grinderMetrics = {
+      originalWidth: 4032,
+      originalHeight: 3024,
+      originalBytes: 7_580_000,
+      uploadWidth: 2048,
+      uploadHeight: 1536,
+      uploadBytes: 1_830_000,
+      meanBrightness: 120.5,
+      contrast: 42.1,
+      darkPixelRatio: 0.02,
+      brightPixelRatio: 0.01,
+      blurMetric: 913.4,
+      optimizeMs: 210,
+    };
+    const wheelMetrics = { ...grinderMetrics, optimizeMs: 180 };
+    const backMetrics = { ...grinderMetrics, optimizeMs: 150 };
+    const grinderTelemetry = {
+      engine: 'claude' as const,
+      model: 'claude-sonnet-5',
+      inputTokens: 1500,
+      outputTokens: 80,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 1500,
+      durationMs: 2100,
+    };
+    const wheelTelemetry = { ...grinderTelemetry, durationMs: 1800 };
+
+    // 부적합 조합을 쓴다 — 적합이면 시험운전을 먼저 마쳐야 저장 버튼이 열린다.
+    // 여기서 보려는 것은 시험운전 흐름이 아니라 telemetry가 저장에 실리는지다.
+    const wheel = { ...WHEEL, maxRPM: 8500 };
+    const result = store();
+    act(() => {
+      result.current.setGrinder(
+        GRINDER,
+        null,
+        null,
+        grinderMetrics,
+        grinderTelemetry,
+      );
+      result.current.setGrinderCondition(GRINDER_OK);
+      result.current.setWheel(wheel, null, null, wheelMetrics, wheelTelemetry);
+      result.current.setWheelCondition(CONFIRMED);
+      result.current.setWheelExam({
+        exam: null,
+        photos: { back: null, edge: null, bore: null },
+        acknowledged: false,
+        captureMetrics: { back: backMetrics, edge: null, bore: null },
+      });
+    });
+
+    const quotaError = new Error('storage full');
+    quotaError.name = 'QuotaExceededError';
+    vi.mocked(saveInspection).mockRejectedValueOnce(quotaError);
+
+    render(<ResultPage />);
+    checkAll();
+    fireEvent.click(screen.getByRole('button', { name: /점검 완료 및 저장/ }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: '사진을 빼고 결과만 저장' }),
+    );
+    await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(2));
+
+    const saved = vi.mocked(saveInspection).mock.calls[1][0];
+    expect(saved.grinderCaptureMetrics).toEqual(grinderMetrics);
+    expect(saved.wheelCaptureMetrics).toEqual(wheelMetrics);
+    expect(saved.wheelBackCaptureMetrics).toEqual(backMetrics);
+    expect(saved.grinderOcrTelemetry).toEqual(grinderTelemetry);
+    expect(saved.wheelOcrTelemetry).toEqual(wheelTelemetry);
+    // 사진은 뺐다 — 숫자만 남고 Blob은 없다.
+    expect(saved.grinderImage).toBeUndefined();
+    expect(saved.wheelImage).toBeUndefined();
+  });
+
   it('작업 조건·Profile·조건 표를 저장하고, 판정은 바꾸지 않는다', async () => {
     const wheel = { ...WHEEL, maxRPM: 8500 };
     const result = ready(wheel);
