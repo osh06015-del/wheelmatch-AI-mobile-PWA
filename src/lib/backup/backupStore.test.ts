@@ -125,6 +125,31 @@ describe('gatherBackupData / buildBackupFileNow — 내보낼 범위', () => {
     expect(file.format).toBe(BACKUP_FORMAT);
     expect(file.version).toBe(BACKUP_VERSION);
   });
+
+  it('DB에서 읽은 값에 알려지지 않은 속성이 섞여 있어도 내보내지 않는다', async () => {
+    // TypeScript 타입은 런타임 속성을 지우지 않는다 — listAllInspectionsWithoutPhotos가
+    // 실제로 이런 값을 돌려줄 리는 없지만, 돌려주더라도 buildBackupFileNow가
+    // sanitizeInspectionRecord/parseSavedGrinder를 거치는지가 이 테스트의 핵심이다.
+    const dirtyRecord = {
+      ...record(),
+      apiKey: 'sk-ant-secret',
+      rawApiResponse: { content: 'x' },
+    } as unknown as InspectionWithoutPhotos;
+    const dirtySaved = {
+      ...saved(),
+      systemPrompt: '너는...',
+    } as unknown as SavedGrinder;
+    listAllInspectionsWithoutPhotos.mockResolvedValue([dirtyRecord]);
+    savedList.mockResolvedValue([dirtySaved]);
+
+    const file = await buildBackupFileNow();
+
+    expect(file.records[0]).not.toHaveProperty('apiKey');
+    expect(file.records[0]).not.toHaveProperty('rawApiResponse');
+    expect(file.records[0]).toEqual(record());
+    expect(file.savedGrinders[0]).not.toHaveProperty('systemPrompt');
+    expect(file.savedGrinders[0]).toEqual(saved());
+  });
 });
 
 describe('previewImport — 확인 전에는 아무것도 쓰지 않는다', () => {
@@ -226,5 +251,31 @@ describe('applyImport — 미리보기에서 확인한 항목만, 있는 그대�
       [],
     );
     expect(result.importedRecords).toBe(1);
+  });
+
+  it('적용 직전에 다시 존재하는 id는 미리보기 결과와 달라도 덮어쓰지 않는다', async () => {
+    // previewImport 이후(다른 탭 등에서) 같은 id로 먼저 저장됐을 수 있는 경우를
+    // 흉내낸다 — validRecords 자체는 미리보기 시점 기준으로 이미 유효하다고
+    // 표시됐지만, 적용 시점에 다시 확인해 걸러야 한다.
+    inspectionIdsPresent.mockResolvedValue(new Set([1]));
+
+    const result = await applyImport(
+      [record({ id: 1 }), record({ id: 2 })],
+      [],
+    );
+
+    expect(putInspectionWithId).toHaveBeenCalledTimes(1);
+    expect(putInspectionWithId).toHaveBeenCalledWith(record({ id: 2 }));
+    expect(result.importedRecords).toBe(1);
+  });
+
+  it('저장된 그라인더도 적용 직전에 다시 존재하는 id는 덮어쓰지 않는다', async () => {
+    savedList.mockResolvedValue([saved({ id: 7 })]);
+
+    const result = await applyImport([], [saved({ id: 7 }), saved({ id: 8 })]);
+
+    expect(savedUpdate).toHaveBeenCalledTimes(1);
+    expect(savedUpdate).toHaveBeenCalledWith(saved({ id: 8 }));
+    expect(result.importedSavedGrinders).toBe(1);
   });
 });

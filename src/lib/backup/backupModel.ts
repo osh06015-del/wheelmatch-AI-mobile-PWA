@@ -8,15 +8,16 @@
 // (safety-critical.md #8). 사진은 항상 뺀다: 내보내는 쪽이 InspectionWithoutPhotos만
 // 넘긴다.
 //
-// 객체를 통째로 직렬화해 믿지 않는다. 판정 재계산·현재 점검 복원에 최소한
-// 필요한 필드만 확인하고, 그 외 필드는 옵션이라 있으면 쓰고 없으면 비운다
-// (InspectionRecord의 대부분 필드가 "이 기능 도입 전 기록에는 없다"는 전제로
-// 이미 optional이다 — parseSavedGrinder와 같은 원칙).
+// 객체를 통째로 직렬화해 믿지 않는다. 기록은 recordSanitize.ts의
+// sanitizeInspectionRecord()로, 저장된 그라인더는 savedGrinderModel.ts의
+// parseSavedGrinder()로 허용 필드만 새 객체에 옮겨 담는다 — `{...raw}` 같은
+// 통째 복사는 어디서도 쓰지 않는다. 내보내기(buildBackupFile)와
+// 가져오기(parseImportedRecord/classifyImportSavedGrinders)가 같은 함수를 쓴다.
 
+import { sanitizeInspectionRecord } from './recordSanitize';
 import { parseSavedGrinder } from '@/lib/db/savedGrinderModel';
 import type { InspectionWithoutPhotos } from '@/lib/db';
 import type { SavedGrinder } from '@/lib/db/savedGrinderModel';
-import type { Verdict } from '@/lib/rules/types';
 
 export const BACKUP_FORMAT = 'wheelmatch-backup';
 export const BACKUP_VERSION = 1;
@@ -32,6 +33,14 @@ export interface BackupFile {
   savedGrinders: SavedGrinder[];
 }
 
+/**
+ * 내보낼 기록·저장된 그라인더를 허용 필드만으로 다시 만든 뒤 담는다.
+ *
+ * DB에서 읽은 값이라도 TypeScript 타입은 런타임 속성을 지우지 않으므로
+ * 그대로 넘기지 않는다 — sanitizeInspectionRecord/parseSavedGrinder를 거쳐야만
+ * 결과에 실린다. 정상적으로 저장된 값이라면 이 단계에서 거의 걸러지지 않지만,
+ * 손상된 항목이 섞여 있어도 방어적으로 뺀다(무효 항목을 예외로 만들지 않는다).
+ */
 export function buildBackupFile(
   records: InspectionWithoutPhotos[],
   savedGrinders: SavedGrinder[],
@@ -41,8 +50,12 @@ export function buildBackupFile(
     format: BACKUP_FORMAT,
     version: BACKUP_VERSION,
     exportedAt: now.toISOString(),
-    records,
-    savedGrinders,
+    records: records
+      .map(sanitizeInspectionRecord)
+      .filter((record): record is InspectionWithoutPhotos => record !== null),
+    savedGrinders: savedGrinders
+      .map(parseSavedGrinder)
+      .filter((item): item is SavedGrinder => item !== null),
   };
 }
 
@@ -56,12 +69,6 @@ export function backupFilename(now: Date = new Date()): string {
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const VERDICTS: ReadonlyArray<Verdict> = [
-  'COMPATIBLE',
-  'INCOMPATIBLE',
-  'UNDETERMINED',
-];
 
 export type BackupFileError =
   | 'bad_shape' // 최상위 구조(format·version·records·savedGrinders)가 아니다
@@ -99,27 +106,16 @@ export function parseBackupFile(
 }
 
 /**
- * 기록 하나가 가리킬 수 있는(id로 되짚을 수 있는) 최소 형태인지 본다.
+ * 가져온 기록 하나를 허용 필드만으로 재구성한다.
  *
- * 판정 재계산·현재 점검 복원에 쓰지 않으므로 result.checks[]의 각 항목까지
- * 검증하지 않는다 — 이력 화면이 그대로 보여줄 수 있는 최소 필드(핵심 규격·
- * 판정·저장 시각)만 확인하고, 나머지 optional 필드는 있으면 그대로 쓴다.
+ * sanitizeInspectionRecord()에 그대로 위임한다 — 미리보기(previewImport)와
+ * 실제 적용(applyImport)이 같은 결과를 쓰게 하려는 것이다. id·필수 필드가
+ * 없거나, 알려진 필드의 타입·enum·날짜·길이가 어긋나면 레코드 전체를 버린다.
  */
 export function parseImportedRecord(
   raw: unknown,
 ): InspectionWithoutPhotos | null {
-  if (!isObject(raw)) return null;
-  if (typeof raw.id !== 'number' || !Number.isInteger(raw.id)) return null;
-  if (typeof raw.createdAt !== 'string' || raw.createdAt === '') return null;
-  if (!isObject(raw.grinder) || !isObject(raw.wheel)) return null;
-  if (!isObject(raw.result)) return null;
-  const verdict = raw.result.verdict;
-  if (typeof verdict !== 'string' || !VERDICTS.includes(verdict as Verdict)) {
-    return null;
-  }
-  if (!Array.isArray(raw.result.checks)) return null;
-  if (!isObject(raw.checklist)) return null;
-  return raw as unknown as InspectionWithoutPhotos;
+  return sanitizeInspectionRecord(raw);
 }
 
 export interface RecordImportClassification {

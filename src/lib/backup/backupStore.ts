@@ -121,15 +121,22 @@ export interface ImportResult {
  *
  * 판정을 다시 계산하지 않는다 — 레코드를 있는 그대로(저장 당시 verdict·
  * ruleVersion·accessoryProfile 등) 넣는다. 현재 진행 중인 점검(draft)에도
- * 손대지 않는다. id는 원본 그대로 보존한다(put은 같은 id가 없을 때만
- * 부른다는 전제 — previewImport가 이미 중복을 걸러 넘긴다).
+ * 손대지 않는다. id는 원본 그대로 보존한다.
+ *
+ * previewImport 이후 다른 곳(다른 탭 등)에서 같은 id로 먼저 저장했을 수
+ * 있으므로, 미리보기 결과를 그대로 믿지 않고 적용 직전에 존재 여부를
+ * 다시 확인한다 — 기존 기록·저장된 그라인더를 절대 덮어쓰지 않기 위해서다.
  */
 export async function applyImport(
   validRecords: readonly InspectionWithoutPhotos[],
   validSavedGrinders: readonly SavedGrinder[],
 ): Promise<ImportResult> {
+  const existingRecordIds = await inspectionIdsPresent(
+    validRecords.map((record) => record.id),
+  );
   let importedRecords = 0;
   for (const record of validRecords) {
+    if (existingRecordIds.has(record.id)) continue;
     try {
       await putInspectionWithId(record);
       importedRecords += 1;
@@ -138,10 +145,15 @@ export async function applyImport(
     }
   }
 
+  const existingSavedGrinders = await savedGrinderStore.list();
+  const existingSavedGrinderIds = new Set(
+    existingSavedGrinders.map((item) => item.id),
+  );
   let importedSavedGrinders = 0;
   for (const item of validSavedGrinders) {
-    // update()는 id가 있으면 갱신, 없으면 추가한다(Dexie put). previewImport가
-    // 이미 존재하는 id를 걸러 넘기므로 여기서는 항상 새로 추가되는 셈이다.
+    // update()는 id가 있으면 갱신, 없으면 추가한다(Dexie put) — 그래서 존재
+    // 여부를 직접 걸러야 한다. 여기서 걸러지는 항목은 항상 새로 추가되는 셈이다.
+    if (existingSavedGrinderIds.has(item.id)) continue;
     const ok = await savedGrinderStore.update(item);
     if (ok) importedSavedGrinders += 1;
   }

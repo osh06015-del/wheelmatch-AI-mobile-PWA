@@ -74,6 +74,35 @@ describe('parseBackupFile — 최상위 구조', () => {
     expect(result).toEqual({ file });
   });
 
+  it('DB 값에 알려지지 않은 속성(API 키·원시 응답·draft 등)이 섞여 있어도 내보내지 않는다', () => {
+    // TypeScript 타입은 런타임 속성을 지우지 않는다 — `as unknown as`로
+    // 원본 타입 검사를 우회해, 실제로 이런 객체가 들어와도 buildBackupFile이
+    // 허용 필드만 남기는지 본다.
+    const dirty = {
+      ...record(),
+      apiKey: 'sk-ant-secret',
+      systemPrompt: '너는 라벨을 읽는 어시스턴트다',
+      rawApiResponse: { id: 'msg_1' },
+      draft: { step: 'wheel-scan' },
+      grinderImage: new Blob(['x']),
+    } as unknown as InspectionWithoutPhotos;
+    const dirtySaved = {
+      ...saved(),
+      apiKey: 'sk-ant-secret',
+    } as unknown as SavedGrinder;
+
+    const file = buildBackupFile([dirty], [dirtySaved]);
+
+    expect(file.records[0]).toEqual(record());
+    expect(file.records[0]).not.toHaveProperty('apiKey');
+    expect(file.records[0]).not.toHaveProperty('systemPrompt');
+    expect(file.records[0]).not.toHaveProperty('rawApiResponse');
+    expect(file.records[0]).not.toHaveProperty('draft');
+    expect(file.records[0]).not.toHaveProperty('grinderImage');
+    expect(file.savedGrinders[0]).toEqual(saved());
+    expect(file.savedGrinders[0]).not.toHaveProperty('apiKey');
+  });
+
   it('객체가 아니면 형식 오류다', () => {
     expect(parseBackupFile('not an object')).toEqual({ error: 'bad_shape' });
     expect(parseBackupFile(null)).toEqual({ error: 'bad_shape' });
@@ -129,6 +158,25 @@ describe('parseBackupFile — 최상위 구조', () => {
 describe('parseImportedRecord — 손상된 기록 방어', () => {
   it('id·createdAt·grinder·wheel·result·checklist가 갖춰지면 받아들인다', () => {
     expect(parseImportedRecord(record())).toEqual(record());
+  });
+
+  it('가져온 JSON에 알려지지 않은 속성(API 키·원시 응답·__proto__)이 있어도 저장할 새 객체에는 남지 않는다', () => {
+    const raw = JSON.parse(
+      `${JSON.stringify(record()).slice(0, -1)},"apiKey":"sk-ant-secret","rawApiResponse":{"id":"msg_1"},"__proto__":{"polluted":true}}`,
+    ) as unknown;
+    const result = parseImportedRecord(raw);
+    expect(result).toEqual(record());
+    expect(result).not.toHaveProperty('apiKey');
+    expect(result).not.toHaveProperty('rawApiResponse');
+    expect(result).not.toHaveProperty('__proto__');
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+  });
+
+  it('사진 Blob 필드가 섞여 있어도 결과에 실리지 않는다', () => {
+    const raw = { ...record(), grinderImage: new Blob(['x']) };
+    const result = parseImportedRecord(raw);
+    expect(result).not.toBeNull();
+    expect(result).not.toHaveProperty('grinderImage');
   });
 
   it('id가 없거나 정수가 아니면 버린다', () => {

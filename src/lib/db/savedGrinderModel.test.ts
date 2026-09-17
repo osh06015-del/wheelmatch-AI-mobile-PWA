@@ -55,6 +55,19 @@ describe('parseSavedGrinder — 손상·구버전 데이터 방어', () => {
     expect(parseSavedGrinder(null)).toBeNull();
   });
 
+  it('알려지지 않은 속성(API 키·원시 응답·__proto__)은 어디서도 결과에 남지 않는다', () => {
+    const raw = JSON.parse(
+      '{"id":7,"alias":"1호기","apiKey":"sk-ant-secret","rawApiResponse":{"id":"msg_1"},"__proto__":{"polluted":true},"prototype":{"polluted":true}}',
+    ) as unknown;
+    const result = parseSavedGrinder(raw);
+    expect(result).not.toBeNull();
+    expect(result).not.toHaveProperty('apiKey');
+    expect(result).not.toHaveProperty('rawApiResponse');
+    expect(result).not.toHaveProperty('__proto__');
+    expect(result).not.toHaveProperty('prototype');
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+  });
+
   it('형태가 어긋난 필드는 기본값으로 되돌리고, 값이 있는 필드는 살린다', () => {
     const result = parseSavedGrinder({
       id: 7,

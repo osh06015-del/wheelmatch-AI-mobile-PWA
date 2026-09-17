@@ -188,6 +188,24 @@ describe('저장된 그라인더 저장소 — 손상·구버전 항목과 DB �
     ]);
   });
 
+  it('저장된 값에 알려지지 않은 속성이 섞여 있어도 목록에는 남지 않는다', async () => {
+    // TypeScript 타입은 런타임 속성을 지우지 않는다 — 다른 원인으로 DB에
+    // 이런 값이 들어왔다고 가정해도 list()가 허용 필드만 돌려주는지 본다.
+    const table = memoryTable();
+    table.rows.set(1, {
+      ...row(),
+      apiKey: 'sk-ant-secret',
+      rawApiResponse: { id: 'msg_1' },
+    });
+
+    const store = createSavedGrinderStore(() => table);
+    const list = await store.list();
+
+    expect(list).toEqual([row()]);
+    expect(list[0]).not.toHaveProperty('apiKey');
+    expect(list[0]).not.toHaveProperty('rawApiResponse');
+  });
+
   it('목록 조회가 실패해도 던지지 않고 빈 배열을 돌려준다', async () => {
     const store = createSavedGrinderStore(() => throwingTable());
     await expect(store.list()).resolves.toEqual([]);
