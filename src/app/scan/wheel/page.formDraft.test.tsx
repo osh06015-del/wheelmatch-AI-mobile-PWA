@@ -194,7 +194,7 @@ describe('숫돌 확인 화면 — 입력 draft 복구', () => {
         },
         photo: new Blob(['label']),
         ocr: OCR,
-        offline: false,
+        analysisSource: 'server',
       },
     });
 
@@ -251,9 +251,9 @@ describe('숫돌 확인 화면 — 로컬 OCR 제한 판정', () => {
     expect(result.current.analysisMode).toBe('offline_limited');
   });
 
-  it('로컬 OCR로 읽은 확인 화면 draft는 제한 판정 표시를 잃지 않는다(새로고침 복구)', async () => {
-    // 새로고침하면 localOnly 상태는 사라지고 draft의 offline만 남는다. 여기서
-    // false로 저장되면 복구 후 서버 대조 없이 읽은 값이 온라인 대조로 판정된다.
+  it('로컬 OCR로 읽은 확인 화면 draft는 출처를 local_ocr로 남긴다(직접 입력과 구분)', async () => {
+    // offline 하나로만 합쳐 저장하면 새로고침 복구 때 "직접 입력"과 "로컬 OCR"을
+    // 구분할 수 없다. analysisSource로 따로 남겨야 한다.
     readyGrinder();
     getLastTelemetry.mockReturnValue({
       engine: 'tesseract',
@@ -272,8 +272,71 @@ describe('숫돌 확인 화면 — 로컬 OCR 제한 판정', () => {
       timeout: 3000,
     });
     for (const [draft] of formSave.mock.calls) {
-      expect(draft).toMatchObject({ offline: true });
+      expect(draft).toMatchObject({ analysisSource: 'local_ocr' });
     }
+  });
+
+  it('새로고침 복구 — local_ocr 출처는 "로컬 OCR" 배지로, manual 출처는 "직접 입력" 배지로 되살아난다', async () => {
+    readyGrinder();
+    formLoad.mockResolvedValueOnce({
+      status: 'found',
+      draft: {
+        slot: 'wheel',
+        schemaVersion: 1,
+        savedAt: '2026-09-17T00:00:00.000Z',
+        fields: {
+          maxRPM: '',
+          diameter: '',
+          thickness: '',
+          purpose: 'unknown',
+          expiry: '',
+          wheelType: 'unknown',
+          accessoryName: '',
+        },
+        photo: new Blob(['label']),
+        ocr: null,
+        analysisSource: 'local_ocr',
+      },
+    });
+    render(<WheelScanPage />);
+    await screen.findByText('읽어낸 값을 확인하세요');
+
+    expect(
+      screen.getByText('오프라인 제한 대조 — 서버가 아니라', { exact: false }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('라벨을 직접 보고 값을 입력하세요', { exact: false }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('새로고침 복구 — analysisSource가 없는 구버전 draft는 온라인으로 승격하지 않고 로컬 OCR 배지로 되살아난다', async () => {
+    readyGrinder();
+    formLoad.mockResolvedValueOnce({
+      status: 'found',
+      draft: {
+        slot: 'wheel',
+        schemaVersion: 1,
+        savedAt: '2026-09-17T00:00:00.000Z',
+        fields: {
+          maxRPM: '',
+          diameter: '',
+          thickness: '',
+          purpose: 'unknown',
+          expiry: '',
+          wheelType: 'unknown',
+          accessoryName: '',
+        },
+        photo: new Blob(['label']),
+        ocr: null,
+        offline: false,
+      },
+    });
+    render(<WheelScanPage />);
+    await screen.findByText('읽어낸 값을 확인하세요');
+
+    expect(
+      screen.getByText('오프라인 제한 대조 — 서버가 아니라', { exact: false }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -303,7 +366,7 @@ describe('숫돌 확인 화면 — 다각도 확인(Wheel Exam) draft 복구', (
       },
       photo: new Blob(['label']),
       ocr: OCR_EXAM,
-      offline: false,
+      analysisSource: 'server',
       exam: {
         photos: exam,
         metrics: EXAM_METRICS,

@@ -192,7 +192,10 @@ export default function WheelScanPage() {
         accessoryName: recovered.fields.accessoryName,
       });
       setOcr(recovered.ocr);
-      setOffline(recovered.offline);
+      // 저장된 출처를 화면의 두 상태(직접 입력·로컬 OCR)로 다시 나눈다 —
+      // 배지 문구가 서로 다르므로 하나의 불리언으로 합쳐 두지 않는다.
+      setOffline(recovered.analysisSource === 'manual');
+      setLocalOnly(recovered.analysisSource === 'local_ocr');
       // 다각도 확인은 지금 종류가 요구할 때만 되살아난다(recoverWheelExamDraft가
       // Profile을 다시 본다). 사진이 없거나(손상 포함) 셋 중 하나라도 빠지면
       // exam도 함께 비어 있다 — 재촬영해야 한다.
@@ -221,9 +224,9 @@ export default function WheelScanPage() {
         fields: form,
         photo,
         ocr,
-        // 로컬 OCR(localOnly)은 draft에 따로 남지 않는다. 새로고침 뒤 복구된 값이
-        // 서버 대조를 거친 것처럼 판정되지 않도록 제한 판정 표시로 합쳐 남긴다.
-        offline: offline || localOnly,
+        // offline·localOnly를 하나의 출처 값으로 남긴다 — 복구할 때 배지 문구를
+        // (직접 입력 vs 로컬 OCR) 그대로 되살리기 위해서다.
+        analysisSource: offline ? 'manual' : localOnly ? 'local_ocr' : 'server',
         exam: {
           photos: examPhotos,
           metrics: examMetrics,

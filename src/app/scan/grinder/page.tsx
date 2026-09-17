@@ -118,7 +118,10 @@ export default function GrinderScanPage() {
       setForm(fields);
       setMounting({ spindleThread, guardType, guardSize });
       setOcr(recovered.ocr);
-      setOffline(recovered.offline);
+      // 저장된 출처를 화면의 두 상태(직접 입력·로컬 OCR)로 다시 나눈다 —
+      // 배지 문구가 서로 다르므로 하나의 불리언으로 합쳐 두지 않는다.
+      setOffline(recovered.analysisSource === 'manual');
+      setLocalOnly(recovered.analysisSource === 'local_ocr');
       if (recovered.photo) {
         setPhoto(recovered.photo);
         setPhase('confirm');
@@ -142,9 +145,9 @@ export default function GrinderScanPage() {
         fields: { ...form, ...mounting },
         photo,
         ocr,
-        // 로컬 OCR(localOnly)은 draft에 따로 남지 않는다. 새로고침 뒤 복구된 값이
-        // 서버 대조를 거친 것처럼 판정되지 않도록 제한 판정 표시로 합쳐 남긴다.
-        offline: offline || localOnly,
+        // offline·localOnly를 하나의 출처 값으로 남긴다 — 복구할 때 배지 문구를
+        // (직접 입력 vs 로컬 OCR) 그대로 되살리기 위해서다.
+        analysisSource: offline ? 'manual' : localOnly ? 'local_ocr' : 'server',
       });
     }, FORM_DRAFT_SAVE_DELAY_MS);
     return () => window.clearTimeout(timer);

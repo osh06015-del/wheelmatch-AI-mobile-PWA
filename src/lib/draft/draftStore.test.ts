@@ -49,7 +49,7 @@ function grinderFormDraft(
     },
     photo: new Blob(['plate']),
     ocr: null,
-    offline: false,
+    analysisSource: 'server',
     ...overrides,
   };
 }

@@ -85,7 +85,7 @@ describe('recoverGrinderFormDraft', () => {
       },
       photo: new Blob(['plate']),
       ocr: GRINDER_OCR,
-      offline: false,
+      analysisSource: 'server',
     });
 
     expect(recovered).not.toBeNull();
@@ -99,7 +99,7 @@ describe('recoverGrinderFormDraft', () => {
     });
     expect(recovered?.photo).toBeInstanceOf(Blob);
     expect(recovered?.ocr).toEqual(GRINDER_OCR);
-    expect(recovered?.offline).toBe(false);
+    expect(recovered?.analysisSource).toBe('server');
   });
 
   it('그릇 형태 자체를 읽지 못하면 null이다', () => {
@@ -120,7 +120,7 @@ describe('recoverGrinderFormDraft', () => {
       },
       photo: null,
       ocr: null,
-      offline: true,
+      analysisSource: 'manual',
     });
 
     expect(recovered).toEqual({
@@ -133,7 +133,7 @@ describe('recoverGrinderFormDraft', () => {
       },
       photo: null,
       ocr: null,
-      offline: true,
+      analysisSource: 'manual',
     });
   });
 
@@ -142,7 +142,7 @@ describe('recoverGrinderFormDraft', () => {
       fields: EMPTY_GRINDER_FORM_FIELDS,
       photo: 'data:image/png;base64,xxx',
       ocr: null,
-      offline: false,
+      analysisSource: 'server',
     });
     expect(recovered?.photo).toBeNull();
   });
@@ -152,7 +152,7 @@ describe('recoverGrinderFormDraft', () => {
       fields: EMPTY_GRINDER_FORM_FIELDS,
       photo: null,
       ocr: { noLoadRPM: 'not a number' },
-      offline: false,
+      analysisSource: 'server',
     });
     expect(recovered?.ocr).toBeNull();
   });
@@ -171,9 +171,41 @@ describe('recoverGrinderFormDraft', () => {
       },
       photo: null,
       ocr: null,
-      offline: false,
+      analysisSource: 'server',
     });
     expect(recovered?.fields.model).toBe('old');
+  });
+
+  it('analysisSource가 없는 구버전 draft — offline:true는 직접 입력(manual)으로 옮긴다', () => {
+    const recovered = recoverGrinderFormDraft({
+      fields: EMPTY_GRINDER_FORM_FIELDS,
+      photo: null,
+      ocr: null,
+      offline: true,
+    });
+    expect(recovered?.analysisSource).toBe('manual');
+  });
+
+  it('analysisSource가 없는 구버전 draft — offline:false는 온라인으로 승격하지 않고 local_ocr로 둔다', () => {
+    // 이 시절 코드는 로컬 OCR과 서버 실패를 offline 하나에 합쳐 썼던 적이 있어
+    // offline:false가 실제로 온라인이었다고 확정할 수 없다. 보수적으로 제한
+    // 판정(local_ocr)으로 남긴다 — server로 승격하지 않는다.
+    const recovered = recoverGrinderFormDraft({
+      fields: EMPTY_GRINDER_FORM_FIELDS,
+      photo: null,
+      ocr: null,
+      offline: false,
+    });
+    expect(recovered?.analysisSource).toBe('local_ocr');
+  });
+
+  it('offline 필드조차 없는 구버전 draft도 online으로 승격하지 않는다', () => {
+    const recovered = recoverGrinderFormDraft({
+      fields: EMPTY_GRINDER_FORM_FIELDS,
+      photo: null,
+      ocr: null,
+    });
+    expect(recovered?.analysisSource).toBe('local_ocr');
   });
 });
 
@@ -194,7 +226,7 @@ describe('recoverWheelFormDraft', () => {
       },
       photo: new Blob(['label']),
       ocr: WHEEL_OCR,
-      offline: false,
+      analysisSource: 'server',
     });
 
     expect(recovered?.fields).toEqual({
@@ -227,7 +259,7 @@ describe('recoverWheelFormDraft', () => {
       },
       photo: null,
       ocr: null,
-      offline: false,
+      analysisSource: 'server',
     });
 
     expect(recovered?.fields).toEqual({
@@ -245,7 +277,7 @@ describe('recoverWheelFormDraft', () => {
       fields: { ...EMPTY_WHEEL_FORM_FIELDS, wheelType: EXAM_REQUIRED_TYPE },
       photo: null,
       ocr: null,
-      offline: false,
+      analysisSource: 'server',
       exam: {
         photos: {
           back: new Blob(['back']),
@@ -267,6 +299,26 @@ describe('recoverWheelFormDraft', () => {
       bore: METRICS,
     });
     expect(recovered?.exam.exam).toEqual(EXAM_RESULT);
+  });
+
+  it('analysisSource가 없는 구버전 draft — offline:true는 직접 입력(manual)으로 옮긴다', () => {
+    const recovered = recoverWheelFormDraft({
+      fields: EMPTY_WHEEL_FORM_FIELDS,
+      photo: null,
+      ocr: null,
+      offline: true,
+    });
+    expect(recovered?.analysisSource).toBe('manual');
+  });
+
+  it('analysisSource가 없는 구버전 draft — offline:false는 온라인으로 승격하지 않고 local_ocr로 둔다', () => {
+    const recovered = recoverWheelFormDraft({
+      fields: EMPTY_WHEEL_FORM_FIELDS,
+      photo: null,
+      ocr: null,
+      offline: false,
+    });
+    expect(recovered?.analysisSource).toBe('local_ocr');
   });
 });
 

@@ -27,6 +27,43 @@ export const FORM_DRAFT_SAVE_DELAY_MS = 1000;
 
 export type ScanFormSlot = 'grinder' | 'wheel';
 
+/**
+ * 이 값을 어떻게 얻었는가. 셋 다 서버 대조 없이 읽힌 값이라 제한 판정
+ * (offline_limited)으로 대조되지만, 화면 문구는 서로 다르다 — 작업자가
+ * 다시 확인해야 할 대상이 다르기 때문이다(직접 입력한 값 vs 기기가 읽었지만
+ * 검증 못 한 값).
+ *
+ *   - server:    서버 분석을 거쳤다(정상 경로)
+ *   - local_ocr: 기기 안 OCR(Tesseract)로 읽었거나 그때 기기가 오프라인이었다
+ *   - manual:    서버에 닿지 못해 작업자가 명판·라벨을 보고 직접 입력했다
+ */
+export type AnalysisSource = 'server' | 'local_ocr' | 'manual';
+
+const ANALYSIS_SOURCES: readonly AnalysisSource[] = [
+  'server',
+  'local_ocr',
+  'manual',
+];
+
+const isAnalysisSource = (value: unknown): value is AnalysisSource =>
+  typeof value === 'string' &&
+  (ANALYSIS_SOURCES as readonly string[]).includes(value);
+
+/**
+ * 저장된 draft에서 출처를 되살린다.
+ *
+ * analysisSource가 없는 구버전 draft는 `offline` 불리언만 있었다. 그 시절
+ * 코드는 로컬 OCR과 서버 실패를 구분하지 않고 `offline`에 합쳐 썼던 적이
+ * 있어(fix(audit) 이전), `offline === false`가 실제로 온라인이었다고
+ * 확정할 수 없다. 확정할 수 없으면 온라인으로 승격하지 않고 보수적으로
+ * local_ocr(제한 판정)로 둔다. `offline === true`는 모든 버전에서 항상
+ * 작업자의 직접 입력이었으므로 그대로 manual로 옮긴다.
+ */
+function pickAnalysisSource(raw: Record<string, unknown>): AnalysisSource {
+  if (isAnalysisSource(raw.analysisSource)) return raw.analysisSource;
+  return raw.offline === true ? 'manual' : 'local_ocr';
+}
+
 export interface GrinderFormFields {
   model: string;
   noLoadRPM: string;
@@ -74,8 +111,7 @@ export interface GrinderFormDraft {
   /** 최적화(축소)를 마친 명판 사진. 촬영하지 않았으면 null */
   photo: Blob | null;
   ocr: GrinderSpec | null;
-  /** 서버에 닿지 못해 직접 입력 중인가(오프라인 제한 대조) */
-  offline: boolean;
+  analysisSource: AnalysisSource;
 }
 
 /** 앞면(라벨 사진) 외에 다각도 확인에서 작업자가 더 찍는 세 자리 */
@@ -106,7 +142,7 @@ export interface WheelFormDraft {
   fields: WheelFormFields;
   photo: Blob | null;
   ocr: WheelSpec | null;
-  offline: boolean;
+  analysisSource: AnalysisSource;
   /** 다각도 확인(WheelExamPanel) 진행 상태. 이 필드가 없는 구버전 draft도 있다 */
   exam: WheelExamDraft;
 }
@@ -158,14 +194,14 @@ export interface GrinderFormRecovery {
   fields: GrinderFormFields;
   photo: Blob | null;
   ocr: GrinderSpec | null;
-  offline: boolean;
+  analysisSource: AnalysisSource;
 }
 
 export interface WheelFormRecovery {
   fields: WheelFormFields;
   photo: Blob | null;
   ocr: WheelSpec | null;
-  offline: boolean;
+  analysisSource: AnalysisSource;
   exam: WheelExamDraft;
 }
 
@@ -238,7 +274,7 @@ export function recoverGrinderFormDraft(
     },
     photo: raw.photo instanceof Blob ? raw.photo : null,
     ocr: isGrinderSpec(raw.ocr) ? raw.ocr : null,
-    offline: raw.offline === true,
+    analysisSource: pickAnalysisSource(raw),
   };
 }
 
@@ -259,7 +295,7 @@ export function recoverWheelFormDraft(raw: unknown): WheelFormRecovery | null {
     },
     photo: raw.photo instanceof Blob ? raw.photo : null,
     ocr: isWheelSpec(raw.ocr) ? raw.ocr : null,
-    offline: raw.offline === true,
+    analysisSource: pickAnalysisSource(raw),
     exam: recoverWheelExamDraft(raw.exam, wheelType),
   };
 }
