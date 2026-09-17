@@ -132,7 +132,7 @@ export const vi: Messages = {
   'evidence.limit.workPurpose':
     'Chỉ đối chiếu công việc người vận hành đã chọn với công dụng ghi trên nhãn.',
   'evidence.doc.wheelType':
-    'Thiết kế của ứng dụng — quy tắc tốc độ/đường kính giả định là đá mài kết dính thông thường',
+    'Thiết kế của ứng dụng — chỉ các loại phụ kiện có hồ sơ mới được đối chiếu tốc độ/đường kính. Căn cứ pháp lý (Điều 122) chỉ được dẫn cho đá mài kết dính',
   'evidence.limit.wheelType':
     '"Không xác định" không có nghĩa là nguy hiểm, mà là ứng dụng này không thể đánh giá loại đá mài này.',
   'evidence.doc.visibleDamage':
@@ -477,6 +477,64 @@ export const vi: Messages = {
   'wheelType.cup_wheel': 'Đá mài dạng chén',
   'wheelType.diamond': 'Lưỡi kim cương',
   'wheelType.wire_brush': 'Chổi cước sắt',
+  'wheelType.bonded_cutting': 'Đá cắt liên kết (Type 1/41)',
+  'wheelType.bonded_grinding': 'Đá mài liên kết (Type 27/28)',
+  'wheelType.bonded_combination': 'Đá cắt/mài kết hợp (Type 27/42)',
+  'wheelType.bonded_cup': 'Đá chén liên kết (Type 6/11)',
+  'wheelType.diamond_continuous': 'Lưỡi cắt kim cương (vành liền)',
+  'wheelType.diamond_turbo': 'Lưỡi cắt kim cương (vành turbo)',
+  'wheelType.diamond_segmented': 'Lưỡi cắt kim cương (phân đoạn)',
+  'wheelType.diamond_cup': 'Đá chén kim cương',
+  'wheelType.tuck_pointing': 'Đĩa xẻ mạch vữa',
+  'wheelType.fibre_disc': 'Đĩa nhám sợi / đĩa chà nhám',
+  'wheelType.nonwoven_disc': 'Đĩa xử lý bề mặt không dệt',
+  'wheelType.polishing_pad': 'Miếng đánh bóng được nhà sản xuất cho phép',
+  'wheelTypeConfirm.supportedProfile':
+    'Với loại này, ứng dụng đối chiếu tốc độ quay và đường kính. Các mục kiểm tra tình trạng riêng của loại này phải do người thợ tự làm.',
+  'wheelTypeConfirm.needsSubtype':
+    'Hãy chọn loại cụ thể để đối chiếu quy cách. Nếu giữ nguyên, kết quả sẽ là chưa xác định.',
+  'reason.workPurpose.manualCheck':
+    'Công việc hôm nay là {work}. Ứng dụng không có căn cứ để đối chiếu loại này có hợp với công việc đó không. Hãy tự kiểm tra hướng dẫn của nhà sản xuất.',
+  'reason.workPurpose.profileMismatch':
+    'Công việc hôm nay ({work}) không nằm trong các công việc cho phép của loại đã chọn ({type}). Không thể đánh giá cho đến khi kiểm tra lại loại và công việc.',
+  'reason.wheelType.supportedProfile':
+    'Loại đã xác nhận: {type}. Ứng dụng đối chiếu tốc độ quay và đường kính cho loại này. Các mục tình trạng riêng của loại này phải do người thợ tự kiểm tra.',
+  'reason.expiry.noPolicy':
+    'Ứng dụng không có căn cứ để áp dụng tiêu chí hạn sử dụng cho loại này. Nếu nhãn hoặc nhà sản xuất có ghi hạn, hãy tự kiểm tra.',
+  'trialRun.noPolicy':
+    'Ứng dụng không có căn cứ về tiêu chí chạy thử cho loại này nên không yêu cầu và không ghi lại việc chạy thử. Hãy làm theo hướng dẫn chạy thử của nhà sản xuất.',
+  'wheelCondition.diamondRimIntact':
+    'Phân đoạn hoặc vành có bị rơi hay vỡ không?',
+  'wheelCondition.diamondRimIntactHint':
+    'Hãy xem giữa các phân đoạn và mép vành có mảnh bị mất, vết nứt hoặc chỗ mòn tới lõi không.',
+  'wheelCondition.flapsIntact': 'Các cánh (flap) có bị rơi hay rách không?',
+  'wheelCondition.flapsIntactHint':
+    'Hãy xem có chỗ thiếu cánh, cánh bị rách hoặc cánh mòn ngắn một bên không.',
+  'wheelCondition.noDelamination':
+    'Các cánh có bị bong hoặc tách khỏi đế không?',
+  'wheelCondition.noDelaminationHint':
+    'Hãy ấn nhẹ vào chân cánh để kiểm tra keo có bị bong không.',
+  'wheelCondition.flapBackingIntact': 'Đế có bị nứt hay cong vênh không?',
+  'wheelCondition.flapBackingIntactHint':
+    'Hãy xem đế ở mặt sau (sợi hoặc nhựa) có vết nứt, vỡ hoặc cong không.',
+  'wheelCondition.threadAdapterFit':
+    'Ren và bộ chuyển đổi có khớp với trục và không hư hỏng không?',
+  'wheelCondition.threadAdapterFitHint':
+    'Hãy kiểm tra ren không bị hỏng, bộ chuyển đổi không lỏng và khớp với quy cách trục máy mài.',
+  'wheelCondition.evenWear': 'Có bị mòn lệch về một phía không?',
+  'wheelCondition.evenWearHint':
+    'Hãy xem mặt làm việc có chỗ mòn sâu một bên hoặc mòn thành bậc không.',
+  'wheelCondition.dedicatedGuardFitted':
+    'Đã lắp nắp che chuyên dụng cho loại chén này chưa?',
+  'wheelCondition.dedicatedGuardFittedHint':
+    'Hãy kiểm tra nắp che đã lắp là loại dành cho chén này theo hướng dẫn nhà sản xuất, không phải nắp che đá mài thường.',
+  'wheelCondition.wiresIntact': 'Không có sợi thép bị đứt hoặc bung ra?',
+  'wheelCondition.wiresIntactHint':
+    'Hãy xem có sợi thép lòi ra, sợi bị đứt hoặc dồn về một phía không.',
+  'wheelCondition.backingPadUndamaged':
+    'Đĩa và đế lót có bị nứt, biến dạng hay mòn không?',
+  'wheelCondition.backingPadUndamagedHint':
+    'Hãy xem mép đế lót có bị rách hoặc bẹp không và đĩa có áp đều lên đế không.',
   'wheelType.other': 'Loại khác',
   'wheelType.unknown': 'Không rõ',
   'wheelTypeConfirm.label': 'Loại đá mài',
@@ -485,7 +543,7 @@ export const vi: Messages = {
   'wheelTypeConfirm.aiSuggestion':
     'AI gợi ý: {type} — đây chỉ là giá trị gợi ý ban đầu từ ảnh.',
   'wheelTypeConfirm.supported':
-    'Ứng dụng chỉ đối chiếu thông số khi bạn tự xác nhận đây là đá mài liên kết thông thường.',
+    'Với đá mài liên kết thông thường, ứng dụng đối chiếu tốc độ quay và đường kính. Hãy tự xác nhận loại bằng cách xem đá mài thật.',
   'wheelTypeConfirm.unknown':
     'Nếu chưa xác nhận loại đá, kết quả đối chiếu thông số sẽ là KHÔNG THỂ XÁC ĐỊNH. Hãy nhìn đá thật rồi chọn.',
   'wheelTypeConfirm.unsupported':

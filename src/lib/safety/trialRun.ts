@@ -100,6 +100,13 @@ export interface TrialRunPreconditions {
   grinderConditionComplete: boolean;
   wheelConditionComplete: boolean;
   checklistComplete: boolean;
+  /**
+   * 이 종류에 시험운전 근거(제122조 ②)가 확인됐는가. Profile의 trialRunPolicy.
+   *
+   * 근거가 없는 종류에 법정 시간·문구를 붙여 시험운전을 열면 규정을 지어내는
+   * 셈이다. 넘기지 않으면 기존처럼 근거가 있는 것으로 본다(결합숫돌).
+   */
+  policyVerified?: boolean;
 }
 
 /**
@@ -111,6 +118,7 @@ export interface TrialRunPreconditions {
  */
 export function canStartTrialRun(input: TrialRunPreconditions): boolean {
   return (
+    (input.policyVerified ?? true) &&
     input.verdict === 'COMPATIBLE' &&
     input.grinderConditionComplete &&
     input.wheelConditionComplete &&

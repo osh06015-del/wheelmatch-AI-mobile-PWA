@@ -186,3 +186,14 @@ describe('완료 처리', () => {
     ]);
   });
 });
+
+describe('시작 조건 — 시험운전 근거', () => {
+  it('근거가 확인되지 않은 종류에는 적합이어도 시험운전을 열지 않는다', () => {
+    expect(canStartTrialRun({ ...READY, policyVerified: false })).toBe(false);
+  });
+
+  it('근거가 확인됐거나 넘기지 않으면(결합숫돌) 기존처럼 연다', () => {
+    expect(canStartTrialRun({ ...READY, policyVerified: true })).toBe(true);
+    expect(canStartTrialRun(READY)).toBe(true);
+  });
+});

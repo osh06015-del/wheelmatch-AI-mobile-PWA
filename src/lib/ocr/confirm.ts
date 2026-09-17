@@ -20,6 +20,7 @@
 
 import { normalizeExpiry } from './parser';
 import { mergeVisibleDamage } from '@/lib/vision/wheelExamSafety';
+import { refinesSuggestion } from '@/lib/rules/profiles';
 import type {
   RpmSource,
   VisibleDamage,
@@ -72,7 +73,10 @@ export function wheelTypeDiffersFromSuggestion(
   ocr: WheelSpec | null,
   selected: WheelType,
 ): boolean {
-  return selected !== (ocr?.wheelType ?? 'unknown');
+  const suggested = ocr?.wheelType ?? 'unknown';
+  // AI는 굵은 분류(다이아몬드)까지만 제안한다. 작업자가 세부 형식(세그먼트)을
+  // 고른 것은 제안을 좁힌 것이지 어긋난 것이 아니다.
+  return selected !== suggested && !refinesSuggestion(suggested, selected);
 }
 
 /**

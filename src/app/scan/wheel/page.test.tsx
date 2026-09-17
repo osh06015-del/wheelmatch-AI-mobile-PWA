@@ -281,7 +281,7 @@ describe('숫돌 촬영 화면 — 숫돌 종류 직접 확인', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        '일반 결합숫돌로 직접 확인한 경우에만 이 앱이 규격을 대조합니다.',
+        '일반 결합숫돌은 이 앱이 회전속도·지름을 대조하는 종류입니다. 실물을 보고 직접 확인해 고르세요.',
       ),
     ).toBeInTheDocument();
 
@@ -299,10 +299,11 @@ describe('숫돌 촬영 화면 — 숫돌 종류 직접 확인', () => {
     expect(result.current.wheelExam?.status).toBe('not_observed');
   });
 
-  it('AI가 플랩디스크로 읽으면 판정불가로 끝난다고 알리고 그 종류로 넘긴다', async () => {
-    const result = await openConfirm({ ...OCR, wheelType: 'flap_disc' });
+  it('AI가 기타로 읽으면 판정불가로 끝난다고 알리고 그 종류로 넘긴다', async () => {
+    // 플랩디스크는 이제 Profile이 있어 대조하는 종류다. Profile이 없는 기타로 본다.
+    const result = await openConfirm({ ...OCR, wheelType: 'other' });
 
-    expect(typeSelect()).toHaveValue('flap_disc');
+    expect(typeSelect()).toHaveValue('other');
     expect(
       screen.getByText(
         '이 앱이 판정하지 않는 종류입니다. 규격 대조는 판정불가로 끝납니다. 제조사 취급설명서를 확인하세요.',
@@ -312,7 +313,7 @@ describe('숫돌 촬영 화면 — 숫돌 종류 직접 확인', () => {
     answerWheelCondition();
     fireEvent.click(proceedButton());
 
-    expect(result.current.wheel?.wheelType).toBe('flap_disc');
+    expect(result.current.wheel?.wheelType).toBe('other');
   });
 
   it('작업자가 AI 제안과 다른 종류를 고르면 차이를 알리고 직접 확인 전에는 넘어가지 못한다', async () => {
@@ -702,5 +703,91 @@ describe('숫돌 촬영 화면 — 다각도 외관 이상 징후 확인', () =>
     expect(push).toHaveBeenCalledWith('/result');
     expect(result.current.wheel?.wheelType).toBe('diamond');
     expect(result.current.wheelExam).toBeNull();
+  });
+});
+
+describe('숫돌 촬영 화면 — 종류별 상태 확인 항목', () => {
+  beforeEach(() => {
+    replace.mockClear();
+    push.mockClear();
+    extractWheel.mockReset();
+    const result = store();
+    act(() => result.current.reset());
+  });
+
+  async function openConfirm(ocr: WheelSpec) {
+    const result = store();
+    act(() => {
+      result.current.setGrinder(GRINDER);
+      result.current.setGrinderCondition(CONFIRMED);
+    });
+    extractWheel.mockResolvedValue(ocr);
+    render(<WheelScanPage />);
+    fireEvent.click(screen.getByRole('button', { name: '테스트 사진 고르기' }));
+    await screen.findByText('읽어낸 값을 확인하세요');
+    return result;
+  }
+
+  const typeSelect = () => screen.getByRole('combobox', { name: '숫돌 종류' });
+  const proceedButton = () =>
+    screen.getByRole('button', { name: '확인 후 규격 대조' });
+
+  it('AI가 다이아몬드로 본 것을 세그먼트형으로 좁히면 직접 확인 없이, 세그먼트 항목까지 답해야 넘어간다', async () => {
+    const result = await openConfirm({ ...OCR, wheelType: 'diamond' });
+
+    // 굵은 분류 그대로는 세부 형식을 고르라고 알린다.
+    expect(
+      screen.getByText(
+        '세부 종류를 골라야 규격을 대조합니다. 이대로면 판정불가로 끝납니다.',
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.change(typeSelect(), { target: { value: 'diamond_segmented' } });
+
+    // 좁힌 것이라 차이 경고가 없다.
+    expect(
+      screen.queryByText(/AI 제안\(.*\)과 선택한 종류/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('group', {
+        name: '세그먼트나 림이 떨어지거나 깨지지 않았는가?',
+      }),
+    ).toBeInTheDocument();
+    // 유효기한 근거가 없는 종류라 유효기한 항목을 묻지 않는다.
+    expect(
+      screen.queryByText(/라벨의 유효기한이 남아 있는가/),
+    ).not.toBeInTheDocument();
+    // 다이아몬드 날은 다각도 사진을 요구하지 않는다.
+    expect(screen.queryByText('다각도 외관 확인')).not.toBeInTheDocument();
+
+    for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+      fireEvent.click(button);
+    }
+    expect(proceedButton()).toBeEnabled();
+    fireEvent.click(proceedButton());
+
+    expect(push).toHaveBeenCalledWith('/result');
+    expect(result.current.wheel?.wheelType).toBe('diamond_segmented');
+    expect(result.current.wheelCondition).toEqual({
+      damageFree: true,
+      notDeformed: true,
+      mountingAreaUndamaged: true,
+      labelLegible: true,
+      expiryValid: null,
+      diamondRimIntact: true,
+    });
+  });
+
+  it('종류별 항목 하나라도 문제 있음이면 넘어가지 못한다', async () => {
+    await openConfirm({ ...OCR, wheelType: 'wire_brush' });
+
+    const confirms = screen.getAllByRole('button', { name: /확인함/ });
+    const issues = screen.getAllByRole('button', { name: /문제 있음/ });
+    for (const button of confirms) fireEvent.click(button);
+    // 마지막 항목(끊어지거나 풀린 와이어)을 문제 있음으로 바꾼다.
+    fireEvent.click(issues[issues.length - 1]);
+
+    expect(screen.getByText('이 숫돌을 사용하지 마십시오')).toBeInTheDocument();
+    expect(proceedButton()).toBeDisabled();
   });
 });

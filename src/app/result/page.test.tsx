@@ -319,14 +319,7 @@ describe('결과 화면 — 시험운전 절차', () => {
     expect(screen.queryByText('시험운전')).not.toBeInTheDocument();
   });
 
-  it.each([
-    ['flap_disc'],
-    ['cup_wheel'],
-    ['diamond'],
-    ['wire_brush'],
-    ['other'],
-    ['unknown'],
-  ] as const)(
+  it.each([['cup_wheel'], ['diamond'], ['other'], ['unknown']] as const)(
     '숫돌 종류가 %s 이면 판정불가이고 시험운전을 열지 않는다',
     (type) => {
       // 일반 결합숫돌로 확인되지 않은 숫돌을 돌려 보게 유도하지 않는다.
@@ -1122,5 +1115,110 @@ describe('결과 화면 — 저장 함수 내부 재검사와 저장공간 오�
     expect(
       screen.queryByRole('link', { name: '덮개 정보 다시 확인' }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('결과 화면 — 알려진 액세서리 Profile', () => {
+  beforeEach(() => {
+    replace.mockClear();
+    push.mockClear();
+    vi.mocked(saveInspection).mockClear();
+    const result = store();
+    act(() => result.current.reset());
+  });
+
+  const FLAP: WheelSpec = {
+    ...WHEEL,
+    wheelType: 'flap_disc',
+    purpose: 'unknown',
+    expiry: null,
+  };
+  const FLAP_CONDITION: WheelCondition = {
+    damageFree: true,
+    notDeformed: null,
+    mountingAreaUndamaged: true,
+    labelLegible: true,
+    expiryValid: null,
+    flapsIntact: true,
+    noDelamination: true,
+    flapBackingIntact: true,
+  };
+
+  function checkAll() {
+    for (const box of screen.getAllByRole('checkbox')) {
+      if (!(box as HTMLInputElement).checked) fireEvent.click(box);
+    }
+  }
+
+  it('플랩디스크는 날개·박리·백킹판을 확인하지 않았으면 결과를 열지 않는다', () => {
+    const result = store();
+    act(() => {
+      result.current.setGrinder(GRINDER);
+      result.current.setGrinderCondition(GRINDER_OK);
+      result.current.setWheel(FLAP);
+      // 기존 다섯 항목만 확인했다 — 플랩 항목이 비어 있다.
+      result.current.setWheelCondition(CONFIRMED);
+    });
+
+    render(<ResultPage />);
+
+    expect(screen.getByText(LOADING)).toBeInTheDocument();
+    expect(replace).toHaveBeenCalledWith('/scan/wheel');
+  });
+
+  it('시험운전 근거가 없는 종류는 적합이어도 시험운전을 열지 않고 그 사실을 알린 뒤 저장할 수 있다', async () => {
+    const result = store();
+    act(() => {
+      result.current.setPurpose('grinding');
+      result.current.setGrinder(GRINDER);
+      result.current.setGrinderCondition(GRINDER_OK);
+      result.current.setWheel(FLAP);
+      result.current.setWheelCondition(FLAP_CONDITION);
+    });
+
+    render(<ResultPage />);
+
+    expect(screen.getByText('적합')).toBeInTheDocument();
+    checkAll();
+    expect(screen.queryByText('시험운전')).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '이 종류에는 시험운전 기준의 근거가 이 앱에 없어 시험운전을 요구하거나 기록하지 않습니다. 제조사 취급설명서의 시운전 안내를 따르세요.',
+      ),
+    ).toBeInTheDocument();
+    // 근거 없는 작업·유효기한은 통과가 아니라 직접 확인 항목으로 보인다.
+    expect(
+      screen.getByText(/이 종류에 맞는 작업인지 대조할 근거가/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/이 종류에 유효기한 기준을 적용할 근거가/),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /점검 완료 및 저장/ }));
+    await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
+    const saved = vi.mocked(saveInspection).mock.calls[0][0];
+    expect(saved.trialRun).toBeUndefined();
+    expect(saved.accessoryProfile?.type).toBe('flap_disc');
+    expect(saved.wheelCondition?.flapsIntact).toBe(true);
+    expect(saved.result.verdict).toBe('COMPATIBLE');
+  });
+
+  it('결합숫돌 세부 형식은 기존처럼 시험운전 전에는 저장할 수 없다', () => {
+    const result = store();
+    act(() => {
+      result.current.setGrinder(GRINDER);
+      result.current.setGrinderCondition(GRINDER_OK);
+      result.current.setWheel({ ...WHEEL, wheelType: 'bonded_cutting' });
+      result.current.setWheelCondition(CONFIRMED);
+    });
+
+    render(<ResultPage />);
+    checkAll();
+
+    expect(screen.getByText('적합')).toBeInTheDocument();
+    expect(screen.getByText('시험운전')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /점검 완료 및 저장/ }),
+    ).toBeDisabled();
   });
 });

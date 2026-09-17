@@ -11,12 +11,16 @@ import { RULE, matchSpecs } from './engine';
 import {
   ACCESSORY_PROFILES,
   BONDED_ABRASIVE_PROFILE,
+  DEFAULT_CONDITION_ITEMS,
   PROFILE_FIELD_USE,
   UNKNOWN_WORK_CONDITIONS,
+  conditionItemsFor,
   isSupportedType,
+  needsSubtype,
   profileConditions,
   profileFor,
   profileRef,
+  refinesSuggestion,
 } from './profiles';
 import type {
   AccessoryProfile,
@@ -61,12 +65,46 @@ const byKey = (conditions: ProfileCondition[], key: ProfileCondition['key']) =>
 
 const ALL_TYPES: WheelType[] = [
   'bonded_abrasive',
+  'bonded_cutting',
+  'bonded_grinding',
+  'bonded_combination',
+  'bonded_cup',
   'flap_disc',
   'cup_wheel',
   'diamond',
+  'diamond_continuous',
+  'diamond_turbo',
+  'diamond_segmented',
+  'diamond_cup',
+  'tuck_pointing',
   'wire_brush',
+  'fibre_disc',
+  'nonwoven_disc',
+  'polishing_pad',
   'other',
   'unknown',
+];
+
+/** Profile이 없는 종류 — 이번 범위에서 바꾸지 않았다 */
+const NO_PROFILE_TYPES: WheelType[] = [
+  'cup_wheel',
+  'diamond',
+  'other',
+  'unknown',
+];
+
+/** 결합숫돌이 아닌, 근거를 확인하지 못한 기본값을 쓰는 종류 */
+const UNVERIFIED_TYPES: WheelType[] = [
+  'flap_disc',
+  'diamond_continuous',
+  'diamond_turbo',
+  'diamond_segmented',
+  'diamond_cup',
+  'tuck_pointing',
+  'wire_brush',
+  'fibre_disc',
+  'nonwoven_disc',
+  'polishing_pad',
 ];
 
 describe('일반 결합숫돌 Profile — 기존 동작 이전', () => {
@@ -118,17 +156,20 @@ describe('일반 결합숫돌 Profile — 기존 동작 이전', () => {
 });
 
 describe('Profile이 없는 종류', () => {
-  it('결합숫돌 말고는 Profile이 없고 지원하지 않는 종류다', () => {
-    for (const type of ALL_TYPES.filter((t) => t !== 'bonded_abrasive')) {
+  it('굵은 분류(컵휠·다이아몬드)와 기타·모름에는 Profile이 없고 지원하지 않는다', () => {
+    for (const type of NO_PROFILE_TYPES) {
       expect(profileFor(type)).toBeNull();
       expect(isSupportedType(type)).toBe(false);
       expect(profileRef(type)).toBeNull();
     }
-    expect(Object.keys(ACCESSORY_PROFILES)).toEqual(['bonded_abrasive']);
+    const withProfile = ALL_TYPES.filter((t) => !NO_PROFILE_TYPES.includes(t));
+    expect(Object.keys(ACCESSORY_PROFILES).sort()).toEqual(
+      [...withProfile].sort(),
+    );
   });
 
   it('Profile이 없는 종류는 엔진에서 판정불가로 끝난다 — 이전 동작 그대로', () => {
-    for (const type of ALL_TYPES.filter((t) => t !== 'bonded_abrasive')) {
+    for (const type of NO_PROFILE_TYPES) {
       const result = matchSpecs(grinder(), wheel({ wheelType: type }), {
         profile: BONDED_ABRASIVE_PROFILE,
         today: '2026-09-17',
@@ -141,9 +182,9 @@ describe('Profile이 없는 종류', () => {
 
   it('supported가 false인 Profile도 지원하지 않는 종류로 본다', () => {
     // 나중에 Profile만 먼저 적어 두는 경우. supported를 켜기 전에는 대조하지 않는다.
-    const draft = profile({ type: 'flap_disc', supported: false });
+    const draft = profile({ type: 'diamond', supported: false });
     expect(draft.supported).toBe(false);
-    expect(isSupportedType('flap_disc')).toBe(false);
+    expect(isSupportedType('diamond')).toBe(false);
   });
 });
 
@@ -555,12 +596,15 @@ describe('Profile 필드 사용 구분', () => {
     'equipment.backingPad': BONDED_ABRASIVE_PROFILE.equipment.backingPad,
     'equipment.adapter': BONDED_ABRASIVE_PROFILE.equipment.adapter,
     allowedWork: BONDED_ABRASIVE_PROFILE.allowedWork,
+    workCheck: BONDED_ABRASIVE_PROFILE.workCheck,
     allowedMaterials: BONDED_ABRASIVE_PROFILE.allowedMaterials,
     cooling: BONDED_ABRASIVE_PROFILE.cooling,
     rotationDirection: BONDED_ABRASIVE_PROFILE.rotationDirection,
     expiryPolicy: BONDED_ABRASIVE_PROFILE.expiryPolicy,
     trialRunPolicy: BONDED_ABRASIVE_PROFILE.trialRunPolicy,
     conditionGate: BONDED_ABRASIVE_PROFILE.conditionGate,
+    conditionItems: BONDED_ABRASIVE_PROFILE.conditionItems,
+    aiSuggestions: BONDED_ABRASIVE_PROFILE.aiSuggestions,
     requiredPhotos: BONDED_ABRASIVE_PROFILE.requiredPhotos,
   };
 
@@ -608,5 +652,299 @@ describe('Profile 필드 사용 구분', () => {
     expect(verdict(grinder({ maxWheelDiameter: 115 }))).not.toBe('COMPATIBLE');
     // equipment.guard
     expect(verdict(grinder({ guardType: 'none' }))).not.toBe('COMPATIBLE');
+  });
+});
+
+describe('알려진 그라인더 액세서리 Profile', () => {
+  const TODAY = '2026-09-17';
+  const valid = (overrides: Partial<WheelSpec> = {}) =>
+    wheel({ expiry: { year: 2099, month: 6 }, ...overrides });
+  const run = (
+    w: WheelSpec,
+    options: { g?: GrinderSpec; declaredPurpose?: 'cutting' | 'grinding' } = {},
+  ) =>
+    matchSpecs(options.g ?? grinder(), w, {
+      profile: profileFor(w.wheelType),
+      declaredPurpose: options.declaredPurpose ?? null,
+      today: TODAY,
+    });
+  const checkOf = (result: ReturnType<typeof run>, rule: string) =>
+    result.checks.find((check) => check.rule === rule);
+
+  it('일반 결합숫돌 Profile은 이번 확장으로 바뀌지 않았다', () => {
+    expect(BONDED_ABRASIVE_PROFILE.version).toBe('2026.09.17-r2');
+    expect(BONDED_ABRASIVE_PROFILE.workCheck).toBe('label_purpose');
+    expect(BONDED_ABRASIVE_PROFILE.conditionItems).toEqual(
+      DEFAULT_CONDITION_ITEMS,
+    );
+    expect(checkOf(run(valid()), RULE.WHEEL_TYPE)?.detail?.code).toBe(
+      'wheelType.supported',
+    );
+  });
+
+  it.each(ALL_TYPES.filter((t) => !NO_PROFILE_TYPES.includes(t)))(
+    '%s — 공통 RPM·지름 규칙을 그대로 쓴다',
+    (wheelType) => {
+      const ok = run(valid({ wheelType }));
+      expect(checkOf(ok, RULE.WHEEL_TYPE)?.passed).toBe(true);
+      expect(checkOf(ok, RULE.RPM_SAFETY)?.passed).toBe(true);
+      expect(checkOf(ok, RULE.DIAMETER_FIT)?.passed).toBe(true);
+
+      // 1rpm 부족은 부적합, 지름 초과는 부적합, 값이 없으면 판정불가.
+      expect(run(valid({ wheelType, maxRPM: 10999 })).verdict).toBe(
+        'INCOMPATIBLE',
+      );
+      expect(run(valid({ wheelType, diameter: 126 })).verdict).toBe(
+        'INCOMPATIBLE',
+      );
+      expect(run(valid({ wheelType, maxRPM: null })).verdict).toBe(
+        'UNDETERMINED',
+      );
+    },
+  );
+
+  it.each(UNVERIFIED_TYPES)(
+    '%s — 근거 없는 조건은 모두 unverified이고 판정 근거로 쓰지 않는다',
+    (type) => {
+      const p = profileFor(type) as AccessoryProfile;
+      expect(p.supported).toBe(true);
+      expect(p.allowedWork).toBe('unverified');
+      expect(p.workCheck).toBe('allowed_work');
+      expect(p.allowedMaterials).toBe('unverified');
+      expect(p.cooling).toBe('unverified');
+      expect(p.rotationDirection).toBe('unverified');
+      expect(p.equipment).toEqual({
+        guard: 'unverified',
+        flange: 'unverified',
+        backingPad: 'unverified',
+        adapter: 'unverified',
+      });
+      expect(p.expiryPolicy).toBe('unverified');
+      expect(p.trialRunPolicy).toBe('unverified');
+      expect(p.sources).toEqual([]);
+      // 유효기한 근거가 없으니 Gate에서도 유효기한을 묻지 않는다.
+      expect(p.conditionItems).not.toContain('expiryValid');
+    },
+  );
+
+  it.each(UNVERIFIED_TYPES)(
+    '%s — 라벨 용도·유효기한을 몰라도 막지 않되 통과가 아니라 직접 확인으로 남긴다',
+    (wheelType) => {
+      const result = run(
+        wheel({ wheelType, purpose: 'unknown', expiry: null }),
+        { declaredPurpose: 'grinding' },
+      );
+      const work = checkOf(result, RULE.WORK_PURPOSE);
+      const expiry = checkOf(result, RULE.EXPIRY);
+      expect(work).toMatchObject({
+        passed: null,
+        advisory: true,
+        detail: { code: 'workPurpose.manualCheck' },
+      });
+      expect(expiry).toMatchObject({
+        passed: null,
+        advisory: true,
+        detail: { code: 'expiry.noPolicy' },
+      });
+      expect(checkOf(result, RULE.WHEEL_TYPE)?.detail?.code).toBe(
+        'wheelType.supportedProfile',
+      );
+      expect(result.verdict).toBe('COMPATIBLE');
+    },
+  );
+
+  it('결합 절단숫돌 Type 1/41 — 연삭 작업은 Profile 어긋남으로 판정불가', () => {
+    // 라벨도 연삭용이라 라벨 대조는 맞지만, 절단 전용을 고른 선택과 어긋난다.
+    const conflict = run(
+      valid({ wheelType: 'bonded_cutting', purpose: 'grinding' }),
+      { declaredPurpose: 'grinding' },
+    );
+    expect(checkOf(conflict, RULE.WORK_PURPOSE)).toMatchObject({
+      passed: null,
+      detail: { code: 'workPurpose.profileMismatch' },
+    });
+    expect(checkOf(conflict, RULE.WORK_PURPOSE)?.advisory).toBeFalsy();
+    expect(conflict.verdict).toBe('UNDETERMINED');
+
+    // 라벨 용도와 작업이 어긋나면 기존처럼 부적합이 앞선다.
+    const labelMismatch = run(
+      valid({ wheelType: 'bonded_cutting', purpose: 'cutting' }),
+      { declaredPurpose: 'grinding' },
+    );
+    expect(labelMismatch.verdict).toBe('INCOMPATIBLE');
+
+    const ok = run(valid({ wheelType: 'bonded_cutting' }), {
+      declaredPurpose: 'cutting',
+    });
+    expect(ok.verdict).toBe('COMPATIBLE');
+  });
+
+  it('결합 연삭숫돌 — 라벨 용도 대조와 유효기한을 기존처럼 적용한다', () => {
+    expect(
+      run(valid({ wheelType: 'bonded_grinding', purpose: 'grinding' }), {
+        declaredPurpose: 'cutting',
+      }).verdict,
+    ).toBe('INCOMPATIBLE');
+    expect(
+      run(
+        wheel({
+          wheelType: 'bonded_grinding',
+          expiry: { year: 2020, month: 1 },
+        }),
+      ).verdict,
+    ).toBe('INCOMPATIBLE');
+    expect(
+      run(wheel({ wheelType: 'bonded_grinding', expiry: null })).verdict,
+    ).toBe('UNDETERMINED');
+  });
+
+  it('겸용 Type 27/42 — 라벨 용도 하나로 작업을 막지 않고 직접 확인으로 남긴다', () => {
+    const result = run(
+      valid({ wheelType: 'bonded_combination', purpose: 'grinding' }),
+      { declaredPurpose: 'cutting' },
+    );
+    expect(checkOf(result, RULE.WORK_PURPOSE)?.detail?.code).toBe(
+      'workPurpose.manualCheck',
+    );
+    expect(result.verdict).toBe('COMPATIBLE');
+  });
+
+  it('결합숫돌 세부 형식은 덮개가 필수 — 덮개 없음은 판정불가', () => {
+    for (const wheelType of [
+      'bonded_cutting',
+      'bonded_grinding',
+      'bonded_combination',
+      'bonded_cup',
+    ] as const) {
+      const p = profileFor(wheelType) as AccessoryProfile;
+      expect(p.equipment.guard).toBe('required');
+      expect(p.trialRunPolicy).toBe('kr_osh_122');
+      expect(p.expiryPolicy).toBe('label_marked_month');
+      expect(
+        run(valid({ wheelType }), { g: grinder({ guardType: 'none' }) })
+          .verdict,
+      ).toBe('UNDETERMINED');
+    }
+  });
+
+  it('덮개 근거가 없는 종류는 덮개 없음을 막지 않고 직접 확인, 작은 덮개는 판정불가', () => {
+    const none = run(valid({ wheelType: 'diamond_segmented' }), {
+      g: grinder({ guardType: 'none' }),
+    });
+    expect(checkOf(none, RULE.GUARD)?.detail?.code).toBe('guard.manualCheck');
+    expect(none.verdict).toBe('COMPATIBLE');
+
+    const small = run(valid({ wheelType: 'diamond_segmented' }), {
+      g: grinder({ guardSize: 115 }),
+    });
+    expect(small.verdict).toBe('UNDETERMINED');
+  });
+
+  it('종류마다 필요한 상태 항목을 묻는다', () => {
+    expect(conditionItemsFor('diamond_segmented')).toEqual(
+      expect.arrayContaining(['diamondRimIntact', 'damageFree', 'notDeformed']),
+    );
+    expect(conditionItemsFor('diamond_cup')).toEqual(
+      expect.arrayContaining([
+        'diamondRimIntact',
+        'threadAdapterFit',
+        'evenWear',
+        'dedicatedGuardFitted',
+      ]),
+    );
+    expect(conditionItemsFor('flap_disc')).toEqual(
+      expect.arrayContaining([
+        'flapsIntact',
+        'noDelamination',
+        'flapBackingIntact',
+      ]),
+    );
+    expect(conditionItemsFor('bonded_cup')).toEqual(
+      expect.arrayContaining([
+        'expiryValid',
+        'threadAdapterFit',
+        'evenWear',
+        'dedicatedGuardFitted',
+      ]),
+    );
+    expect(conditionItemsFor('wire_brush')).toContain('wiresIntact');
+    for (const type of [
+      'fibre_disc',
+      'nonwoven_disc',
+      'polishing_pad',
+    ] as const) {
+      expect(conditionItemsFor(type)).toEqual(
+        expect.arrayContaining(['damageFree', 'backingPadUndamaged']),
+      );
+    }
+    // Profile이 없는 종류는 기존 다섯 항목 그대로다 — 줄이지 않는다.
+    for (const type of NO_PROFILE_TYPES) {
+      expect(conditionItemsFor(type)).toEqual(DEFAULT_CONDITION_ITEMS);
+    }
+  });
+
+  it('다각도 사진은 평형 결합숫돌에만 요구한다', () => {
+    for (const type of [
+      'bonded_abrasive',
+      'bonded_cutting',
+      'bonded_grinding',
+      'bonded_combination',
+    ] as const) {
+      expect(profileFor(type)?.requiredPhotos).toHaveLength(4);
+    }
+    for (const type of ['bonded_cup', ...UNVERIFIED_TYPES] as WheelType[]) {
+      expect(profileFor(type)?.requiredPhotos).toEqual(['front']);
+    }
+  });
+
+  it('AI 제안을 세부 형식으로 좁힌 선택만 어긋남이 아니다', () => {
+    expect(refinesSuggestion('diamond', 'diamond_turbo')).toBe(true);
+    expect(refinesSuggestion('cup_wheel', 'diamond_cup')).toBe(true);
+    expect(refinesSuggestion('bonded_abrasive', 'bonded_cutting')).toBe(true);
+    expect(refinesSuggestion('bonded_abrasive', 'diamond_turbo')).toBe(false);
+    // 기타·모름은 좁힐 대상이 아니다 — 기존처럼 직접 확인을 받는다.
+    expect(refinesSuggestion('other', 'fibre_disc')).toBe(false);
+    expect(refinesSuggestion('unknown', 'bonded_cutting')).toBe(false);
+    expect(refinesSuggestion('diamond', 'other')).toBe(false);
+  });
+
+  it('세부 형식을 골라야 하는 굵은 분류는 다이아몬드·컵휠뿐이다', () => {
+    expect(needsSubtype('diamond')).toBe(true);
+    expect(needsSubtype('cup_wheel')).toBe(true);
+    expect(needsSubtype('other')).toBe(false);
+    expect(needsSubtype('unknown')).toBe(false);
+    expect(needsSubtype('bonded_abrasive')).toBe(false);
+  });
+  it('라벨 용도 표기가 없는 종류도 근거 있는 허용 작업 밖이면 판정불가, 안이면 직접 확인이다', () => {
+    // 지금 이런 Profile은 없다. 근거가 확인돼 허용 작업을 적는 경우의 계약을 고정한다.
+    const grindingOnly = profile({
+      type: 'flap_disc',
+      workCheck: 'allowed_work',
+      allowedWork: ['grinding'],
+      expiryPolicy: 'not_applicable',
+    });
+    const w = valid({ wheelType: 'flap_disc', purpose: 'unknown' });
+    const outside = matchSpecs(grinder(), w, {
+      profile: grindingOnly,
+      declaredPurpose: 'cutting',
+      today: TODAY,
+    });
+    expect(checkOf(outside, RULE.WORK_PURPOSE)?.detail?.code).toBe(
+      'workPurpose.profileMismatch',
+    );
+    expect(outside.verdict).toBe('UNDETERMINED');
+
+    const inside = matchSpecs(grinder(), w, {
+      profile: grindingOnly,
+      declaredPurpose: 'grinding',
+      today: TODAY,
+    });
+    expect(checkOf(inside, RULE.WORK_PURPOSE)).toMatchObject({
+      passed: null,
+      advisory: true,
+      detail: { code: 'workPurpose.manualCheck' },
+    });
+    // 적용하지 않는 유효기한도 통과가 아니라 직접 확인이다.
+    expect(checkOf(inside, RULE.EXPIRY)?.detail?.code).toBe('expiry.noPolicy');
   });
 });

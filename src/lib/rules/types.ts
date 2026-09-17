@@ -150,11 +150,23 @@ export type WheelPurpose = 'cutting' | 'grinding' | 'unknown';
  * 그래서 종류를 따로 본다.
  */
 export type WheelType =
-  | 'bonded_abrasive' // 일반 결합숫돌 — 이 앱이 다루는 대상
-  | 'flap_disc'
-  | 'cup_wheel'
-  | 'diamond'
-  | 'wire_brush'
+  | 'bonded_abrasive' // 일반 결합숫돌(세부 형식 미지정) — 처음부터 다뤄 온 종류
+  | 'bonded_cutting' // 결합 절단숫돌 Type 1/41
+  | 'bonded_grinding' // 결합 연삭숫돌 Type 27/28
+  | 'bonded_combination' // 절단·연삭 겸용 Type 27/42
+  | 'bonded_cup' // 결합 컵숫돌 Type 6/11
+  | 'flap_disc' // 플랩디스크 Type 27/29
+  | 'cup_wheel' // 컵휠(세부 종류 미지정) — AI 제안·구기록 값. Profile 없음
+  | 'diamond' // 다이아몬드(세부 종류 미지정) — AI 제안·구기록 값. Profile 없음
+  | 'diamond_continuous' // 다이아몬드 절단날 — 연속 림
+  | 'diamond_turbo' // 다이아몬드 절단날 — 터보 림
+  | 'diamond_segmented' // 다이아몬드 절단날 — 세그먼트
+  | 'diamond_cup' // 다이아몬드 컵휠
+  | 'tuck_pointing' // 줄눈(턱포인팅) 휠
+  | 'wire_brush' // 와이어 휠·컵 브러시
+  | 'fibre_disc' // 파이버·샌딩 디스크(백킹패드 사용)
+  | 'nonwoven_disc' // 부직포 표면처리 디스크
+  | 'polishing_pad' // 제조사 승인 연마 패드
   | 'other'
   | 'unknown';
 
@@ -171,10 +183,12 @@ export type WheelType =
 
 /** 부속품 계열. 규격 체계가 같은 것끼리 묶는다. */
 export type AccessoryFamily =
-  | 'bonded_abrasive' // 결합숫돌(절단날·연삭석)
-  | 'coated_abrasive' // 플랩디스크 등 연마포
+  | 'bonded_abrasive' // 결합숫돌(절단날·연삭석·컵숫돌)
+  | 'coated_abrasive' // 플랩디스크·파이버 디스크 등 연마포
   | 'superabrasive' // 다이아몬드·CBN
   | 'brush'
+  | 'nonwoven' // 부직포 표면처리
+  | 'polishing' // 연마 패드
   | 'other';
 
 /**
@@ -196,8 +210,15 @@ export interface AccessoryProfile {
   family: AccessoryFamily;
   /** 이 앱이 규격을 대조하는 종류인가. 아니면 종류 규칙이 판정불가로 막는다 */
   supported: boolean;
-  /** 허용 작업(절단/연삭) */
-  allowedWork: readonly WorkPurpose[];
+  /** 허용 작업(절단/연삭). 근거가 없으면 'unverified' — 작업을 막지도 통과시키지도 않는다 */
+  allowedWork: AllowList<WorkPurpose>;
+  /**
+   * 작업 목적 일치 규칙이 무엇으로 대조하는가.
+   *
+   *   label_purpose — 라벨의 용도 표기(절단용/연삭용)와 오늘 작업을 대조한다(기존 방식)
+   *   allowed_work  — 라벨에 용도 표기가 없는 종류. allowedWork로만 본다
+   */
+  workCheck: 'label_purpose' | 'allowed_work';
   /** 허용 재료 */
   allowedMaterials: AllowList<WorkMaterial>;
   /** 규격 값 요구 */
@@ -222,8 +243,19 @@ export interface AccessoryProfile {
   expiryPolicy: 'label_marked_month' | 'not_applicable' | 'unverified';
   /** 시험운전 정책. kr_osh_122 = 산업안전보건기준에 관한 규칙 제122조 ② */
   trialRunPolicy: 'kr_osh_122' | 'unverified';
-  /** 작업자 상태 확인 Gate. wheel_condition_v1 = WheelConditionGate 다섯 항목 */
+  /** 작업자 상태 확인 Gate. wheel_condition_v1 = WheelConditionGate */
   conditionGate: 'wheel_condition_v1' | 'unverified';
+  /**
+   * Gate에서 작업자가 직접 답해야 하는 항목. 종류마다 보는 곳이 다르다.
+   * AI는 어느 항목도 채우지 않는다.
+   */
+  conditionItems: readonly WheelConditionKey[];
+  /**
+   * 이 종류를 가리킬 수 있는 AI 제안값. AI는 세부 형식을 고르지 못하므로
+   * (schema.ts의 wheelType은 굵은 분류다) 작업자가 세부 형식을 고른 것은
+   * 제안과 어긋난 것이 아니라 좁힌 것이다.
+   */
+  aiSuggestions: readonly WheelType[];
   /** 필요한 사진. front는 라벨 사진이다 */
   requiredPhotos: readonly WheelExamView[];
   /** 근거 문서. version.ts의 RULE_SOURCES 식별자 */
@@ -471,7 +503,29 @@ export interface WheelCondition {
   mountingAreaUndamaged: boolean | null;
   labelLegible: boolean | null;
   expiryValid: boolean | null;
+  // ── 종류별 항목. Profile의 conditionItems에 있을 때만 묻는다. 기존 기록에는 없다 ──
+  /** 다이아몬드: 세그먼트·림 탈락·깨짐 없음 */
+  diamondRimIntact?: boolean | null;
+  /** 플랩: 날개 탈락·찢어짐 없음 */
+  flapsIntact?: boolean | null;
+  /** 플랩: 날개 박리(접착 떨어짐) 없음 */
+  noDelamination?: boolean | null;
+  /** 플랩: 백킹판 깨짐·변형 없음 */
+  flapBackingIntact?: boolean | null;
+  /** 컵: 나사·어댑터가 축에 맞고 손상 없음 */
+  threadAdapterFit?: boolean | null;
+  /** 컵: 편마모 없음 */
+  evenWear?: boolean | null;
+  /** 컵: 전용 덮개 장착 */
+  dedicatedGuardFitted?: boolean | null;
+  /** 브러시: 끊어지거나 풀린 와이어 없음 */
+  wiresIntact?: boolean | null;
+  /** 샌딩·부직포·연마 패드: 백킹패드 손상 없음 */
+  backingPadUndamaged?: boolean | null;
 }
+
+/** Wheel Condition Gate 항목 이름. */
+export type WheelConditionKey = keyof WheelCondition;
 
 // OCR 인식 신뢰도
 export type Confidence = 'high' | 'medium' | 'low';
@@ -508,9 +562,12 @@ export type ReasonCode =
   | 'workPurpose.unknown'
   | 'workPurpose.mismatch'
   | 'workPurpose.match'
+  | 'workPurpose.manualCheck'
+  | 'workPurpose.profileMismatch'
   | 'wheelType.unknown'
   | 'wheelType.unsupported'
   | 'wheelType.supported'
+  | 'wheelType.supportedProfile'
   | 'visibleDamage.suspected'
   | 'visibleDamage.notVerifiable'
   | 'confidence.low'
@@ -527,6 +584,7 @@ export type ReasonCode =
   | 'expiry.unreadable'
   | 'expiry.expired'
   | 'expiry.valid'
+  | 'expiry.noPolicy'
   | 'guard.missing'
   | 'guard.smallerThanWheel'
   | 'guard.manualCheck';

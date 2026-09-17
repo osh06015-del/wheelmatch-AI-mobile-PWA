@@ -33,6 +33,7 @@ import {
   toCaptureQualityCheck,
   type CaptureReview,
 } from '@/lib/image/captureCheck';
+import { conditionItemsFor } from '@/lib/rules/profiles';
 import { getWheelExaminer } from '@/lib/vision/wheelExam';
 import {
   EXTRA_EXAM_VIEWS,
@@ -52,6 +53,7 @@ import { isGrinderConditionComplete } from '@/lib/safety/grinderCondition';
 import {
   EMPTY_WHEEL_CONDITION,
   isWheelConditionComplete,
+  pickWheelCondition,
 } from '@/lib/safety/wheelCondition';
 import { useInspection } from '@/lib/state/inspection';
 import type {
@@ -164,6 +166,10 @@ export default function WheelScanPage() {
   // 앱은 모르므로, 작업자가 실물을 다시 보고 직접 확인을 체크해야 넘어간다.
   const typeNeedsConfirm =
     wheelTypeDiffersFromSuggestion(ocr, form.wheelType) && !userConfirmed;
+
+  // 고른 종류에서 작업자가 답해야 하는 상태 항목(다이아몬드는 세그먼트, 플랩은
+  // 날개·박리 등). 종류를 바꾸면 항목도 바뀐다 — 이전 답은 기록할 때 걸러낸다.
+  const conditionKeys = conditionItemsFor(form.wheelType);
 
   /** 다각도 확인을 처음 상태로 되돌린다. 새 숫돌이면 이전 결과를 이어 쓰지 않는다. */
   const resetExam = () => {
@@ -346,7 +352,7 @@ export default function WheelScanPage() {
   }
 
   function proceed() {
-    if (!isWheelConditionComplete(condition)) return;
+    if (!isWheelConditionComplete(condition, conditionKeys)) return;
     // 버튼만 막으면 다른 경로로 불렸을 때 샌다. 여기서도 막는다.
     if (typeNeedsConfirm) return;
     if (examBlock !== null) return;
@@ -387,12 +393,13 @@ export default function WheelScanPage() {
       },
       captureMetrics: examMetrics,
     });
-    setWheelCondition(condition);
+    // 이 종류에서 물은 항목의 답만 남긴다. 다른 종류로 답한 항목이 섞이지 않게.
+    setWheelCondition(pickWheelCondition(condition, conditionKeys));
     router.push('/result');
   }
 
   // 다각도 확인이 진행을 막는가. 막는 이유는 화면이 문구로 알린다.
-  // 이 앱이 규격을 대조하는 종류(일반 결합숫돌)에만 요구한다 — 나머지 종류는
+  // Profile이 다각도 사진을 요구하는 종류(평형 결합숫돌)에만 요구한다 — 나머지 종류는
   // 규격 대조 자체가 판정불가로 끝나므로 사진을 더 받아도 결과가 달라지지 않는다.
   const examBlock = wheelExamBlock({
     required: wheelExamRequired(form.wheelType),
@@ -412,7 +419,9 @@ export default function WheelScanPage() {
     form.diameter.trim() === '' ||
     form.purpose === 'unknown' ||
     (ocr?.confidence === 'low' && !userConfirmed);
+  // 유효기한을 묻지 않는 종류(근거 없음)에는 유효기한 경고도 띄우지 않는다.
   const expiryNeedsReview =
+    conditionKeys.includes('expiryValid') &&
     normalizeExpiry(form.expiry.trim() === '' ? null : form.expiry) === null;
 
   const fields: FieldSpec[] = [
@@ -605,6 +614,7 @@ export default function WheelScanPage() {
       )}
       <WheelConditionGate
         condition={condition}
+        keys={conditionKeys}
         visibleDamage={ocr?.visibleDamage ?? 'unknown'}
         labelNeedsReview={labelNeedsReview}
         expiryNeedsReview={expiryNeedsReview}
@@ -627,7 +637,7 @@ export default function WheelScanPage() {
           type="button"
           onClick={proceed}
           disabled={
-            !isWheelConditionComplete(condition) ||
+            !isWheelConditionComplete(condition, conditionKeys) ||
             typeNeedsConfirm ||
             examBlock !== null
           }

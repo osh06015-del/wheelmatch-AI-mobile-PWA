@@ -159,7 +159,7 @@ describe('점검 흐름 E2E — 결과까지', () => {
       f,
       new FixtureExtractor()
         .grinder(GRINDER)
-        .wheel(wheelLabel({ wheelType: 'flap_disc' })),
+        .wheel(wheelLabel({ wheelType: 'other' })),
     );
     expect(document.body).toHaveTextContent(
       f.t('wheelTypeConfirm.unsupported'),
@@ -173,7 +173,7 @@ describe('점검 흐름 E2E — 결과까지', () => {
       await screen.findByText(f.t('verdict.undetermined')),
     ).toBeInTheDocument();
     expect(document.body).toHaveTextContent(
-      '플랩디스크는 이 앱이 다루지 않는 종류입니다. 규격 체계가 달라 판정할 수 없으니 제조사 취급설명서를 확인하세요.',
+      '기타는 이 앱이 다루지 않는 종류입니다. 규격 체계가 달라 판정할 수 없으니 제조사 취급설명서를 확인하세요.',
     );
     await f.completeChecklist();
     expect(

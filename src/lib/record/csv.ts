@@ -166,6 +166,17 @@ export const CSV_COLUMNS = [
   'accessoryProfileType',
   'accessoryProfileVersion',
   'profileConflicts',
+  // 종류별 상태 확인 항목(다이아몬드·플랩·컵·브러시·샌딩). 그 종류에서만 묻는다.
+  // 묻지 않은 종류와 구기록은 빈 칸이다. 앞선 열의 자리를 지키기 위해 맨 뒤에 붙인다.
+  'conditionDiamondRimIntact',
+  'conditionFlapsIntact',
+  'conditionNoDelamination',
+  'conditionFlapBackingIntact',
+  'conditionThreadAdapterFit',
+  'conditionEvenWear',
+  'conditionDedicatedGuardFitted',
+  'conditionWiresIntact',
+  'conditionBackingPadUndamaged',
 ] as const;
 
 /**
@@ -367,6 +378,15 @@ function row(record: InspectionRecord): string {
       ?.filter((condition) => condition.status === 'conflict')
       .map((condition) => condition.code)
       .join(' '),
+    tick(record.wheelCondition?.diamondRimIntact),
+    tick(record.wheelCondition?.flapsIntact),
+    tick(record.wheelCondition?.noDelamination),
+    tick(record.wheelCondition?.flapBackingIntact),
+    tick(record.wheelCondition?.threadAdapterFit),
+    tick(record.wheelCondition?.evenWear),
+    tick(record.wheelCondition?.dedicatedGuardFitted),
+    tick(record.wheelCondition?.wiresIntact),
+    tick(record.wheelCondition?.backingPadUndamaged),
   ];
 
   return values.map(cell).join(',');

@@ -134,7 +134,7 @@ export const id: Messages = {
   'evidence.limit.workPurpose':
     'Hanya membandingkan pekerjaan yang dipilih pekerja dengan kegunaan yang tercetak pada label.',
   'evidence.doc.wheelType':
-    'Desain aplikasi ini — aturan RPM/diameter mengasumsikan batu gerinda terikat biasa',
+    'Desain aplikasi — hanya jenis aksesori yang memiliki profil yang dibandingkan kecepatan/diameternya. Dasar hukum (Pasal 122) hanya dikutip untuk batu gerinda terikat',
   'evidence.limit.wheelType':
     '"Tidak dapat ditentukan" tidak berarti berbahaya — berarti aplikasi ini tidak dapat menilai jenis batu gerinda ini.',
   'evidence.doc.visibleDamage':
@@ -498,6 +498,66 @@ export const id: Messages = {
   'wheelType.cup_wheel': 'Batu gerinda mangkuk',
   'wheelType.diamond': 'Mata potong berlian',
   'wheelType.wire_brush': 'Sikat kawat',
+  'wheelType.bonded_cutting': 'Batu potong bonded (Type 1/41)',
+  'wheelType.bonded_grinding': 'Batu gerinda bonded (Type 27/28)',
+  'wheelType.bonded_combination': 'Batu kombinasi potong/gerinda (Type 27/42)',
+  'wheelType.bonded_cup': 'Batu mangkuk bonded (Type 6/11)',
+  'wheelType.diamond_continuous': 'Mata potong berlian (rim kontinu)',
+  'wheelType.diamond_turbo': 'Mata potong berlian (rim turbo)',
+  'wheelType.diamond_segmented': 'Mata potong berlian (bersegmen)',
+  'wheelType.diamond_cup': 'Mangkuk berlian',
+  'wheelType.tuck_pointing': 'Roda tuck-pointing',
+  'wheelType.fibre_disc': 'Cakram fiber / amplas',
+  'wheelType.nonwoven_disc': 'Cakram pengkondisi permukaan non-woven',
+  'wheelType.polishing_pad': 'Bantalan poles yang disetujui pabrikan',
+  'wheelTypeConfirm.supportedProfile':
+    'Untuk jenis ini aplikasi membandingkan kecepatan dan diameter. Pemeriksaan kondisi khusus jenis ini harus dilakukan pekerja sendiri.',
+  'wheelTypeConfirm.needsSubtype':
+    'Pilih jenis yang lebih rinci agar spesifikasi dapat dibandingkan. Jika dibiarkan, hasilnya tidak dapat ditentukan.',
+  'reason.workPurpose.manualCheck':
+    'Pekerjaan hari ini adalah {work}. Aplikasi tidak memiliki dasar untuk memeriksa apakah jenis ini sesuai untuk pekerjaan itu. Periksa sendiri petunjuk pabrikan.',
+  'reason.workPurpose.profileMismatch':
+    'Pekerjaan hari ini ({work}) tidak termasuk pekerjaan yang diizinkan untuk jenis yang dipilih ({type}). Tidak dapat dinilai sampai jenis dan pekerjaan diperiksa ulang.',
+  'reason.wheelType.supportedProfile':
+    'Jenis yang dikonfirmasi: {type}. Aplikasi membandingkan kecepatan dan diameter untuk jenis ini. Butir kondisi khusus jenis ini harus diperiksa pekerja sendiri.',
+  'reason.expiry.noPolicy':
+    'Aplikasi tidak memiliki dasar untuk menerapkan aturan kedaluwarsa pada jenis ini. Jika label atau pabrikan mencantumkan tanggal, periksa sendiri.',
+  'trialRun.noPolicy':
+    'Aplikasi tidak memiliki dasar aturan uji jalan untuk jenis ini, jadi tidak mewajibkan atau mencatatnya. Ikuti petunjuk uji jalan dalam manual pabrikan.',
+  'wheelCondition.diamondRimIntact':
+    'Apakah segmen atau rim tidak ada yang lepas atau pecah?',
+  'wheelCondition.diamondRimIntactHint':
+    'Periksa apakah ada potongan hilang, retak, atau bagian aus sampai inti di antara segmen dan tepi rim.',
+  'wheelCondition.flapsIntact': 'Apakah flap tidak ada yang lepas atau robek?',
+  'wheelCondition.flapsIntactHint':
+    'Periksa apakah ada flap yang hilang, robek, atau aus pendek di satu sisi.',
+  'wheelCondition.noDelamination':
+    'Apakah flap tidak terangkat atau terkelupas dari pelat penyangga?',
+  'wheelCondition.noDelaminationHint':
+    'Tekan perlahan pangkal flap untuk memeriksa perekat yang longgar.',
+  'wheelCondition.flapBackingIntact':
+    'Apakah pelat penyangga tidak retak atau melengkung?',
+  'wheelCondition.flapBackingIntactHint':
+    'Periksa pelat penyangga di bagian belakang (serat atau plastik) dari retak, pecah, atau lengkung.',
+  'wheelCondition.threadAdapterFit':
+    'Apakah ulir dan adaptor cocok dengan spindel dan tidak rusak?',
+  'wheelCondition.threadAdapterFitHint':
+    'Periksa ulir tidak rusak, adaptor tidak longgar, dan sesuai dengan spindel gerinda.',
+  'wheelCondition.evenWear':
+    'Apakah keausannya merata, tanpa aus di satu sisi?',
+  'wheelCondition.evenWearHint':
+    'Periksa apakah permukaan kerja aus lebih dalam di satu sisi atau aus bertingkat.',
+  'wheelCondition.dedicatedGuardFitted':
+    'Apakah pelindung khusus untuk jenis mangkuk ini sudah terpasang?',
+  'wheelCondition.dedicatedGuardFittedHint':
+    'Periksa bahwa pelindung yang terpasang adalah untuk mangkuk ini sesuai petunjuk pabrikan, bukan pelindung batu biasa.',
+  'wheelCondition.wiresIntact': 'Apakah tidak ada kawat yang putus atau lepas?',
+  'wheelCondition.wiresIntactHint':
+    'Periksa apakah ada kawat yang mencuat, helai putus, atau kawat menumpuk di satu sisi.',
+  'wheelCondition.backingPadUndamaged':
+    'Apakah cakram dan bantalan penyangga tidak retak, berubah bentuk, atau aus?',
+  'wheelCondition.backingPadUndamagedHint':
+    'Periksa tepi bantalan tidak robek atau penyok dan cakram menempel rata pada bantalan.',
   'wheelType.other': 'Lainnya',
   'wheelType.unknown': 'Tidak yakin',
   'wheelTypeConfirm.label': 'Jenis batu gerinda',
@@ -506,7 +566,7 @@ export const id: Messages = {
   'wheelTypeConfirm.aiSuggestion':
     'Saran AI: {type} — hanya perkiraan awal dari foto.',
   'wheelTypeConfirm.supported':
-    'Spesifikasi hanya dibandingkan bila Anda sendiri memastikan ini batu gerinda bonded biasa.',
+    'Untuk batu gerinda bonded biasa, aplikasi membandingkan kecepatan dan diameter. Pastikan jenisnya sendiri dengan melihat batu aslinya.',
   'wheelTypeConfirm.unknown':
     'Jika jenisnya belum dipastikan, hasil pencocokan spesifikasi akan TIDAK DAPAT DINILAI. Lihat batu yang sebenarnya lalu pilih.',
   'wheelTypeConfirm.unsupported':

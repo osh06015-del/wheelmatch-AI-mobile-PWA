@@ -47,13 +47,33 @@ const PURPOSE_LABEL: Record<WheelPurpose, string> = {
  */
 const WHEEL_TYPE_LABEL: Record<WheelType, string> = {
   bonded_abrasive: '일반 결합숫돌',
+  bonded_cutting: '결합 절단숫돌(Type 1/41)',
+  bonded_grinding: '결합 연삭숫돌(Type 27/28)',
+  bonded_combination: '절단·연삭 겸용 숫돌(Type 27/42)',
+  bonded_cup: '결합 컵숫돌(Type 6/11)',
   flap_disc: '플랩디스크',
   cup_wheel: '컵휠',
   diamond: '다이아몬드 휠',
+  diamond_continuous: '다이아몬드 절단날(연속 림)',
+  diamond_turbo: '다이아몬드 절단날(터보)',
+  diamond_segmented: '다이아몬드 절단날(세그먼트)',
+  diamond_cup: '다이아몬드 컵휠',
+  tuck_pointing: '줄눈 휠(턱포인팅)',
   wire_brush: '와이어 브러시',
+  fibre_disc: '파이버·샌딩 디스크',
+  nonwoven_disc: '부직포 표면처리 디스크',
+  polishing_pad: '제조사 승인 연마 패드',
   other: '기타',
   unknown: '확인 안 됨',
 };
+
+/** 넘겨받은 Profile이 이 숫돌 종류의 것일 때만 쓴다. 잘못 넘긴 Profile은 무시한다. */
+function appliedProfile(
+  wheel: WheelSpec,
+  profile: AccessoryProfile | null,
+): AccessoryProfile | null {
+  return profile !== null && profile.type === wheel.wheelType ? profile : null;
+}
 
 const WORK_PURPOSE_LABEL: Record<WorkPurpose, string> = {
   cutting: '절단',
@@ -265,6 +285,7 @@ export function checkPurpose(wheel: WheelSpec): CheckItem {
 export function checkWorkPurpose(
   wheel: WheelSpec,
   declaredPurpose: WorkPurpose | null,
+  profile: AccessoryProfile | null,
 ): CheckItem | null {
   if (declaredPurpose === null) return null;
 
@@ -278,6 +299,39 @@ export function checkWorkPurpose(
   // 작업을 선언한 이상 "모르겠다"를 통과시키지 않는다.
   const params = { work: declaredPurpose, purpose: wheel.purpose };
 
+  // Profile이 허용 작업을 근거와 함께 좁혔는데 오늘 작업이 그 밖이면, 작업자가
+  // 고른 종류와 작업이 서로 어긋난다. 어느 쪽이 사실인지 앱은 모르므로 부적합이
+  // 아니라 판정불가다(덮개 어긋남과 같은 원칙).
+  const applied = appliedProfile(wheel, profile);
+  const allowed = applied?.allowedWork ?? 'unverified';
+  const profileMismatch: CheckItem | null =
+    applied !== null &&
+    allowed !== 'unverified' &&
+    !allowed.includes(declaredPurpose)
+      ? {
+          ...base,
+          passed: null,
+          reason: `오늘 작업(${WORK_PURPOSE_LABEL[declaredPurpose]})이 고른 종류(${WHEEL_TYPE_LABEL[wheel.wheelType]})의 허용 작업에 들지 않습니다. 종류 선택과 작업을 다시 확인하기 전에는 판정할 수 없습니다.`,
+          detail: {
+            code: 'workPurpose.profileMismatch',
+            params: { ...params, type: wheel.wheelType },
+          },
+        }
+      : null;
+
+  // 라벨에 절단용/연삭용 표기가 없는 종류(플랩·다이아몬드·브러시 등)는 라벨
+  // 용도로 대조하지 않는다. 허용 작업의 근거도 없으면 통과가 아니라 직접 확인이다.
+  if (applied !== null && applied.workCheck === 'allowed_work') {
+    if (profileMismatch) return profileMismatch;
+    return {
+      ...base,
+      passed: null,
+      advisory: true,
+      reason: `오늘 작업은 ${WORK_PURPOSE_LABEL[declaredPurpose]}입니다. 이 종류에 맞는 작업인지 대조할 근거가 이 앱에 없습니다. 제조사 취급설명서로 직접 확인하세요.`,
+      detail: { code: 'workPurpose.manualCheck', params },
+    };
+  }
+
   if (wheel.purpose === 'unknown') {
     return {
       ...base,
@@ -288,6 +342,7 @@ export function checkWorkPurpose(
   }
 
   if (wheel.purpose !== declaredPurpose) {
+    // 라벨 용도와 작업이 어긋난 것은 부적합이다. Profile 어긋남보다 앞선다.
     return {
       ...base,
       passed: false,
@@ -295,6 +350,8 @@ export function checkWorkPurpose(
       detail: { code: 'workPurpose.mismatch', params },
     };
   }
+
+  if (profileMismatch) return profileMismatch;
 
   return {
     ...base,
@@ -363,12 +420,22 @@ export function checkWheelType(
     };
   }
 
+  // 처음부터 다뤄 온 일반 결합숫돌은 문장을 그대로 둔다 — 기존 기록과 같은 말이다.
+  if (wheel.wheelType === 'bonded_abrasive') {
+    return {
+      ...base,
+      passed: true,
+      reason:
+        '일반 결합숫돌로 확인되었습니다. 이 앱이 규격을 대조하는 종류입니다.',
+      detail: { code: 'wheelType.supported', params },
+    };
+  }
+
   return {
     ...base,
     passed: true,
-    reason:
-      '일반 결합숫돌로 확인되었습니다. 이 앱이 규격을 대조하는 종류입니다.',
-    detail: { code: 'wheelType.supported', params },
+    reason: `확인된 종류: ${WHEEL_TYPE_LABEL[wheel.wheelType]}. 이 앱이 회전속도·지름을 대조하는 종류입니다. 종류별 상태 확인 항목은 작업자가 직접 확인해야 합니다.`,
+    detail: { code: 'wheelType.supportedProfile', params },
   };
 }
 
@@ -886,13 +953,32 @@ export function expiryLastValidDate(expiry: ExpiryMonth): string {
  * 숫돌이 정상일 수 있다. 다만 확인하지 못한 것을 확인한 것처럼 넘기지도
  * 않으므로 경고(advisory)로 두지 않는다 — 판정은 적합까지 가지 못한다.
  */
-export function checkExpiry(wheel: WheelSpec, today: string | null): CheckItem {
+export function checkExpiry(
+  wheel: WheelSpec,
+  today: string | null,
+  profile: AccessoryProfile | null,
+): CheckItem {
   const expiry = wheel.expiry ?? null;
   const base = {
     rule: RULE.EXPIRY,
     grinderValue: null,
     wheelValue: expiry === null ? null : formatExpiry(expiry),
   };
+
+  // 유효기한 기준(라벨 월/연 표기, oSa)은 결합숫돌에 대한 것이다. 근거가 확인된
+  // Profile에만 적용한다. 그 밖의 종류는 막지도 통과시키지도 않고 직접 확인으로
+  // 남긴다. Profile이 없는 종류는 이전과 같이 본다(어차피 종류 규칙이 막는다).
+  const applied = appliedProfile(wheel, profile);
+  if (applied !== null && applied.expiryPolicy !== 'label_marked_month') {
+    return {
+      ...base,
+      passed: null,
+      advisory: true,
+      reason:
+        '이 종류에 유효기한 기준을 적용할 근거가 이 앱에 없습니다. 라벨이나 제조사 안내에 기한이 있으면 직접 확인하세요.',
+      detail: { code: 'expiry.noPolicy' },
+    };
+  }
 
   if (!isValidDateOnly(today)) {
     return {
@@ -1000,7 +1086,7 @@ export function matchSpecs(
     now = new Date(),
   } = options;
 
-  const workPurpose = checkWorkPurpose(wheel, declaredPurpose);
+  const workPurpose = checkWorkPurpose(wheel, declaredPurpose, profile);
   const peripheralSpeed = checkPeripheralSpeed(grinder, wheel);
   // 원본 표시가 없는(기능 도입 전) 기록에서는 둘 다 null이라 항목이 생기지 않는다.
   const unitConsistency = checkUnitConsistency(wheel);
@@ -1019,7 +1105,7 @@ export function matchSpecs(
     checkVisibleDamage(wheel),
     // 기준일을 넣지 않으면 판정불가로 남는다. 항목 자체는 언제나 만든다 —
     // 조건부로 만들면 호출자가 빠뜨렸을 때 화면에 아무 흔적이 남지 않는다.
-    checkExpiry(wheel, today),
+    checkExpiry(wheel, today, profile),
     // 양쪽 다 계산할 수 없으면 항목 자체가 없다.
     ...(peripheralSpeed ? [peripheralSpeed] : []),
     ...(unitConsistency ? [unitConsistency] : []),

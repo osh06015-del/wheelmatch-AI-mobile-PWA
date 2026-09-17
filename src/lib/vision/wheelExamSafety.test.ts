@@ -52,19 +52,29 @@ function gate(overrides: Partial<WheelExamGateInput> = {}): WheelExamGateInput {
 }
 
 describe('wheelExamRequired — 지원 종류에만 요구한다', () => {
-  it('일반 결합숫돌은 다각도 확인을 요구한다', () => {
-    expect(wheelExamRequired('bonded_abrasive')).toBe(true);
+  it.each<WheelType>([
+    'bonded_abrasive',
+    'bonded_cutting',
+    'bonded_grinding',
+    'bonded_combination',
+  ])('%s(평형 결합숫돌)은 다각도 확인을 요구한다', (wheelType) => {
+    expect(wheelExamRequired(wheelType)).toBe(true);
   });
 
   it.each<WheelType>([
+    'bonded_cup',
     'flap_disc',
+    'diamond_segmented',
+    'diamond_cup',
+    'wire_brush',
+    'fibre_disc',
+    'polishing_pad',
     'cup_wheel',
     'diamond',
-    'wire_brush',
     'other',
     'unknown',
   ])(
-    '%s는 요구하지 않는다 — 규격 대조가 이미 판정불가로 끝나는 종류다',
+    '%s는 요구하지 않는다 — 다각도 확인 지시문은 평형 결합숫돌용이다',
     (wheelType) => {
       expect(wheelExamRequired(wheelType)).toBe(false);
     },

@@ -129,7 +129,7 @@ export const en: Messages = {
   'evidence.limit.workPurpose':
     'Only compares the job the worker declared with the purpose printed on the label.',
   'evidence.doc.wheelType':
-    "This app's design — the RPM/diameter rules assume a bonded abrasive wheel",
+    'App design — only accessory types with a profile get the speed/diameter check. The legal basis (Article 122) is cited for bonded abrasive wheels only',
   'evidence.limit.wheelType':
     'UNDETERMINED here does not mean the wheel is dangerous — it means this app cannot judge this wheel type.',
   'evidence.doc.visibleDamage':
@@ -483,6 +483,66 @@ export const en: Messages = {
   'wheelType.cup_wheel': 'Cup wheel',
   'wheelType.diamond': 'Diamond wheel',
   'wheelType.wire_brush': 'Wire brush',
+  'wheelType.bonded_cutting': 'Bonded cutting wheel (Type 1/41)',
+  'wheelType.bonded_grinding': 'Bonded grinding wheel (Type 27/28)',
+  'wheelType.bonded_combination':
+    'Combination cutting/grinding wheel (Type 27/42)',
+  'wheelType.bonded_cup': 'Bonded cup wheel (Type 6/11)',
+  'wheelType.diamond_continuous': 'Diamond blade (continuous rim)',
+  'wheelType.diamond_turbo': 'Diamond blade (turbo rim)',
+  'wheelType.diamond_segmented': 'Diamond blade (segmented)',
+  'wheelType.diamond_cup': 'Diamond cup wheel',
+  'wheelType.tuck_pointing': 'Tuck-pointing wheel',
+  'wheelType.fibre_disc': 'Fibre / sanding disc',
+  'wheelType.nonwoven_disc': 'Non-woven surface-conditioning disc',
+  'wheelType.polishing_pad': 'Manufacturer-approved polishing pad',
+  'wheelTypeConfirm.supportedProfile':
+    'For this type the app compares speed and diameter. The type-specific condition checks must be done by the worker.',
+  'wheelTypeConfirm.needsSubtype':
+    'Choose the specific type to compare the specs. As it is, the result will be undetermined.',
+  'reason.workPurpose.manualCheck':
+    'Today’s work is {work}. The app has no basis to check whether this type suits that work. Check the manufacturer instructions yourself.',
+  'reason.workPurpose.profileMismatch':
+    'Today’s work ({work}) is not among the allowed work for the selected type ({type}). The specs cannot be judged until the type and the work are checked again.',
+  'reason.wheelType.supportedProfile':
+    'Confirmed type: {type}. The app compares speed and diameter for this type. The type-specific condition items must be checked by the worker.',
+  'reason.expiry.noPolicy':
+    'The app has no basis to apply an expiry rule to this type. If the label or the manufacturer gives a date, check it yourself.',
+  'trialRun.noPolicy':
+    'The app has no basis for a trial run rule for this type, so it does not require or record one. Follow the trial run instructions in the manufacturer manual.',
+  'wheelCondition.diamondRimIntact':
+    'Are the segments or rim free of missing or broken parts?',
+  'wheelCondition.diamondRimIntactHint':
+    'Look for missing pieces, cracks, or areas worn down to the core between segments and along the rim.',
+  'wheelCondition.flapsIntact': 'Are the flaps free of missing or torn flaps?',
+  'wheelCondition.flapsIntactHint':
+    'Look for gaps where flaps are missing, torn flaps, or flaps worn short on one side.',
+  'wheelCondition.noDelamination':
+    'Are the flaps firmly bonded, with no lifting or peeling from the backing plate?',
+  'wheelCondition.noDelaminationHint':
+    'Press lightly at the base of the flaps to check for loosened bonding.',
+  'wheelCondition.flapBackingIntact':
+    'Is the backing plate free of cracks and warping?',
+  'wheelCondition.flapBackingIntactHint':
+    'Check the backing plate on the back (fibre or plastic) for cracks, breaks, or warping.',
+  'wheelCondition.threadAdapterFit':
+    'Do the thread and adapter fit the spindle without damage?',
+  'wheelCondition.threadAdapterFitHint':
+    'Check that the thread is not stripped, the adapter is not loose, and both match the grinder spindle.',
+  'wheelCondition.evenWear': 'Is the wear even, with no one-sided wear?',
+  'wheelCondition.evenWearHint':
+    'Look for the working face being worn deeper on one side or worn in steps.',
+  'wheelCondition.dedicatedGuardFitted':
+    'Is a guard made for this cup type fitted?',
+  'wheelCondition.dedicatedGuardFittedHint':
+    'Check that the guard fitted is the one for this cup, as the manufacturer instructs, not a standard wheel guard.',
+  'wheelCondition.wiresIntact': 'Are there no broken or loose wires?',
+  'wheelCondition.wiresIntactHint':
+    'Look for wires sticking out, broken strands, or wires bunched to one side.',
+  'wheelCondition.backingPadUndamaged':
+    'Are the disc and backing pad free of cracks, deformation, and wear?',
+  'wheelCondition.backingPadUndamagedHint':
+    'Check that the pad edge is not torn or crushed and that the disc sits evenly on the pad.',
   'wheelType.other': 'Other',
   'wheelType.unknown': 'Not sure',
   'wheelTypeConfirm.label': 'Wheel type',
@@ -491,7 +551,7 @@ export const en: Messages = {
   'wheelTypeConfirm.aiSuggestion':
     'AI suggestion: {type} — only an initial guess from the photo.',
   'wheelTypeConfirm.supported':
-    'Specifications are compared only when you confirm it is a standard bonded abrasive wheel.',
+    'The app compares speed and diameter for a standard bonded abrasive wheel. Confirm the type yourself by looking at the actual wheel.',
   'wheelTypeConfirm.unknown':
     'If the wheel type is not confirmed, the specification check ends as CANNOT DETERMINE. Look at the actual wheel and choose.',
   'wheelTypeConfirm.unsupported':

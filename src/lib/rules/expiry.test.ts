@@ -355,14 +355,18 @@ describe('같은 입력과 같은 기준일이면 같은 결과', () => {
 
 describe('checkExpiry 직접 호출', () => {
   it('항목 이름과 값 칸이 고정돼 있다', () => {
-    const check = checkExpiry(wheel(), '2023-04-01');
+    const check = checkExpiry(wheel(), '2023-04-01', BONDED_ABRASIVE_PROFILE);
     expect(check.rule).toBe(RULE.EXPIRY);
     expect(check.grinderValue).toBeNull();
     expect(check.wheelValue).toBe('04/2023');
   });
 
   it('표시가 없으면 값 칸도 비어 있다', () => {
-    const check = checkExpiry(wheel({ expiry: null }), '2023-04-01');
+    const check = checkExpiry(
+      wheel({ expiry: null }),
+      '2023-04-01',
+      BONDED_ABRASIVE_PROFILE,
+    );
     expect(check.wheelValue).toBeNull();
     expect(check.reason).toContain('2023-04-01');
   });

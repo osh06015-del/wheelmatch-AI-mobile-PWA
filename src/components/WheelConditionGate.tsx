@@ -7,13 +7,81 @@
 
 import { useLocale, type MessageKey } from '@/lib/i18n';
 import {
+  WHEEL_CONDITION_KEYS,
   hasWheelConditionIssue,
   unansweredWheelConditionCount,
 } from '@/lib/safety/wheelCondition';
-import type { VisibleDamage, WheelCondition } from '@/lib/rules/types';
+import type {
+  VisibleDamage,
+  WheelCondition,
+  WheelConditionKey,
+} from '@/lib/rules/types';
 
+/** 항목별 문구. 종류마다 이 중 일부를 묻는다(profiles.ts의 conditionItemsFor). */
+const ITEM_TEXT: Readonly<
+  Record<WheelConditionKey, { labelKey: MessageKey; hintKey: MessageKey }>
+> = {
+  damageFree: {
+    labelKey: 'wheelCondition.damageFree',
+    hintKey: 'wheelCondition.damageFreeHint',
+  },
+  notDeformed: {
+    labelKey: 'wheelCondition.notDeformed',
+    hintKey: 'wheelCondition.notDeformedHint',
+  },
+  mountingAreaUndamaged: {
+    labelKey: 'wheelCondition.mountingAreaUndamaged',
+    hintKey: 'wheelCondition.mountingAreaUndamagedHint',
+  },
+  labelLegible: {
+    labelKey: 'wheelCondition.labelLegible',
+    hintKey: 'wheelCondition.labelLegibleHint',
+  },
+  expiryValid: {
+    labelKey: 'wheelCondition.expiryValid',
+    hintKey: 'wheelCondition.expiryValidHint',
+  },
+  diamondRimIntact: {
+    labelKey: 'wheelCondition.diamondRimIntact',
+    hintKey: 'wheelCondition.diamondRimIntactHint',
+  },
+  flapsIntact: {
+    labelKey: 'wheelCondition.flapsIntact',
+    hintKey: 'wheelCondition.flapsIntactHint',
+  },
+  noDelamination: {
+    labelKey: 'wheelCondition.noDelamination',
+    hintKey: 'wheelCondition.noDelaminationHint',
+  },
+  flapBackingIntact: {
+    labelKey: 'wheelCondition.flapBackingIntact',
+    hintKey: 'wheelCondition.flapBackingIntactHint',
+  },
+  threadAdapterFit: {
+    labelKey: 'wheelCondition.threadAdapterFit',
+    hintKey: 'wheelCondition.threadAdapterFitHint',
+  },
+  evenWear: {
+    labelKey: 'wheelCondition.evenWear',
+    hintKey: 'wheelCondition.evenWearHint',
+  },
+  dedicatedGuardFitted: {
+    labelKey: 'wheelCondition.dedicatedGuardFitted',
+    hintKey: 'wheelCondition.dedicatedGuardFittedHint',
+  },
+  wiresIntact: {
+    labelKey: 'wheelCondition.wiresIntact',
+    hintKey: 'wheelCondition.wiresIntactHint',
+  },
+  backingPadUndamaged: {
+    labelKey: 'wheelCondition.backingPadUndamaged',
+    hintKey: 'wheelCondition.backingPadUndamagedHint',
+  },
+};
+
+/** 기본 다섯 항목(Profile이 없는 종류·일반 결합숫돌). */
 export const WHEEL_CONDITION_ITEMS: ReadonlyArray<{
-  key: keyof WheelCondition;
+  key: WheelConditionKey;
   labelKey: MessageKey;
   hintKey: MessageKey;
 }> = [
@@ -46,22 +114,26 @@ export const WHEEL_CONDITION_ITEMS: ReadonlyArray<{
 
 interface WheelConditionGateProps {
   condition: WheelCondition;
+  /** 이 종류에서 묻는 항목. 넘기지 않으면 기본 다섯 항목이다 */
+  keys?: ReadonlyArray<WheelConditionKey>;
   visibleDamage: VisibleDamage;
   labelNeedsReview: boolean;
   expiryNeedsReview: boolean;
-  onChange: (key: keyof WheelCondition, value: boolean) => void;
+  onChange: (key: WheelConditionKey, value: boolean) => void;
 }
 
 export function WheelConditionGate({
   condition,
+  keys = WHEEL_CONDITION_KEYS,
   visibleDamage,
   labelNeedsReview,
   expiryNeedsReview,
   onChange,
 }: WheelConditionGateProps) {
   const { t } = useLocale();
-  const hasIssue = hasWheelConditionIssue(condition);
-  const unanswered = unansweredWheelConditionCount(condition);
+  const hasIssue = hasWheelConditionIssue(condition, keys);
+  const unanswered = unansweredWheelConditionCount(condition, keys);
+  const items = keys.map((key) => ({ key, ...ITEM_TEXT[key] }));
 
   return (
     <section
@@ -111,8 +183,8 @@ export function WheelConditionGate({
       )}
 
       <div className="flex flex-col gap-3">
-        {WHEEL_CONDITION_ITEMS.map((item, index) => {
-          const value = condition[item.key];
+        {items.map((item, index) => {
+          const value = condition[item.key] ?? null;
           return (
             <fieldset
               key={item.key}

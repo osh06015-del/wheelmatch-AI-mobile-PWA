@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { matchSpecs, RULE } from '@/lib/rules/engine';
-import { BONDED_ABRASIVE_PROFILE } from '@/lib/rules/profiles';
+import { BONDED_ABRASIVE_PROFILE, profileFor } from '@/lib/rules/profiles';
 import type {
   CheckItem,
   GrinderSpec,
@@ -53,10 +53,22 @@ function wheel(overrides: Partial<WheelSpec> = {}): WheelSpec {
 
 const WHEEL_TYPES: WheelType[] = [
   'bonded_abrasive',
+  'bonded_cutting',
+  'bonded_grinding',
+  'bonded_combination',
+  'bonded_cup',
   'flap_disc',
   'cup_wheel',
   'diamond',
+  'diamond_continuous',
+  'diamond_turbo',
+  'diamond_segmented',
+  'diamond_cup',
+  'tuck_pointing',
   'wire_brush',
+  'fibre_disc',
+  'nonwoven_disc',
+  'polishing_pad',
   'other',
   'unknown',
 ];
@@ -84,6 +96,8 @@ const WHEELS: WheelSpec[] = [
   wheel({ purpose: 'grinding' }),
   wheel({ purpose: 'unknown' }),
   ...WHEEL_TYPES.map((wheelType) => wheel({ wheelType })),
+  // 절단 전용 Profile인데 라벨은 연삭용 — 연삭 작업이면 Profile 어긋남
+  wheel({ wheelType: 'bonded_cutting', purpose: 'grinding' }),
   wheel({ visibleDamage: 'suspected' }),
   wheel({ expiry: null }),
   wheel({ expiry: { year: 2020, month: 1 } }),
@@ -110,7 +124,8 @@ const CHECKS: CheckItem[] = GRINDERS.flatMap((g) =>
       TODAYS.flatMap(
         (today) =>
           matchSpecs(g, w, {
-            profile: BONDED_ABRASIVE_PROFILE,
+            // 화면처럼 종류에 맞는 Profile을 넘긴다. 없으면 null.
+            profile: profileFor(w.wheelType),
             declaredPurpose,
             today,
           }).checks,

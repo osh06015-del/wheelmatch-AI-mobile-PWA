@@ -90,3 +90,67 @@ describe('WheelConditionGate', () => {
     expect(screen.getByText(/유효기한을 읽지 못했습니다/)).toBeInTheDocument();
   });
 });
+
+describe('WheelConditionGate — 종류별 항목', () => {
+  it('넘긴 항목만 묻고, 종류별 항목 문구를 보인다', () => {
+    render(
+      <WheelConditionGate
+        condition={EMPTY_WHEEL_CONDITION}
+        keys={[
+          'damageFree',
+          'mountingAreaUndamaged',
+          'labelLegible',
+          'flapsIntact',
+          'noDelamination',
+          'flapBackingIntact',
+        ]}
+        visibleDamage="none_visible"
+        labelNeedsReview={false}
+        expiryNeedsReview={false}
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByRole('group')).toHaveLength(6);
+    expect(
+      screen.getByText('4. 날개(플랩)가 떨어지거나 찢어지지 않았는가?'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('5. 날개가 백킹판에서 들뜨거나 벗겨지지 않았는가?'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('6. 백킹판이 깨지거나 휘지 않았는가?'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/라벨의 유효기한이 남아 있는가/),
+    ).not.toBeInTheDocument();
+    // 종류별 항목도 자동으로 선택되지 않는다.
+    for (const button of screen.getAllByRole('button')) {
+      expect(button).toHaveAttribute('aria-pressed', 'false');
+    }
+    expect(
+      screen.getByText(
+        '남은 6개 항목을 작업자가 직접 확인해야 규격 대조로 진행할 수 있습니다.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('종류별 항목에서 문제 있음을 고르면 사용 중지를 알린다', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <WheelConditionGate
+        condition={{ ...EMPTY_WHEEL_CONDITION, wiresIntact: false }}
+        keys={['damageFree', 'wiresIntact']}
+        visibleDamage="none_visible"
+        labelNeedsReview={false}
+        expiryNeedsReview={false}
+        onChange={onChange}
+      />,
+    );
+
+    expect(screen.getByText('이 숫돌을 사용하지 마십시오')).toBeInTheDocument();
+    await user.click(screen.getAllByRole('button', { name: /확인함/ })[0]);
+    expect(onChange).toHaveBeenCalledWith('damageFree', true);
+  });
+});

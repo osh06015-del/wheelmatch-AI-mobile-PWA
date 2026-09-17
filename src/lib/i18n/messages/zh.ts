@@ -122,7 +122,7 @@ export const zh: Messages = {
   'evidence.limit.workPurpose':
     '只对照作业者选择的今日作业与标签上的用途标示。',
   'evidence.doc.wheelType':
-    '本应用的设计 — 转速·直径规则以普通结合剂砂轮为前提',
+    '本应用的设计 — 只有具备类型档案的配件才对照转速·直径。法规依据（第122条）仅对结合剂砂轮引用',
   'evidence.limit.wheelType':
     '判定不可并不代表危险，而是本应用无法判定这种砂轮种类。',
   'evidence.doc.visibleDamage': '仅确认照片中可见的损伤 — 仅作提醒',
@@ -423,6 +423,57 @@ export const zh: Messages = {
   'wheelType.cup_wheel': '碗形砂轮',
   'wheelType.diamond': '金刚石片',
   'wheelType.wire_brush': '钢丝刷',
+  'wheelType.bonded_cutting': '固结切割砂轮（Type 1/41）',
+  'wheelType.bonded_grinding': '固结磨削砂轮（Type 27/28）',
+  'wheelType.bonded_combination': '切割磨削两用砂轮（Type 27/42）',
+  'wheelType.bonded_cup': '固结杯形砂轮（Type 6/11）',
+  'wheelType.diamond_continuous': '金刚石锯片（连续边）',
+  'wheelType.diamond_turbo': '金刚石锯片（涡轮边）',
+  'wheelType.diamond_segmented': '金刚石锯片（分段式）',
+  'wheelType.diamond_cup': '金刚石碗磨片',
+  'wheelType.tuck_pointing': '勾缝片',
+  'wheelType.fibre_disc': '钢纸 / 砂纸磨片',
+  'wheelType.nonwoven_disc': '无纺布表面处理片',
+  'wheelType.polishing_pad': '制造商认可的抛光垫',
+  'wheelTypeConfirm.supportedProfile':
+    '此类型会对照转速和直径。该类型特有的状态检查须由作业者亲自完成。',
+  'wheelTypeConfirm.needsSubtype':
+    '请选择具体类型才能对照规格。保持现状将无法判定。',
+  'reason.workPurpose.manualCheck':
+    '今天的作业是{work}。应用没有依据核对此类型是否适合该作业。请亲自查看制造商说明书。',
+  'reason.workPurpose.profileMismatch':
+    '今天的作业（{work}）不在所选类型（{type}）的允许作业范围内。在重新核对类型和作业之前无法判定。',
+  'reason.wheelType.supportedProfile':
+    '已确认类型：{type}。应用会对照此类型的转速和直径。该类型特有的状态项目须由作业者亲自确认。',
+  'reason.expiry.noPolicy':
+    '应用没有依据对此类型适用有效期标准。如标签或制造商注明期限，请亲自确认。',
+  'trialRun.noPolicy':
+    '应用没有此类型试运转标准的依据，因此不要求也不记录试运转。请遵循制造商说明书中的试运转说明。',
+  'wheelCondition.diamondRimIntact': '分段或边缘没有脱落或破损吗？',
+  'wheelCondition.diamondRimIntactHint':
+    '检查分段之间和边缘有无缺块、裂纹或磨到基体的地方。',
+  'wheelCondition.flapsIntact': '叶片没有脱落或撕裂吗？',
+  'wheelCondition.flapsIntactHint':
+    '检查有无缺失叶片、撕裂叶片或一侧磨短的地方。',
+  'wheelCondition.noDelamination': '叶片没有从底盘上翘起或剥离吗？',
+  'wheelCondition.noDelaminationHint': '轻按叶片根部，检查粘接有无松脱。',
+  'wheelCondition.flapBackingIntact': '底盘没有破裂或变形吗？',
+  'wheelCondition.flapBackingIntactHint':
+    '检查背面底盘（纤维或塑料）有无裂纹、破损或变形。',
+  'wheelCondition.threadAdapterFit': '螺纹和转接件与主轴相配且无损坏吗？',
+  'wheelCondition.threadAdapterFitHint':
+    '确认螺纹未滑牙、转接件不松动，并与角磨机主轴规格相符。',
+  'wheelCondition.evenWear': '没有偏向一侧的磨损（偏磨）吗？',
+  'wheelCondition.evenWearHint': '检查工作面是否一侧磨得更深或磨成台阶状。',
+  'wheelCondition.dedicatedGuardFitted': '是否装有适合此杯形的专用护罩？',
+  'wheelCondition.dedicatedGuardFittedHint':
+    '确认按制造商说明安装的是适合此杯形的护罩，而不是普通砂轮护罩。',
+  'wheelCondition.wiresIntact': '没有断裂或松散的钢丝吗？',
+  'wheelCondition.wiresIntactHint':
+    '检查有无突出的钢丝、断丝或偏向一侧聚集的地方。',
+  'wheelCondition.backingPadUndamaged': '磨片和背垫没有开裂、变形或磨损吗？',
+  'wheelCondition.backingPadUndamagedHint':
+    '检查背垫边缘有无撕裂或压坏，磨片是否均匀贴合背垫。',
   'wheelType.other': '其他',
   'wheelType.unknown': '不确定',
   'wheelTypeConfirm.label': '砂轮种类',
@@ -431,7 +482,7 @@ export const zh: Messages = {
   'wheelTypeConfirm.aiSuggestion':
     'AI 建议：{type}——这只是根据照片给出的初始建议。',
   'wheelTypeConfirm.supported':
-    '只有亲自确认是普通砂轮（固结磨具）时，本应用才核对规格。',
+    '普通砂轮（固结磨具）由本应用对照转速和直径。请查看实物亲自确认类型。',
   'wheelTypeConfirm.unknown':
     '如果未确认砂轮种类，规格核对结果将是无法判定。请查看实物后选择。',
   'wheelTypeConfirm.unsupported':

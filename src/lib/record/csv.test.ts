@@ -338,6 +338,15 @@ describe('toCsv', () => {
       'accessoryProfileType',
       'accessoryProfileVersion',
       'profileConflicts',
+      'conditionDiamondRimIntact',
+      'conditionFlapsIntact',
+      'conditionNoDelamination',
+      'conditionFlapBackingIntact',
+      'conditionThreadAdapterFit',
+      'conditionEvenWear',
+      'conditionDedicatedGuardFitted',
+      'conditionWiresIntact',
+      'conditionBackingPadUndamaged',
     ]);
   });
 
@@ -794,9 +803,41 @@ describe('다각도 외관 확인 열', () => {
     const [, row] = parse(toCsv([record()]));
     const start = CSV_COLUMNS.indexOf('workMaterial');
     expect(start).toBe(108);
-    expect(CSV_COLUMNS.slice(start)).toHaveLength(8);
+    // Profile 열 8개, 뒤이어 종류별 상태 항목 열 9개.
+    expect(CSV_COLUMNS.indexOf('conditionDiamondRimIntact')).toBe(116);
+    expect(CSV_COLUMNS.slice(start)).toHaveLength(17);
     for (const column of CSV_COLUMNS.slice(start)) {
       expect(row[CSV_COLUMNS.indexOf(column)]).toBe('');
     }
+  });
+
+  it('종류별 상태 항목은 물은 것만 Y/N으로, 묻지 않은 것은 빈 칸으로 적는다', () => {
+    const [, row] = parse(
+      toCsv([
+        record({
+          wheel: { ...record().wheel, wheelType: 'flap_disc' },
+          wheelCondition: {
+            damageFree: true,
+            notDeformed: null,
+            mountingAreaUndamaged: true,
+            labelLegible: true,
+            expiryValid: null,
+            flapsIntact: true,
+            noDelamination: false,
+            flapBackingIntact: true,
+          },
+        }),
+      ]),
+    );
+    const at = (column: (typeof CSV_COLUMNS)[number]) =>
+      row[CSV_COLUMNS.indexOf(column)];
+
+    expect(at('conditionFlapsIntact')).toBe('Y');
+    expect(at('conditionNoDelamination')).toBe('N');
+    expect(at('conditionFlapBackingIntact')).toBe('Y');
+    expect(at('conditionWiresIntact')).toBe('');
+    expect(at('conditionDiamondRimIntact')).toBe('');
+    // 기존 열의 자리는 그대로다.
+    expect(at('wheelType')).toBe('flap_disc');
   });
 });

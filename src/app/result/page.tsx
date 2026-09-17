@@ -32,6 +32,7 @@ import { isQuotaExceededError, saveInspection } from '@/lib/db';
 import { elapsedSince, preTrialElapsed } from '@/lib/record/elapsed';
 import { RULE, matchSpecs, toDateOnly } from '@/lib/rules/engine';
 import {
+  conditionItemsFor,
   profileConditions,
   profileFor,
   profileRef,
@@ -108,7 +109,13 @@ export default function ResultPage() {
     else if (!isGrinderConditionComplete(grinderCondition)) {
       // 장비 상태를 확인하지 않았으면 숫돌이 아니라 1단계로 되돌린다.
       router.replace('/scan/grinder');
-    } else if (!wheel || !isWheelConditionComplete(wheelCondition)) {
+    } else if (
+      !wheel ||
+      !isWheelConditionComplete(
+        wheelCondition,
+        conditionItemsFor(wheel.wheelType),
+      )
+    ) {
       router.replace('/scan/wheel');
     }
   }, [
@@ -145,7 +152,10 @@ export default function ResultPage() {
     !wheel ||
     !result ||
     !isGrinderConditionComplete(grinderCondition) ||
-    !isWheelConditionComplete(wheelCondition)
+    !isWheelConditionComplete(
+      wheelCondition,
+      conditionItemsFor(wheel.wheelType),
+    )
   ) {
     return (
       <main className="flex flex-1 items-center justify-center px-6">
@@ -170,28 +180,42 @@ export default function ResultPage() {
     ? profileConditions(profile, workConditions ?? undefined, grinder, wheel)
     : null;
   const complete = isChecklistComplete(checklist);
+  const conditionKeys = conditionItemsFor(wheel.wheelType);
+  // 시험운전 근거(제122조 ②)가 확인된 종류에만 시험운전을 열고 요구한다.
+  // Profile이 없는 종류는 어차피 판정불가라 열리지 않는다.
+  const trialRunPolicyVerified = profile?.trialRunPolicy === 'kr_osh_122';
 
   // 시험운전은 규격이 맞는 조합에서만, 그리고 체크리스트까지 끝난 뒤에만 연다.
   // 부적합·판정불가 조합의 시험운전을 앱이 유도하면 그 자체가 사고 경로다.
   const trialRunAllowed = canStartTrialRun({
     verdict: result.verdict,
     grinderConditionComplete: isGrinderConditionComplete(grinderCondition),
-    wheelConditionComplete: isWheelConditionComplete(wheelCondition),
+    wheelConditionComplete: isWheelConditionComplete(
+      wheelCondition,
+      conditionKeys,
+    ),
     checklistComplete: complete,
+    policyVerified: trialRunPolicyVerified,
   });
   const stopped = isTrialRunStopped(trialRunRecord);
   // 시험운전을 해야 하는 조합이면 작업자가 답하기 전에는 저장할 수 없다.
   const trialRunSettled =
-    result.verdict !== 'COMPATIBLE' || trialRunRecord !== null;
+    !trialRunPolicyVerified ||
+    result.verdict !== 'COMPATIBLE' ||
+    trialRunRecord !== null;
   // 버튼 활성화와 저장 함수 내부 재검사가 같은 함수(canSaveInspection)를 쓴다.
   // 따로 계산하면 한쪽만 고쳤을 때 조용히 어긋날 수 있다.
   const canSave =
     canSaveInspection({
       grinderConditionComplete: isGrinderConditionComplete(grinderCondition),
-      wheelConditionComplete: isWheelConditionComplete(wheelCondition),
+      wheelConditionComplete: isWheelConditionComplete(
+        wheelCondition,
+        conditionKeys,
+      ),
       checklistComplete: complete,
       verdict: result.verdict,
       trialRunRecord,
+      trialRunPolicyVerified,
     }) && !saving;
 
   function resolveTrialRun(outcome: TrialRunOutcome) {
@@ -216,7 +240,7 @@ export default function ResultPage() {
       !wheel ||
       !result ||
       !isGrinderConditionComplete(grinderCondition) ||
-      !isWheelConditionComplete(wheelCondition)
+      !isWheelConditionComplete(wheelCondition, conditionKeys)
     ) {
       return;
     }
@@ -232,6 +256,7 @@ export default function ResultPage() {
         checklistComplete: isChecklistComplete(checklist),
         verdict: result.verdict,
         trialRunRecord,
+        trialRunPolicyVerified,
       })
     ) {
       return;
@@ -426,6 +451,14 @@ export default function ResultPage() {
       )}
 
       {stopped && <TrialRunStopNotice />}
+
+      {/* 규격이 맞아도 시험운전 근거가 없는 종류는 앱이 시간·문구를 지어내지
+          않는다. 대신 무엇을 따라야 하는지 알린다. */}
+      {result.verdict === 'COMPATIBLE' && !trialRunPolicyVerified && (
+        <p className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-4 text-base leading-relaxed text-yellow-100">
+          {t('trialRun.noPolicy')}
+        </p>
+      )}
 
       <p className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-4 text-base leading-relaxed text-yellow-100">
         ⚠ {t(PRE_WORK_REMINDER_KEY)}

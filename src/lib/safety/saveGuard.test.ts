@@ -79,3 +79,40 @@ describe('canSaveInspection', () => {
     ).toBe(false);
   });
 });
+
+describe('canSaveInspection — 시험운전 근거', () => {
+  it('근거가 없는 종류는 적합이어도 시험운전 없이 저장할 수 있다', () => {
+    expect(
+      canSaveInspection(
+        input({
+          verdict: 'COMPATIBLE',
+          trialRunRecord: null,
+          trialRunPolicyVerified: false,
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it('근거가 있거나 넘기지 않으면 적합에는 시험운전이 필요하다', () => {
+    expect(
+      canSaveInspection(
+        input({
+          verdict: 'COMPATIBLE',
+          trialRunRecord: null,
+          trialRunPolicyVerified: true,
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      canSaveInspection(input({ verdict: 'COMPATIBLE', trialRunRecord: null })),
+    ).toBe(false);
+  });
+
+  it('근거가 없어도 Gate·체크리스트는 그대로 요구한다', () => {
+    expect(
+      canSaveInspection(
+        input({ wheelConditionComplete: false, trialRunPolicyVerified: false }),
+      ),
+    ).toBe(false);
+  });
+});

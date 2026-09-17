@@ -14,6 +14,12 @@ export interface SaveGuardInput {
   verdict: Verdict;
   /** 완료된 시험운전 기록. 시작 전이거나 진행 중이면 null. */
   trialRunRecord: TrialRun | null;
+  /**
+   * 이 종류에 시험운전 근거가 확인됐는가(Profile의 trialRunPolicy).
+   * 근거가 없으면 앱이 시험운전을 열지 않으므로 요구하지도 않는다.
+   * 넘기지 않으면 기존처럼 요구한다.
+   */
+  trialRunPolicyVerified?: boolean;
 }
 
 /**
@@ -25,8 +31,9 @@ export interface SaveGuardInput {
 function trialRunSettled(
   verdict: Verdict,
   trialRunRecord: TrialRun | null,
+  policyVerified: boolean,
 ): boolean {
-  return verdict !== 'COMPATIBLE' || trialRunRecord !== null;
+  return !policyVerified || verdict !== 'COMPATIBLE' || trialRunRecord !== null;
 }
 
 /**
@@ -41,6 +48,10 @@ export function canSaveInspection(input: SaveGuardInput): boolean {
     input.grinderConditionComplete &&
     input.wheelConditionComplete &&
     input.checklistComplete &&
-    trialRunSettled(input.verdict, input.trialRunRecord)
+    trialRunSettled(
+      input.verdict,
+      input.trialRunRecord,
+      input.trialRunPolicyVerified ?? true,
+    )
   );
 }

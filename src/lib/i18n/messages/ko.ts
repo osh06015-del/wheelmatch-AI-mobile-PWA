@@ -127,7 +127,7 @@ export const ko = {
   'evidence.limit.workPurpose':
     '작업자가 고른 오늘의 작업과 라벨의 용도 표기만 대조합니다.',
   'evidence.doc.wheelType':
-    '이 앱의 설계 — RPM·지름 규칙은 일반 결합숫돌을 전제로 만들어졌습니다',
+    '이 앱의 설계 — 종류별 Profile이 있는 부속품만 회전속도·지름을 대조합니다. 법령 근거(제122조)는 결합숫돌에만 인용합니다',
   'evidence.limit.wheelType':
     '판정불가는 위험하다는 뜻이 아니라 이 앱이 판정할 수 없는 종류라는 뜻입니다.',
   'evidence.doc.visibleDamage': '사진에서 보이는 손상만 확인 — 경고 전용',
@@ -467,6 +467,62 @@ export const ko = {
   'wheelType.cup_wheel': '컵휠',
   'wheelType.diamond': '다이아몬드 휠',
   'wheelType.wire_brush': '와이어 브러시',
+  'wheelType.bonded_cutting': '결합 절단숫돌(Type 1/41)',
+  'wheelType.bonded_grinding': '결합 연삭숫돌(Type 27/28)',
+  'wheelType.bonded_combination': '절단·연삭 겸용 숫돌(Type 27/42)',
+  'wheelType.bonded_cup': '결합 컵숫돌(Type 6/11)',
+  'wheelType.diamond_continuous': '다이아몬드 절단날(연속 림)',
+  'wheelType.diamond_turbo': '다이아몬드 절단날(터보)',
+  'wheelType.diamond_segmented': '다이아몬드 절단날(세그먼트)',
+  'wheelType.diamond_cup': '다이아몬드 컵휠',
+  'wheelType.tuck_pointing': '줄눈 휠(턱포인팅)',
+  'wheelType.fibre_disc': '파이버·샌딩 디스크',
+  'wheelType.nonwoven_disc': '부직포 표면처리 디스크',
+  'wheelType.polishing_pad': '제조사 승인 연마 패드',
+  'wheelTypeConfirm.supportedProfile':
+    '이 종류는 회전속도·지름을 대조합니다. 종류별 상태 확인은 작업자가 직접 해야 합니다.',
+  'wheelTypeConfirm.needsSubtype':
+    '세부 종류를 골라야 규격을 대조합니다. 이대로면 판정불가로 끝납니다.',
+  'reason.workPurpose.manualCheck':
+    '오늘 작업은 {work}입니다. 이 종류에 맞는 작업인지 대조할 근거가 이 앱에 없습니다. 제조사 취급설명서로 직접 확인하세요.',
+  'reason.workPurpose.profileMismatch':
+    '오늘 작업({work})이 고른 종류({type})의 허용 작업에 들지 않습니다. 종류 선택과 작업을 다시 확인하기 전에는 판정할 수 없습니다.',
+  'reason.wheelType.supportedProfile':
+    '확인된 종류: {type}. 이 앱이 회전속도·지름을 대조하는 종류입니다. 종류별 상태 확인 항목은 작업자가 직접 확인해야 합니다.',
+  'reason.expiry.noPolicy':
+    '이 종류에 유효기한 기준을 적용할 근거가 이 앱에 없습니다. 라벨이나 제조사 안내에 기한이 있으면 직접 확인하세요.',
+  'trialRun.noPolicy':
+    '이 종류에는 시험운전 기준의 근거가 이 앱에 없어 시험운전을 요구하거나 기록하지 않습니다. 제조사 취급설명서의 시운전 안내를 따르세요.',
+  'wheelCondition.diamondRimIntact':
+    '세그먼트나 림이 떨어지거나 깨지지 않았는가?',
+  'wheelCondition.diamondRimIntactHint':
+    '세그먼트 사이와 림 가장자리에 빠진 조각, 금, 바닥까지 닳은 곳이 없는지 보세요.',
+  'wheelCondition.flapsIntact': '날개(플랩)가 떨어지거나 찢어지지 않았는가?',
+  'wheelCondition.flapsIntactHint':
+    '날개가 빠진 자리, 찢어진 날개, 한쪽만 짧게 닳은 곳이 없는지 보세요.',
+  'wheelCondition.noDelamination':
+    '날개가 백킹판에서 들뜨거나 벗겨지지 않았는가?',
+  'wheelCondition.noDelaminationHint':
+    '날개 뿌리의 접착이 들뜬 곳이 없는지 손으로 가볍게 눌러 보세요.',
+  'wheelCondition.flapBackingIntact': '백킹판이 깨지거나 휘지 않았는가?',
+  'wheelCondition.flapBackingIntactHint':
+    '뒷면 백킹판(섬유·플라스틱 판)에 금, 깨짐, 휨이 없는지 보세요.',
+  'wheelCondition.threadAdapterFit': '나사·어댑터가 축에 맞고 손상이 없는가?',
+  'wheelCondition.threadAdapterFitHint':
+    '나사산이 뭉개지거나 어댑터가 헐겁지 않은지, 그라인더 축 규격과 맞는지 확인하세요.',
+  'wheelCondition.evenWear': '한쪽으로 치우친 마모(편마모)가 없는가?',
+  'wheelCondition.evenWearHint':
+    '작업면이 한쪽만 깊게 닳거나 계단처럼 닳은 곳이 없는지 보세요.',
+  'wheelCondition.dedicatedGuardFitted': '컵 형식에 맞는 전용 덮개를 달았는가?',
+  'wheelCondition.dedicatedGuardFittedHint':
+    '일반 숫돌용 덮개가 아니라 이 컵에 맞는 덮개를 제조사 안내대로 달았는지 확인하세요.',
+  'wheelCondition.wiresIntact': '끊어지거나 풀린 와이어가 없는가?',
+  'wheelCondition.wiresIntactHint':
+    '빠져나온 와이어, 끊어진 가닥, 한쪽으로 뭉친 곳이 없는지 보세요.',
+  'wheelCondition.backingPadUndamaged':
+    '디스크와 백킹패드에 갈라짐·변형·닳음이 없는가?',
+  'wheelCondition.backingPadUndamagedHint':
+    '패드 가장자리가 찢어지거나 뭉개지지 않았는지, 디스크가 패드에 고르게 붙는지 보세요.',
   'wheelType.other': '기타',
   'wheelType.unknown': '모르겠음',
   'wheelTypeConfirm.label': '숫돌 종류',
@@ -475,7 +531,7 @@ export const ko = {
   'wheelTypeConfirm.aiSuggestion':
     'AI 제안: {type} — 사진으로 본 초기 제안값일 뿐입니다.',
   'wheelTypeConfirm.supported':
-    '일반 결합숫돌로 직접 확인한 경우에만 이 앱이 규격을 대조합니다.',
+    '일반 결합숫돌은 이 앱이 회전속도·지름을 대조하는 종류입니다. 실물을 보고 직접 확인해 고르세요.',
   'wheelTypeConfirm.unknown':
     '종류를 확인하지 못하면 규격 대조가 판정불가로 끝납니다. 실물을 보고 고르세요.',
   'wheelTypeConfirm.unsupported':

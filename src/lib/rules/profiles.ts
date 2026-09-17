@@ -24,10 +24,23 @@ import type {
   AccessoryProfileRef,
   GrinderSpec,
   ProfileCondition,
+  WheelConditionKey,
   WheelSpec,
   WheelType,
   WorkConditions,
 } from './types';
+
+/**
+ * 기존 Wheel Condition Gate의 다섯 항목. Profile이 없는 종류와 결합숫돌이 쓴다.
+ * 순서가 곧 화면 순서다.
+ */
+export const DEFAULT_CONDITION_ITEMS: readonly WheelConditionKey[] = [
+  'damageFree',
+  'notDeformed',
+  'mountingAreaUndamaged',
+  'labelLegible',
+  'expiryValid',
+];
 
 /**
  * 일반 결합숫돌(절단날·연삭석).
@@ -48,6 +61,8 @@ export const BONDED_ABRASIVE_PROFILE: AccessoryProfile = {
   family: 'bonded_abrasive',
   supported: true,
   allowedWork: ['cutting', 'grinding'],
+  // 라벨의 절단용/연삭용 표기로 작업을 대조해 왔다. 그대로 둔다.
+  workCheck: 'label_purpose',
   allowedMaterials: 'unverified',
   specs: {
     rpm: 'required',
@@ -65,9 +80,215 @@ export const BONDED_ABRASIVE_PROFILE: AccessoryProfile = {
   expiryPolicy: 'label_marked_month',
   trialRunPolicy: 'kr_osh_122',
   conditionGate: 'wheel_condition_v1',
+  conditionItems: DEFAULT_CONDITION_ITEMS,
+  aiSuggestions: ['bonded_abrasive'],
   requiredPhotos: ['front', 'back', 'edge', 'bore'],
   sources: ['krOsh', 'kosha', 'osa'],
   version: '2026.09.17-r2',
+};
+
+/** 세부 형식 Profile의 버전. 요구를 바꾸면 올린다 */
+const KNOWN_ACCESSORY_VERSION = '2026.09.17-r1';
+
+/**
+ * 결합숫돌 세부 형식의 공통 부분.
+ *
+ * 일반 결합숫돌과 같은 근거(제122조 ①②④, oSa)를 쓴다 — 모두 결합숫돌이다.
+ * 형식마다 다른 것(작업·사진·상태 항목)만 아래에서 덮어쓴다.
+ */
+const BONDED_BASE: AccessoryProfile = {
+  ...BONDED_ABRASIVE_PROFILE,
+  version: KNOWN_ACCESSORY_VERSION,
+};
+
+/**
+ * 결합숫돌이 아닌 부속품의 공통 부분. **근거를 확인하지 못한 기본값이다.**
+ *
+ * 회전속도·지름은 모든 부속품에 공통으로 표시값을 대조한다(공통 엔진 규칙).
+ * 저장소에 확인된 근거(제122조·oSa)는 연삭숫돌·결합숫돌에 대한 것이라 이 종류들에
+ * 인용하지 않는다. 그래서 작업·재료·건습식·회전방향·덮개·장착 부품·유효기한·
+ * 시험운전이 모두 unverified다 — 자동으로 통과시키지 않고 직접 확인으로 남긴다.
+ */
+const UNVERIFIED_BASE: Omit<
+  AccessoryProfile,
+  'type' | 'family' | 'conditionItems' | 'aiSuggestions'
+> = {
+  supported: true,
+  allowedWork: 'unverified',
+  // 라벨에 절단용/연삭용 표기가 없는 종류다. 라벨 용도로 대조하지 않는다.
+  workCheck: 'allowed_work',
+  allowedMaterials: 'unverified',
+  specs: {
+    rpm: 'required',
+    diameter: 'required',
+    mounting: 'advisory',
+  },
+  equipment: {
+    guard: 'unverified',
+    flange: 'unverified',
+    backingPad: 'unverified',
+    adapter: 'unverified',
+  },
+  cooling: 'unverified',
+  rotationDirection: 'unverified',
+  expiryPolicy: 'unverified',
+  trialRunPolicy: 'unverified',
+  conditionGate: 'wheel_condition_v1',
+  requiredPhotos: ['front'],
+  sources: [],
+  version: KNOWN_ACCESSORY_VERSION,
+};
+
+/** 형식을 가리지 않는 상태 항목. 유효기한은 근거가 있는 결합숫돌에만 묻는다 */
+const COMMON_ITEMS: readonly WheelConditionKey[] = [
+  'damageFree',
+  'mountingAreaUndamaged',
+  'labelLegible',
+];
+
+/** 컵 형식: 나사·어댑터, 편마모, 전용 덮개 */
+const CUP_ITEMS: readonly WheelConditionKey[] = [
+  'threadAdapterFit',
+  'evenWear',
+  'dedicatedGuardFitted',
+];
+
+/** 다이아몬드: 세그먼트·림, 균열(damageFree), 휨(notDeformed) */
+const DIAMOND_ITEMS: readonly WheelConditionKey[] = [
+  'damageFree',
+  'notDeformed',
+  'diamondRimIntact',
+  'mountingAreaUndamaged',
+  'labelLegible',
+];
+
+/**
+ * 결합 절단숫돌 Type 1/41.
+ *
+ * 절단 전용이다. 측면(연삭)으로 쓰면 제122조 ⑤에 어긋난다 — 연삭 작업을 고르면
+ * 종류와 작업이 어긋나 판정불가다.
+ */
+export const BONDED_CUTTING_PROFILE: AccessoryProfile = {
+  ...BONDED_BASE,
+  type: 'bonded_cutting',
+  allowedWork: ['cutting'],
+};
+
+/** 결합 연삭숫돌 Type 27/28. 절단 사용 제한은 근거를 확인하지 못했다 — 라벨 용도로만 대조 */
+export const BONDED_GRINDING_PROFILE: AccessoryProfile = {
+  ...BONDED_BASE,
+  type: 'bonded_grinding',
+  allowedWork: 'unverified',
+};
+
+/**
+ * 절단·연삭 겸용 Type 27/42.
+ *
+ * 라벨 용도 표기 하나로는 겸용을 나타낼 수 없어 라벨 용도로 대조하지 않는다.
+ * 허용 작업의 근거도 없으니 작업은 직접 확인이다.
+ */
+export const BONDED_COMBINATION_PROFILE: AccessoryProfile = {
+  ...BONDED_BASE,
+  type: 'bonded_combination',
+  allowedWork: 'unverified',
+  workCheck: 'allowed_work',
+};
+
+/** 결합 컵숫돌 Type 6/11. 다각도 확인 지시문은 평형 숫돌용이라 앞면 사진만 요구한다 */
+export const BONDED_CUP_PROFILE: AccessoryProfile = {
+  ...BONDED_BASE,
+  type: 'bonded_cup',
+  allowedWork: 'unverified',
+  conditionItems: [...DEFAULT_CONDITION_ITEMS, ...CUP_ITEMS],
+  aiSuggestions: ['cup_wheel', 'bonded_abrasive'],
+  requiredPhotos: ['front'],
+};
+
+/** 플랩디스크 Type 27/29: 날개 탈락·박리·백킹판 */
+export const FLAP_DISC_PROFILE: AccessoryProfile = {
+  ...UNVERIFIED_BASE,
+  type: 'flap_disc',
+  family: 'coated_abrasive',
+  conditionItems: [
+    ...COMMON_ITEMS,
+    'flapsIntact',
+    'noDelamination',
+    'flapBackingIntact',
+  ],
+  aiSuggestions: ['flap_disc'],
+};
+
+function diamondCutting(
+  type: 'diamond_continuous' | 'diamond_turbo' | 'diamond_segmented',
+): AccessoryProfile {
+  return {
+    ...UNVERIFIED_BASE,
+    type,
+    family: 'superabrasive',
+    conditionItems: DIAMOND_ITEMS,
+    aiSuggestions: ['diamond'],
+  };
+}
+
+export const DIAMOND_CONTINUOUS_PROFILE = diamondCutting('diamond_continuous');
+export const DIAMOND_TURBO_PROFILE = diamondCutting('diamond_turbo');
+export const DIAMOND_SEGMENTED_PROFILE = diamondCutting('diamond_segmented');
+
+/** 다이아몬드 컵휠: 세그먼트·균열·휨 + 컵 항목 */
+export const DIAMOND_CUP_PROFILE: AccessoryProfile = {
+  ...UNVERIFIED_BASE,
+  type: 'diamond_cup',
+  family: 'superabrasive',
+  conditionItems: [...DIAMOND_ITEMS, ...CUP_ITEMS],
+  aiSuggestions: ['diamond', 'cup_wheel'],
+};
+
+/** 줄눈(턱포인팅) 휠. 대개 다이아몬드 세그먼트형이라 같은 항목을 묻는다 */
+export const TUCK_POINTING_PROFILE: AccessoryProfile = {
+  ...UNVERIFIED_BASE,
+  type: 'tuck_pointing',
+  family: 'superabrasive',
+  conditionItems: DIAMOND_ITEMS,
+  aiSuggestions: ['diamond'],
+};
+
+/** 와이어 휠·컵 브러시: 끊어지거나 풀린 와이어 */
+export const WIRE_BRUSH_PROFILE: AccessoryProfile = {
+  ...UNVERIFIED_BASE,
+  type: 'wire_brush',
+  family: 'brush',
+  conditionItems: [...COMMON_ITEMS, 'wiresIntact'],
+  aiSuggestions: ['wire_brush'],
+};
+
+/**
+ * 파이버·샌딩 디스크. 백킹패드와 함께 쓴다 — 디스크(damageFree)와 패드를 따로 묻는다.
+ * AI 분류에 해당 값이 없어 제안과 견주지 않는다(골랐으면 직접 확인을 받는다).
+ */
+export const FIBRE_DISC_PROFILE: AccessoryProfile = {
+  ...UNVERIFIED_BASE,
+  type: 'fibre_disc',
+  family: 'coated_abrasive',
+  conditionItems: [...COMMON_ITEMS, 'backingPadUndamaged'],
+  aiSuggestions: [],
+};
+
+/** 부직포 표면처리 디스크 */
+export const NONWOVEN_DISC_PROFILE: AccessoryProfile = {
+  ...UNVERIFIED_BASE,
+  type: 'nonwoven_disc',
+  family: 'nonwoven',
+  conditionItems: [...COMMON_ITEMS, 'backingPadUndamaged'],
+  aiSuggestions: [],
+};
+
+/** 제조사 승인 연마 패드. 승인 여부는 앱이 확인하지 못한다 — 작업자가 설명서로 본다 */
+export const POLISHING_PAD_PROFILE: AccessoryProfile = {
+  ...UNVERIFIED_BASE,
+  type: 'polishing_pad',
+  family: 'polishing',
+  conditionItems: [...COMMON_ITEMS, 'backingPadUndamaged'],
+  aiSuggestions: [],
 };
 
 /**
@@ -91,13 +312,16 @@ export const PROFILE_FIELD_USE = {
   'equipment.flange': 'unverified',
   'equipment.backingPad': 'guidance', // not_applicable — 판정에 쓰지 않는다
   'equipment.adapter': 'unverified',
-  allowedWork: 'guidance', // 두 작업을 모두 허용. 작업-용도 대조는 작업 목적 일치 규칙이 한다
+  allowedWork: 'verdict', // 작업 목적 일치 — 근거 있는 허용 작업 밖이면 판정불가
+  workCheck: 'verdict', // 작업 목적 일치 — 라벨 용도로 대조할지
   allowedMaterials: 'unverified',
   cooling: 'unverified',
   rotationDirection: 'unverified',
   expiryPolicy: 'verdict', // 유효기한 규칙(label_marked_month)
   trialRunPolicy: 'guidance', // 시험운전 Gate(canStartTrialRun)
   conditionGate: 'guidance', // Wheel Condition Gate
+  conditionItems: 'guidance', // Wheel Condition Gate 항목(작업자가 직접 답한다)
+  aiSuggestions: 'guidance', // 종류 선택 화면의 AI 제안 비교
   requiredPhotos: 'guidance', // 다각도 확인 Gate(wheelExamRequired)
 } as const satisfies Record<string, 'verdict' | 'guidance' | 'unverified'>;
 
@@ -110,6 +334,20 @@ export const ACCESSORY_PROFILES: Readonly<
   Partial<Record<WheelType, AccessoryProfile>>
 > = {
   bonded_abrasive: BONDED_ABRASIVE_PROFILE,
+  bonded_cutting: BONDED_CUTTING_PROFILE,
+  bonded_grinding: BONDED_GRINDING_PROFILE,
+  bonded_combination: BONDED_COMBINATION_PROFILE,
+  bonded_cup: BONDED_CUP_PROFILE,
+  flap_disc: FLAP_DISC_PROFILE,
+  diamond_continuous: DIAMOND_CONTINUOUS_PROFILE,
+  diamond_turbo: DIAMOND_TURBO_PROFILE,
+  diamond_segmented: DIAMOND_SEGMENTED_PROFILE,
+  diamond_cup: DIAMOND_CUP_PROFILE,
+  tuck_pointing: TUCK_POINTING_PROFILE,
+  wire_brush: WIRE_BRUSH_PROFILE,
+  fibre_disc: FIBRE_DISC_PROFILE,
+  nonwoven_disc: NONWOVEN_DISC_PROFILE,
+  polishing_pad: POLISHING_PAD_PROFILE,
 };
 
 /** 종류의 Profile. 없으면 null이다 — 기본 Profile로 대신하지 않는다. */
@@ -120,6 +358,41 @@ export function profileFor(type: WheelType): AccessoryProfile | null {
 /** 이 앱이 규격을 대조하는 종류인가. */
 export function isSupportedType(type: WheelType): boolean {
   return profileFor(type)?.supported === true;
+}
+
+/**
+ * 이 종류에서 작업자가 답해야 하는 상태 항목.
+ * Profile이 없는 종류는 기존 다섯 항목이다 — 줄이지 않는다.
+ */
+export function conditionItemsFor(
+  type: WheelType,
+): readonly WheelConditionKey[] {
+  return profileFor(type)?.conditionItems ?? DEFAULT_CONDITION_ITEMS;
+}
+
+/**
+ * 작업자가 고른 종류가 AI 제안을 좁힌 것인가.
+ *
+ * AI는 "다이아몬드"까지만 말하고 연속 림·세그먼트는 고르지 못한다. 작업자가
+ * 세부 형식을 고른 것은 제안과 어긋난 것이 아니다. 좁힌 경우가 아니면 기존처럼
+ * 어긋남으로 보고 직접 확인을 받는다.
+ */
+export function refinesSuggestion(
+  suggested: WheelType,
+  selected: WheelType,
+): boolean {
+  return profileFor(selected)?.aiSuggestions.includes(suggested) === true;
+}
+
+/**
+ * 세부 형식을 골라야 대조할 수 있는 굵은 분류인가(다이아몬드·컵휠).
+ * 그 자체에는 Profile이 없고, 그것을 제안값으로 갖는 세부 Profile이 있다.
+ */
+export function needsSubtype(type: WheelType): boolean {
+  if (profileFor(type) !== null) return false;
+  return Object.values(ACCESSORY_PROFILES).some((profile) =>
+    profile.aiSuggestions.includes(type),
+  );
 }
 
 /** 기록에 남길 참조. Profile이 없으면 null이다. */
