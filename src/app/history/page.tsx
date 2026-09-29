@@ -199,8 +199,10 @@ export default function HistoryPage() {
           내보내야 한다(검증판 CSV는 전체 기록을 내보낸다). */}
       {researchToolsEnabled() && <ResearchPanel records={allRecords} />}
 
+      {/* 새 점검은 작업 선택부터 시작한다. 촬영 화면으로 바로 보내면 작업 목적
+          대조 없이 규격이 대조된다. */}
       <Link
-        href="/scan/grinder"
+        href="/"
         className="flex min-h-14 items-center justify-center rounded-lg bg-slate-800 text-lg font-semibold text-slate-100 active:bg-slate-700"
       >
         {t('history.newInspection')}

@@ -52,6 +52,7 @@ describe('EvidencePanel — 펼치고 접기', () => {
         grinder={g}
         wheel={w}
         result={matchSpecs(g, w, {
+          declaredPurpose: 'cutting',
           profile: BONDED_ABRASIVE_PROFILE,
           today: TODAY,
         })}
@@ -76,6 +77,7 @@ describe('EvidencePanel — 펼치고 접기', () => {
         grinder={g}
         wheel={w}
         result={matchSpecs(g, w, {
+          declaredPurpose: 'cutting',
           profile: BONDED_ABRASIVE_PROFILE,
           today: TODAY,
         })}
@@ -106,6 +108,7 @@ describe('EvidencePanel — 구기록의 없는 값', () => {
         grinder={g}
         wheel={w}
         result={matchSpecs(g, w, {
+          declaredPurpose: 'cutting',
           profile: BONDED_ABRASIVE_PROFILE,
           today: TODAY,
         })}
@@ -131,6 +134,7 @@ describe('EvidencePanel — 구기록의 없는 값', () => {
         grinder={finalGrinder}
         wheel={w}
         result={matchSpecs(finalGrinder, w, {
+          declaredPurpose: 'cutting',
           profile: BONDED_ABRASIVE_PROFILE,
           today: TODAY,
         })}
@@ -159,6 +163,7 @@ describe('EvidencePanel — 부속품 입력값(accessoryName)', () => {
         grinder={g}
         wheel={w}
         result={matchSpecs(g, w, {
+          declaredPurpose: 'cutting',
           profile: BONDED_ABRASIVE_PROFILE,
           today: TODAY,
         })}
@@ -180,6 +185,7 @@ describe('EvidencePanel — 부속품 입력값(accessoryName)', () => {
         grinder={g}
         wheel={w}
         result={matchSpecs(g, w, {
+          declaredPurpose: 'cutting',
           profile: BONDED_ABRASIVE_PROFILE,
           today: TODAY,
         })}
@@ -210,6 +216,7 @@ describe('EvidencePanel — 안전 경계', () => {
         grinder={g}
         wheel={w}
         result={matchSpecs(g, w, {
+          declaredPurpose: 'cutting',
           profile: BONDED_ABRASIVE_PROFILE,
           today: TODAY,
         })}
@@ -234,6 +241,7 @@ describe('EvidencePanel — 안전 경계', () => {
         grinder={g}
         wheel={w}
         result={matchSpecs(g, w, {
+          declaredPurpose: 'cutting',
           profile: BONDED_ABRASIVE_PROFILE,
           today: TODAY,
         })}
@@ -256,6 +264,7 @@ describe('EvidencePanel — 안전 경계', () => {
         grinder={g}
         wheel={w}
         result={matchSpecs(g, w, {
+          declaredPurpose: 'cutting',
           profile: BONDED_ABRASIVE_PROFILE,
           today: TODAY,
         })}
@@ -285,6 +294,7 @@ describe('EvidencePanel — 계산식과 차이', () => {
         grinder={g}
         wheel={w}
         result={matchSpecs(g, w, {
+          declaredPurpose: 'cutting',
           profile: BONDED_ABRASIVE_PROFILE,
           today: TODAY,
         })}

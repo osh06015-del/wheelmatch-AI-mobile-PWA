@@ -18,8 +18,12 @@ import {
   buildBackupFileNow,
   previewImport,
   type ImportPreview,
+  type ImportResult,
 } from '@/lib/backup/backupStore';
-import { backupFilename } from '@/lib/backup/backupModel';
+import {
+  backupFilename,
+  MAX_BACKUP_FILE_BYTES,
+} from '@/lib/backup/backupModel';
 import { inspectionCount, photoStorageStats } from '@/lib/db';
 import { savedGrinderStore } from '@/lib/db/savedGrinderStore';
 import { draftStore, formDraftStore } from '@/lib/draft/draftStore';
@@ -109,28 +113,49 @@ export function DataManagementPanel() {
   }
 
   const [preview, setPreview] = useState<ImportPreview | null>(null);
-  const [importedSummary, setImportedSummary] = useState<{
-    records: number;
-    saved: number;
-  } | null>(null);
+  const [importedSummary, setImportedSummary] = useState<ImportResult | null>(
+    null,
+  );
+  const [importBusy, setImportBusy] = useState(false);
+  const [importError, setImportError] = useState(false);
 
   async function handleFile(file: File) {
+    if (importBusy) return;
+    setImportBusy(true);
+    setImportError(false);
+    setPreview(null);
     setImportedSummary(null);
-    const text = await file.text();
-    setPreview(await previewImport(text, file.size));
+    try {
+      // 상한 검사를 읽기 전에 해야 대용량 파일이 메모리에 먼저 올라오지 않는다.
+      if (file.size > MAX_BACKUP_FILE_BYTES) {
+        setPreview({ status: 'error', error: 'too_large' });
+        return;
+      }
+      const text = await file.text();
+      setPreview(await previewImport(text, file.size));
+    } catch {
+      setImportError(true);
+    } finally {
+      setImportBusy(false);
+    }
   }
 
   async function handleConfirmImport() {
-    if (!preview || preview.status !== 'ready') return;
-    const result = await applyImport(
-      preview.validRecords,
-      preview.validSavedGrinders,
-    );
-    setImportedSummary({
-      records: result.importedRecords,
-      saved: result.importedSavedGrinders,
-    });
-    setPreview(null);
+    if (importBusy || !preview || preview.status !== 'ready') return;
+    setImportBusy(true);
+    setImportError(false);
+    try {
+      const result = await applyImport(
+        preview.validRecords,
+        preview.validSavedGrinders,
+      );
+      setImportedSummary(result);
+      setPreview(null);
+    } catch {
+      setImportError(true);
+    } finally {
+      setImportBusy(false);
+    }
   }
 
   const [confirmingDraftDelete, setConfirmingDraftDelete] = useState(false);
@@ -252,6 +277,7 @@ export function DataManagementPanel() {
           </span>
           <input
             type="file"
+            disabled={importBusy}
             accept="application/json,.json"
             onChange={(event) => {
               const file = event.target.files?.[0];
@@ -261,6 +287,13 @@ export function DataManagementPanel() {
             className="min-h-12 text-base text-slate-300"
           />
         </label>
+
+        {importBusy && <p role="status">{t('backup.working')}</p>}
+        {importError && (
+          <p role="alert" className="text-sm text-red-300">
+            {t('backup.operationFailed')}
+          </p>
+        )}
 
         {preview?.status === 'error' && (
           <p role="alert" className="text-base text-red-300">
@@ -291,8 +324,9 @@ export function DataManagementPanel() {
               type="button"
               onClick={() => void handleConfirmImport()}
               disabled={
-                preview.validRecords.length === 0 &&
-                preview.validSavedGrinders.length === 0
+                importBusy ||
+                (preview.validRecords.length === 0 &&
+                  preview.validSavedGrinders.length === 0)
               }
               className="min-h-14 rounded-lg bg-sky-500 text-lg font-bold text-slate-950 active:bg-sky-400 disabled:bg-slate-800 disabled:text-slate-500"
             >
@@ -300,6 +334,7 @@ export function DataManagementPanel() {
             </button>
             <button
               type="button"
+              disabled={importBusy}
               onClick={() => setPreview(null)}
               className="min-h-14 rounded-lg border border-slate-600 text-lg font-semibold text-slate-200 active:bg-slate-700"
             >
@@ -311,9 +346,19 @@ export function DataManagementPanel() {
         {importedSummary && (
           <p role="status" className="text-sm text-slate-300">
             {t('backup.applied', {
-              records: importedSummary.records,
-              saved: importedSummary.saved,
+              records: importedSummary.importedRecords,
+              saved: importedSummary.importedSavedGrinders,
             })}
+          </p>
+        )}
+        {importedSummary && importedSummary.skipped > 0 && (
+          <p role="status" className="text-sm text-slate-300">
+            {t('backup.skippedAtApply', { count: importedSummary.skipped })}
+          </p>
+        )}
+        {importedSummary && importedSummary.failed > 0 && (
+          <p role="alert" className="text-sm text-red-300">
+            {t('backup.failedAtApply', { count: importedSummary.failed })}
           </p>
         )}
       </div>

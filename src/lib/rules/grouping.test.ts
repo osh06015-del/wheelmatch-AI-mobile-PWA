@@ -119,6 +119,7 @@ describe('실제 판정 결과를 나눈다', () => {
   it('적합 판정에도 사용자 확인 항목이 남는다', () => {
     // 전부 통과했다고 해서 사람이 볼 것이 없어지지 않는다.
     const result = matchSpecs(grinder(), wheel(), {
+      declaredPurpose: 'cutting',
       profile: BONDED_ABRASIVE_PROFILE,
       today: TODAY,
     });
@@ -131,6 +132,7 @@ describe('실제 판정 결과를 나눈다', () => {
 
   it('부적합 판정은 불일치 칸에 이유가 담긴다', () => {
     const result = matchSpecs(grinder(), wheel({ maxRPM: 8500 }), {
+      declaredPurpose: 'cutting',
       profile: BONDED_ABRASIVE_PROFILE,
       today: TODAY,
     });
@@ -142,6 +144,7 @@ describe('실제 판정 결과를 나눈다', () => {
 
   it('판정불가는 판독불가 칸으로 간다', () => {
     const result = matchSpecs(grinder(), wheel({ maxRPM: null }), {
+      declaredPurpose: 'cutting',
       profile: BONDED_ABRASIVE_PROFILE,
       today: TODAY,
     });
@@ -157,7 +160,11 @@ describe('실제 판정 결과를 나눈다', () => {
     const result = matchSpecs(
       grinder({ noLoadRPM: null, guardType: 'none' }),
       wheel(),
-      { profile: BONDED_ABRASIVE_PROFILE, today: TODAY },
+      {
+        declaredPurpose: 'cutting',
+        profile: BONDED_ABRASIVE_PROFILE,
+        today: TODAY,
+      },
     );
     const g = groupChecks(result.checks);
 

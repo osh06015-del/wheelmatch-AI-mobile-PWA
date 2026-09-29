@@ -586,6 +586,7 @@ export type ReasonCode =
   | 'workPurpose.match'
   | 'workPurpose.manualCheck'
   | 'workPurpose.profileMismatch'
+  | 'workPurpose.notDeclared'
   | 'wheelType.unsupported'
   | 'wheelType.supported'
   | 'wheelType.supportedProfile'

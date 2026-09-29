@@ -12,18 +12,18 @@ import {
 } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { push, extractGrinder, optimizeForUpload, measureCapture } = vi.hoisted(
-  () => ({
+const { push, replace, extractGrinder, optimizeForUpload, measureCapture } =
+  vi.hoisted(() => ({
     push: vi.fn(),
+    replace: vi.fn(),
     extractGrinder: vi.fn(),
     optimizeForUpload: vi.fn(),
     measureCapture: vi.fn(),
-  }),
-);
+  }));
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    replace: vi.fn(),
+    replace,
     push,
     back: vi.fn(),
     refresh: vi.fn(),
@@ -106,7 +106,11 @@ beforeEach(() => {
   measureCapture.mockResolvedValue(CLEAN);
   extractGrinder.mockResolvedValue(OCR);
   const result = store();
-  act(() => result.current.reset());
+  act(() => {
+    result.current.reset();
+    // 실제 흐름은 작업 선택 화면에서 시작한다. 작업 미선택은 따로 잰다.
+    result.current.setPurpose('cutting');
+  });
 });
 
 describe('그라인더 명판 — 촬영 직후 사진 상태 확인', () => {
@@ -239,5 +243,34 @@ describe('그라인더 명판 — 축·덮개 입력', () => {
       guardType: 'grinding',
       guardSize: 125,
     });
+  });
+});
+
+describe('그라인더 촬영 화면 — 작업 선택 우회 차단', () => {
+  it('작업(절단/연삭)을 고르지 않고 들어오면 촬영 화면을 열지 않고 작업 선택으로 돌린다', () => {
+    // 이력 화면의 "새 점검 시작"이 촬영 화면으로 바로 보내던 경로의 회귀 테스트다.
+    replace.mockClear();
+    const result = store();
+    act(() => result.current.reset());
+
+    render(<GrinderScanPage />);
+
+    expect(
+      screen.getByText('오늘 할 작업(절단/연삭)을 먼저 고르세요.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: '그라인더 명판 촬영' }),
+    ).not.toBeInTheDocument();
+    expect(replace).toHaveBeenCalledWith('/');
+  });
+
+  it('작업을 골랐으면 되돌리지 않는다', () => {
+    replace.mockClear();
+    render(<GrinderScanPage />);
+
+    expect(
+      screen.getByRole('heading', { name: '그라인더 명판 촬영' }),
+    ).toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
   });
 });

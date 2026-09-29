@@ -23,6 +23,9 @@ export const vi: Messages = {
   'home.grindingHint': 'Công việc mài',
   'home.afterChoice':
     'Sau khi chọn, hãy chụp nhãn máy mài trước, rồi đến nhãn đá mài.',
+  'home.startPrepFailed':
+    'Chưa bắt đầu lần kiểm tra mới vì không xóa được dữ liệu nhập của lần kiểm tra trước. Việc này giúp dữ liệu cũ không lẫn vào lần kiểm tra mới. Hãy thử lại.',
+  'home.startRetry': 'Thử lại với công việc {work}',
   'home.history': 'Xem lịch sử kiểm tra →',
 
   'verdict.compatible': 'THÔNG SỐ PHÙ HỢP',
@@ -355,6 +358,12 @@ export const vi: Messages = {
   'exam.evidence.meta': 'Kiểm tra {time} · mô hình {model} · chỉ dẫn {version}',
   'photo.zoomOpen': 'Xem to {label}',
   'photo.zoomClose': 'Đóng ảnh phóng to',
+  'photo.zoomIn': 'Phóng to',
+  'photo.zoomOut': 'Thu nhỏ',
+  'photo.zoomReset': 'Vừa màn hình',
+  'photo.zoomViewport': 'Vùng di chuyển ảnh phóng to',
+  'photo.zoomHint':
+    'Vuốt để di chuyển ảnh đã phóng to. Với bàn phím, đặt tiêu điểm vào vùng ảnh rồi dùng các phím mũi tên. Phóng to không làm ảnh rõ hơn.',
 
   'exam.block.captureReview':
     'Với ảnh có cảnh báo chất lượng, hãy chụp lại hoặc chọn vẫn dùng rồi mới kiểm tra được.',
@@ -510,6 +519,8 @@ export const vi: Messages = {
     'Công việc hôm nay là {work}. Ứng dụng không có căn cứ để đối chiếu loại này có hợp với công việc đó không. Hãy tự kiểm tra hướng dẫn của nhà sản xuất.',
   'reason.workPurpose.profileMismatch':
     'Công việc hôm nay ({work}) không nằm trong các công việc cho phép của loại đã chọn ({type}). Không thể đánh giá cho đến khi kiểm tra lại loại và công việc.',
+  'reason.workPurpose.notDeclared':
+    'Chưa chọn công việc hôm nay (cắt/mài). Không thể đánh giá cho đến khi chọn công việc và đối chiếu lại.',
   'reason.wheelType.supportedProfile':
     'Loại đã xác nhận: {type}. Ứng dụng đối chiếu tốc độ quay và đường kính cho loại này. Các mục tình trạng riêng của loại này phải do người thợ tự kiểm tra.',
   'reason.expiry.noPolicy':
@@ -608,6 +619,9 @@ export const vi: Messages = {
   'scan.wheel.failed': 'Không phân tích được nhãn đá mài.',
   'scan.wheel.proceed': 'Xác nhận và đối chiếu thông số',
   'scan.wheel.grinderFirst': 'Cần kiểm tra tình trạng máy mài trước.',
+  'scan.purposeFirst': 'Hãy chọn công việc hôm nay (cắt/mài) trước.',
+  'scan.photoCompareHint':
+    'Chạm vào ảnh để phóng to, rồi tự đối chiếu các giá trị bên dưới có khớp với chữ in trong ảnh không. “Văn bản đã đọc” cũng là chữ do AI đọc nên không thể dùng làm căn cứ đối chiếu.',
 
   'camera.starting': 'Đang mở camera...',
   'camera.pickFromGallery': 'Chọn từ thư viện',
@@ -930,6 +944,13 @@ export const vi: Messages = {
     'Máy mài đã lưu: mới {valid} · bỏ qua (đã có) {duplicate} · không hợp lệ {invalid}',
   'backup.applyButton': 'Áp dụng nhập',
   'backup.cancelButton': 'Hủy',
+  'backup.working': 'Đang xử lý nhập dữ liệu.',
+  'backup.operationFailed':
+    'Không thể đọc tệp hoặc truy cập bộ nhớ. Giữ tệp và thử lại. Các mục đã thêm sẽ được bỏ qua như mục trùng lặp.',
+  'backup.skippedAtApply':
+    'Đã bỏ qua {count} mục có sẵn khi áp dụng, không ghi đè.',
+  'backup.failedAtApply':
+    'Không lưu được {count} mục. Giữ bản sao lưu, kiểm tra dung lượng rồi nhập lại. Các mục đã thêm sẽ được bỏ qua như mục trùng lặp.',
   'backup.applied':
     'Đã nhập {records} bản ghi kiểm tra và {saved} máy mài đã lưu.',
   'backup.errorTooLarge': 'Tệp quá lớn.',
@@ -963,8 +984,10 @@ export const vi: Messages = {
   'research.truthEmpty':
     'Không đọc được giá trị đúng nào. Hãy kiểm tra tệp có phải mảng JSON không.',
   'research.truthUnreadable': 'Không đọc được tệp giá trị đúng.',
+  'research.truthLoading': 'Đang đọc tệp giá trị đúng: {file}',
+  'research.truthSource': 'Tệp giá trị đúng đã chọn: {file}',
   'research.truthRejected':
-    'Đã loại {count} dòng vì sai định dạng. Hãy kiểm tra số mẫu.',
+    'Đã loại {count} dòng do sai định dạng, giá trị hoặc trùng ID. Tất cả dòng có ID trùng đều bị loại. Hãy kiểm tra tệp và số mẫu.',
   'metrics.title': 'Chỉ số đánh giá',
   'metrics.note':
     'Tính từ {count} hồ sơ có giá trị đúng. Độ chính xác khi đọc được đo bằng giá trị OCR gốc trước khi người dùng sửa.',
@@ -982,7 +1005,7 @@ export const vi: Messages = {
     'Trong các trường có giá trị đúng, tỷ lệ giá trị OCR gốc khớp với giá trị đúng.',
   'metrics.unitNormalization.name': 'Lỗi quy đổi đơn vị',
   'metrics.unitNormalization.definition':
-    'Trong các hồ sơ quy đổi từ m/s, tỷ lệ kết quả khác với giá trị đúng.',
+    'Trong các hồ sơ quy đổi có RPM đúng, tỷ lệ RPM quy đổi của bản OCR gốc khác với giá trị đúng. Chỉ riêng giá trị này không phân biệt được đọc sai nhãn với lỗi tính quy đổi.',
   'metrics.falseSafeIds':
     'Mã hồ sơ False-Safe: {ids} — hãy phân tích và báo cáo từng hồ sơ. Không che giấu.',
 

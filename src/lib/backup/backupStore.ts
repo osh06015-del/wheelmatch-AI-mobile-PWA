@@ -114,6 +114,8 @@ export async function previewImport(
 export interface ImportResult {
   importedRecords: number;
   importedSavedGrinders: number;
+  skipped: number;
+  failed: number;
 }
 
 /**
@@ -135,13 +137,21 @@ export async function applyImport(
     validRecords.map((record) => record.id),
   );
   let importedRecords = 0;
+  let skipped = 0;
+  let failed = 0;
   for (const record of validRecords) {
-    if (existingRecordIds.has(record.id)) continue;
+    if (existingRecordIds.has(record.id)) {
+      skipped += 1;
+      continue;
+    }
     try {
       await putInspectionWithId(record);
       importedRecords += 1;
-    } catch {
-      // 개별 항목 저장 실패는 나머지 가져오기를 막지 않는다.
+    } catch (error) {
+      // 사전 조회 후 다른 탭에서 저장된 중복과 실제 저장 실패를 구분한다.
+      if (error instanceof Error && error.name === 'ConstraintError')
+        skipped += 1;
+      else failed += 1;
     }
   }
 
@@ -151,14 +161,17 @@ export async function applyImport(
   );
   let importedSavedGrinders = 0;
   for (const item of validSavedGrinders) {
-    // update()는 id가 있으면 갱신, 없으면 추가한다(Dexie put) — 그래서 존재
-    // 여부를 직접 걸러야 한다. 여기서 걸러지는 항목은 항상 새로 추가되는 셈이다.
-    if (existingSavedGrinderIds.has(item.id)) continue;
-    const ok = await savedGrinderStore.update(item);
-    if (ok) importedSavedGrinders += 1;
+    if (existingSavedGrinderIds.has(item.id)) {
+      skipped += 1;
+      continue;
+    }
+    const outcome = await savedGrinderStore.insert(item);
+    if (outcome === 'added') importedSavedGrinders += 1;
+    else if (outcome === 'duplicate') skipped += 1;
+    else failed += 1;
   }
 
-  return { importedRecords, importedSavedGrinders };
+  return { importedRecords, importedSavedGrinders, skipped, failed };
 }
 
 export { BACKUP_FORMAT };

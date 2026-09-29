@@ -152,6 +152,108 @@ describe('DataManagementPanel — 내보내기', () => {
 });
 
 describe('DataManagementPanel — 가져오기(미리보기 후 확인)', () => {
+  it('너무 큰 파일은 내용을 메모리로 읽기 전에 거부한다', async () => {
+    const file = new File(['{}'], 'large.json', { type: 'application/json' });
+    Object.defineProperty(file, 'size', { value: 21 * 1024 * 1024 });
+    const read = vi.spyOn(file, 'text');
+    render(<DataManagementPanel />);
+    await userEvent.upload(screen.getByLabelText(/백업 파일 가져오기/), file);
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(read).not.toHaveBeenCalled();
+    expect(previewImport).not.toHaveBeenCalled();
+  });
+
+  it('적용 중에는 다시 적용하거나 다른 파일을 선택하지 못한다', async () => {
+    previewImport.mockResolvedValue({
+      status: 'ready',
+      validRecords: [{ id: 1 }],
+      validSavedGrinders: [],
+      duplicateRecordCount: 0,
+      invalidRecordCount: 0,
+      duplicateSavedGrinderCount: 0,
+      invalidSavedGrinderCount: 0,
+    });
+    let finish!: (result: {
+      importedRecords: number;
+      importedSavedGrinders: number;
+      skipped: number;
+      failed: number;
+    }) => void;
+    applyImport.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const user = userEvent.setup();
+    render(<DataManagementPanel />);
+    await selectFile('{}');
+    await user.click(screen.getByRole('button', { name: '가져오기 적용' }));
+    expect(
+      screen.getByRole('button', { name: '가져오기 적용' }),
+    ).toBeDisabled();
+    expect(screen.getByLabelText(/백업 파일 가져오기/)).toBeDisabled();
+    expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
+    await act(async () =>
+      finish({
+        importedRecords: 1,
+        importedSavedGrinders: 0,
+        skipped: 0,
+        failed: 0,
+      }),
+    );
+    expect(screen.getByLabelText(/백업 파일 가져오기/)).toBeEnabled();
+  });
+
+  it('일부 실패와 적용 시 중복을 성공 건수와 별도로 알린다', async () => {
+    previewImport.mockResolvedValue({
+      status: 'ready',
+      validRecords: [{ id: 1 }],
+      validSavedGrinders: [],
+      duplicateRecordCount: 0,
+      invalidRecordCount: 0,
+      duplicateSavedGrinderCount: 0,
+      invalidSavedGrinderCount: 0,
+    });
+    applyImport.mockResolvedValue({
+      importedRecords: 1,
+      importedSavedGrinders: 0,
+      skipped: 2,
+      failed: 3,
+    });
+    const user = userEvent.setup();
+    render(<DataManagementPanel />);
+    await selectFile('{}');
+    await user.click(screen.getByRole('button', { name: '가져오기 적용' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '3건을 저장하지 못했습니다.',
+    );
+    expect(
+      screen.getByText('적용 시 이미 있던 2건은 덮어쓰지 않고 건너뛰었습니다.'),
+    ).toBeInTheDocument();
+  });
+
+  it('저장소 오류는 성공으로 표시하지 않고 다시 시도할 수 있다', async () => {
+    previewImport.mockResolvedValue({
+      status: 'ready',
+      validRecords: [{ id: 1 }],
+      validSavedGrinders: [],
+      duplicateRecordCount: 0,
+      invalidRecordCount: 0,
+      duplicateSavedGrinderCount: 0,
+      invalidSavedGrinderCount: 0,
+    });
+    applyImport.mockRejectedValue(new Error('database closed'));
+    const user = userEvent.setup();
+    render(<DataManagementPanel />);
+    await selectFile('{}');
+    await user.click(screen.getByRole('button', { name: '가져오기 적용' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '파일 읽기 또는 저장소 접근에 실패했습니다.',
+    );
+    expect(screen.getByRole('button', { name: '가져오기 적용' })).toBeEnabled();
+    expect(screen.queryByText(/건을 가져왔습니다/)).not.toBeInTheDocument();
+  });
+
   function selectFile(text: string) {
     const input = screen.getByLabelText(
       /백업 파일 가져오기/,

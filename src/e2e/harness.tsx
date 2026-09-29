@@ -174,8 +174,8 @@ export function dbModule() {
     putInspectionWithId: async (record: StoredInspection): Promise<void> => {
       const records = browser().records;
       const index = records.findIndex((row) => row.id === record.id);
-      if (index >= 0) records[index] = record;
-      else records.push(record);
+      if (index >= 0) throw new DOMException('Duplicate ID', 'ConstraintError');
+      records.push(record);
     },
     clearInspectionPhotos: async (id: number): Promise<void> => {
       const record = browser().records.find((row) => row.id === id);

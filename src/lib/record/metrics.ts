@@ -5,12 +5,13 @@
 // 가장 중요한 것(false-safe)이 다른 수치에 묻힌다.
 //
 //   false-safe        실제로는 부적합인데 적합이라고 한 비율  ← 0이어야 한다
-//   unreadable        읽지 못해 판정하지 못한 비율
+//   unreadable        이유를 구분하지 않은 전체 판정불가 비율
 //   field accuracy    필드 단위 인식 정확도
-//   unit normalization 단위 환산이 틀린 비율
+//   unit normalization 환산 RPM이 정답과 다른 비율(원인은 별도 분석)
 //
-// 판정이 결정론적 규칙이므로 "판정 오류"와 "인식 오류"를 나눠 볼 수 있다.
-// 추출이 맞으면 판정은 항상 맞는다. 그래서 재야 할 근본 수치는 추출 정확도다.
+// 인식 오류와 판정 오류를 나눠 측정한다. 결정론적이라는 것은 같은 입력에 같은
+// 결과를 낸다는 뜻이지, 규칙 누락이나 잘못된 적용이 없다는 뜻은 아니다.
+// 필드 정확도와 부적합 탐지 재현율은 분모가 다르므로 같은 지표로 취급하지 않는다.
 
 import type { InspectionRecord, Verdict } from '@/lib/rules/types';
 
@@ -68,24 +69,29 @@ export interface EvaluationReport {
    * 실패가 아니라 설계된 동작이다. 다만 너무 높으면 현장에서 앱을 끄게 되므로
    * 따로 보고한다. false-safe와 맞바꾸지 않는다.
    */
-  unreadable: { count: number; rate: number };
+  unreadable: { count: number; rate: number | null };
 
   /** 필드별 추출 정확도 */
-  fieldAccuracy: { fields: FieldScore[]; overall: number };
+  fieldAccuracy: { fields: FieldScore[]; overall: number | null };
 
   /**
    * 단위 정규화 오류.
    *
-   * m/s에서 rpm으로 환산한 기록 중 결과가 정답과 다른 비율.
-   * 라벨을 제대로 읽고도 환산에서 틀리는 것은 인식 오류와 원인이 다르다.
-   * 섞어 보고하면 어느 쪽을 고쳐야 하는지 알 수 없다.
+   * m/s에서 rpm으로 환산하고 정답 RPM도 있는 기록 중 결과가 다른 비율.
+   * 입력 m/s·지름의 오독과 환산 산술 오류는 이 값만으로 구분할 수 없다.
+   * 원인을 단정하지 않고 개별 기록의 입력과 계산을 따로 확인한다.
    */
-  unitNormalization: { converted: number; wrong: number; rate: number };
+  unitNormalization: {
+    /** 환산 기록 중 정답 RPM이 있어 실제 채점한 수 */
+    converted: number;
+    wrong: number;
+    rate: number | null;
+  };
 }
 
-/** 0으로 나누지 않는다. 표본이 없으면 비율도 없다(0). */
-function rate(part: number, whole: number): number {
-  return whole === 0 ? 0 : part / whole;
+/** 분모가 없으면 비율도 없다. 화면 밖에서 써도 0%로 오해되지 않게 한다. */
+function rate(part: number, whole: number): number | null {
+  return whole === 0 ? null : part / whole;
 }
 
 /** 한 필드를 채점한다. 정답이 null인 필드는 채점 대상이 아니다. */
@@ -150,37 +156,40 @@ export function evaluate(
   ).length;
 
   // ── field accuracy ──────────────────────────────────
-  // 원본값이 없는(기능 도입 전) 기록은 필드 채점에서 빠진다.
-  const withOcr = scored.filter(
-    ({ record }) =>
-      record.grinderOcr !== undefined || record.wheelOcr !== undefined,
+  // 원본 객체 미보관과 실제 추출값 null을 구분한다. 한쪽 원본만 없는 기록도
+  // 그쪽만 제외해야 반대쪽의 유효한 표본을 잃거나 미보관을 오독으로 세지 않는다.
+  const withGrinderOcr = scored.filter(
+    ({ record }) => record.grinderOcr !== undefined,
+  );
+  const withWheelOcr = scored.filter(
+    ({ record }) => record.wheelOcr !== undefined,
   );
 
   const fields: FieldScore[] = [
     scoreField(
       'grinderRPM',
-      withOcr.map(({ record, truth }) => ({
+      withGrinderOcr.map(({ record, truth }) => ({
         actual: record.grinderOcr?.noLoadRPM ?? null,
         expected: truth.grinderRPM,
       })),
     ),
     scoreField(
       'grinderMaxDiameter',
-      withOcr.map(({ record, truth }) => ({
+      withGrinderOcr.map(({ record, truth }) => ({
         actual: record.grinderOcr?.maxWheelDiameter ?? null,
         expected: truth.grinderMaxDiameter,
       })),
     ),
     scoreField(
       'wheelMaxRPM',
-      withOcr.map(({ record, truth }) => ({
+      withWheelOcr.map(({ record, truth }) => ({
         actual: record.wheelOcr?.maxRPM ?? null,
         expected: truth.wheelMaxRPM,
       })),
     ),
     scoreField(
       'wheelDiameter',
-      withOcr.map(({ record, truth }) => ({
+      withWheelOcr.map(({ record, truth }) => ({
         actual: record.wheelOcr?.diameter ?? null,
         expected: truth.wheelDiameter,
       })),
@@ -194,14 +203,14 @@ export function evaluate(
   const correct = fields.reduce((sum, f) => sum + f.correct, 0);
 
   // ── unit normalization ──────────────────────────────
-  // m/s에서 환산한 기록만 본다. 라벨에 rpm이 적혀 있던 것은 환산하지 않았다.
+  // 정답 RPM 없는 환산 기록을 분모에 넣으면 검증 불가능한 표본을 더할수록
+  // 오류율이 낮아진다. 원본값이 null이어도 정답이 있으면 불일치로 센다.
   const convertedRecords = scored.filter(
-    ({ record }) => record.wheelOcr?.rpmSource === 'converted',
+    ({ record, truth }) =>
+      record.wheelOcr?.rpmSource === 'converted' && truth.wheelMaxRPM !== null,
   );
   const convertedWrong = convertedRecords.filter(
-    ({ record, truth }) =>
-      truth.wheelMaxRPM !== null &&
-      record.wheelOcr?.maxRPM !== truth.wheelMaxRPM,
+    ({ record, truth }) => record.wheelOcr?.maxRPM !== truth.wheelMaxRPM,
   ).length;
 
   return {

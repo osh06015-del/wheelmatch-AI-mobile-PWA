@@ -18,13 +18,14 @@ const VERDICTS: ReadonlyArray<Verdict> = [
 
 export interface GroundTruthParseResult {
   truths: GroundTruth[];
-  /** 형식이 맞지 않아 버린 줄 수 */
+  /** 형식 오류 또는 유효한 행 사이의 ID 중복으로 제외한 줄 수 */
   rejected: number;
 }
 
 function numberOrNull(value: unknown): number | null | undefined {
   if (value === null) return null;
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0)
+    return value;
   return undefined;
 }
 
@@ -33,7 +34,12 @@ function toTruth(raw: unknown): GroundTruth | null {
   const row = raw as Record<string, unknown>;
 
   const recordId = row.recordId;
-  if (typeof recordId !== 'number' || !Number.isInteger(recordId)) return null;
+  if (
+    typeof recordId !== 'number' ||
+    !Number.isSafeInteger(recordId) ||
+    recordId <= 0
+  )
+    return null;
 
   const verdict = row.verdict;
   if (typeof verdict !== 'string' || !VERDICTS.includes(verdict as Verdict)) {
@@ -84,5 +90,12 @@ export function parseGroundTruth(text: string): GroundTruthParseResult {
     if (truth) truths.push(truth);
     else rejected += 1;
   }
-  return { truths, rejected };
+  // 마지막 행을 고르면 파일 순서만으로 False-Safe가 사라질 수 있다.
+  // 같은 정답이어도 중복 ID는 전부 제외하고 작성자가 원본을 정리하게 한다.
+  const counts = new Map<number, number>();
+  for (const truth of truths) {
+    counts.set(truth.recordId, (counts.get(truth.recordId) ?? 0) + 1);
+  }
+  const unique = truths.filter((truth) => counts.get(truth.recordId) === 1);
+  return { truths: unique, rejected: rejected + truths.length - unique.length };
 }

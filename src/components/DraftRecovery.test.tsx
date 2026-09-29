@@ -31,6 +31,7 @@ vi.mock('@/lib/draft/draftStore', () => ({
 }));
 
 import { DRAFT_SAVE_DELAY_MS, DraftRecovery } from './DraftRecovery';
+import Home from '@/app/page';
 import { buildDraft } from '@/lib/draft/draftModel';
 import { useInspection, type InspectionSnapshot } from '@/lib/state/inspection';
 import type { GrinderSpec } from '@/lib/rules/types';
@@ -98,6 +99,7 @@ async function flush() {
 
 beforeEach(() => {
   push.mockReset();
+  formRemove.mockReset().mockResolvedValue(true);
   load.mockReset();
   save.mockReset().mockResolvedValue('saved');
   remove.mockReset().mockResolvedValue(true);
@@ -110,6 +112,23 @@ afterEach(() => {
 });
 
 describe('DraftRecovery — draft가 있을 때', () => {
+  it('홈에서 복구를 물을 때와 이어하기 선택 시 미확정 입력 draft를 지우지 않는다', async () => {
+    load.mockResolvedValue({ status: 'found', draft: savedDraft() });
+    render(
+      <>
+        <DraftRecovery />
+        <Home />
+      </>,
+    );
+    await flush();
+    expect(formRemove).not.toHaveBeenCalled();
+    await act(async () => {
+      screen.getByRole('button', { name: '이어하기' }).click();
+    });
+    expect(formRemove).not.toHaveBeenCalled();
+    expect(store().current.grinder).toEqual(GRINDER);
+    expect(push).toHaveBeenCalledWith('/scan/wheel');
+  });
   it('묻기만 하고 자동으로 이어가거나 지우지 않는다', async () => {
     load.mockResolvedValue({ status: 'found', draft: savedDraft() });
     render(<DraftRecovery />);

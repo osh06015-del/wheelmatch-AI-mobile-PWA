@@ -46,6 +46,7 @@ describe('ResultCard — 판정 표시', () => {
     render(
       <ResultCard
         result={matchSpecs(grinder(), wheel(), {
+          declaredPurpose: 'cutting',
           profile: BONDED_ABRASIVE_PROFILE,
           today: TODAY,
         })}
@@ -61,6 +62,7 @@ describe('ResultCard — 판정 표시', () => {
     render(
       <ResultCard
         result={matchSpecs(grinder(), wheel({ maxRPM: 8500 }), {
+          declaredPurpose: 'cutting',
           profile: BONDED_ABRASIVE_PROFILE,
           today: TODAY,
         })}
@@ -79,6 +81,7 @@ describe('ResultCard — 판정 표시', () => {
     render(
       <ResultCard
         result={matchSpecs(grinder({ noLoadRPM: null }), wheel(), {
+          declaredPurpose: 'cutting',
           profile: BONDED_ABRASIVE_PROFILE,
           today: TODAY,
         })}
@@ -93,6 +96,7 @@ describe('ResultCard — 판정 표시', () => {
     render(
       <ResultCard
         result={matchSpecs(grinder({ maxWheelDiameter: 100 }), wheel(), {
+          declaredPurpose: 'cutting',
           profile: BONDED_ABRASIVE_PROFILE,
           today: TODAY,
         })}
@@ -112,6 +116,7 @@ describe('ResultCard — 검사 항목', () => {
     render(
       <ResultCard
         result={matchSpecs(grinder(), wheel(), {
+          declaredPurpose: 'cutting',
           profile: BONDED_ABRASIVE_PROFILE,
           today: TODAY,
         })}
@@ -133,6 +138,7 @@ describe('ResultCard — 검사 항목', () => {
     render(
       <ResultCard
         result={matchSpecs(grinder(), wheel(), {
+          declaredPurpose: 'cutting',
           profile: BONDED_ABRASIVE_PROFILE,
           today: TODAY,
         })}
@@ -148,6 +154,7 @@ describe('ResultCard — 검사 항목', () => {
     render(
       <ResultCard
         result={matchSpecs(grinder({ noLoadRPM: null }), wheel(), {
+          declaredPurpose: 'cutting',
           profile: BONDED_ABRASIVE_PROFILE,
           today: TODAY,
         })}
@@ -166,7 +173,11 @@ describe('ResultCard — 검사 항목', () => {
         result={matchSpecs(
           grinder({ noLoadRPM: null, guardType: 'none' }),
           wheel(),
-          { profile: BONDED_ABRASIVE_PROFILE, today: TODAY },
+          {
+            declaredPurpose: 'cutting',
+            profile: BONDED_ABRASIVE_PROFILE,
+            today: TODAY,
+          },
         )}
       />,
     );

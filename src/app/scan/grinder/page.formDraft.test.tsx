@@ -120,7 +120,11 @@ beforeEach(() => {
   measureCapture.mockResolvedValue(CLEAN);
   extractGrinder.mockResolvedValue(OCR);
   const result = store();
-  act(() => result.current.reset());
+  act(() => {
+    result.current.reset();
+    // 실제 흐름은 작업 선택 화면에서 시작한다. 작업 미선택은 따로 잰다.
+    result.current.setPurpose('cutting');
+  });
 });
 
 describe('그라인더 확인 화면 — 입력 draft 복구', () => {
@@ -150,6 +154,10 @@ describe('그라인더 확인 화면 — 입력 draft 복구', () => {
     await screen.findByText('읽어낸 값을 확인하세요');
     expect(screen.getByDisplayValue('GWS 750-125')).toBeInTheDocument();
     expect(screen.getByDisplayValue('11000')).toBeInTheDocument();
+    // 판독값을 대조할 사진이 같은 화면에 있다(확대 가능).
+    expect(
+      screen.getByRole('button', { name: '그라인더 명판 크게 보기' }),
+    ).toBeInTheDocument();
     // 최대 지름(125)과 덮개 크기(125)가 각각 복원되어 두 곳에 나타난다.
     expect(screen.getAllByDisplayValue('125')).toHaveLength(2);
 

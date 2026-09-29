@@ -184,6 +184,28 @@ describe('unreadable', () => {
 });
 
 describe('field accuracy', () => {
+  it.each(['grinderOcr', 'wheelOcr'] as const)(
+    '%s 원본 객체가 없으면 그쪽 필드만 제외하고 반대쪽은 채점한다',
+    (missingSource) => {
+      const report = evaluate(
+        [record(1, 'COMPATIBLE', { [missingSource]: undefined })],
+        [truth(1, 'COMPATIBLE')],
+      );
+      const missingPrefix =
+        missingSource === 'grinderOcr' ? 'grinder' : 'wheel';
+      for (const field of report.fieldAccuracy.fields) {
+        expect(field).toEqual({
+          field: field.field,
+          correct: field.field.startsWith(missingPrefix) ? 0 : 1,
+          missed: 0,
+          wrong: 0,
+        });
+      }
+      expect(report.fieldAccuracy.overall).toBe(1);
+      expect(report.scored).toBe(1);
+    },
+  );
+
   it('원본값으로 잰다 — 사용자가 고친 값으로 재지 않는다', () => {
     // 최종값으로 재면 사람이 고친 것까지 모델이 맞힌 것으로 계산된다.
     const r = record(1, 'COMPATIBLE', {
@@ -244,6 +266,59 @@ describe('field accuracy', () => {
 });
 
 describe('단위 정규화 오류', () => {
+  it('정답 RPM이 없는 환산 기록을 더해도 오류율이 낮아지지 않는다', () => {
+    const wrong = record(1, 'COMPATIBLE', {
+      wheelOcr: { ...WHEEL, maxRPM: 1220, rpmSource: 'converted' },
+    });
+    const unscorable = record(2, 'UNDETERMINED', {
+      wheelOcr: { ...WHEEL, rpmSource: 'converted' },
+    });
+    const before = evaluate([wrong], [truth(1, 'COMPATIBLE')]);
+    const after = evaluate(
+      [wrong, unscorable],
+      [truth(1, 'COMPATIBLE'), truth(2, 'UNDETERMINED', { wheelMaxRPM: null })],
+    );
+    expect(after.unitNormalization).toEqual(before.unitNormalization);
+    expect(after.unitNormalization).toEqual({
+      converted: 1,
+      wrong: 1,
+      rate: 1,
+    });
+    expect(after.scored).toBe(2);
+  });
+
+  it('환산 표본이 있어도 정답 RPM이 전부 없으면 채점 불가다', () => {
+    const report = evaluate(
+      [
+        record(1, 'UNDETERMINED', {
+          wheelOcr: { ...WHEEL, rpmSource: 'converted' },
+        }),
+      ],
+      [truth(1, 'UNDETERMINED', { wheelMaxRPM: null })],
+    );
+    expect(report.unitNormalization).toEqual({
+      converted: 0,
+      wrong: 0,
+      rate: null,
+    });
+  });
+
+  it('정답 RPM이 있는데 환산값이 null이면 채점에서 숨기지 않는다', () => {
+    const report = evaluate(
+      [
+        record(1, 'UNDETERMINED', {
+          wheelOcr: { ...WHEEL, maxRPM: null, rpmSource: 'converted' },
+        }),
+      ],
+      [truth(1, 'COMPATIBLE')],
+    );
+    expect(report.unitNormalization).toEqual({
+      converted: 1,
+      wrong: 1,
+      rate: 1,
+    });
+  });
+
   it('m/s에서 환산한 기록만 본다', () => {
     // 라벨에 rpm이 적혀 있던 것은 환산하지 않았으므로 분모에 넣지 않는다.
     const fromLabel = record(1, 'COMPATIBLE', {
@@ -251,7 +326,7 @@ describe('단위 정규화 오류', () => {
     });
     const report = evaluate([fromLabel], [truth(1, 'COMPATIBLE')]);
     expect(report.unitNormalization.converted).toBe(0);
-    expect(report.unitNormalization.rate).toBe(0);
+    expect(report.unitNormalization.rate).toBeNull();
   });
 
   it('환산 결과가 정답과 다르면 오류로 센다', () => {
@@ -276,6 +351,13 @@ describe('단위 정규화 오류', () => {
 });
 
 describe('표본 처리', () => {
+  it('표본이 없으면 모든 비율은 null이고 0%를 주장하지 않는다', () => {
+    const report = evaluate([], []);
+    expect(report.unreadable.rate).toBeNull();
+    expect(report.fieldAccuracy.overall).toBeNull();
+    expect(report.unitNormalization.rate).toBeNull();
+  });
+
   it('정답이 없는 기록은 채점하지 않는다', () => {
     const report = evaluate(
       [record(1, 'COMPATIBLE'), record(2, 'COMPATIBLE')],
@@ -289,9 +371,9 @@ describe('표본 처리', () => {
     expect(report.scored).toBe(0);
     expect(report.falseSafe.denominator).toBe(0);
     expect(report.falseSafe.rate).toBeNull();
-    expect(report.unreadable.rate).toBe(0);
-    expect(report.fieldAccuracy.overall).toBe(0);
-    expect(report.unitNormalization.rate).toBe(0);
+    expect(report.unreadable.rate).toBeNull();
+    expect(report.fieldAccuracy.overall).toBeNull();
+    expect(report.unitNormalization.rate).toBeNull();
   });
 
   it('저장 전 기록(id 없음)은 건너뛴다', () => {
@@ -306,7 +388,7 @@ describe('표본 처리', () => {
     });
     const report = evaluate([old], [truth(1, 'COMPATIBLE')]);
     expect(report.scored).toBe(1);
-    expect(report.fieldAccuracy.overall).toBe(0); // 채점 대상 없음
+    expect(report.fieldAccuracy.overall).toBeNull(); // 채점 대상 없음
   });
 });
 

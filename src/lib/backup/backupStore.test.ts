@@ -11,13 +11,13 @@ const {
   inspectionIdsPresent,
   putInspectionWithId,
   savedList,
-  savedUpdate,
+  savedInsert,
 } = vi.hoisted(() => ({
   listAllInspectionsWithoutPhotos: vi.fn(),
   inspectionIdsPresent: vi.fn(),
   putInspectionWithId: vi.fn(),
   savedList: vi.fn(),
-  savedUpdate: vi.fn(),
+  savedInsert: vi.fn(),
 }));
 
 vi.mock('@/lib/db', () => ({
@@ -30,7 +30,8 @@ vi.mock('@/lib/db/savedGrinderStore', () => ({
   savedGrinderStore: {
     list: savedList,
     add: vi.fn(),
-    update: savedUpdate,
+    insert: savedInsert,
+    update: vi.fn(),
     remove: vi.fn(),
   },
 }));
@@ -105,7 +106,7 @@ beforeEach(() => {
   inspectionIdsPresent.mockReset().mockResolvedValue(new Set());
   putInspectionWithId.mockReset().mockResolvedValue(undefined);
   savedList.mockReset().mockResolvedValue([]);
-  savedUpdate.mockReset().mockResolvedValue(true);
+  savedInsert.mockReset().mockResolvedValue('added');
 });
 
 describe('gatherBackupData / buildBackupFileNow — 내보낼 범위', () => {
@@ -173,7 +174,7 @@ describe('previewImport — 확인 전에는 아무것도 쓰지 않는다', () 
       invalidSavedGrinderCount: 0,
     });
     expect(putInspectionWithId).not.toHaveBeenCalled();
-    expect(savedUpdate).not.toHaveBeenCalled();
+    expect(savedInsert).not.toHaveBeenCalled();
   });
 
   it('파일 크기가 상한을 넘으면 거부한다', async () => {
@@ -225,6 +226,27 @@ describe('previewImport — 확인 전에는 아무것도 쓰지 않는다', () 
 });
 
 describe('applyImport — 미리보기에서 확인한 항목만, 있는 그대로 저장한다', () => {
+  it('조회 후 발생한 중복과 저장 실패를 구분하고 나머지를 계속 가져온다', async () => {
+    const duplicate = new Error('duplicate');
+    duplicate.name = 'ConstraintError';
+    putInspectionWithId
+      .mockRejectedValueOnce(duplicate)
+      .mockRejectedValueOnce(new Error('quota'));
+    savedInsert
+      .mockResolvedValueOnce('duplicate')
+      .mockResolvedValueOnce('failed');
+    const result = await applyImport(
+      [record({ id: 1 }), record({ id: 2 }), record({ id: 3 })],
+      [saved({ id: 1 }), saved({ id: 2 }), saved({ id: 3 })],
+    );
+    expect(result).toEqual({
+      importedRecords: 1,
+      importedSavedGrinders: 1,
+      skipped: 2,
+      failed: 2,
+    });
+  });
+
   it('기록을 판정 재계산 없이 그대로 넘긴다', async () => {
     const item = record({ id: 3 });
     const result = await applyImport([item], []);
@@ -237,7 +259,7 @@ describe('applyImport — 미리보기에서 확인한 항목만, 있는 그대�
     const item = saved({ id: 7 });
     const result = await applyImport([], [item]);
 
-    expect(savedUpdate).toHaveBeenCalledWith(item);
+    expect(savedInsert).toHaveBeenCalledWith(item);
     expect(result.importedSavedGrinders).toBe(1);
   });
 
@@ -274,8 +296,8 @@ describe('applyImport — 미리보기에서 확인한 항목만, 있는 그대�
 
     const result = await applyImport([], [saved({ id: 7 }), saved({ id: 8 })]);
 
-    expect(savedUpdate).toHaveBeenCalledTimes(1);
-    expect(savedUpdate).toHaveBeenCalledWith(saved({ id: 8 }));
+    expect(savedInsert).toHaveBeenCalledTimes(1);
+    expect(savedInsert).toHaveBeenCalledWith(saved({ id: 8 }));
     expect(result.importedSavedGrinders).toBe(1);
   });
 });

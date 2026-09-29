@@ -64,6 +64,7 @@ const OCR_TELEMETRY: OcrTelemetry = {
 describe('CaptureQualityMetrics·OcrTelemetry는 판정에 영향을 주지 않는다', () => {
   it('같은 grinder·wheel이면 검증용 메타데이터가 무엇이든 같은 판정이 나온다', () => {
     const baseline = matchSpecs(GRINDER, WHEEL, {
+      declaredPurpose: 'cutting',
       profile: BONDED_ABRASIVE_PROFILE,
     });
 
@@ -74,6 +75,7 @@ describe('CaptureQualityMetrics·OcrTelemetry는 판정에 영향을 주지 않�
     void CAPTURE_METRICS;
     void OCR_TELEMETRY;
     const result = matchSpecs(GRINDER, WHEEL, {
+      declaredPurpose: 'cutting',
       profile: BONDED_ABRASIVE_PROFILE,
     });
 

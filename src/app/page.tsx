@@ -10,7 +10,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { BuildInfo } from '@/components/BuildInfo';
 import { Disclaimer } from '@/components/Disclaimer';
@@ -51,21 +51,47 @@ export default function Home() {
   const [conditions, setConditions] = useState<WorkConditions>(
     UNKNOWN_WORK_CONDITIONS,
   );
+  const [starting, setStarting] = useState(false);
+  // 준비(이전 입력 draft 삭제)에 실패한 작업. 다시 시도는 이 작업으로 같은 경로를 탄다.
+  const [failedPurpose, setFailedPurpose] = useState<WorkPurpose | null>(null);
+  // 상태(starting)는 다음 렌더에서야 바뀐다. 같은 틱의 연속 클릭을 막으려면 ref로 잠근다.
+  const startingRef = useRef(false);
 
   // 메인으로 돌아오면 이전 점검 값을 비운다.
   // 지난 촬영 값이 남아 다음 점검에 섞여 들어가면 안 된다.
-  // 확인 화면에 남아 있을 수 있는 입력 draft도 같이 비운다 — 여기로 돌아오는
-  // 것은 새 작업을 고르는 것이고(=종류 변경), 이전 화면의 미확정 입력을
-  // 다음 점검으로 이어 쓰면 안 된다.
+  // 입력 draft는 아직 지우지 않는다. 앱 재실행 시 같은 홈 위에서 이어하기를
+  // 묻기 때문에, 여기서 지우면 사용자가 답하기 전에 미확정 입력을 잃는다.
   useEffect(() => {
     reset();
-    void formDraftStore.remove('grinder');
-    void formDraftStore.remove('wheel');
   }, [reset]);
 
-  function start(purpose: WorkPurpose) {
-    setPurpose(purpose, conditions);
-    router.push('/scan/grinder');
+  async function start(purpose: WorkPurpose) {
+    if (startingRef.current) return;
+    startingRef.current = true;
+    setStarting(true);
+    setFailedPurpose(null);
+    try {
+      // 새 작업을 명시적으로 고른 때만 입력 draft를 버린다. 삭제가 끝나기 전에
+      // 촬영 화면을 열면 이전 입력 복원이 삭제와 경쟁해 새 점검에 섞일 수 있다.
+      const removed = await Promise.all([
+        formDraftStore.remove('grinder'),
+        formDraftStore.remove('wheel'),
+      ]);
+      // 준비에 실패하면 시작하지 않는다. 점검 상태 초기화·작업 확정·화면 이동은
+      // 모두 준비가 끝난 뒤에만 한다.
+      if (!removed.every(Boolean)) {
+        setFailedPurpose(purpose);
+        return;
+      }
+      reset();
+      setPurpose(purpose, conditions);
+      router.push('/scan/grinder');
+    } catch {
+      setFailedPurpose(purpose);
+    } finally {
+      startingRef.current = false;
+      setStarting(false);
+    }
   }
 
   return (
@@ -89,8 +115,9 @@ export default function Home() {
             <button
               key={choice.value}
               type="button"
+              disabled={starting}
               onClick={() => start(choice.value)}
-              className="flex min-h-[160px] flex-col items-center justify-center gap-3 rounded-2xl bg-slate-800 px-4 py-6 active:bg-slate-700"
+              className="flex min-h-[160px] flex-col items-center justify-center gap-3 rounded-2xl bg-slate-800 px-4 py-6 active:bg-slate-700 disabled:opacity-50"
             >
               <span aria-hidden className="text-5xl">
                 {choice.icon}
@@ -104,6 +131,31 @@ export default function Home() {
             </button>
           ))}
         </div>
+
+        {failedPurpose && (
+          <div
+            role="alert"
+            className="flex flex-col gap-3 rounded-lg border border-red-500/40 bg-red-500/15 px-4 py-4"
+          >
+            <p className="text-base leading-relaxed text-red-200">
+              {t('home.startPrepFailed')}
+            </p>
+            <button
+              type="button"
+              disabled={starting}
+              onClick={() => void start(failedPurpose)}
+              className="min-h-14 rounded-lg border border-red-400 text-lg font-semibold text-red-100 active:bg-red-500/20 disabled:opacity-50"
+            >
+              {t('home.startRetry', {
+                work: t(
+                  failedPurpose === 'cutting'
+                    ? 'home.cutting'
+                    : 'home.grinding',
+                ),
+              })}
+            </button>
+          </div>
+        )}
 
         <p className="text-base leading-relaxed text-slate-400">
           {t('home.afterChoice')}

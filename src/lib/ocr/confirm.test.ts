@@ -154,6 +154,7 @@ describe('confirmedWheelSpec — 원본 표시 보존', () => {
     expect(spec.expiry).toBeNull();
 
     const rules = matchSpecs(grinder(), spec, {
+      declaredPurpose: 'cutting',
       profile: BONDED_ABRASIVE_PROFILE,
       today: TODAY,
     }).checks.map((c) => c.rule);
@@ -224,6 +225,7 @@ describe('confirmedWheelSpec — 원본 표시 보존', () => {
     expect(spec.markings?.expiryRaw).toBe('04/2027');
     expect(
       matchSpecs(grinder(), spec, {
+        declaredPurpose: 'cutting',
         profile: BONDED_ABRASIVE_PROFILE,
         today: TODAY,
       }).verdict,
@@ -240,6 +242,7 @@ describe('confirmedWheelSpec — 원본 표시 보존', () => {
     expect(spec.expiry).toBeNull();
     expect(
       matchSpecs(grinder(), spec, {
+        declaredPurpose: 'cutting',
         profile: BONDED_ABRASIVE_PROFILE,
         today: TODAY,
       }).verdict,
@@ -253,6 +256,7 @@ describe('confirmedWheelSpec — 원본 표시 보존', () => {
       untouched(ocr, { expiryText: '04/2023', userConfirmed: true }),
     );
     const result = matchSpecs(grinder(), spec, {
+      declaredPurpose: 'cutting',
       profile: BONDED_ABRASIVE_PROFILE,
       today: TODAY,
     });
@@ -398,6 +402,7 @@ describe('확인 화면을 통과한 값으로 실제 판정하기', () => {
     const ocr = ocrWheel();
     const spec = confirmedWheelSpec(ocr, untouched(ocr));
     const check = matchSpecs(grinder(), spec, {
+      declaredPurpose: 'cutting',
       profile: BONDED_ABRASIVE_PROFILE,
       today: TODAY,
     }).checks.find((c) => c.rule === RULE.UNIT_CONSISTENCY);
@@ -413,6 +418,7 @@ describe('확인 화면을 통과한 값으로 실제 판정하기', () => {
     const ocr = ocrWheel({}, { peripheralSpeedMps: 8 });
     const spec = confirmedWheelSpec(ocr, untouched(ocr));
     const result = matchSpecs(grinder(), spec, {
+      declaredPurpose: 'cutting',
       profile: BONDED_ABRASIVE_PROFILE,
       today: TODAY,
     });
@@ -429,6 +435,7 @@ describe('확인 화면을 통과한 값으로 실제 판정하기', () => {
     const ocr = ocrWheel({ maxRPM: 1220 }, { labeledRPM: 1220 });
     const spec = confirmedWheelSpec(ocr, untouched(ocr, { maxRPM: 12200 }));
     const result = matchSpecs(grinder(), spec, {
+      declaredPurpose: 'cutting',
       profile: BONDED_ABRASIVE_PROFILE,
       today: TODAY,
     });
@@ -447,6 +454,7 @@ describe('확인 화면을 통과한 값으로 실제 판정하기', () => {
     const ocr = ocrWheel();
     const spec = confirmedWheelSpec(ocr, untouched(ocr));
     const check = matchSpecs(grinder(), spec, {
+      declaredPurpose: 'cutting',
       profile: BONDED_ABRASIVE_PROFILE,
       today: TODAY,
     }).checks.find((c) => c.rule === RULE.MOUNTING_SPEC);
@@ -461,6 +469,7 @@ describe('확인 화면을 통과한 값으로 실제 판정하기', () => {
     const ocr = ocrWheel({ diameter: 180 });
     const spec = confirmedWheelSpec(ocr, untouched(ocr));
     const result = matchSpecs(grinder(), spec, {
+      declaredPurpose: 'cutting',
       profile: BONDED_ABRASIVE_PROFILE,
       today: TODAY,
     });
@@ -477,6 +486,7 @@ describe('확인 화면을 통과한 값으로 실제 판정하기', () => {
 
     expect(
       matchSpecs(grinder(), spec, {
+        declaredPurpose: 'cutting',
         profile: BONDED_ABRASIVE_PROFILE,
         today: TODAY,
       }).verdict,

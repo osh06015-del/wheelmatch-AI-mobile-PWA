@@ -44,6 +44,9 @@ function match(
   return matchSpecs(grinderSpec, wheelSpec, {
     profile: BONDED_ABRASIVE_PROFILE,
     today: TODAY,
+    // 실제 흐름은 작업을 고른 뒤에만 대조한다. 기본값은 숫돌 용도와 같은
+    // 작업을 고른 경우로 둔다 — 작업 목적 규칙은 아래 시나리오가 따로 잰다.
+    declaredPurpose: wheelSpec.purpose === 'grinding' ? 'grinding' : 'cutting',
     ...options,
   });
 }
@@ -227,10 +230,16 @@ describe('규칙엔진 — 판정불가 케이스', () => {
 });
 
 describe('규칙엔진 — 용도 관련', () => {
-  it('16. purpose unknown + 나머지 적합 → COMPATIBLE + 용도 경고', () => {
+  it('16. purpose unknown + 나머지 적합 → UNDETERMINED (용도 확인은 경고, 작업 목적 일치가 막는다)', () => {
     const result = match(grinder(), wheel({ purpose: 'unknown' }));
-    // 용도 미인식은 경고 수준이다. 전체 판정을 끌어내리지 않는다.
-    expect(result.verdict).toBe('COMPATIBLE');
+    // 용도 확인(Rule 4) 자체는 여전히 경고 수준이다. 사양서의 원래 기대값은
+    // COMPATIBLE이었지만, 그것은 작업을 고르지 않아 작업 목적 규칙이 빠진 경우에만
+    // 나오는 결과였다. 2026.09.29-r1부터 작업 미선택도 판정불가이므로, 어떤 흐름에서도
+    // 용도를 모르는 숫돌이 적합이 되지 않는다.
+    expect(result.verdict).toBe('UNDETERMINED');
+    expect(checkOf(result, RULE.WORK_PURPOSE).detail?.code).toBe(
+      'workPurpose.unknown',
+    );
     expect(checkOf(result, RULE.PURPOSE).passed).toBeNull();
     expect(checkOf(result, RULE.PURPOSE).reason).toBe(
       '숫돌 용도(절단/연삭)를 인식하지 못했습니다. 라벨을 직접 확인하세요.',
@@ -253,13 +262,15 @@ describe('규칙엔진 — 복합 시나리오', () => {
     expect(checkOf(result, RULE.CONFIDENCE).passed).toBeNull();
   });
 
-  it('19. 값 정상 + purpose unknown + confidence medium → COMPATIBLE + 경고', () => {
+  it('19. 값 정상 + purpose unknown + confidence medium → UNDETERMINED (신뢰도는 통과, 용도 미확인이 막는다)', () => {
     const result = match(
       grinder({ confidence: 'medium' }),
       wheel({ purpose: 'unknown', confidence: 'medium' }),
     );
-    // medium은 차단 사유가 아니다. low만 판정을 막는다.
-    expect(result.verdict).toBe('COMPATIBLE');
+    // medium은 차단 사유가 아니다. low만 판정을 막는다. 판정불가의 원인은 신뢰도가
+    // 아니라 용도 미확인이다(16번과 같은 이유로 2026.09.29-r1에서 바뀌었다).
+    expect(result.verdict).toBe('UNDETERMINED');
+    expect(checkOf(result, RULE.WORK_PURPOSE).passed).toBeNull();
     expect(checkOf(result, RULE.CONFIDENCE).passed).toBe(true);
     expect(checkOf(result, RULE.PURPOSE).passed).toBeNull();
   });
@@ -275,12 +286,41 @@ describe('규칙엔진 — 복합 시나리오', () => {
 });
 
 describe('규칙엔진 — 작업 목적 대조', () => {
-  it('작업을 고르지 않으면 이 항목 자체가 없다 (기존 동작 유지)', () => {
-    const result = match(grinder(), wheel());
-    expect(
-      result.checks.find((c) => c.rule === RULE.WORK_PURPOSE),
-    ).toBeUndefined();
-    expect(result.verdict).toBe('COMPATIBLE');
+  it('작업을 고르지 않으면 판정불가다 — 용도 대조를 건너뛰어 적합이 되지 않는다', () => {
+    // 작업 선택을 거치지 않고 촬영으로 들어온 점검(예: 이력 화면의 새 점검 시작)이
+    // 용도 대조 없이 적합을 받던 결함의 회귀 테스트다. 같은 절단날이 연삭 작업에서는
+    // 부적합인데, 작업을 고르지 않았다고 적합이 되면 안 된다.
+    const result = match(grinder(), wheel({ purpose: 'cutting' }), {
+      declaredPurpose: null,
+    });
+    const check = checkOf(result, RULE.WORK_PURPOSE);
+    expect(check.passed).toBeNull();
+    expect(check.advisory).toBeUndefined();
+    expect(check.detail?.code).toBe('workPurpose.notDeclared');
+    expect(check.grinderValue).toBeNull();
+    expect(check.wheelValue).toBe('절단용');
+    expect(result.verdict).toBe('UNDETERMINED');
+  });
+
+  it('작업을 고르지 않아도 RPM 위반은 그대로 부적합이다', () => {
+    const result = match(grinder(), wheel({ maxRPM: 8500 }), {
+      declaredPurpose: null,
+    });
+    expect(result.verdict).toBe('INCOMPATIBLE');
+    expect(checkOf(result, RULE.WORK_PURPOSE).passed).toBeNull();
+  });
+
+  it('작업을 고르지 않으면 종류와 상관없이(용도 표기 없는 종류 포함) 판정불가 항목을 만든다', () => {
+    const result = match(
+      grinder(),
+      wheel({ wheelType: 'flap_disc', purpose: 'unknown' }),
+      { declaredPurpose: null, profile: profileFor('flap_disc') },
+    );
+    const check = checkOf(result, RULE.WORK_PURPOSE);
+    expect(check.passed).toBeNull();
+    expect(check.advisory).toBeUndefined();
+    expect(check.detail?.code).toBe('workPurpose.notDeclared');
+    expect(result.verdict).toBe('UNDETERMINED');
   });
 
   it('절단 작업 + 절단용 숫돌 → 통과', () => {

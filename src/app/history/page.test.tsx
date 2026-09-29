@@ -93,9 +93,12 @@ describe('이력 화면 — 현장 배포판 (설정 없음)', () => {
     expect(
       screen.getByRole('heading', { name: '점검 이력' }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('link', { name: '새 점검 시작' }),
-    ).toBeInTheDocument();
+    // 새 점검은 작업 선택부터 시작한다 — 촬영 화면으로 바로 보내면 작업 목적
+    // 대조가 빠진다.
+    expect(screen.getByRole('link', { name: '새 점검 시작' })).toHaveAttribute(
+      'href',
+      '/',
+    );
     expectNoResearchPanel();
   });
 

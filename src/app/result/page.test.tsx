@@ -131,7 +131,11 @@ describe('결과 화면 — Wheel Condition Gate 우회 차단', () => {
     replace.mockClear();
     push.mockClear();
     const result = store();
-    act(() => result.current.reset());
+    act(() => {
+      result.current.reset();
+      // 실제 흐름은 작업 선택 화면에서 시작한다. 작업 미선택은 따로 잰다.
+      result.current.setPurpose('cutting');
+    });
   });
 
   it('값이 하나도 없이 직접 들어오면 결과를 보여주지 않고 처음으로 돌린다', () => {
@@ -205,6 +209,27 @@ describe('결과 화면 — Wheel Condition Gate 우회 차단', () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
+  it('작업(절단/연삭)을 고르지 않았으면 Gate가 모두 끝나도 결과를 보여주지 않고 작업 선택으로 돌린다', () => {
+    // 이력 화면의 "새 점검 시작"처럼 작업 선택을 거치지 않은 경로의 회귀 테스트다.
+    // 작업 목적 대조 없이 규격만 맞으면 적합이 나오던 결함이다.
+    const result = store();
+    act(() => {
+      result.current.reset();
+      result.current.setGrinder(GRINDER);
+      result.current.setGrinderCondition(GRINDER_OK);
+      result.current.setWheel(WHEEL);
+      result.current.setWheelCondition(CONFIRMED);
+    });
+    expect(result.current.declaredPurpose).toBeNull();
+
+    render(<ResultPage />);
+
+    expect(screen.getByText(LOADING)).toBeInTheDocument();
+    expect(screen.queryByText('규격 대조 결과')).not.toBeInTheDocument();
+    expect(screen.queryByText('적합')).not.toBeInTheDocument();
+    expect(replace).toHaveBeenCalledWith('/');
+  });
+
   it('새 숫돌을 잡으면 상태 확인이 사라져 다시 막힌다', () => {
     // setWheel이 이전 숫돌의 확인을 지운다. 화면도 그에 따라 닫혀야 한다.
     const result = store();
@@ -228,7 +253,11 @@ describe('결과 화면 — Grinder Condition Gate 우회 차단', () => {
     replace.mockClear();
     push.mockClear();
     const result = store();
-    act(() => result.current.reset());
+    act(() => {
+      result.current.reset();
+      // 실제 흐름은 작업 선택 화면에서 시작한다. 작업 미선택은 따로 잰다.
+      result.current.setPurpose('cutting');
+    });
   });
 
   /** 숫돌 쪽은 전부 통과시키고 그라인더 상태만 바꿔 가며 본다. */
@@ -295,7 +324,11 @@ describe('결과 화면 — 시험운전 절차', () => {
     replace.mockClear();
     push.mockClear();
     const result = store();
-    act(() => result.current.reset());
+    act(() => {
+      result.current.reset();
+      // 실제 흐름은 작업 선택 화면에서 시작한다. 작업 미선택은 따로 잰다.
+      result.current.setPurpose('cutting');
+    });
   });
 
   /** 두 Gate를 통과하고 규격도 맞는 상태까지 만든다. */
@@ -495,7 +528,11 @@ describe('결과 화면 — 사전점검 시간과 시험운전 시간 분리', 
     push.mockClear();
     vi.mocked(saveInspection).mockClear();
     const result = store();
-    act(() => result.current.reset());
+    act(() => {
+      result.current.reset();
+      // 실제 흐름은 작업 선택 화면에서 시작한다. 작업 미선택은 따로 잰다.
+      result.current.setPurpose('cutting');
+    });
     // 시계만 가짜로 둔다. 타이머까지 멈추면 화면 갱신이 멈춘다.
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(T0);
@@ -595,7 +632,11 @@ describe('결과 화면 — 연구 도구 설정은 안전 판정을 바꾸지 �
     const researchSwitch = renderHook(() => useResearchMode()).result;
     act(() => researchSwitch.current[1](true));
     const result = store();
-    act(() => result.current.reset());
+    act(() => {
+      result.current.reset();
+      // 실제 흐름은 작업 선택 화면에서 시작한다. 작업 미선택은 따로 잰다.
+      result.current.setPurpose('cutting');
+    });
   });
 
   afterEach(() => {
@@ -688,7 +729,11 @@ describe('결과 화면 — 저장 함수 내부 재검사와 저장공간 오�
     vi.mocked(saveInspection).mockClear();
     vi.mocked(saveInspection).mockReset();
     const result = store();
-    act(() => result.current.reset());
+    act(() => {
+      result.current.reset();
+      // 실제 흐름은 작업 선택 화면에서 시작한다. 작업 미선택은 따로 잰다.
+      result.current.setPurpose('cutting');
+    });
   });
 
   function ready(wheel: WheelSpec = WHEEL) {
@@ -1226,7 +1271,11 @@ describe('결과 화면 — 알려진 액세서리 Profile', () => {
     push.mockClear();
     vi.mocked(saveInspection).mockClear();
     const result = store();
-    act(() => result.current.reset());
+    act(() => {
+      result.current.reset();
+      // 실제 흐름은 작업 선택 화면에서 시작한다. 작업 미선택은 따로 잰다.
+      result.current.setPurpose('cutting');
+    });
   });
 
   const FLAP: WheelSpec = {
@@ -1358,7 +1407,11 @@ describe('결과 화면 — 오프라인 제한 대조와 서버 재분석', () 
     extractWheel.mockReset();
     vi.mocked(saveInspection).mockReset();
     const result = store();
-    act(() => result.current.reset());
+    act(() => {
+      result.current.reset();
+      // 실제 흐름은 작업 선택 화면에서 시작한다. 작업 미선택은 따로 잰다.
+      result.current.setPurpose('cutting');
+    });
   });
 
   /** 명판을 오프라인으로 직접 넣고 두 Gate를 마친 상태. 규격은 서로 맞는다 */

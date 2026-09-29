@@ -17,6 +17,55 @@ const VALID = {
 };
 
 describe('parseGroundTruth', () => {
+  it.each([true, false])(
+    '중복 ID의 모든 행을 제외한다(정답 동일=%s)',
+    (same) => {
+      const duplicate = {
+        ...VALID,
+        verdict: same ? 'COMPATIBLE' : 'INCOMPATIBLE',
+      };
+      for (const rows of [
+        [VALID, duplicate],
+        [duplicate, VALID],
+      ]) {
+        expect(
+          parseGroundTruth(
+            JSON.stringify([...rows, { ...VALID, recordId: 8 }]),
+          ),
+        ).toEqual({
+          truths: [{ ...VALID, recordId: 8 }],
+          rejected: 2,
+        });
+      }
+    },
+  );
+
+  it.each([0, -1, Number.MAX_SAFE_INTEGER + 1])(
+    '정답 ID %s는 유효한 저장 ID가 아니다',
+    (recordId) => {
+      expect(
+        parseGroundTruth(JSON.stringify([{ ...VALID, recordId }])),
+      ).toEqual({
+        truths: [],
+        rejected: 1,
+      });
+    },
+  );
+
+  it.each(['grinderRPM', 'grinderMaxDiameter', 'wheelMaxRPM', 'wheelDiameter'])(
+    '%s의 0·음수는 정답으로 받지 않는다',
+    (field) => {
+      for (const value of [0, -1]) {
+        expect(
+          parseGroundTruth(JSON.stringify([{ ...VALID, [field]: value }])),
+        ).toEqual({
+          truths: [],
+          rejected: 1,
+        });
+      }
+    },
+  );
+
   it('정상 배열을 읽는다', () => {
     const { truths, rejected } = parseGroundTruth(JSON.stringify([VALID]));
     expect(rejected).toBe(0);

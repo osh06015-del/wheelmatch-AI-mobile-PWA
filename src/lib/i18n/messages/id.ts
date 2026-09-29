@@ -23,6 +23,9 @@ export const id: Messages = {
   'home.grindingHint': 'Pekerjaan gerinda',
   'home.afterChoice':
     'Setelah memilih, foto pelat nama gerinda lebih dulu, lalu label batu gerinda.',
+  'home.startPrepFailed':
+    'Pemeriksaan baru tidak dimulai karena input pemeriksaan sebelumnya tidak dapat dihapus. Ini mencegah input lama tercampur ke pemeriksaan baru. Coba lagi.',
+  'home.startRetry': 'Coba lagi dengan pekerjaan {work}',
   'home.history': 'Lihat riwayat pemeriksaan →',
 
   'verdict.compatible': 'SPESIFIKASI COCOK',
@@ -372,6 +375,12 @@ export const id: Messages = {
     'Diperiksa {time} · model {model} · instruksi {version}',
   'photo.zoomOpen': 'Perbesar {label}',
   'photo.zoomClose': 'Tutup foto yang diperbesar',
+  'photo.zoomIn': 'Perbesar',
+  'photo.zoomOut': 'Perkecil',
+  'photo.zoomReset': 'Pas layar',
+  'photo.zoomViewport': 'Area geser foto yang diperbesar',
+  'photo.zoomHint':
+    'Geser untuk melihat bagian foto yang diperbesar. Dengan keyboard, fokuskan area foto lalu gunakan tombol panah. Memperbesar tidak menambah kejernihan foto.',
 
   'exam.block.captureReview':
     'Untuk foto dengan peringatan kualitas, ambil ulang atau pilih tetap gunakan sebelum menjalankan pemeriksaan.',
@@ -531,6 +540,8 @@ export const id: Messages = {
     'Pekerjaan hari ini adalah {work}. Aplikasi tidak memiliki dasar untuk memeriksa apakah jenis ini sesuai untuk pekerjaan itu. Periksa sendiri petunjuk pabrikan.',
   'reason.workPurpose.profileMismatch':
     'Pekerjaan hari ini ({work}) tidak termasuk pekerjaan yang diizinkan untuk jenis yang dipilih ({type}). Tidak dapat dinilai sampai jenis dan pekerjaan diperiksa ulang.',
+  'reason.workPurpose.notDeclared':
+    'Pekerjaan hari ini (memotong/menggerinda) belum dipilih. Tidak dapat dinilai sampai pekerjaan dipilih dan dicocokkan ulang.',
   'reason.wheelType.supportedProfile':
     'Jenis yang dikonfirmasi: {type}. Aplikasi membandingkan kecepatan dan diameter untuk jenis ini. Butir kondisi khusus jenis ini harus diperiksa pekerja sendiri.',
   'reason.expiry.noPolicy':
@@ -632,6 +643,10 @@ export const id: Messages = {
   'scan.wheel.failed': 'Gagal menganalisis label.',
   'scan.wheel.proceed': 'Konfirmasi lalu cocokkan spesifikasi',
   'scan.wheel.grinderFirst': 'Periksa kondisi gerinda terlebih dahulu.',
+  'scan.purposeFirst':
+    'Pilih pekerjaan hari ini (memotong/menggerinda) terlebih dahulu.',
+  'scan.photoCompareHint':
+    'Ketuk foto untuk memperbesar, lalu cocokkan sendiri apakah nilai di bawah sama dengan tulisan di foto. “Teks yang terbaca” juga dibaca oleh AI sehingga tidak bisa menjadi dasar pencocokan.',
 
   'camera.starting': 'Membuka kamera...',
   'camera.pickFromGallery': 'Pilih dari galeri',
@@ -961,6 +976,13 @@ export const id: Messages = {
     'Gerinda tersimpan: {valid} baru · {duplicate} dilewati (sudah ada) · {invalid} tidak valid',
   'backup.applyButton': 'Terapkan impor',
   'backup.cancelButton': 'Batal',
+  'backup.working': 'Memproses impor.',
+  'backup.operationFailed':
+    'Tidak dapat membaca file atau mengakses penyimpanan. Simpan file dan coba lagi. Item yang sudah ditambahkan akan dilewati sebagai duplikat.',
+  'backup.skippedAtApply':
+    'Melewati {count} item yang sudah ada saat impor tanpa menimpanya.',
+  'backup.failedAtApply':
+    'Tidak dapat menyimpan {count} item. Simpan cadangan, periksa ruang penyimpanan, lalu impor lagi. Item yang sudah ditambahkan akan dilewati sebagai duplikat.',
   'backup.applied':
     'Berhasil mengimpor {records} catatan pemeriksaan dan {saved} gerinda tersimpan.',
   'backup.errorTooLarge': 'Berkas terlalu besar.',
@@ -993,8 +1015,10 @@ export const id: Messages = {
   'research.truthEmpty':
     'Tidak ada nilai benar yang terbaca. Pastikan berkas berupa array JSON.',
   'research.truthUnreadable': 'Berkas nilai benar tidak dapat dibaca.',
+  'research.truthLoading': 'Membaca berkas nilai benar: {file}',
+  'research.truthSource': 'Berkas nilai benar yang dipilih: {file}',
   'research.truthRejected':
-    '{count} baris dikeluarkan karena formatnya salah. Periksa jumlah sampel.',
+    '{count} baris dikeluarkan karena format atau nilai tidak valid, atau ID duplikat. Semua baris dengan ID duplikat dikeluarkan. Periksa berkas dan jumlah sampel.',
   'metrics.title': 'Metrik evaluasi',
   'metrics.note':
     'Dihitung dari {count} catatan yang memiliki nilai benar. Akurasi pembacaan diukur dengan nilai OCR asli sebelum dikoreksi pengguna.',
@@ -1012,7 +1036,7 @@ export const id: Messages = {
     'Dari kolom yang memiliki nilai benar, porsi nilai OCR asli yang cocok.',
   'metrics.unitNormalization.name': 'Galat normalisasi satuan',
   'metrics.unitNormalization.definition':
-    'Dari catatan yang dikonversi dari m/s, porsi yang hasilnya berbeda dari nilai benar.',
+    'Dari catatan konversi yang memiliki RPM benar, porsi RPM hasil konversi pada OCR asli yang berbeda dari nilai benar. Nilai ini saja tidak dapat membedakan salah baca label dari kesalahan hitung konversi.',
   'metrics.falseSafeIds':
     'id catatan False-Safe: {ids} — analisis dan laporkan satu per satu. Jangan disembunyikan.',
 

@@ -67,8 +67,14 @@ interface FormState {
 export default function GrinderScanPage() {
   const router = useRouter();
   const { t } = useLocale();
-  const { setGrinder, setGrinderCondition, setCaptureCheck, setOfflineSlot } =
-    useInspection();
+  const {
+    declaredPurpose,
+    hydrating,
+    setGrinder,
+    setGrinderCondition,
+    setCaptureCheck,
+    setOfflineSlot,
+  } = useInspection();
 
   const [phase, setPhase] = useState<Phase>('capture');
   const [photo, setPhoto] = useState<Blob | null>(null);
@@ -103,6 +109,11 @@ export default function GrinderScanPage() {
   // 새로고침 경합 방지: 사용자가 이미 새 사진을 찍거나 직접 입력을 골랐으면
   // 뒤늦게 도착한 draft 복원을 적용하지 않는다.
   const actedRef = useRef(false);
+
+  const purposeReady = declaredPurpose !== null;
+  useEffect(() => {
+    if (!hydrating && !purposeReady) router.replace('/');
+  }, [hydrating, purposeReady, router]);
 
   // 확인 화면에서 수정 중인 입력값을 새로고침 넘어 복원한다. "다음"을 누르기
   // 전까지는 이 저장소에만 남는다 — 진행 중 점검 복구(draft)는 proceed() 이후의
@@ -343,6 +354,18 @@ export default function GrinderScanPage() {
     },
   ];
 
+  // 작업(절단/연삭)을 고르지 않았으면 작업 선택 화면으로 되돌린다. 이력 화면의
+  // "새 점검 시작"이나 주소 직접 입력으로 들어오면 작업 목적 대조 없이 규격이
+  // 대조됐다 — 같은 절단날이 연삭 작업에서는 부적합인데 작업 미선택이면 적합이었다.
+  // 리다이렉트가 걸리는 동안에도 촬영 화면을 열지 않는다(숫돌 화면과 같은 이유).
+  if (!purposeReady) {
+    return (
+      <main className="flex flex-1 items-center justify-center px-6">
+        <p className="text-lg text-slate-400">{t('scan.purposeFirst')}</p>
+      </main>
+    );
+  }
+
   if (phase === 'capture') {
     return (
       <main className="flex flex-1 flex-col">
@@ -442,6 +465,20 @@ export default function GrinderScanPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 px-6 py-6">
       <ScanHeader step="1 / 2" title={t('scan.grinder.title')} bare />
+      {/* 판독값을 사진과 같은 화면에서 대조한다. 「읽어낸 원문」은 AI가 읽은
+          글자라 오독을 잡는 근거가 되지 못한다 — 사진이 유일한 독립 근거다. */}
+      {photo && (
+        <div className="flex flex-col gap-2">
+          <ZoomablePhoto
+            blob={photo}
+            label={t('history.grinderPhoto')}
+            className="mx-auto w-full max-w-xs"
+          />
+          <p className="text-base leading-relaxed text-slate-400">
+            {t('scan.photoCompareHint')}
+          </p>
+        </div>
+      )}
       {offline && (
         <p
           role="status"

@@ -174,6 +174,7 @@ describe('Profile이 없는 종류', () => {
   it('Profile이 없는 종류는 엔진에서 판정불가로 끝난다 — 이전 동작 그대로', () => {
     for (const type of NO_PROFILE_TYPES) {
       const result = matchSpecs(grinder(), wheel({ wheelType: type }), {
+        declaredPurpose: 'cutting',
         profile: BONDED_ABRASIVE_PROFILE,
         today: '2026-09-17',
       });
@@ -455,7 +456,11 @@ describe('덮개 조건 — 조건 표와 최종 판정이 어긋나지 않는�
   /** 회전속도·지름·유효기한이 모두 맞는 결합숫돌 */
   const valid = () => wheel({ expiry: { year: 2099, month: 6 } });
   const run = (g: GrinderSpec, w: WheelSpec = valid()) =>
-    matchSpecs(g, w, { profile: BONDED_ABRASIVE_PROFILE, today: TODAY });
+    matchSpecs(g, w, {
+      declaredPurpose: 'cutting',
+      profile: BONDED_ABRASIVE_PROFILE,
+      today: TODAY,
+    });
   const guardCheck = (g: GrinderSpec, w: WheelSpec = valid()) =>
     run(g, w).checks.find((check) => check.rule === RULE.GUARD);
 
@@ -531,6 +536,7 @@ describe('덮개 조건 — 조건 표와 최종 판정이 어긋나지 않는�
       grinder({ spindleThread: 'M10' }),
       valid(),
       {
+        declaredPurpose: 'cutting',
         // 재료·건식/습식·회전방향·플랜지 정책을 바꿔도 엔진은 읽지 않는다.
         profile: profile({
           allowedMaterials: ['stone_concrete'],
@@ -552,7 +558,11 @@ describe('덮개 조건 — 조건 표와 최종 판정이 어긋나지 않는�
     const result = matchSpecs(
       grinder({ guardType: 'none', guardSize: 10 }),
       wheel({ wheelType: 'diamond', expiry: { year: 2099, month: 6 } }),
-      { profile: profileFor('diamond'), today: TODAY },
+      {
+        declaredPurpose: 'cutting',
+        profile: profileFor('diamond'),
+        today: TODAY,
+      },
     );
     expect(result.verdict).toBe('UNDETERMINED');
     expect(result.checks.some((check) => check.rule === RULE.GUARD)).toBe(
@@ -564,7 +574,11 @@ describe('덮개 조건 — 조건 표와 최종 판정이 어긋나지 않는�
     const result = matchSpecs(
       grinder(),
       wheel({ wheelType: 'flap_disc', expiry: { year: 2099, month: 6 } }),
-      { profile: BONDED_ABRASIVE_PROFILE, today: TODAY },
+      {
+        declaredPurpose: 'cutting',
+        profile: BONDED_ABRASIVE_PROFILE,
+        today: TODAY,
+      },
     );
     expect(result.verdict).toBe('UNDETERMINED');
     expect(
@@ -578,6 +592,7 @@ describe('덮개 조건 — 조건 표와 최종 판정이 어긋나지 않는�
 
   it('지원하지 않는 Profile(supported=false)은 판정불가다', () => {
     const result = matchSpecs(grinder(), valid(), {
+      declaredPurpose: 'cutting',
       profile: profile({ supported: false }),
       today: TODAY,
     });
@@ -586,12 +601,17 @@ describe('덮개 조건 — 조건 표와 최종 판정이 어긋나지 않는�
 
   it('Profile이 null이면 판정불가다 — 기본 Profile로 대신하지 않는다', () => {
     expect(
-      matchSpecs(grinder(), valid(), { profile: null, today: TODAY }).verdict,
+      matchSpecs(grinder(), valid(), {
+        declaredPurpose: 'cutting',
+        profile: null,
+        today: TODAY,
+      }).verdict,
     ).toBe('UNDETERMINED');
   });
 
   it('덮개가 필요 없다는 근거가 있는 Profile은 덮개 항목을 만들지 않는다', () => {
     const result = matchSpecs(grinder({ guardType: 'none' }), valid(), {
+      declaredPurpose: 'cutting',
       profile: profile({
         equipment: {
           ...BONDED_ABRASIVE_PROFILE.equipment,
@@ -611,6 +631,7 @@ describe('덮개 조건 — 조건 표와 최종 판정이 어긋나지 않는�
       equipment: { ...BONDED_ABRASIVE_PROFILE.equipment, guard: 'advisory' },
     });
     const result = matchSpecs(grinder({ guardType: 'none' }), valid(), {
+      declaredPurpose: 'cutting',
       profile: advisory,
       today: TODAY,
     });
@@ -686,8 +707,11 @@ describe('Profile 필드 사용 구분', () => {
     const TODAY = '2026-09-17';
     const w = wheel({ expiry: { year: 2099, month: 6 } });
     const verdict = (g: GrinderSpec, ws: WheelSpec = w) =>
-      matchSpecs(g, ws, { profile: BONDED_ABRASIVE_PROFILE, today: TODAY })
-        .verdict;
+      matchSpecs(g, ws, {
+        declaredPurpose: 'cutting',
+        profile: BONDED_ABRASIVE_PROFILE,
+        today: TODAY,
+      }).verdict;
     expect(verdict(grinder())).toBe('COMPATIBLE');
     // specs.rpm
     expect(verdict(grinder({ noLoadRPM: 13000 }))).not.toBe('COMPATIBLE');

@@ -117,7 +117,9 @@ export default function ResultPage() {
   useEffect(() => {
     if (saved) return;
     if (hydrating) return;
-    if (!grinder) router.replace('/');
+    // 작업을 고르지 않은 점검은 결과를 보여주지 않고 작업 선택으로 되돌린다.
+    // 엔진도 판정불가로 막지만(workPurpose.notDeclared), 화면에서 먼저 막는다.
+    if (declaredPurpose === null || !grinder) router.replace('/');
     else if (!isGrinderConditionComplete(grinderCondition)) {
       // 장비 상태를 확인하지 않았으면 숫돌이 아니라 1단계로 되돌린다.
       router.replace('/scan/grinder');
@@ -133,6 +135,7 @@ export default function ResultPage() {
   }, [
     saved,
     hydrating,
+    declaredPurpose,
     grinder,
     wheel,
     grinderCondition,
@@ -162,6 +165,7 @@ export default function ResultPage() {
   );
 
   if (
+    declaredPurpose === null ||
     !grinder ||
     !wheel ||
     !result ||

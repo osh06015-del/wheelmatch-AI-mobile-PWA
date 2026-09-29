@@ -171,7 +171,11 @@ beforeEach(() => {
   formRemove.mockReset();
   extractWheel.mockResolvedValue(OCR);
   const result = store();
-  act(() => result.current.reset());
+  act(() => {
+    result.current.reset();
+    // 실제 흐름은 작업 선택 화면에서 시작한다. 작업 미선택은 따로 잰다.
+    result.current.setPurpose('cutting');
+  });
 });
 
 describe('숫돌 확인 화면 — 입력 draft 복구', () => {
@@ -203,6 +207,10 @@ describe('숫돌 확인 화면 — 입력 draft 복구', () => {
     await screen.findByText('읽어낸 값을 확인하세요');
     expect(screen.getByDisplayValue('12200')).toBeInTheDocument();
     expect(screen.getByDisplayValue('125')).toBeInTheDocument();
+    // 판독값을 대조할 사진이 같은 화면에 있다(확대 가능).
+    expect(
+      screen.getByRole('button', { name: '숫돌 라벨 크게 보기' }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: '확인 후 규격 대조' }),
     ).toBeDisabled();

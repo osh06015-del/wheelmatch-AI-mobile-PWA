@@ -20,6 +20,9 @@ export const en: Messages = {
   'home.grindingHint': 'Grinding and sanding',
   'home.afterChoice':
     'After you choose, photograph the grinder nameplate, then the wheel label.',
+  'home.startPrepFailed':
+    'The new inspection was not started because the previous inspection’s input could not be cleared. This keeps old input out of the new inspection. Please try again.',
+  'home.startRetry': 'Try again with {work}',
   'home.history': 'View inspection history →',
 
   'verdict.compatible': 'SPECS MATCH',
@@ -359,6 +362,12 @@ export const en: Messages = {
   'exam.evidence.meta': 'Checked {time} · model {model} · prompt {version}',
   'photo.zoomOpen': 'Enlarge {label}',
   'photo.zoomClose': 'Close the enlarged photo',
+  'photo.zoomIn': 'Zoom in',
+  'photo.zoomOut': 'Zoom out',
+  'photo.zoomReset': 'Fit',
+  'photo.zoomViewport': 'Scrollable enlarged photo',
+  'photo.zoomHint':
+    'Swipe to move around the enlarged photo. With a keyboard, focus the photo area and use the arrow keys. Zooming does not improve image clarity.',
 
   'exam.block.captureReview':
     'For photos with a photo-quality warning, retake them or choose to use them anyway before running the check.',
@@ -517,6 +526,8 @@ export const en: Messages = {
     'Today’s work is {work}. The app has no basis to check whether this type suits that work. Check the manufacturer instructions yourself.',
   'reason.workPurpose.profileMismatch':
     'Today’s work ({work}) is not among the allowed work for the selected type ({type}). The specs cannot be judged until the type and the work are checked again.',
+  'reason.workPurpose.notDeclared':
+    'Today’s work (cutting/grinding) was not selected. The specs cannot be judged until the work is selected and checked again.',
   'reason.wheelType.supportedProfile':
     'Confirmed type: {type}. The app compares speed and diameter for this type. The type-specific condition items must be checked by the worker.',
   'reason.expiry.noPolicy':
@@ -615,6 +626,9 @@ export const en: Messages = {
   'scan.wheel.failed': 'Could not read the label.',
   'scan.wheel.proceed': 'Confirm and compare specifications',
   'scan.wheel.grinderFirst': 'Check the grinder condition first.',
+  'scan.purposeFirst': 'Select today’s work (cutting/grinding) first.',
+  'scan.photoCompareHint':
+    'Tap the photo to enlarge it, then check that the values below match what is printed in the photo. The “read text” is also what the AI read, so it cannot serve as proof.',
 
   'camera.starting': 'Opening the camera...',
   'camera.pickFromGallery': 'Choose from gallery',
@@ -942,6 +956,13 @@ export const en: Messages = {
     'Saved grinders: {valid} new · {duplicate} skipped (already exist) · {invalid} invalid',
   'backup.applyButton': 'Apply import',
   'backup.cancelButton': 'Cancel',
+  'backup.working': 'Processing import.',
+  'backup.operationFailed':
+    'Could not read the file or access storage. Keep the file and retry. Items already added will be skipped as duplicates.',
+  'backup.skippedAtApply':
+    'Skipped {count} items already present at import time without overwriting them.',
+  'backup.failedAtApply':
+    'Could not save {count} items. Keep the backup, check available storage, then import again. Items already added will be skipped as duplicates.',
   'backup.applied':
     'Imported {records} inspection records and {saved} saved grinders.',
   'backup.errorTooLarge': 'The file is too large.',
@@ -974,8 +995,10 @@ export const en: Messages = {
   'research.truthEmpty':
     'No ground truth entries were read. Check that the file is a JSON array.',
   'research.truthUnreadable': 'The ground truth file could not be read.',
+  'research.truthLoading': 'Reading ground truth file: {file}',
+  'research.truthSource': 'Selected ground truth file: {file}',
   'research.truthRejected':
-    '{count} line(s) were excluded because of their format. Check the sample size.',
+    '{count} row(s) were excluded for invalid format, values, or duplicate IDs. All rows with duplicate IDs are excluded. Check the file and sample size.',
   'metrics.title': 'Evaluation metrics',
   'metrics.note':
     'Calculated from {count} record(s) with ground truth. Reading accuracy uses the original OCR values before any user correction.',
@@ -993,7 +1016,7 @@ export const en: Messages = {
     'Of the fields with ground truth, the share where the original OCR value matched.',
   'metrics.unitNormalization.name': 'Unit normalisation errors',
   'metrics.unitNormalization.definition':
-    'Of the records converted from m/s, the share whose result differs from the ground truth.',
+    'Of the converted records that have a ground-truth RPM, the share whose converted RPM in the original OCR differs from the ground truth. This value alone cannot tell a misread label from a conversion error.',
   'metrics.falseSafeIds':
     'False-safe record ids: {ids} — analyse and report each one. Do not hide them.',
 

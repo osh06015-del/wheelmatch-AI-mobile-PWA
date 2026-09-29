@@ -168,7 +168,11 @@ beforeEach(() => {
   measureCapture.mockResolvedValue(CLEAN);
   extractGrinder.mockResolvedValue(OCR);
   const result = store();
-  act(() => result.current.reset());
+  act(() => {
+    result.current.reset();
+    // 실제 흐름은 작업 선택 화면에서 시작한다. 작업 미선택은 따로 잰다.
+    result.current.setPurpose('cutting');
+  });
 });
 
 async function goToConfirm() {

@@ -22,6 +22,9 @@ export const zh: Messages = {
   'home.grinding': '打磨',
   'home.grindingHint': '打磨作业',
   'home.afterChoice': '选择后，先拍角磨机铭牌，再拍砂轮标签。',
+  'home.startPrepFailed':
+    '未能清除上一次点检的输入，因此没有开始新的点检。这是为了防止旧输入混入新点检。请重试。',
+  'home.startRetry': '以{work}作业重试',
   'home.history': '查看检查记录 →',
 
   'verdict.compatible': '规格相符',
@@ -312,6 +315,12 @@ export const zh: Messages = {
   'exam.evidence.meta': '确认 {time} · 模型 {model} · 指令 {version}',
   'photo.zoomOpen': '放大查看{label}',
   'photo.zoomClose': '关闭放大查看',
+  'photo.zoomIn': '放大',
+  'photo.zoomOut': '缩小',
+  'photo.zoomReset': '适应屏幕',
+  'photo.zoomViewport': '放大照片滚动区域',
+  'photo.zoomHint':
+    '滑动可移动放大的照片。使用键盘时，将焦点移至照片区域，再用方向键移动。放大不会提高照片清晰度。',
 
   'exam.block.captureReview':
     '有照片质量警告的照片，需要重新拍摄或选择仍然使用后，才能进行确认。',
@@ -454,6 +463,8 @@ export const zh: Messages = {
     '今天的作业是{work}。应用没有依据核对此类型是否适合该作业。请亲自查看制造商说明书。',
   'reason.workPurpose.profileMismatch':
     '今天的作业（{work}）不在所选类型（{type}）的允许作业范围内。在重新核对类型和作业之前无法判定。',
+  'reason.workPurpose.notDeclared':
+    '尚未选择今天的作业（切割/磨削）。在选择作业并重新核对之前无法判定。',
   'reason.wheelType.supportedProfile':
     '已确认类型：{type}。应用会对照此类型的转速和直径。该类型特有的状态项目须由作业者亲自确认。',
   'reason.expiry.noPolicy':
@@ -537,6 +548,9 @@ export const zh: Messages = {
   'scan.wheel.failed': '标签分析失败。',
   'scan.wheel.proceed': '确认后核对规格',
   'scan.wheel.grinderFirst': '请先确认角磨机状态。',
+  'scan.purposeFirst': '请先选择今天的作业（切割/磨削）。',
+  'scan.photoCompareHint':
+    '点击照片放大后，亲自核对下方数值是否与照片中的标示一致。「识别原文」也是AI读取的文字，不能作为核对依据。',
 
   'camera.starting': '正在打开相机...',
   'camera.pickFromGallery': '从相册选择',
@@ -829,6 +843,12 @@ export const zh: Messages = {
     '已保存的砂轮机：新增 {valid} 件 · 已存在跳过 {duplicate} 件 · 无效 {invalid} 件',
   'backup.applyButton': '应用导入',
   'backup.cancelButton': '取消',
+  'backup.working': '正在处理导入。',
+  'backup.operationFailed':
+    '无法读取文件或访问存储。请保留文件并重试。已添加的项目会作为重复项跳过。',
+  'backup.skippedAtApply': '应用导入时已有的 {count} 项已跳过，未覆盖。',
+  'backup.failedAtApply':
+    '有 {count} 项未能保存。请保留备份，检查存储空间后重新导入。已添加的项目会作为重复项跳过。',
   'backup.applied': '已导入点检记录 {records} 件、已保存砂轮机 {saved} 件。',
   'backup.errorTooLarge': '文件过大。',
   'backup.errorNotJson': '无法读取 JSON 文件，文件已损坏。',
@@ -855,7 +875,10 @@ export const zh: Messages = {
     '拍摄前亲自读取并记下的数值。需要它才能计算指标。应用不会生成标准答案。',
   'research.truthEmpty': '未读取到标准答案。请确认文件是否为 JSON 数组。',
   'research.truthUnreadable': '无法读取标准答案文件。',
-  'research.truthRejected': '因格式不符排除了 {count} 行。请确认样本数。',
+  'research.truthLoading': '正在读取标准答案文件：{file}',
+  'research.truthSource': '所选标准答案文件：{file}',
+  'research.truthRejected':
+    '因格式或数值无效、或 ID 重复排除了 {count} 行。重复 ID 的所有行均被排除。请检查文件和样本数。',
   'metrics.title': '评估指标',
   'metrics.note':
     '根据 {count} 条含标准答案的记录计算。识别准确度以用户修改前的 OCR 原始值衡量。',
@@ -873,7 +896,7 @@ export const zh: Messages = {
     '有标准答案的字段中，OCR 原始值与标准答案一致的比例。',
   'metrics.unitNormalization.name': '单位换算错误',
   'metrics.unitNormalization.definition':
-    '由 m/s 换算的记录中，结果与标准答案不同的比例。',
+    '在有标准答案 RPM 的换算记录中，OCR 原始值换算出的 RPM 与标准答案不同的比例。仅凭此值无法区分标签误读与换算计算错误。',
   'metrics.falseSafeIds':
     'False-Safe 记录 id：{ids} — 请逐条分析并报告，不得隐瞒。',
 

@@ -131,7 +131,11 @@ describe('숫돌 촬영 화면 — Grinder Condition Gate 우회 차단', () => 
     replace.mockClear();
     push.mockClear();
     const result = store();
-    act(() => result.current.reset());
+    act(() => {
+      result.current.reset();
+      // 실제 흐름은 작업 선택 화면에서 시작한다. 작업 미선택은 따로 잰다.
+      result.current.setPurpose('cutting');
+    });
   });
 
   it('그라인더 값이 없으면 촬영 화면을 열지 않는다', () => {
@@ -180,6 +184,24 @@ describe('숫돌 촬영 화면 — Grinder Condition Gate 우회 차단', () => 
     expect(replace).toHaveBeenCalledWith('/scan/grinder');
   });
 
+  it('작업(절단/연삭)을 고르지 않았으면 그라인더가 준비돼 있어도 작업 선택으로 돌린다', () => {
+    const result = store();
+    act(() => {
+      result.current.reset();
+      result.current.setGrinder(GRINDER);
+      result.current.setGrinderCondition(CONFIRMED);
+    });
+
+    render(<WheelScanPage />);
+
+    expect(
+      screen.getByText('오늘 할 작업(절단/연삭)을 먼저 고르세요.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('숫돌 라벨 촬영')).not.toBeInTheDocument();
+    expect(replace).toHaveBeenCalledWith('/');
+    expect(replace).not.toHaveBeenCalledWith('/scan/grinder');
+  });
+
   it('다섯 항목을 모두 확인했을 때만 촬영 화면이 열린다', () => {
     // 위 네 개만으로는 "항상 막는" 버그를 잡지 못한다.
     const result = store();
@@ -217,7 +239,11 @@ describe('숫돌 촬영 화면 — 숫돌 종류 직접 확인', () => {
     push.mockClear();
     extractWheel.mockReset();
     const result = store();
-    act(() => result.current.reset());
+    act(() => {
+      result.current.reset();
+      // 실제 흐름은 작업 선택 화면에서 시작한다. 작업 미선택은 따로 잰다.
+      result.current.setPurpose('cutting');
+    });
   });
 
   /** 그라인더 Gate를 통과하고 사진을 골라 값 확인 화면까지 연다. */
@@ -460,7 +486,11 @@ describe('숫돌 촬영 화면 — 다각도 외관 이상 징후 확인', () =>
     extractWheel.mockReset();
     examine.mockReset();
     const result = store();
-    act(() => result.current.reset());
+    act(() => {
+      result.current.reset();
+      // 실제 흐름은 작업 선택 화면에서 시작한다. 작업 미선택은 따로 잰다.
+      result.current.setPurpose('cutting');
+    });
   });
 
   /** 그라인더 Gate를 통과하고 사진을 골라 값 확인 화면까지 연다. */
@@ -777,7 +807,11 @@ describe('숫돌 촬영 화면 — 종류별 상태 확인 항목', () => {
     push.mockClear();
     extractWheel.mockReset();
     const result = store();
-    act(() => result.current.reset());
+    act(() => {
+      result.current.reset();
+      // 실제 흐름은 작업 선택 화면에서 시작한다. 작업 미선택은 따로 잰다.
+      result.current.setPurpose('cutting');
+    });
   });
 
   async function openConfirm(ocr: WheelSpec) {
@@ -863,7 +897,11 @@ describe('숫돌 촬영 화면 — 오프라인 제한 대조로 직접 입력',
     push.mockClear();
     extractWheel.mockReset();
     const result = store();
-    act(() => result.current.reset());
+    act(() => {
+      result.current.reset();
+      // 실제 흐름은 작업 선택 화면에서 시작한다. 작업 미선택은 따로 잰다.
+      result.current.setPurpose('cutting');
+    });
   });
 
   async function openFailure(error: unknown) {

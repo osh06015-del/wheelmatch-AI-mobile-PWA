@@ -39,8 +39,11 @@ function memoryTable(
   return {
     rows,
     toArray: vi.fn(async () => [...rows.values()]),
-    add: vi.fn(async (value: NewSavedGrinder) => {
-      const id = nextId++;
+    add: vi.fn(async (value: NewSavedGrinder & { id?: number }) => {
+      const id = value.id ?? nextId++;
+      if (rows.has(id))
+        throw new DOMException('Duplicate ID', 'ConstraintError');
+      nextId = Math.max(nextId, id + 1);
       rows.set(id, { ...value, id });
       return id;
     }),
@@ -94,6 +97,27 @@ describe('저장된 그라인더 데이터베이스 — 다른 저장소와 분�
 });
 
 describe('저장된 그라인더 저장소 — 저장/선택/수정/삭제', () => {
+  it('백업 삽입은 같은 ID의 기존 값을 절대 덮어쓰지 않는다', async () => {
+    const table = memoryTable([row()]);
+    const store = createSavedGrinderStore(() => table);
+    expect(await store.insert(row({ alias: '덮어쓰기 시도' }))).toBe(
+      'duplicate',
+    );
+    expect(await store.list()).toEqual([row()]);
+    expect(table.put).not.toHaveBeenCalled();
+    expect(await store.insert(row({ id: 2 }))).toBe('added');
+    expect(await store.list()).toHaveLength(2);
+  });
+
+  it('백업 삽입에서 사용할 수 없는 DB와 쓰기 오류는 실패로 구분한다', async () => {
+    expect(await createSavedGrinderStore(() => null).insert(row())).toBe(
+      'failed',
+    );
+    expect(
+      await createSavedGrinderStore(() => throwingTable()).insert(row()),
+    ).toBe('failed');
+  });
+
   it('현재 값을 저장하면 id를 받고 목록에서 별칭으로 정렬돼 보인다', async () => {
     const table = memoryTable();
     const store = createSavedGrinderStore(() => table);

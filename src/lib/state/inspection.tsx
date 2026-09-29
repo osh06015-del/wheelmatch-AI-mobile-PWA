@@ -221,8 +221,14 @@ function writeStored(key: string, value: unknown): void {
 
 function initialClientState(): InspectionState {
   if (typeof window === 'undefined') return SERVER_SNAPSHOT;
+  // 타입 선언은 브라우저 저장값을 검증하지 않는다. 지원하는 작업만 복원해야
+  // 손상된 값이 화면의 작업 선택 완료 조건(null 여부)을 통과하지 않는다.
+  const storedPurpose = readStored<unknown>(PURPOSE_KEY);
   return {
-    declaredPurpose: readStored<WorkPurpose>(PURPOSE_KEY),
+    declaredPurpose:
+      storedPurpose === 'cutting' || storedPurpose === 'grinding'
+        ? storedPurpose
+        : null,
     startedAt: readStored<number>(STARTED_KEY),
     workConditions: readStored<WorkConditions>(WORK_CONDITIONS_KEY),
     grinder: readStored<GrinderSpec>(GRINDER_KEY),

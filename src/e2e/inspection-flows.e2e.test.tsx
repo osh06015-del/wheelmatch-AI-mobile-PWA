@@ -341,6 +341,31 @@ describe('점검 흐름 E2E — 결과까지', () => {
 });
 
 describe('점검 흐름 E2E — Gate와 시험운전', () => {
+  it('작업 선택 우회 — 이력의 새 점검 시작·주소 직접 입력 모두 작업 선택 화면으로 돌아간다', async () => {
+    // 운영판에서 보고된 결함의 회귀 테스트다. 이력 화면의 "새 점검 시작"이 촬영
+    // 화면으로 바로 보내, 작업 목적 대조 없이 규격만 맞으면 적합이 나왔다.
+    const f = inspector('ko');
+    await mountApp(new FixtureExtractor().grinder(GRINDER));
+    await f.user.click(screen.getByRole('link', { name: f.t('home.history') }));
+    await f.atPath('/history');
+
+    await f.user.click(
+      await screen.findByRole('link', { name: f.t('history.newInspection') }),
+    );
+    await f.atPath('/');
+    expect(
+      screen.getByRole('heading', { name: f.t('home.question') }),
+    ).toBeInTheDocument();
+
+    // 주소로 촬영·결과 화면에 직접 들어와도 작업을 고르기 전에는 되돌린다.
+    visit('/scan/grinder');
+    await f.atPath('/');
+    visit('/scan/wheel');
+    await f.atPath('/');
+    visit('/result');
+    await f.atPath('/');
+  });
+
   it('Grinder Condition 미완료 — 숫돌 촬영으로 넘어가지 못하고, 주소로 건너뛰어도 되돌린다', async () => {
     const f = inspector('ko');
     await mountApp(new FixtureExtractor().grinder(GRINDER));

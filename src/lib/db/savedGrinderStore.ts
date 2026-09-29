@@ -50,6 +50,8 @@ export interface SavedGrinderStore {
   add(row: NewSavedGrinder): Promise<number | null>;
   /** 기존 항목을 덮어쓴다. 성공하면 true */
   update(row: SavedGrinder): Promise<boolean>;
+  /** 백업 전용. 같은 ID를 덮어쓰지 않고 삽입 결과를 구분한다. */
+  insert(row: SavedGrinder): Promise<'added' | 'duplicate' | 'failed'>;
   /** 성공적으로 지웠으면 true */
   remove(id: number): Promise<boolean>;
 }
@@ -96,6 +98,19 @@ export function createSavedGrinderStore(
         return true;
       } catch {
         return false;
+      }
+    },
+
+    async insert(row) {
+      const table = openTable();
+      if (!table) return 'failed';
+      try {
+        await table.add(row);
+        return 'added';
+      } catch (error) {
+        return error instanceof Error && error.name === 'ConstraintError'
+          ? 'duplicate'
+          : 'failed';
       }
     },
 

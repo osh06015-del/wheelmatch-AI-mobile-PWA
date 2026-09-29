@@ -20,6 +20,9 @@ export const ko = {
   'home.grinding': '연삭',
   'home.grindingHint': '갈기·연마',
   'home.afterChoice': '작업을 고르면 명판 → 숫돌 라벨 순서로 촬영합니다.',
+  'home.startPrepFailed':
+    '이전 점검의 입력값을 정리하지 못해 새 점검을 시작하지 않았습니다. 이전 입력이 새 점검에 섞이지 않게 하기 위해서입니다. 다시 시도하세요.',
+  'home.startRetry': '{work} 작업으로 다시 시도',
   'home.history': '점검 이력 보기 →',
 
   'verdict.compatible': '적합',
@@ -344,6 +347,12 @@ export const ko = {
   'exam.evidence.meta': '확인 {time} · 모델 {model} · 지시문 {version}',
   'photo.zoomOpen': '{label} 크게 보기',
   'photo.zoomClose': '크게 보기 닫기',
+  'photo.zoomIn': '확대',
+  'photo.zoomOut': '축소',
+  'photo.zoomReset': '화면 맞춤',
+  'photo.zoomViewport': '확대 사진 이동 영역',
+  'photo.zoomHint':
+    '확대한 사진은 손가락으로 밀어 이동하세요. 키보드에서는 사진 영역에 초점을 두고 방향키로 이동할 수 있습니다. 확대는 사진의 선명도를 높이지 않습니다.',
 
   'exam.block.captureReview':
     '사진 상태 경고가 있는 사진은 다시 찍거나 그래도 사용을 골라야 확인하기를 할 수 있습니다.',
@@ -498,6 +507,8 @@ export const ko = {
     '오늘 작업은 {work}입니다. 이 종류에 맞는 작업인지 대조할 근거가 이 앱에 없습니다. 제조사 취급설명서로 직접 확인하세요.',
   'reason.workPurpose.profileMismatch':
     '오늘 작업({work})이 고른 종류({type})의 허용 작업에 들지 않습니다. 종류 선택과 작업을 다시 확인하기 전에는 판정할 수 없습니다.',
+  'reason.workPurpose.notDeclared':
+    '오늘 할 작업(절단/연삭)을 고르지 않았습니다. 작업을 고른 뒤 다시 대조하기 전에는 판정할 수 없습니다.',
   'reason.wheelType.supportedProfile':
     '확인된 종류: {type}. 이 앱이 회전속도·지름을 대조하는 종류입니다. 종류별 상태 확인 항목은 작업자가 직접 확인해야 합니다.',
   'reason.expiry.noPolicy':
@@ -593,6 +604,9 @@ export const ko = {
   'scan.wheel.failed': '라벨 분석에 실패했습니다.',
   'scan.wheel.proceed': '확인 후 규격 대조',
   'scan.wheel.grinderFirst': '그라인더 상태 확인이 먼저입니다.',
+  'scan.purposeFirst': '오늘 할 작업(절단/연삭)을 먼저 고르세요.',
+  'scan.photoCompareHint':
+    '사진을 눌러 크게 본 뒤, 아래 값이 사진 속 표기와 같은지 직접 대조하세요. 「읽어낸 원문」도 AI가 읽은 글자라 대조 근거가 되지 않습니다.',
 
   'camera.starting': '카메라를 여는 중입니다...',
   'camera.pickFromGallery': '갤러리에서 선택',
@@ -908,6 +922,13 @@ export const ko = {
     '저장된 그라인더: 새로 추가 {valid}건 · 이미 있어 건너뜀 {duplicate}건 · 무효 {invalid}건',
   'backup.applyButton': '가져오기 적용',
   'backup.cancelButton': '취소',
+  'backup.working': '가져오기를 처리하고 있습니다.',
+  'backup.operationFailed':
+    '파일 읽기 또는 저장소 접근에 실패했습니다. 파일을 보관하고 다시 시도하세요. 이미 추가된 항목은 중복으로 건너뜁니다.',
+  'backup.skippedAtApply':
+    '적용 시 이미 있던 {count}건은 덮어쓰지 않고 건너뛰었습니다.',
+  'backup.failedAtApply':
+    '{count}건을 저장하지 못했습니다. 백업 파일을 보관하고 저장공간을 확인한 뒤 다시 가져오세요. 이미 추가된 항목은 중복으로 건너뜁니다.',
   'backup.applied':
     '점검 기록 {records}건, 저장된 그라인더 {saved}건을 가져왔습니다.',
   'backup.errorTooLarge': '파일이 너무 큽니다.',
@@ -940,8 +961,10 @@ export const ko = {
   'research.truthEmpty':
     '읽어낸 정답이 없습니다. JSON 배열 형식인지 확인하세요.',
   'research.truthUnreadable': '정답 파일을 읽지 못했습니다.',
+  'research.truthLoading': '정답 파일 읽는 중: {file}',
+  'research.truthSource': '선택한 정답 파일: {file}',
   'research.truthRejected':
-    '형식이 맞지 않아 {count}줄을 제외했습니다. 표본 수를 확인하세요.',
+    '형식·값이 잘못되었거나 ID가 중복된 {count}줄을 제외했습니다. 중복 ID는 모두 제외합니다. 파일과 표본 수를 확인하세요.',
   'metrics.title': '평가 지표',
   'metrics.note':
     '정답을 넣은 기록 {count}건으로 계산했습니다. 인식 정확도는 사용자가 고치기 전의 OCR 원본값으로 잽니다.',
@@ -959,7 +982,7 @@ export const ko = {
     '정답이 있는 필드 중 OCR 원본값이 정답과 맞은 비율.',
   'metrics.unitNormalization.name': '단위 정규화 오류',
   'metrics.unitNormalization.definition':
-    'm/s에서 환산한 기록 중 결과가 정답과 다른 비율.',
+    '정답 RPM이 있는 환산 기록 중, OCR 원본의 환산 RPM이 정답과 다른 비율. 이 값만으로는 라벨 오독과 환산 계산 오류를 구분할 수 없습니다.',
   'metrics.falseSafeIds':
     'False-Safe 기록 id: {ids} — 개별로 분석해 보고하세요. 숨기지 않습니다.',
 

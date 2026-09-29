@@ -9,7 +9,7 @@
 // 평소에는 스위치만 보이고, 켜야 CSV 내려받기가 나온다.
 // 현장에서 쓰는 사람이 실수로 눌러도 데이터가 지워지지 않는 기능들이다.
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { MetricsPanel } from './MetricsPanel';
 import { useLocale, type MessageKey } from '@/lib/i18n';
@@ -24,24 +24,39 @@ export function ResearchPanel({ records }: { records: InspectionRecord[] }) {
   const [enabled, setEnabled] = useResearchMode();
   // 문장 대신 문구 키를 둔다. 문장은 그릴 때 고른 언어로 만든다.
   const [error, setError] = useState<MessageKey | null>(null);
+  const [truthError, setTruthError] = useState<MessageKey | null>(null);
   const [truths, setTruths] = useState<GroundTruth[]>([]);
   const [rejected, setRejected] = useState(0);
+  const [truthFilename, setTruthFilename] = useState<string | null>(null);
+  const [truthLoading, setTruthLoading] = useState(false);
+  const truthRequest = useRef(0);
   // 방금 내려받은 CSV가 몇 건을 담았는지. 버튼 문구는 누르기 전 예상 건수이고,
   // 이건 실제로 내보낸 뒤의 확인이다 — 상한 없이 전체를 내보냈다는 것을 명시한다.
   const [exportedCount, setExportedCount] = useState<number | null>(null);
 
   // 정답은 앱이 만들 수 없다. 촬영 전에 사람이 적어둔 것을 읽어 들이기만 한다.
   async function loadTruth(file: File) {
-    setError(null);
+    // 파일 교체 중·실패 후에도 이전 표본의 지표가 남으면 새 파일의 결과로 오해한다.
+    // 읽기 완료 순서가 아니라 마지막으로 선택한 파일만 평가에 쓴다.
+    const request = ++truthRequest.current;
+    setTruths([]);
+    setRejected(0);
+    setTruthError(null);
+    setTruthFilename(file.name);
+    setTruthLoading(true);
     try {
       const parsed = parseGroundTruth(await file.text());
+      if (request !== truthRequest.current) return;
       setTruths(parsed.truths);
       setRejected(parsed.rejected);
       if (parsed.truths.length === 0) {
-        setError('research.truthEmpty');
+        setTruthError('research.truthEmpty');
       }
     } catch {
-      setError('research.truthUnreadable');
+      if (request === truthRequest.current)
+        setTruthError('research.truthUnreadable');
+    } finally {
+      if (request === truthRequest.current) setTruthLoading(false);
     }
   }
 
@@ -132,10 +147,22 @@ export function ResearchPanel({ records }: { records: InspectionRecord[] }) {
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (file) void loadTruth(file);
+                // 실패한 파일을 고친 뒤 같은 이름으로 다시 선택해도 change가 발생한다.
+                event.target.value = '';
               }}
               className="min-h-12 text-base text-slate-300"
             />
           </label>
+          {truthFilename !== null && (
+            <p role="status" className="break-all text-sm text-slate-300">
+              {t(
+                truthLoading ? 'research.truthLoading' : 'research.truthSource',
+                {
+                  file: truthFilename,
+                },
+              )}
+            </p>
+          )}
           {rejected > 0 && (
             <p className="text-base text-yellow-200">
               {t('research.truthRejected', { count: rejected })}
@@ -144,7 +171,16 @@ export function ResearchPanel({ records }: { records: InspectionRecord[] }) {
 
           <MetricsPanel records={records} truths={truths} />
 
-          {error && <p className="text-base text-red-300">{t(error)}</p>}
+          {truthError && (
+            <p role="alert" className="text-base text-red-300">
+              {t(truthError)}
+            </p>
+          )}
+          {error && (
+            <p role="alert" className="text-base text-red-300">
+              {t(error)}
+            </p>
+          )}
         </>
       )}
     </section>

@@ -251,11 +251,15 @@ export default function WheelScanPage() {
 
   // 그라인더를 찍지 않았거나 장비 상태를 직접 확인하지 않은 경우 1단계로 되돌린다.
   // 화면 이동으로 Gate를 건너뛸 수 있으면 Gate가 아니다.
+  // 작업을 고르지 않았으면 명판보다 먼저 작업 선택으로 되돌린다(명판 화면과 같은 이유).
+  const purposeReady = declaredPurpose !== null;
   const grinderReady =
     grinder !== null && isGrinderConditionComplete(grinderCondition);
   useEffect(() => {
-    if (!hydrating && !grinderReady) router.replace('/scan/grinder');
-  }, [hydrating, grinderReady, router]);
+    if (hydrating) return;
+    if (!purposeReady) router.replace('/');
+    else if (!grinderReady) router.replace('/scan/grinder');
+  }, [hydrating, purposeReady, grinderReady, router]);
 
   // AI가 본 종류와 작업자가 고른 종류가 다르면 둘 중 하나가 틀렸다. 어느 쪽인지
   // 앱은 모르므로, 작업자가 실물을 다시 보고 직접 확인을 체크해야 넘어간다.
@@ -641,10 +645,12 @@ export default function WheelScanPage() {
 
   // 리다이렉트가 걸리는 동안에도 촬영 화면을 열어주지 않는다.
   // effect만 믿으면 한 프레임 동안 Gate 뒤가 보이고, 그 사이에 촬영이 시작된다.
-  if (!grinderReady) {
+  if (!purposeReady || !grinderReady) {
     return (
       <main className="flex flex-1 items-center justify-center px-6">
-        <p className="text-lg text-slate-400">{t('scan.wheel.grinderFirst')}</p>
+        <p className="text-lg text-slate-400">
+          {t(purposeReady ? 'scan.wheel.grinderFirst' : 'scan.purposeFirst')}
+        </p>
       </main>
     );
   }
@@ -755,6 +761,20 @@ export default function WheelScanPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 px-6 py-6">
       <ScanHeader step="2 / 2" title={t('scan.wheel.title')} bare />
+      {/* 판독값을 사진과 같은 화면에서 대조한다. 「읽어낸 원문」은 AI가 읽은
+          글자라 오독을 잡는 근거가 되지 못한다 — 사진이 유일한 독립 근거다. */}
+      {photo && (
+        <div className="flex flex-col gap-2">
+          <ZoomablePhoto
+            blob={photo}
+            label={t('history.wheelPhoto')}
+            className="mx-auto w-full max-w-xs"
+          />
+          <p className="text-base leading-relaxed text-slate-400">
+            {t('scan.photoCompareHint')}
+          </p>
+        </div>
+      )}
       {offline && (
         <p
           role="status"

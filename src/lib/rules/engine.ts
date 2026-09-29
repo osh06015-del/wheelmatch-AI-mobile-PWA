@@ -282,15 +282,34 @@ export function checkPurpose(wheel: WheelSpec): CheckItem {
  * 작업과 맞는가"다. 연삭 작업에 절단날을 쓰면 측면 하중이 걸려 숫돌이 깨진다.
  * 그래서 불일치는 경고가 아니라 부적합이다.
  *
- * 작업을 고르지 않았으면(구버전 기록 등) 대조할 대상이 없으므로 건너뛴다.
- * 이때는 Rule 4가 예전처럼 경고 수준으로 남는다.
+ * 작업을 고르지 않았으면 대조할 대상이 없다. 예전에는 이 항목을 건너뛰었지만,
+ * 작업 선택을 거치지 않고 촬영으로 들어온 점검이 용도 대조 없이 적합을 받는
+ * 경로가 됐다 — 같은 절단날이 연삭 작업에서는 부적합인데 작업 미선택이면
+ * 적합이었다. 모르는 것은 통과가 아니므로 판정불가로 막는다. 경고(advisory)가
+ * 아니다. 이미 저장된 구기록은 다시 계산하지 않으므로 영향이 없다.
  */
 export function checkWorkPurpose(
   wheel: WheelSpec,
   declaredPurpose: WorkPurpose | null,
   profile: AccessoryProfile | null,
-): CheckItem | null {
-  if (declaredPurpose === null) return null;
+): CheckItem {
+  // 저장값이나 타입 검사 없는 호출도 경계에서 검사한다. 모르는 작업을
+  // 확정된 용도 불일치로 단정하면 재선택 대신 잘못된 부적합 사유를 보여준다.
+  if (declaredPurpose !== 'cutting' && declaredPurpose !== 'grinding') {
+    return {
+      rule: RULE.WORK_PURPOSE,
+      grinderValue: null,
+      wheelValue: PURPOSE_LABEL[wheel.purpose],
+      passed: null,
+      reason:
+        '오늘 할 작업(절단/연삭)을 고르지 않았습니다. 작업을 고른 뒤 다시 대조하기 전에는 판정할 수 없습니다.',
+      // 숫돌 쪽 값(용도)을 화면 언어로 바꿀 수 있게 넘긴다(checkText.ts).
+      detail: {
+        code: 'workPurpose.notDeclared',
+        params: { purpose: wheel.purpose },
+      },
+    };
+  }
 
   const base = {
     rule: RULE.WORK_PURPOSE,
@@ -1110,8 +1129,14 @@ export interface MatchOptions {
    * 대조된다. null을 넘기면 종류 규칙이 판정불가로 막는다.
    */
   profile: AccessoryProfile | null;
-  /** 작업자가 고른 오늘의 작업. 고르지 않았으면 목적 대조를 건너뛴다. */
-  declaredPurpose?: WorkPurpose | null;
+  /**
+   * 작업자가 고른 오늘의 작업. 고르지 않았으면 null — 작업 목적 규칙이
+   * 판정불가로 막는다.
+   *
+   * 필수 인자다(profile과 같은 이유). 기본값을 두면 넘기는 것을 잊은 호출이
+   * 조용히 작업 미선택으로 대조된다.
+   */
+  declaredPurpose: WorkPurpose | null;
   /**
    * 유효기한 만료 판정의 기준일. `YYYY-MM-DD` 로컬 날짜다.
    *
@@ -1136,7 +1161,7 @@ export function matchSpecs(
 ): MatchResult {
   const {
     profile,
-    declaredPurpose = null,
+    declaredPurpose,
     today = null,
     analysisMode = 'online',
     now = new Date(),
@@ -1159,8 +1184,7 @@ export function matchSpecs(
     checkRpmSafety(grinder, wheel),
     checkDiameterFit(grinder, wheel),
     checkPurpose(wheel),
-    // 작업을 고르지 않았으면 이 항목 자체가 없다.
-    ...(workPurpose ? [workPurpose] : []),
+    workPurpose,
     checkWheelType(wheel, profile),
     checkVisibleDamage(wheel),
     // 기준일을 넣지 않으면 판정불가로 남는다. 항목 자체는 언제나 만든다 —

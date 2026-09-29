@@ -67,6 +67,19 @@ function truth(overrides: Partial<GroundTruth> = {}): GroundTruth {
 }
 
 describe('MetricsPanel — 분모가 없을 때', () => {
+  it('환산 기록의 정답 RPM이 없으면 화면도 N/A를 표시한다', () => {
+    render(
+      <MetricsPanel
+        records={[record({ wheelOcr: { ...WHEEL, rpmSource: 'converted' } })]}
+        truths={[truth({ wheelMaxRPM: null })]}
+      />,
+    );
+    const item = screen.getByText('단위 정규화 오류').closest('li');
+    expect(item).toHaveTextContent('0 / 0건');
+    expect(item).toHaveTextContent('N/A — 계산할 데이터 없음');
+    expect(item).not.toHaveTextContent('0.0%');
+  });
+
   it('기록이 없으면 어느 지표도 0%로 적지 않는다', () => {
     render(<MetricsPanel records={[]} truths={[]} />);
 
@@ -114,6 +127,18 @@ describe('MetricsPanel — 분모가 없을 때', () => {
 });
 
 describe('MetricsPanel — 분자와 분모를 함께 보여준다', () => {
+  it('한쪽 원본만 있으면 해당 두 필드의 분모를 표시한다', () => {
+    render(
+      <MetricsPanel
+        records={[record({ wheelOcr: WHEEL })]}
+        truths={[truth()]}
+      />,
+    );
+    const item = screen.getByText('필드 추출 정확도').closest('li');
+    expect(item).toHaveTextContent('2 / 2필드');
+    expect(item).toHaveTextContent('100.0%');
+  });
+
   it('네 지표를 모두 이름과 정의와 함께 낸다', () => {
     render(<MetricsPanel records={[record()]} truths={[truth()]} />);
 
@@ -125,6 +150,13 @@ describe('MetricsPanel — 분자와 분모를 함께 보여준다', () => {
       screen.getByText(/0이 아니면 출시하지 않습니다/),
     ).toBeInTheDocument();
     expect(screen.getByText(/설계된 동작입니다/)).toBeInTheDocument();
+    // 단위 정규화 오류의 설명은 실제 계산(정답 RPM이 있는 환산 기록만, OCR 원본값)과
+    // 맞아야 하고, 원인을 단정하지 않아야 한다. 문구 전체를 고정한다.
+    expect(
+      screen.getByText(
+        '정답 RPM이 있는 환산 기록 중, OCR 원본의 환산 RPM이 정답과 다른 비율. 이 값만으로는 라벨 오독과 환산 계산 오류를 구분할 수 없습니다.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('실제로 놓친 위험 조합이 있으면 비율과 기록 id를 함께 낸다', () => {

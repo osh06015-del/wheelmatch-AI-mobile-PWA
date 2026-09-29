@@ -172,7 +172,11 @@ beforeEach(() => {
   measureCapture.mockResolvedValue(CLEAN);
   extractWheel.mockResolvedValue(OCR);
   const result = store();
-  act(() => result.current.reset());
+  act(() => {
+    result.current.reset();
+    // 실제 흐름은 작업 선택 화면에서 시작한다. 작업 미선택은 따로 잰다.
+    result.current.setPurpose('cutting');
+  });
 });
 
 describe('숫돌 라벨 — 촬영 직후 사진 상태 확인', () => {

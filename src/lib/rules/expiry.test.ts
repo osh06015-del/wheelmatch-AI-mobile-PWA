@@ -48,6 +48,7 @@ function wheel(overrides: Partial<WheelSpec> = {}): WheelSpec {
 
 function expiryCheck(w: WheelSpec, today: string | null) {
   return matchSpecs(grinder(), w, {
+    declaredPurpose: 'cutting',
     profile: BONDED_ABRASIVE_PROFILE,
     today,
   }).checks.find((c) => c.rule === RULE.EXPIRY);
@@ -126,6 +127,7 @@ describe('만료 경계', () => {
     expect(check?.passed).toBe(true);
     expect(
       matchSpecs(grinder(), w, {
+        declaredPurpose: 'cutting',
         profile: BONDED_ABRASIVE_PROFILE,
         today: '2023-04-29',
       }).verdict,
@@ -138,6 +140,7 @@ describe('만료 경계', () => {
     expect(check?.passed).toBe(true);
     expect(
       matchSpecs(grinder(), w, {
+        declaredPurpose: 'cutting',
         profile: BONDED_ABRASIVE_PROFILE,
         today: '2023-04-30',
       }).verdict,
@@ -149,6 +152,7 @@ describe('만료 경계', () => {
     expect(check?.passed).toBe(false);
     expect(
       matchSpecs(grinder(), w, {
+        declaredPurpose: 'cutting',
         profile: BONDED_ABRASIVE_PROFILE,
         today: '2023-05-01',
       }).verdict,
@@ -188,6 +192,7 @@ describe('읽지 못했거나 모호한 경우', () => {
     expect(check?.advisory).toBeUndefined();
     expect(
       matchSpecs(grinder(), wheel({ expiry: null }), {
+        declaredPurpose: 'cutting',
         profile: BONDED_ABRASIVE_PROFILE,
         today: '2026-09-08',
       }).verdict,
@@ -200,6 +205,7 @@ describe('읽지 못했거나 모호한 경우', () => {
     expect(expiryCheck(old, '2026-09-08')?.passed).toBeNull();
     expect(
       matchSpecs(grinder(), old, {
+        declaredPurpose: 'cutting',
         profile: BONDED_ABRASIVE_PROFILE,
         today: '2026-09-08',
       }).verdict,
@@ -213,8 +219,10 @@ describe('읽지 못했거나 모호한 경우', () => {
     expect(check).toBeDefined();
     expect(check?.passed).toBeNull();
     expect(
-      matchSpecs(grinder(), wheel(), { profile: BONDED_ABRASIVE_PROFILE })
-        .verdict,
+      matchSpecs(grinder(), wheel(), {
+        declaredPurpose: 'cutting',
+        profile: BONDED_ABRASIVE_PROFILE,
+      }).verdict,
     ).toBe('UNDETERMINED');
   });
 
@@ -230,6 +238,7 @@ describe('읽지 못했거나 모호한 경우', () => {
     expect(expiryCheck(w, '2023-04-01')?.passed).toBe(true);
     expect(
       matchSpecs(grinder(), w, {
+        declaredPurpose: 'cutting',
         profile: BONDED_ABRASIVE_PROFILE,
         today: '2023-04-01',
       }).verdict,
@@ -246,6 +255,7 @@ describe('다른 규칙과 섞였을 때', () => {
     // 만료 정보가 다른 규칙의 부적합을 약화시키면 안 된다.
     const w = wheel({ maxRPM: 8500 });
     const result = matchSpecs(grinder(), w, {
+      declaredPurpose: 'cutting',
       profile: BONDED_ABRASIVE_PROFILE,
       today: '2023-04-01',
     });
@@ -262,6 +272,7 @@ describe('다른 규칙과 섞였을 때', () => {
   it('기한 만료와 회전속도 부적합이 함께면 둘 다 남는다', () => {
     const w = wheel({ maxRPM: 8500 });
     const result = matchSpecs(grinder(), w, {
+      declaredPurpose: 'cutting',
       profile: BONDED_ABRASIVE_PROFILE,
       today: '2026-09-08',
     });
@@ -276,6 +287,7 @@ describe('다른 규칙과 섞였을 때', () => {
 
   it('기한이 지나면 다른 항목이 모두 통과해도 적합이 아니다', () => {
     const result = matchSpecs(grinder(), wheel(), {
+      declaredPurpose: 'cutting',
       profile: BONDED_ABRASIVE_PROFILE,
       today: '2026-09-08',
     });
@@ -299,6 +311,7 @@ describe('같은 입력과 같은 기준일이면 같은 결과', () => {
     const w = wheel();
     const runs = Array.from({ length: 5 }, () =>
       matchSpecs(grinder(), w, {
+        declaredPurpose: 'cutting',
         profile: BONDED_ABRASIVE_PROFILE,
         today: '2023-05-01',
       }),
@@ -316,12 +329,14 @@ describe('같은 입력과 같은 기준일이면 같은 결과', () => {
     const w = wheel();
     expect(
       matchSpecs(grinder(), w, {
+        declaredPurpose: 'cutting',
         profile: BONDED_ABRASIVE_PROFILE,
         today: '2023-04-30',
       }).verdict,
     ).toBe('COMPATIBLE');
     expect(
       matchSpecs(grinder(), w, {
+        declaredPurpose: 'cutting',
         profile: BONDED_ABRASIVE_PROFILE,
         today: '2023-05-01',
       }).verdict,
@@ -332,11 +347,13 @@ describe('같은 입력과 같은 기준일이면 같은 결과', () => {
     // 시간대·시각은 만료 계산에 들어가지 않는다. date-only 비교다.
     const w = wheel();
     const morning = matchSpecs(grinder(), w, {
+      declaredPurpose: 'cutting',
       profile: BONDED_ABRASIVE_PROFILE,
       today: '2023-04-30',
       now: new Date('2023-04-30T00:00:00Z'),
     });
     const night = matchSpecs(grinder(), w, {
+      declaredPurpose: 'cutting',
       profile: BONDED_ABRASIVE_PROFILE,
       today: '2023-04-30',
       now: new Date('2023-04-30T23:59:59Z'),

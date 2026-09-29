@@ -131,14 +131,13 @@ export async function inspectionIdsPresent(
 /**
  * 백업 가져오기 전용. id를 보존한 채 새로 추가한다.
  *
- * put()은 같은 id가 있으면 덮어쓴다 — 그래서 반드시 inspectionIdsPresent로
- * 없는 id인지 먼저 확인한 뒤에만 부른다. 기존 기록을 덮어쓰지 않기 위한
- * 약속이며, 이 함수 자체는 그 약속을 강제하지 않는다.
+ * 기존 호출부 이름은 유지하지만 실제 쓰기는 add()다. 사전 중복 조회만으로는
+ * 다른 탭의 동시 저장을 막지 못하므로 DB의 유일키 제약으로 덮어쓰기를 막는다.
  */
 export async function putInspectionWithId(
   record: StoredInspection,
 ): Promise<void> {
-  await db.inspections.put(record);
+  await db.inspections.add(record);
 }
 
 /**
