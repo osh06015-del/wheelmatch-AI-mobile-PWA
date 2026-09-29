@@ -24,6 +24,24 @@ export const en: Messages = {
     'The new inspection was not started because the previous inspection’s input could not be cleared. This keeps old input out of the new inspection. Please try again.',
   'home.startRetry': 'Try again with {work}',
   'home.history': 'View inspection history →',
+  'share.open': 'Share QR code',
+  'share.title': 'Share app QR code',
+  'share.close': 'Close',
+  'share.hint': 'Scan the QR code to open the WheelMatch AI production app.',
+  'share.qrAlt': 'QR code for the WheelMatch AI production app',
+  'share.privacy':
+    'Only the app address is shared. Inspection photos and records are not included.',
+  'share.image': 'Share QR image',
+  'share.download': 'Save PNG',
+  'share.copy': 'Copy link',
+  'share.fallback':
+    'If image sharing is unavailable, save the PNG or copy the link.',
+  'share.copied': 'Link copied.',
+  'share.copyFailed':
+    'Could not copy. Press and hold the address above to copy it.',
+  'share.shareFailed': 'Could not share. Save the PNG or copy the link.',
+  'share.prepareFailed':
+    'Could not prepare the image for sharing. Save the PNG or copy the link.',
 
   'verdict.compatible': 'SPECS MATCH',
   'verdict.incompatible': 'SPECS DO NOT MATCH',

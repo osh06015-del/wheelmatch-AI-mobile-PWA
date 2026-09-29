@@ -24,6 +24,24 @@ export const ko = {
     '이전 점검의 입력값을 정리하지 못해 새 점검을 시작하지 않았습니다. 이전 입력이 새 점검에 섞이지 않게 하기 위해서입니다. 다시 시도하세요.',
   'home.startRetry': '{work} 작업으로 다시 시도',
   'home.history': '점검 이력 보기 →',
+  'share.open': 'QR코드 공유',
+  'share.title': '앱 QR코드 공유',
+  'share.close': '닫기',
+  'share.hint': 'QR코드를 스캔하면 WheelMatch AI 운영판이 열립니다.',
+  'share.qrAlt': 'WheelMatch AI 운영판 접속 QR코드',
+  'share.privacy':
+    '앱 주소만 공유합니다. 점검 사진과 기록은 포함하지 않습니다.',
+  'share.image': 'QR 이미지 공유',
+  'share.download': 'PNG 저장',
+  'share.copy': '링크 복사',
+  'share.fallback':
+    '이미지 공유를 지원하지 않으면 PNG 저장 또는 링크 복사를 이용하세요.',
+  'share.copied': '링크를 복사했습니다.',
+  'share.copyFailed': '복사하지 못했습니다. 위 주소를 길게 눌러 복사하세요.',
+  'share.shareFailed':
+    '공유하지 못했습니다. PNG 저장 또는 링크 복사를 이용하세요.',
+  'share.prepareFailed':
+    '공유용 이미지를 준비하지 못했습니다. PNG 저장 또는 링크 복사를 이용하세요.',
 
   'verdict.compatible': '적합',
   'verdict.incompatible': '부적합',

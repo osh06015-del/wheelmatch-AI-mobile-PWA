@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import { BuildInfo } from '@/components/BuildInfo';
+import { AppQrShare } from '@/components/AppQrShare';
 import { Disclaimer } from '@/components/Disclaimer';
 import { LanguagePicker } from '@/components/LanguagePicker';
 import { WorkConditionsPicker } from '@/components/WorkConditionsPicker';
@@ -167,6 +168,7 @@ export default function Home() {
         >
           {t('home.history')}
         </Link>
+        <AppQrShare />
       </div>
 
       <LanguagePicker />

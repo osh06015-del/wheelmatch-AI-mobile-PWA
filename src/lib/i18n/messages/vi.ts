@@ -27,6 +27,24 @@ export const vi: Messages = {
     'Chưa bắt đầu lần kiểm tra mới vì không xóa được dữ liệu nhập của lần kiểm tra trước. Việc này giúp dữ liệu cũ không lẫn vào lần kiểm tra mới. Hãy thử lại.',
   'home.startRetry': 'Thử lại với công việc {work}',
   'home.history': 'Xem lịch sử kiểm tra →',
+  'share.open': 'Chia sẻ mã QR',
+  'share.title': 'Chia sẻ mã QR ứng dụng',
+  'share.close': 'Đóng',
+  'share.hint': 'Quét mã QR để mở bản chính thức của WheelMatch AI.',
+  'share.qrAlt': 'Mã QR mở bản chính thức của WheelMatch AI',
+  'share.privacy':
+    'Chỉ chia sẻ địa chỉ ứng dụng. Không bao gồm ảnh và hồ sơ kiểm tra.',
+  'share.image': 'Chia sẻ ảnh QR',
+  'share.download': 'Lưu PNG',
+  'share.copy': 'Sao chép liên kết',
+  'share.fallback':
+    'Nếu không hỗ trợ chia sẻ ảnh, hãy lưu PNG hoặc sao chép liên kết.',
+  'share.copied': 'Đã sao chép liên kết.',
+  'share.copyFailed':
+    'Không thể sao chép. Nhấn giữ địa chỉ ở trên để sao chép.',
+  'share.shareFailed': 'Không thể chia sẻ. Hãy lưu PNG hoặc sao chép liên kết.',
+  'share.prepareFailed':
+    'Không thể chuẩn bị ảnh để chia sẻ. Hãy lưu PNG hoặc sao chép liên kết.',
 
   'verdict.compatible': 'THÔNG SỐ PHÙ HỢP',
   'verdict.incompatible': 'THÔNG SỐ KHÔNG PHÙ HỢP',

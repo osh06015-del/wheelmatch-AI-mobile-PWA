@@ -52,6 +52,19 @@ beforeEach(() => {
 });
 
 describe('메인 화면 — 새 점검 준비 실패와 다시 시도', () => {
+  it('QR 공유 창을 열고 닫아도 점검 시작·draft 삭제를 실행하지 않는다', async () => {
+    const result = store();
+    const user = userEvent.setup();
+    render(<Home />);
+    await user.click(screen.getByRole('button', { name: 'QR코드 공유' }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '닫기' }));
+    expect(formRemove).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+    expect(result.current.declaredPurpose).toBeNull();
+    expect(result.current.startedAt).toBeNull();
+  });
+
   const PREP_FAILED =
     '이전 점검의 입력값을 정리하지 못해 새 점검을 시작하지 않았습니다. 이전 입력이 새 점검에 섞이지 않게 하기 위해서입니다. 다시 시도하세요.';
 

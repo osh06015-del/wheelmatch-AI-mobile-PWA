@@ -27,6 +27,24 @@ export const id: Messages = {
     'Pemeriksaan baru tidak dimulai karena input pemeriksaan sebelumnya tidak dapat dihapus. Ini mencegah input lama tercampur ke pemeriksaan baru. Coba lagi.',
   'home.startRetry': 'Coba lagi dengan pekerjaan {work}',
   'home.history': 'Lihat riwayat pemeriksaan →',
+  'share.open': 'Bagikan kode QR',
+  'share.title': 'Bagikan kode QR aplikasi',
+  'share.close': 'Tutup',
+  'share.hint': 'Pindai kode QR untuk membuka aplikasi produksi WheelMatch AI.',
+  'share.qrAlt': 'Kode QR aplikasi produksi WheelMatch AI',
+  'share.privacy':
+    'Hanya alamat aplikasi yang dibagikan. Foto dan catatan pemeriksaan tidak disertakan.',
+  'share.image': 'Bagikan gambar QR',
+  'share.download': 'Simpan PNG',
+  'share.copy': 'Salin tautan',
+  'share.fallback':
+    'Jika berbagi gambar tidak tersedia, simpan PNG atau salin tautan.',
+  'share.copied': 'Tautan disalin.',
+  'share.copyFailed':
+    'Tidak dapat menyalin. Tekan lama alamat di atas untuk menyalinnya.',
+  'share.shareFailed': 'Tidak dapat berbagi. Simpan PNG atau salin tautan.',
+  'share.prepareFailed':
+    'Tidak dapat menyiapkan gambar untuk dibagikan. Simpan PNG atau salin tautan.',
 
   'verdict.compatible': 'SPESIFIKASI COCOK',
   'verdict.incompatible': 'SPESIFIKASI TIDAK COCOK',
