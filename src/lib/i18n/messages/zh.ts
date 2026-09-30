@@ -1013,4 +1013,8 @@ export const zh: Messages = {
   'savedGrinder.aliasLabel': '别名',
   'savedGrinder.aliasPlaceholder': '例：1号砂轮机',
   'savedGrinder.aliasRequired': '请输入别名。',
+  'savedGrinder.savedNotice':
+    '已保存「{alias}」。下次点检时可在上方列表中选择调用。',
+  'savedGrinder.saveFailed':
+    '保存失败。请重试。如仍无法保存，请检查浏览器的存储空间和隐私浏览模式。',
 };

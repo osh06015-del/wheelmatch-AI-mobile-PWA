@@ -1112,6 +1112,10 @@ export const ko = {
   'savedGrinder.aliasLabel': '별칭',
   'savedGrinder.aliasPlaceholder': '예: 1번 그라인더',
   'savedGrinder.aliasRequired': '별칭을 입력하세요.',
+  'savedGrinder.savedNotice':
+    '「{alias}」를 저장했습니다. 다음 점검에서 위 목록의 선택으로 불러올 수 있습니다.',
+  'savedGrinder.saveFailed':
+    '저장하지 못했습니다. 다시 시도하세요. 계속 안 되면 브라우저의 저장 공간·개인정보 보호 모드를 확인하세요.',
 } as const;
 
 /** 메시지 키. ko가 원본이므로 여기서 파생시킨다. */

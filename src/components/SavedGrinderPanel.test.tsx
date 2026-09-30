@@ -184,3 +184,79 @@ describe('저장된 그라인더 목록 — 현재 값 저장', () => {
     expect(saved).not.toHaveProperty('userConfirmed');
   });
 });
+
+describe('저장된 그라인더 — 휴대폰에서 저장했는지 알 수 있다', () => {
+  // 운영판에서 재현: 폰 키보드의 완료(Enter)를 누르면 아무 일도 없었고, 버튼으로
+  // 저장해도 확인 문구가 없어 저장이 안 된 것처럼 보였다. 저장 실패도 알리지 않았다.
+  it('별칭 입력 후 키보드의 완료(Enter)만 눌러도 저장된다', async () => {
+    const user = userEvent.setup();
+    setItems([]);
+    add.mockResolvedValue(7);
+    render(<SavedGrinderPanel currentFields={CURRENT} onApply={vi.fn()} />);
+
+    await user.type(screen.getByLabelText('별칭'), '3호기{Enter}');
+
+    expect(add).toHaveBeenCalledTimes(1);
+    expect(add).toHaveBeenCalledWith(
+      expect.objectContaining({ alias: '3호기', ...CURRENT }),
+    );
+  });
+
+  it('저장에 성공하면 저장 버튼 바로 아래에 저장했다는 문구를 띄운다', async () => {
+    const user = userEvent.setup();
+    setItems([]);
+    add.mockResolvedValue(7);
+    render(<SavedGrinderPanel currentFields={CURRENT} onApply={vi.fn()} />);
+
+    await user.type(screen.getByLabelText('별칭'), '3호기');
+    await user.click(
+      screen.getByRole('button', { name: '현재 입력값을 새로 저장' }),
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '「3호기」를 저장했습니다. 다음 점검에서 위 목록의 선택으로 불러올 수 있습니다.',
+    );
+    expect(screen.getByLabelText('별칭')).toHaveValue('');
+  });
+
+  it('저장에 실패하면 실패를 알리고 입력한 별칭을 지우지 않는다', async () => {
+    const user = userEvent.setup();
+    setItems([]);
+    add.mockResolvedValue(null);
+    render(<SavedGrinderPanel currentFields={CURRENT} onApply={vi.fn()} />);
+
+    await user.type(screen.getByLabelText('별칭'), '3호기');
+    await user.click(
+      screen.getByRole('button', { name: '현재 입력값을 새로 저장' }),
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      '저장하지 못했습니다. 다시 시도하세요. 계속 안 되면 브라우저의 저장 공간·개인정보 보호 모드를 확인하세요.',
+    );
+    expect(screen.getByLabelText('별칭')).toHaveValue('3호기');
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('저장 중에 다시 누르거나 Enter를 쳐도 한 번만 저장한다', async () => {
+    const user = userEvent.setup();
+    setItems([]);
+    let resolveAdd: (id: number) => void = () => undefined;
+    add.mockImplementation(
+      () => new Promise<number>((resolve) => (resolveAdd = resolve)),
+    );
+    render(<SavedGrinderPanel currentFields={CURRENT} onApply={vi.fn()} />);
+
+    await user.type(screen.getByLabelText('별칭'), '3호기{Enter}');
+    const button = screen.getByRole('button', {
+      name: '현재 입력값을 새로 저장',
+    });
+    expect(button).toBeDisabled();
+    await user.type(screen.getByLabelText('별칭'), '{Enter}');
+    expect(add).toHaveBeenCalledTimes(1);
+
+    resolveAdd(7);
+    expect(
+      await screen.findByText(/「3호기」를 저장했습니다/),
+    ).toBeInTheDocument();
+  });
+});

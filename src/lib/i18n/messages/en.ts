@@ -1152,4 +1152,8 @@ export const en: Messages = {
   'savedGrinder.aliasLabel': 'Name',
   'savedGrinder.aliasPlaceholder': 'e.g. Grinder #1',
   'savedGrinder.aliasRequired': 'Enter a name.',
+  'savedGrinder.savedNotice':
+    'Saved “{alias}”. You can load it from the list above with Select in your next inspection.',
+  'savedGrinder.saveFailed':
+    'Could not save. Please try again. If it keeps failing, check the browser’s storage space and private-browsing mode.',
 };

@@ -1172,4 +1172,8 @@ export const id: Messages = {
   'savedGrinder.aliasLabel': 'Nama',
   'savedGrinder.aliasPlaceholder': 'contoh: Gerinda #1',
   'savedGrinder.aliasRequired': 'Masukkan nama.',
+  'savedGrinder.savedNotice':
+    '“{alias}” tersimpan. Pada pemeriksaan berikutnya dapat dipilih dari daftar di atas.',
+  'savedGrinder.saveFailed':
+    'Gagal menyimpan. Coba lagi. Jika terus gagal, periksa ruang penyimpanan dan mode penjelajahan pribadi browser.',
 };

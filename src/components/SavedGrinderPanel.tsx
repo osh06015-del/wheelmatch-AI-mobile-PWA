@@ -11,7 +11,7 @@
 // 보여주고 명시적으로 눌러야 적용된다 — 다르지 않아도 같은 절차를 거친다.
 // 수정·삭제도 같은 이유로 한 번 더 확인한다.
 
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 
 import { SelectField } from './SelectField';
 
@@ -78,6 +78,14 @@ export function SavedGrinderPanel({
   );
   const [newAlias, setNewAlias] = useState('');
   const [aliasError, setAliasError] = useState(false);
+  // 저장 결과. 휴대폰에서는 새 항목이 위쪽 목록에 추가돼 화면 밖에 있기 쉬워,
+  // 버튼 바로 아래에 결과를 알리지 않으면 저장이 안 된 것처럼 보인다.
+  const [saveResult, setSaveResult] = useState<
+    { status: 'saved'; alias: string } | { status: 'failed' } | null
+  >(null);
+  const [saving, setSaving] = useState(false);
+  // 상태(saving)는 다음 렌더에서야 바뀐다. 같은 틱의 두 번 저장(Enter+탭)을 ref로 막는다.
+  const savingRef = useRef(false);
 
   function closeRowActions() {
     setPendingApplyId(null);
@@ -88,19 +96,35 @@ export function SavedGrinderPanel({
   }
 
   async function handleSaveCurrent() {
+    if (savingRef.current) return;
     const alias = normalizeAlias(newAlias);
+    setSaveResult(null);
     if (!alias) {
       setAliasError(true);
       return;
     }
     setAliasError(false);
-    await savedGrinderStore.add({
-      schemaVersion: 1,
-      alias,
-      savedAt: new Date().toISOString(),
-      ...currentFields,
-    });
-    setNewAlias('');
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      // add()는 실패해도 던지지 않고 null을 돌려준다. 결과를 보지 않으면 실패한
+      // 저장도 성공처럼 별칭 칸만 비워진다.
+      const id = await savedGrinderStore.add({
+        schemaVersion: 1,
+        alias,
+        savedAt: new Date().toISOString(),
+        ...currentFields,
+      });
+      if (id === null) {
+        setSaveResult({ status: 'failed' });
+        return;
+      }
+      setNewAlias('');
+      setSaveResult({ status: 'saved', alias });
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   }
 
   function startEdit(item: SavedGrinder) {
@@ -420,7 +444,14 @@ export function SavedGrinderPanel({
         </ul>
       )}
 
-      <div className="flex flex-col gap-2 border-t border-slate-700 pt-3">
+      {/* form으로 감싼다 — 휴대폰 키보드의 완료(Enter)로도 저장되게 한다. */}
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          void handleSaveCurrent();
+        }}
+        className="flex flex-col gap-2 border-t border-slate-700 pt-3"
+      >
         <label htmlFor={newAliasId} className="flex flex-col gap-1">
           <span className="text-base font-semibold text-slate-200">
             {t('savedGrinder.aliasLabel')}
@@ -430,9 +461,11 @@ export function SavedGrinderPanel({
             type="text"
             value={newAlias}
             placeholder={t('savedGrinder.aliasPlaceholder')}
+            enterKeyHint="done"
             onChange={(event) => {
               setNewAlias(event.target.value);
               setAliasError(false);
+              setSaveResult(null);
             }}
             className="min-h-12 rounded-lg border border-slate-600 bg-slate-900 px-3 text-lg text-slate-100"
           />
@@ -443,13 +476,23 @@ export function SavedGrinderPanel({
           </p>
         )}
         <button
-          type="button"
-          onClick={() => void handleSaveCurrent()}
-          className="min-h-12 rounded-lg border border-slate-600 text-base font-semibold text-slate-200 active:bg-slate-700"
+          type="submit"
+          disabled={saving}
+          className="min-h-12 rounded-lg border border-slate-600 text-base font-semibold text-slate-200 active:bg-slate-700 disabled:opacity-50"
         >
           {t('savedGrinder.saveCurrent')}
         </button>
-      </div>
+        {saveResult?.status === 'saved' && (
+          <p role="status" className="text-base text-green-300">
+            {t('savedGrinder.savedNotice', { alias: saveResult.alias })}
+          </p>
+        )}
+        {saveResult?.status === 'failed' && (
+          <p role="alert" className="text-base text-red-300">
+            {t('savedGrinder.saveFailed')}
+          </p>
+        )}
+      </form>
     </section>
   );
 }

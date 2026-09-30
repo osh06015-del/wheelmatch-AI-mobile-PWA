@@ -1139,4 +1139,8 @@ export const vi: Messages = {
   'savedGrinder.aliasLabel': 'Tên gọi',
   'savedGrinder.aliasPlaceholder': 'VD: Máy mài số 1',
   'savedGrinder.aliasRequired': 'Hãy nhập tên gọi.',
+  'savedGrinder.savedNotice':
+    'Đã lưu “{alias}”. Lần kiểm tra sau có thể chọn từ danh sách phía trên.',
+  'savedGrinder.saveFailed':
+    'Không lưu được. Hãy thử lại. Nếu vẫn lỗi, hãy kiểm tra dung lượng lưu trữ và chế độ duyệt riêng tư của trình duyệt.',
 };
