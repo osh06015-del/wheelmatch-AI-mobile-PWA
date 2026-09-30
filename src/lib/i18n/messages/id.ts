@@ -979,6 +979,28 @@ export const id: Messages = {
   'dataManagement.deleteDraftConfirmButton': 'Hapus simpanan sementara',
   'dataManagement.cancel': 'Batal',
 
+  'report.title': 'Catatan pemeriksaan',
+  'report.generatedAt': 'Dibuat {time} · {count} catatan',
+  'report.checks': 'Butir pemeriksaan',
+  'report.trialRunResult':
+    '{mode} {elapsed} detik (wajib {required} detik) — {outcome}',
+  'report.trialRunNormal': 'Tidak ada masalah',
+  'report.trialRunAbnormal': 'Ada masalah — hentikan pekerjaan',
+  'report.saveOne': 'Simpan catatan ini sebagai dokumen (dengan foto)',
+  'report.saveAll':
+    'Simpan semua catatan sebagai dokumen (dengan foto, {count})',
+  'report.sectionTitle': 'Dokumen catatan pemeriksaan',
+  'report.sectionHint':
+    'Menyimpan hasil, butir pemeriksaan, dan foto sebagai dokumen yang mudah dibaca (HTML). Buka di browser ponsel atau kirim lewat KakaoTalk. Tidak dapat dipakai untuk memulihkan data ke aplikasi.',
+  'report.working': 'Membuat dokumen… ({done}/{total})',
+  'report.shared':
+    'Jendela berbagi terbuka. Pilih “Simpan ke File” atau tujuan pengiriman.',
+  'report.downloaded':
+    'Dokumen sudah diunduh. Periksa aplikasi Unduhan (atau File).',
+  'report.cancelled': 'Berbagi dibatalkan. Dokumen tidak disimpan.',
+  'report.failed': 'Gagal membuat dokumen. Coba lagi.',
+  'backup.restoreOnly':
+    'File cadangan ini untuk memulihkan ke aplikasi sehingga sulit dibaca. Untuk catatan yang mudah dibaca, gunakan “Dokumen catatan pemeriksaan” di atas.',
   'backup.title': 'Berkas cadangan (JSON)',
   'backup.notice':
     'Hanya berisi catatan pemeriksaan dan gerinda tersimpan. Foto tidak pernah disertakan.',

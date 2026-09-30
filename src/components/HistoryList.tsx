@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { ZoomablePhoto } from './BlobPhoto';
 import { EvidencePanel } from './EvidencePanel';
 import { ProfileConditionsPanel } from './ProfileConditionsPanel';
+import { ReportExportButton } from './ReportExportButton';
 import { RuleVersionNote } from './RuleVersionNote';
 import { WheelExamEvidence } from './WheelExamEvidence';
 
@@ -234,6 +235,12 @@ export function HistoryList({
                   {/* 저장 당시의 버전을 보여준다. 지금 버전으로 채우면
                     어느 규칙으로 나온 판정인지 거짓으로 적게 된다. */}
                   <RuleVersionNote version={record.ruleVersion ?? null} />
+
+                  {/* 사람이 읽는 문서(사진 포함)로 이 기록 하나를 저장한다. */}
+                  <ReportExportButton
+                    label={t('report.saveOne')}
+                    loadRecords={async () => [record]}
+                  />
 
                   {onDeletePhotos && hasAnyPhoto && record.id !== undefined && (
                     <div className="flex flex-col gap-3 border-t border-slate-700 pt-4">

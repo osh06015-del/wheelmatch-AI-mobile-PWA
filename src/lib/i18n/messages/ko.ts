@@ -926,6 +926,26 @@ export const ko = {
   'dataManagement.deleteDraftConfirmButton': '임시 저장 지우기',
   'dataManagement.cancel': '취소',
 
+  'report.title': '점검 기록',
+  'report.generatedAt': '만든 시각 {time} · {count}건',
+  'report.checks': '검사 항목',
+  'report.trialRunResult': '{mode} {elapsed}초 (요구 {required}초) — {outcome}',
+  'report.trialRunNormal': '이상 없음',
+  'report.trialRunAbnormal': '이상 있음 — 작업 중지',
+  'report.saveOne': '이 기록을 문서로 저장 (사진 포함)',
+  'report.saveAll': '전체 기록을 문서로 저장 (사진 포함, {count}건)',
+  'report.sectionTitle': '점검 기록 문서',
+  'report.sectionHint':
+    '판정·검사 항목·사진을 사람이 읽는 문서(HTML)로 저장합니다. 휴대폰 브라우저로 열거나 카카오톡으로 보낼 수 있습니다. 앱에 다시 가져오는 복원에는 쓸 수 없습니다.',
+  'report.working': '문서를 만드는 중입니다… ({done}/{total})',
+  'report.shared':
+    '공유 창을 열었습니다. 「파일에 저장」이나 보낼 곳을 고르세요.',
+  'report.downloaded':
+    '문서를 내려받았습니다. 다운로드(또는 파일) 앱에서 확인하세요.',
+  'report.cancelled': '공유를 취소했습니다. 문서는 저장되지 않았습니다.',
+  'report.failed': '문서를 만들지 못했습니다. 다시 시도하세요.',
+  'backup.restoreOnly':
+    '이 백업 파일은 앱에 다시 가져오는 복원용이라 사람이 읽기 어렵습니다. 읽을 기록은 위 「점검 기록 문서」로 저장하세요.',
   'backup.title': '백업 파일(JSON)',
   'backup.notice':
     '점검 기록과 저장된 그라인더만 담습니다. 사진은 어떤 경우에도 포함하지 않습니다.',

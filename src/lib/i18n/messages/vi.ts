@@ -947,6 +947,26 @@ export const vi: Messages = {
   'dataManagement.deleteDraftConfirmButton': 'Xóa bản lưu tạm',
   'dataManagement.cancel': 'Hủy',
 
+  'report.title': 'Hồ sơ kiểm tra',
+  'report.generatedAt': 'Tạo lúc {time} · {count} hồ sơ',
+  'report.checks': 'Mục kiểm tra',
+  'report.trialRunResult':
+    '{mode} {elapsed} giây (yêu cầu {required} giây) — {outcome}',
+  'report.trialRunNormal': 'Không có bất thường',
+  'report.trialRunAbnormal': 'Có bất thường — dừng công việc',
+  'report.saveOne': 'Lưu hồ sơ này thành tài liệu (kèm ảnh)',
+  'report.saveAll': 'Lưu tất cả hồ sơ thành tài liệu (kèm ảnh, {count})',
+  'report.sectionTitle': 'Tài liệu hồ sơ kiểm tra',
+  'report.sectionHint':
+    'Lưu kết quả, mục kiểm tra và ảnh thành tài liệu dễ đọc (HTML). Có thể mở bằng trình duyệt điện thoại hoặc gửi qua KakaoTalk. Không dùng để khôi phục vào ứng dụng.',
+  'report.working': 'Đang tạo tài liệu… ({done}/{total})',
+  'report.shared': 'Đã mở cửa sổ chia sẻ. Hãy chọn “Lưu vào Tệp” hoặc nơi gửi.',
+  'report.downloaded':
+    'Đã tải tài liệu xuống. Hãy xem trong ứng dụng Tải xuống (hoặc Tệp).',
+  'report.cancelled': 'Đã hủy chia sẻ. Tài liệu chưa được lưu.',
+  'report.failed': 'Không tạo được tài liệu. Hãy thử lại.',
+  'backup.restoreOnly':
+    'Tệp sao lưu này dùng để khôi phục vào ứng dụng nên khó đọc. Để giữ hồ sơ dễ đọc, hãy dùng “Tài liệu hồ sơ kiểm tra” ở trên.',
   'backup.title': 'Tệp sao lưu (JSON)',
   'backup.notice':
     'Chỉ chứa bản ghi kiểm tra và máy mài đã lưu. Không bao giờ chứa ảnh.',

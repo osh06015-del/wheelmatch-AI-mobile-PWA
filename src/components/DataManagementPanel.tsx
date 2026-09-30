@@ -24,7 +24,14 @@ import {
   backupFilename,
   MAX_BACKUP_FILE_BYTES,
 } from '@/lib/backup/backupModel';
-import { inspectionCount, photoStorageStats } from '@/lib/db';
+import {
+  inspectionCount,
+  listAllInspectionsWithoutPhotos,
+  listInspectionsByIds,
+  photoStorageStats,
+} from '@/lib/db';
+import { saveOrShareFile } from '@/lib/record/fileExport';
+import { ReportExportButton } from './ReportExportButton';
 import { savedGrinderStore } from '@/lib/db/savedGrinderStore';
 import { draftStore, formDraftStore } from '@/lib/draft/draftStore';
 import { useLocale, type MessageKey } from '@/lib/i18n';
@@ -97,16 +104,16 @@ export function DataManagementPanel() {
     setExportedCount(null);
     try {
       const file = await buildBackupFileNow();
-      const blob = new Blob([JSON.stringify(file, null, 2)], {
-        type: 'application/octet-stream',
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = backupFilename();
-      link.click();
-      URL.revokeObjectURL(url);
-      setExportedCount(file.records.length);
+      // 파일 주소를 누른 직후 지우면 폰에서 다운로드가 시작 전에 취소될 수 있다.
+      // 공유 창을 쓸 수 있으면 그것으로 넘긴다(fileExport.ts).
+      const result = await saveOrShareFile(
+        new File([JSON.stringify(file, null, 2)], backupFilename(), {
+          type: 'application/json',
+        }),
+        t('backup.title'),
+      );
+      // 공유를 취소했으면 저장된 것이 없다. 성공 문구를 띄우지 않는다.
+      if (result !== 'cancelled') setExportedCount(file.records.length);
     } catch {
       setExportError(true);
     }
@@ -244,10 +251,31 @@ export function DataManagementPanel() {
 
       <div className="flex flex-col gap-3 border-t border-slate-700 pt-3">
         <h3 className="text-base font-bold text-slate-200">
+          {t('report.sectionTitle')}
+        </h3>
+        <p className="text-sm leading-relaxed text-slate-400">
+          {t('report.sectionHint')}
+        </p>
+        <ReportExportButton
+          label={t('report.saveAll', { count: recordCount ?? 0 })}
+          disabled={!recordCount}
+          loadRecords={async () => {
+            // 최신순 전체. 사진까지 읽어야 해서 id로 다시 읽는다.
+            const rows = await listAllInspectionsWithoutPhotos();
+            return listInspectionsByIds(rows.map((row) => row.id));
+          }}
+        />
+      </div>
+
+      <div className="flex flex-col gap-3 border-t border-slate-700 pt-3">
+        <h3 className="text-base font-bold text-slate-200">
           {t('backup.title')}
         </h3>
         <p className="text-sm leading-relaxed text-slate-400">
           {t('backup.notice')}
+        </p>
+        <p className="text-sm leading-relaxed text-slate-400">
+          {t('backup.restoreOnly')}
         </p>
 
         <button

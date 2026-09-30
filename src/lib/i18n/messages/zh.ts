@@ -844,6 +844,25 @@ export const zh: Messages = {
   'dataManagement.deleteDraftConfirmButton': '删除临时保存',
   'dataManagement.cancel': '取消',
 
+  'report.title': '点检记录',
+  'report.generatedAt': '生成时间 {time} · {count} 条',
+  'report.checks': '检查项目',
+  'report.trialRunResult':
+    '{mode} {elapsed} 秒（要求 {required} 秒）— {outcome}',
+  'report.trialRunNormal': '无异常',
+  'report.trialRunAbnormal': '有异常 — 停止作业',
+  'report.saveOne': '将此记录保存为文档（含照片）',
+  'report.saveAll': '将全部记录保存为文档（含照片，{count} 条）',
+  'report.sectionTitle': '点检记录文档',
+  'report.sectionHint':
+    '将判定、检查项目和照片保存为可阅读的文档（HTML）。可用手机浏览器打开或通过 KakaoTalk 发送。不能用于恢复到应用中。',
+  'report.working': '正在生成文档…（{done}/{total}）',
+  'report.shared': '已打开分享窗口。请选择「存储到文件」或发送对象。',
+  'report.downloaded': '文档已下载。请在下载（或文件）应用中查看。',
+  'report.cancelled': '已取消分享。文档未保存。',
+  'report.failed': '未能生成文档。请重试。',
+  'backup.restoreOnly':
+    '此备份文件用于恢复到应用中，不便阅读。如需可阅读的记录，请使用上方的「点检记录文档」。',
   'backup.title': '备份文件(JSON)',
   'backup.notice': '仅包含点检记录和已保存的砂轮机。不包含照片。',
   'backup.export': '导出',

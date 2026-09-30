@@ -960,6 +960,27 @@ export const en: Messages = {
   'dataManagement.deleteDraftConfirmButton': 'Delete temporary save',
   'dataManagement.cancel': 'Cancel',
 
+  'report.title': 'Inspection record',
+  'report.generatedAt': 'Created {time} · {count} records',
+  'report.checks': 'Check items',
+  'report.trialRunResult':
+    '{mode} {elapsed} s (required {required} s) — {outcome}',
+  'report.trialRunNormal': 'No problem',
+  'report.trialRunAbnormal': 'Problem found — stop work',
+  'report.saveOne': 'Save this record as a document (with photos)',
+  'report.saveAll': 'Save all records as a document (with photos, {count})',
+  'report.sectionTitle': 'Inspection record document',
+  'report.sectionHint':
+    'Saves the result, check items and photos as a readable document (HTML). Open it in a phone browser or send it via KakaoTalk. It cannot be used to restore data into the app.',
+  'report.working': 'Creating the document… ({done}/{total})',
+  'report.shared':
+    'The share sheet is open. Choose “Save to Files” or where to send it.',
+  'report.downloaded':
+    'The document was downloaded. Check your Downloads (or Files) app.',
+  'report.cancelled': 'Sharing was cancelled. The document was not saved.',
+  'report.failed': 'Could not create the document. Please try again.',
+  'backup.restoreOnly':
+    'This backup file is for restoring into the app and is hard to read. To keep a readable record, use “Inspection record document” above.',
   'backup.title': 'Backup file (JSON)',
   'backup.notice':
     'Only inspection records and saved grinders are included. Photos are never included.',
