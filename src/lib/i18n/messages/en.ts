@@ -68,7 +68,9 @@ export const en: Messages = {
   'result.recheckGuard': 'Recheck guard information',
   'result.save': 'Finish and save',
   'result.saving': 'Saving...',
-  'result.saveError': 'Saving failed. Check your storage space and try again.',
+  'result.saveError':
+    'Saving failed. Please try again. If it keeps failing, report the error code below.',
+  'result.saveErrorCode': 'Error code: {code}',
   'result.saveErrorQuota':
     'This record was not saved — the device storage is full. Delete records you no longer need in history, or free up device storage, then try again.',
   'result.saveWithoutPhotosHint':

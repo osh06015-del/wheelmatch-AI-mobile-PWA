@@ -6,6 +6,12 @@
 import Dexie, { type EntityTable } from 'dexie';
 import { researchToolsEnabled } from '@/lib/record/researchMode';
 import type { InspectionRecord } from '@/lib/rules/types';
+import {
+  fromStoredPhoto,
+  storedPhotoSize,
+  toStoredPhoto,
+  type StoredPhoto,
+} from './storedPhoto';
 
 /**
  * 검증 빌드와 현장 배포판은 이름이 다른 IndexedDB를 쓴다.
@@ -25,8 +31,49 @@ export type StoredInspection = Omit<InspectionRecord, 'id'> & { id: number };
 /** 저장 요청 형태 — id는 Dexie가 부여한다. */
 export type NewInspection = Omit<InspectionRecord, 'id'>;
 
+const PHOTO_KEYS = [
+  'grinderImage',
+  'wheelImage',
+  'wheelBackImage',
+  'wheelEdgeImage',
+  'wheelBoreImage',
+] as const;
+type PhotoKey = (typeof PHOTO_KEYS)[number];
+
+/**
+ * 저장소 안의 실제 행. 사진은 Blob이 아니라 바이트로 들어간다(storedPhoto.ts —
+ * 모바일 WebKit이 IndexedDB의 Blob 저장을 거부한다). 예전 기록은 Blob 그대로다.
+ * 이 파일 밖으로는 항상 Blob으로 되돌려 내보낸다.
+ */
+type StoredRow = Omit<StoredInspection, PhotoKey> &
+  Partial<Record<PhotoKey, StoredPhoto>>;
+
+/** 사진 필드만 저장 가능한 형태로 바꾼다. 다른 필드는 그대로 둔다 */
+async function encodePhotos<T extends Partial<Record<PhotoKey, unknown>>>(
+  record: T,
+): Promise<Omit<T, PhotoKey> & Partial<Record<PhotoKey, StoredPhoto>>> {
+  const out: Record<string, unknown> = { ...record };
+  for (const key of PHOTO_KEYS) {
+    const value = record[key];
+    if (value instanceof Blob) out[key] = await toStoredPhoto(value);
+  }
+  return out as Omit<T, PhotoKey> & Partial<Record<PhotoKey, StoredPhoto>>;
+}
+
+/** 저장소 행을 앱이 쓰는 형태(사진 Blob)로 되돌린다 */
+function decodePhotos(row: StoredRow): StoredInspection {
+  const out: Record<string, unknown> = { ...row };
+  for (const key of PHOTO_KEYS) {
+    if (row[key] === undefined) continue;
+    const blob = fromStoredPhoto(row[key]);
+    if (blob) out[key] = blob;
+    else delete out[key];
+  }
+  return out as StoredInspection;
+}
+
 class WheelMatchDB extends Dexie {
-  inspections!: EntityTable<StoredInspection, 'id'>;
+  inspections!: EntityTable<StoredRow, 'id'>;
 
   constructor() {
     super(DB_NAME);
@@ -41,7 +88,7 @@ export const db = new WheelMatchDB();
 
 /** 점검 기록을 저장하고 새 id를 돌려준다. */
 export async function saveInspection(record: NewInspection): Promise<number> {
-  return db.inspections.add(record);
+  return db.inspections.add(await encodePhotos(record));
 }
 
 /** 사진 Blob을 뺀 기록. 전체를 훑어야 하지만 사진은 필요 없는 곳(필터·CSV)에 쓴다. */
@@ -97,7 +144,9 @@ export async function listInspectionsByIds(
 ): Promise<StoredInspection[]> {
   if (ids.length === 0) return [];
   const rows = await db.inspections.bulkGet(ids as number[]);
-  return rows.filter((row): row is StoredInspection => row !== undefined);
+  return rows
+    .filter((row): row is StoredRow => row !== undefined)
+    .map(decodePhotos);
 }
 
 export async function deleteInspection(id: number): Promise<void> {
@@ -137,7 +186,7 @@ export async function inspectionIdsPresent(
 export async function putInspectionWithId(
   record: StoredInspection,
 ): Promise<void> {
-  await db.inspections.add(record);
+  await db.inspections.add(await encodePhotos(record));
 }
 
 /**
@@ -168,15 +217,12 @@ export async function photoStorageStats(): Promise<PhotoStorageStats> {
   let recordsWithPhotos = 0;
   let totalPhotoBytes = 0;
   await db.inspections.each((record) => {
-    const blobs = [
-      record.grinderImage,
-      record.wheelImage,
-      record.wheelBackImage,
-      record.wheelEdgeImage,
-      record.wheelBoreImage,
-    ].filter((blob): blob is Blob => blob instanceof Blob);
-    if (blobs.length > 0) recordsWithPhotos += 1;
-    totalPhotoBytes += blobs.reduce((sum, blob) => sum + blob.size, 0);
+    // 예전 기록(Blob)과 새 기록(바이트)을 함께 센다.
+    const sizes = PHOTO_KEYS.map((key) => storedPhotoSize(record[key])).filter(
+      (size) => size > 0,
+    );
+    if (sizes.length > 0) recordsWithPhotos += 1;
+    totalPhotoBytes += sizes.reduce((sum, size) => sum + size, 0);
   });
   return { recordsWithPhotos, totalPhotoBytes };
 }

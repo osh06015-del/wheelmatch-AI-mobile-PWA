@@ -811,12 +811,36 @@ describe('결과 화면 — 저장 함수 내부 재검사와 저장공간 오�
     await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
     expect(
       await screen.findByText(
-        '저장에 실패했습니다. 저장 공간을 확인한 뒤 다시 시도하세요.',
+        '저장에 실패했습니다. 다시 시도하세요. 계속 실패하면 아래 오류 코드를 알려 주세요.',
       ),
     ).toBeInTheDocument();
     expect(
       screen.queryByText(/기기 저장 공간이 가득 차/),
     ).not.toBeInTheDocument();
+    expect(screen.getByText('오류 코드: Error')).toBeInTheDocument();
+  });
+
+  it('폰 브라우저에서 저장 공간 부족이 아닌 오류로 실패하면 감싼 오류까지 오류 코드로 보인다', async () => {
+    // 현장 폰(모바일 WebKit)에서 나던 실패의 모양이다. 저장 공간 부족이 아니다.
+    ready({ ...WHEEL, maxRPM: 8500 });
+    const inner = new Error(
+      'Error preparing Blob/File data to be stored in object store',
+    );
+    inner.name = 'UnknownError';
+    const error = Object.assign(new Error('Dexie wrapper'), {
+      name: 'UnknownError',
+      inner,
+    });
+    vi.mocked(saveInspection).mockRejectedValueOnce(error);
+
+    render(<ResultPage />);
+    checkAll();
+    fireEvent.click(screen.getByRole('button', { name: /점검 완료 및 저장/ }));
+
+    expect(
+      await screen.findByText('오류 코드: UnknownError'),
+    ).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalledWith('/history');
   });
   it('저장 공간이 모자라면 사진을 빼고 결과만 저장할지 작업자가 고른다', async () => {
     // 앱이 알아서 사진을 버리지 않는다. 고르는 것은 작업자다.

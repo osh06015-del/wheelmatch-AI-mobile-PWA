@@ -202,8 +202,22 @@ describe('createDraftStore', () => {
     const store = createDraftStore(() => table);
 
     const saving = store.save(draft());
+    // 사진을 바이트로 바꾼 뒤에 put이 불린다. 쓰기가 실제로 진행 중일 때 지운다.
+    await vi.waitFor(() => expect(table.put).toHaveBeenCalled());
     expect(await store.remove()).toBe(true);
     release();
+    await saving;
+
+    expect(table.rows.has(DRAFT_ID)).toBe(false);
+  });
+
+  it('사진을 바이트로 바꾸는 동안 지우기가 일어나도 늦게 끝난 저장이 draft를 되살리지 않는다', async () => {
+    const table = memoryTable();
+    const store = createDraftStore(() => table);
+
+    const saving = store.save(draft());
+    // put이 불리기 전(사진 변환 중)에 지운다.
+    expect(await store.remove()).toBe(true);
     await saving;
 
     expect(table.rows.has(DRAFT_ID)).toBe(false);
@@ -298,5 +312,78 @@ describe('isQuotaError', () => {
     );
     expect(isQuotaError(new Error('other'))).toBe(false);
     expect(isQuotaError(null)).toBe(false);
+  });
+});
+
+/** 값 어디에든 Blob이 있으면 true */
+function containsBlob(value: unknown): boolean {
+  if (value instanceof Blob) return true;
+  if (typeof value !== 'object' || value === null) return false;
+  return Object.values(value).some(containsBlob);
+}
+
+/**
+ * 모바일 WebKit(아이폰 Safari 개인정보 보호 모드·카카오톡 등 앱 안의 브라우저)처럼
+ * Blob이 들어 있는 값은 저장 공간과 상관없이 거부하는 표.
+ */
+function webkitLikeError(): Error {
+  const error = new Error(
+    'Error preparing Blob/File data to be stored in object store',
+  );
+  error.name = 'UnknownError';
+  return error;
+}
+
+describe('모바일 WebKit — IndexedDB가 Blob 저장을 거부해도 사진과 함께 저장된다', () => {
+  // 현장 폰에서 "진행 상태를 기기에 임시저장하지 못했습니다"가 뜬 원인의 회귀 테스트다.
+  it('진행 중 점검 draft: 사진을 바이트로 넣고, 읽을 때 Blob으로 되돌린다', async () => {
+    const rows = new Map<string, unknown>();
+    const table: DraftTable = {
+      get: vi.fn(async (id: string) => rows.get(id)),
+      put: vi.fn(async (value: unknown) => {
+        if (containsBlob(value)) throw webkitLikeError();
+        rows.set(DRAFT_ID, value);
+      }),
+      delete: vi.fn(async (id: string) => {
+        rows.delete(id);
+      }),
+    };
+    const store = createDraftStore(() => table);
+
+    expect(await store.save(draft())).toBe('saved');
+    const loaded = await store.load();
+    expect(loaded.status).toBe('found');
+    const photo = (loaded as { draft: InspectionDraft }).draft.photos.grinder;
+    expect(photo).toBeInstanceOf(Blob);
+    expect(await photo?.text()).toBe('g');
+  });
+
+  it('확인 화면 입력 draft: 사진을 바이트로 넣고, 읽을 때 Blob으로 되돌린다', async () => {
+    const rows = new Map<string, unknown>();
+    const table: FormDraftTable = {
+      get: vi.fn(async (slot: string) => rows.get(slot)),
+      put: vi.fn(async (value: unknown) => {
+        if (containsBlob(value)) throw webkitLikeError();
+        rows.set('grinder', value);
+      }),
+      delete: vi.fn(async (slot: string) => {
+        rows.delete(slot);
+      }),
+    };
+    const store = createFormDraftStore(() => table);
+
+    expect(await store.save(grinderFormDraft())).toBe('saved');
+    const loaded = await store.load('grinder');
+    const photo = (loaded as { draft: GrinderFormDraft }).draft.photo;
+    expect(photo).toBeInstanceOf(Blob);
+    expect(await photo?.text()).toBe('plate');
+  });
+
+  it('예전에 Blob 그대로 저장된 draft도 그대로 읽는다', async () => {
+    const table = memoryFormTable();
+    table.rows.set('grinder', grinderFormDraft());
+    const loaded = await createFormDraftStore(() => table).load('grinder');
+    const photo = (loaded as { draft: GrinderFormDraft }).draft.photo;
+    expect(await photo?.text()).toBe('plate');
   });
 });

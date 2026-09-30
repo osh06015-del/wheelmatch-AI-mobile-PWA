@@ -56,6 +56,25 @@ import type {
   TrialRunOutcome,
 } from '@/lib/rules/types';
 
+/**
+ * 저장 오류의 이름. Dexie는 브라우저 오류를 감싸므로(inner) 둘 다 본다.
+ * 값을 지어내지 않는다 — 이름이 없으면 null이다.
+ */
+function errorCode(error: unknown): string | null {
+  const nameOf = (value: unknown): string | null => {
+    if (typeof value !== 'object' || value === null) return null;
+    const name = (value as { name?: unknown }).name;
+    return typeof name === 'string' && name ? name : null;
+  };
+  const outer = nameOf(error);
+  const inner = nameOf((error as { inner?: unknown } | null)?.inner);
+  const names = [outer, inner].filter(
+    (name, index, all): name is string =>
+      name !== null && all.indexOf(name) === index,
+  );
+  return names.length > 0 ? names.join(' / ') : null;
+}
+
 export default function ResultPage() {
   const router = useRouter();
   const { t } = useLocale();
@@ -108,6 +127,9 @@ export default function ResultPage() {
   // 저장 공간이 모자랐는가. 사진을 뺀 저장을 제안할지 정한다 — 제안일 뿐이고
   // 사진을 앱이 알아서 지우지는 않는다.
   const [quotaHit, setQuotaHit] = useState(false);
+  // 실패한 오류의 이름. 현장 폰에서만 나는 저장 실패를 원인별로 가려내려면
+  // 작업자가 화면의 코드를 그대로 전할 수 있어야 한다.
+  const [saveErrorCode, setSaveErrorCode] = useState<string | null>(null);
   const [findings, setFindings] = useState<TrialRunFinding[]>([]);
 
   // 규격과 작업자 직접 상태 확인이 모두 없으면 대조 결과를 보여주지 않는다.
@@ -294,6 +316,7 @@ export default function ResultPage() {
     setSaving(true);
     setSaveError(null);
     setQuotaHit(false);
+    setSaveErrorCode(null);
     try {
       // 두 시간이 같은 끝 시각을 쓰게 한다. 따로 읽으면 몇 ms씩 어긋난다.
       const savedAt = Date.now();
@@ -362,6 +385,7 @@ export default function ResultPage() {
       // 기록이 저장되지 않았다는 것은 명확히 알린다.
       const quota = isQuotaExceededError(error);
       setSaveError(quota ? t('result.saveErrorQuota') : t('result.saveError'));
+      setSaveErrorCode(errorCode(error));
       // 사진 없이 저장하고도 공간이 모자랐다면 사진을 빼는 제안은 소용이 없다.
       setQuotaHit(quota && withPhotos);
       setSaving(false);
@@ -516,6 +540,11 @@ export default function ResultPage() {
       {saveError && (
         <div className="flex flex-col gap-3 rounded-lg border border-red-500/40 bg-red-500/15 px-4 py-4">
           <p className="text-base leading-relaxed text-red-200">{saveError}</p>
+          {saveErrorCode && (
+            <p className="text-sm text-red-300">
+              {t('result.saveErrorCode', { code: saveErrorCode })}
+            </p>
+          )}
           {/* 공간이 모자랄 때만 나온다. 고르는 것은 작업자다 — 사진을 앱이
               알아서 지우거나 조용히 빼고 저장하지 않는다. */}
           {quotaHit && (

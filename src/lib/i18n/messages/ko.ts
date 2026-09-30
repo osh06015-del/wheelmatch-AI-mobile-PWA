@@ -69,7 +69,8 @@ export const ko = {
   'result.save': '점검 완료 및 저장',
   'result.saving': '저장 중...',
   'result.saveError':
-    '저장에 실패했습니다. 저장 공간을 확인한 뒤 다시 시도하세요.',
+    '저장에 실패했습니다. 다시 시도하세요. 계속 실패하면 아래 오류 코드를 알려 주세요.',
+  'result.saveErrorCode': '오류 코드: {code}',
   'result.saveErrorQuota':
     '기기 저장 공간이 가득 차 이 기록은 저장되지 않았습니다. 이력에서 필요 없는 기록을 지우거나 기기 저장 공간을 확보한 뒤 다시 시도하세요.',
   'result.saveWithoutPhotosHint':

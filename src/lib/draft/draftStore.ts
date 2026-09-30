@@ -11,9 +11,74 @@
 
 import Dexie, { type Table } from 'dexie';
 
+import { fromStoredPhoto, toStoredPhoto } from '@/lib/db/storedPhoto';
 import { researchToolsEnabled } from '@/lib/record/researchMode';
 import { DRAFT_ID, type InspectionDraft } from './draftModel';
 import type { ScanFormDraft, ScanFormSlot } from './formDraftModel';
+
+// 사진은 Blob이 아니라 바이트로 넣는다(lib/db/storedPhoto.ts — 모바일 WebKit이
+// IndexedDB의 Blob 저장을 거부해 폰에서 임시저장이 늘 실패했다). 읽을 때 Blob으로
+// 되돌리므로 draftModel·formDraftModel은 지금처럼 Blob만 본다.
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** 객체의 Blob 값만 바이트로 바꾼다. Blob이 아닌 값은 그대로 둔다 */
+async function encodeBlobValues(
+  photos: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(photos)) {
+    out[key] = value instanceof Blob ? await toStoredPhoto(value) : value;
+  }
+  return out;
+}
+
+/** 저장된 값을 Blob으로 되돌린다. 사진이 아닌 값은 그대로 둬 형태 검사에 맡긴다 */
+function decodeBlobValues(
+  photos: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(photos)) {
+    out[key] = fromStoredPhoto(value) ?? value;
+  }
+  return out;
+}
+
+async function encodeDraft(
+  draft: InspectionDraft,
+): Promise<Record<string, unknown>> {
+  return { ...draft, photos: await encodeBlobValues(draft.photos) };
+}
+
+function decodeDraft(raw: unknown): unknown {
+  if (!isRecord(raw) || !isRecord(raw.photos)) return raw;
+  return { ...raw, photos: decodeBlobValues(raw.photos) };
+}
+
+async function encodeFormDraft(
+  draft: ScanFormDraft,
+): Promise<Record<string, unknown>> {
+  const photo = draft.photo ? await toStoredPhoto(draft.photo) : draft.photo;
+  if (draft.slot !== 'wheel') return { ...draft, photo };
+  return {
+    ...draft,
+    photo,
+    exam: { ...draft.exam, photos: await encodeBlobValues(draft.exam.photos) },
+  };
+}
+
+function decodeFormDraft(raw: unknown): unknown {
+  if (!isRecord(raw)) return raw;
+  const out: Record<string, unknown> = {
+    ...raw,
+    photo: fromStoredPhoto(raw.photo) ?? raw.photo,
+  };
+  if (isRecord(raw.exam) && isRecord(raw.exam.photos)) {
+    out.exam = { ...raw.exam, photos: decodeBlobValues(raw.exam.photos) };
+  }
+  return out;
+}
 
 /**
  * draft 데이터베이스 스키마. 버전을 올릴 때는 이전 버전 줄을 지우지 말고 새 줄을
@@ -43,7 +108,8 @@ export function draftDbName(): string {
 /** 저장소가 쓰는 최소한의 표 기능. 테스트는 이 형태로 가짜 표를 넣는다 */
 export interface DraftTable {
   get(id: string): Promise<unknown>;
-  put(draft: InspectionDraft): Promise<unknown>;
+  /** 사진을 바이트로 바꾼 draft를 받는다(encodeDraft) */
+  put(draft: unknown): Promise<unknown>;
   delete(id: string): Promise<void>;
 }
 
@@ -101,7 +167,7 @@ export function createDraftStore(
         const draft = await table.get(DRAFT_ID);
         return draft === undefined
           ? { status: 'none' }
-          : { status: 'found', draft };
+          : { status: 'found', draft: decodeDraft(draft) };
       } catch {
         return { status: 'error' };
       }
@@ -112,7 +178,7 @@ export function createDraftStore(
       if (!table) return 'skipped';
       const startedAt = generation;
       try {
-        await table.put(draft);
+        await table.put(await encodeDraft(draft));
         await removeLate(table, startedAt);
         return 'saved';
       } catch (error) {
@@ -146,7 +212,8 @@ export function createDraftStore(
 /** 확인 화면 입력 draft가 쓰는 최소한의 표 기능 */
 export interface FormDraftTable {
   get(slot: ScanFormSlot): Promise<unknown>;
-  put(draft: ScanFormDraft): Promise<unknown>;
+  /** 사진을 바이트로 바꾼 draft를 받는다(encodeFormDraft) */
+  put(draft: unknown): Promise<unknown>;
   delete(slot: ScanFormSlot): Promise<void>;
 }
 
@@ -179,7 +246,7 @@ export function createFormDraftStore(
         const draft = await table.get(slot);
         return draft === undefined
           ? { status: 'none' }
-          : { status: 'found', draft };
+          : { status: 'found', draft: decodeFormDraft(draft) };
       } catch {
         return { status: 'error' };
       }
@@ -189,13 +256,13 @@ export function createFormDraftStore(
       const table = openTable();
       if (!table) return 'skipped';
       try {
-        await table.put(draft);
+        await table.put(await encodeFormDraft(draft));
         return 'saved';
       } catch (error) {
         if (!isQuotaError(error)) return 'failed';
       }
       try {
-        await table.put({ ...draft, photo: null });
+        await table.put({ ...(await encodeFormDraft(draft)), photo: null });
         return 'savedWithoutPhoto';
       } catch {
         return 'failed';
@@ -216,8 +283,9 @@ export function createFormDraftStore(
 }
 
 class DraftDatabase extends Dexie {
-  drafts!: Table<InspectionDraft, string>;
-  formDrafts!: Table<ScanFormDraft, ScanFormSlot>;
+  // 저장되는 모양은 사진이 바이트로 바뀐 draft다. 읽은 값은 load가 형태를 검사한다.
+  drafts!: Table<unknown, string>;
+  formDrafts!: Table<unknown, ScanFormSlot>;
 
   constructor() {
     super(draftDbName());

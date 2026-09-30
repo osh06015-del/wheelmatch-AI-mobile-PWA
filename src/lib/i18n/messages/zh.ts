@@ -63,7 +63,8 @@ export const zh: Messages = {
   'result.recheckGuard': '重新检查护罩信息',
   'result.save': '完成并保存',
   'result.saving': '正在保存...',
-  'result.saveError': '保存失败。请检查存储空间后重试。',
+  'result.saveError': '保存失败。请重试。如仍失败，请提供下方的错误代码。',
+  'result.saveErrorCode': '错误代码：{code}',
   'result.saveErrorQuota':
     '设备存储空间已满，本次记录未保存。请在历史记录中删除不需要的记录，或释放设备存储空间后重试。',
   'result.saveWithoutPhotosHint':

@@ -72,7 +72,8 @@ export const vi: Messages = {
   'result.save': 'Hoàn tất và lưu',
   'result.saving': 'Đang lưu...',
   'result.saveError':
-    'Lưu không thành công. Hãy kiểm tra dung lượng lưu trữ rồi thử lại.',
+    'Lưu không thành công. Hãy thử lại. Nếu vẫn lỗi, hãy báo mã lỗi bên dưới.',
+  'result.saveErrorCode': 'Mã lỗi: {code}',
   'result.saveErrorQuota':
     'Bản ghi này chưa được lưu — bộ nhớ thiết bị đã đầy. Hãy xóa các bản ghi không cần thiết trong lịch sử hoặc giải phóng bộ nhớ thiết bị rồi thử lại.',
   'result.saveWithoutPhotosHint':

@@ -72,7 +72,8 @@ export const id: Messages = {
   'result.save': 'Selesai dan simpan',
   'result.saving': 'Menyimpan...',
   'result.saveError':
-    'Gagal menyimpan. Periksa ruang penyimpanan lalu coba lagi.',
+    'Gagal menyimpan. Coba lagi. Jika terus gagal, laporkan kode galat di bawah.',
+  'result.saveErrorCode': 'Kode galat: {code}',
   'result.saveErrorQuota':
     'Catatan ini tidak tersimpan — ruang penyimpanan perangkat penuh. Hapus catatan yang tidak diperlukan di riwayat atau kosongkan ruang penyimpanan perangkat, lalu coba lagi.',
   'result.saveWithoutPhotosHint':
