@@ -18,6 +18,7 @@ import { useMemo, useState } from 'react';
 import { DataManagementPanel } from '@/components/DataManagementPanel';
 import { HistoryFilters } from '@/components/HistoryFilters';
 import { HistoryList } from '@/components/HistoryList';
+import { ReportExportButton } from '@/components/ReportExportButton';
 import { ResearchPanel } from '@/components/ResearchPanel';
 import {
   clearInspectionPhotos,
@@ -115,6 +116,23 @@ export default function HistoryPage() {
           {t('history.title')}
         </h1>
       </header>
+
+      {/* 사람이 읽는 기록(사진 포함)이 이 화면의 주된 내보내기다. 맨 위에 둔다 —
+          아래 백업 파일(JSON)은 앱에 다시 가져오는 복원용이라 읽을 수 없다. */}
+      {allRecords.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <ReportExportButton
+            primary
+            label={t('report.saveAll', { count: allRecords.length })}
+            loadRecords={() =>
+              listInspectionsByIds(allRecords.map((record) => record.id))
+            }
+          />
+          <p className="text-sm leading-relaxed text-slate-400">
+            {t('report.sectionHint')}
+          </p>
+        </div>
+      )}
 
       {allRecords.length > 0 && (
         <HistoryFilters

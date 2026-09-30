@@ -934,7 +934,6 @@ export const ko = {
   'report.trialRunAbnormal': '이상 있음 — 작업 중지',
   'report.saveOne': '이 기록을 문서로 저장 (사진 포함)',
   'report.saveAll': '전체 기록을 문서로 저장 (사진 포함, {count}건)',
-  'report.sectionTitle': '점검 기록 문서',
   'report.sectionHint':
     '판정·검사 항목·사진을 사람이 읽는 문서(HTML)로 저장합니다. 휴대폰 브라우저로 열거나 카카오톡으로 보낼 수 있습니다. 앱에 다시 가져오는 복원에는 쓸 수 없습니다.',
   'report.working': '문서를 만드는 중입니다… ({done}/{total})',
@@ -945,11 +944,11 @@ export const ko = {
   'report.cancelled': '공유를 취소했습니다. 문서는 저장되지 않았습니다.',
   'report.failed': '문서를 만들지 못했습니다. 다시 시도하세요.',
   'backup.restoreOnly':
-    '이 백업 파일은 앱에 다시 가져오는 복원용이라 사람이 읽기 어렵습니다. 읽을 기록은 위 「점검 기록 문서」로 저장하세요.',
+    '이 백업 파일은 앱에 다시 가져오는 복원용이라 사람이 읽기 어렵습니다. 사람이 읽는 기록은 이력 화면 맨 위 「전체 기록을 문서로 저장」을 쓰세요.',
   'backup.title': '백업 파일(JSON)',
   'backup.notice':
     '점검 기록과 저장된 그라인더만 담습니다. 사진은 어떤 경우에도 포함하지 않습니다.',
-  'backup.export': '내보내기',
+  'backup.export': '복원용 백업 파일 저장 (JSON)',
   'backup.exported': '{count}건을 내보냈습니다.',
   'backup.exportFailed': '내보내기에 실패했습니다.',
   'backup.importLabel': '백업 파일 가져오기',

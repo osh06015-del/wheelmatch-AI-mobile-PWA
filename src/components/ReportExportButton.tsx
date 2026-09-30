@@ -39,8 +39,11 @@ export function ReportExportButton({
   label,
   loadRecords,
   disabled = false,
+  primary = false,
 }: {
   label: string;
+  /** 화면의 주된 행동이면 true — 눈에 띄는 채운 버튼으로 그린다 */
+  primary?: boolean;
   /** 문서에 담을 기록(사진 포함). 부를 때마다 새로 읽는다 */
   loadRecords: () => Promise<InspectionRecord[]>;
   disabled?: boolean;
@@ -105,7 +108,11 @@ export function ReportExportButton({
         type="button"
         onClick={() => void handleClick()}
         disabled={disabled || working}
-        className="min-h-12 rounded-lg border border-slate-500 px-3 text-base font-semibold text-slate-100 active:bg-slate-700 disabled:opacity-50"
+        className={
+          primary
+            ? 'min-h-14 rounded-lg bg-slate-100 px-3 text-lg font-bold text-slate-900 active:bg-white disabled:opacity-50'
+            : 'min-h-12 rounded-lg border border-slate-500 px-3 text-base font-semibold text-slate-100 active:bg-slate-700 disabled:opacity-50'
+        }
       >
         {label}
       </button>

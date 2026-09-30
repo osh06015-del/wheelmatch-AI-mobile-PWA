@@ -989,7 +989,6 @@ export const id: Messages = {
   'report.saveOne': 'Simpan catatan ini sebagai dokumen (dengan foto)',
   'report.saveAll':
     'Simpan semua catatan sebagai dokumen (dengan foto, {count})',
-  'report.sectionTitle': 'Dokumen catatan pemeriksaan',
   'report.sectionHint':
     'Menyimpan hasil, butir pemeriksaan, dan foto sebagai dokumen yang mudah dibaca (HTML). Buka di browser ponsel atau kirim lewat KakaoTalk. Tidak dapat dipakai untuk memulihkan data ke aplikasi.',
   'report.working': 'Membuat dokumen… ({done}/{total})',
@@ -1000,11 +999,11 @@ export const id: Messages = {
   'report.cancelled': 'Berbagi dibatalkan. Dokumen tidak disimpan.',
   'report.failed': 'Gagal membuat dokumen. Coba lagi.',
   'backup.restoreOnly':
-    'File cadangan ini untuk memulihkan ke aplikasi sehingga sulit dibaca. Untuk catatan yang mudah dibaca, gunakan “Dokumen catatan pemeriksaan” di atas.',
+    'File cadangan ini untuk memulihkan ke aplikasi sehingga sulit dibaca. Untuk catatan yang mudah dibaca, gunakan “Simpan semua catatan sebagai dokumen” di bagian atas layar riwayat.',
   'backup.title': 'Berkas cadangan (JSON)',
   'backup.notice':
     'Hanya berisi catatan pemeriksaan dan gerinda tersimpan. Foto tidak pernah disertakan.',
-  'backup.export': 'Ekspor',
+  'backup.export': 'Simpan file cadangan untuk pemulihan (JSON)',
   'backup.exported': 'Berhasil mengekspor {count} catatan.',
   'backup.exportFailed': 'Ekspor gagal.',
   'backup.importLabel': 'Impor berkas cadangan',

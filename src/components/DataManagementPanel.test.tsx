@@ -135,7 +135,9 @@ describe('DataManagementPanel — 내보내기', () => {
     const user = userEvent.setup();
     render(<DataManagementPanel />);
 
-    await user.click(screen.getByRole('button', { name: '내보내기' }));
+    await user.click(
+      screen.getByRole('button', { name: '복원용 백업 파일 저장 (JSON)' }),
+    );
     expect(await screen.findByText('2건을 내보냈습니다.')).toBeInTheDocument();
   });
 
@@ -144,7 +146,9 @@ describe('DataManagementPanel — 내보내기', () => {
     const user = userEvent.setup();
     render(<DataManagementPanel />);
 
-    await user.click(screen.getByRole('button', { name: '내보내기' }));
+    await user.click(
+      screen.getByRole('button', { name: '복원용 백업 파일 저장 (JSON)' }),
+    );
     expect(await screen.findByRole('alert')).toHaveTextContent(
       '내보내기에 실패했습니다.',
     );

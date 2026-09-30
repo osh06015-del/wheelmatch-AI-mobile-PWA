@@ -226,6 +226,24 @@ describe('이력 화면 — 필터', () => {
     });
   });
 
+  it('사람이 읽는 문서 저장이 맨 위의 주된 버튼이고, 백업(JSON)은 복원용으로 따로 적혀 있다', () => {
+    // 현장에서 "내보내기"(백업 JSON)를 문서 저장으로 알고 눌렀다. 두 버튼을
+    // 이름과 위치로 가른다 — 문서 저장이 화면 맨 위, 백업은 복원용이라 명시.
+    render(<HistoryPage />);
+
+    const buttons = screen.getAllByRole('button');
+    const reportButton = screen.getByRole('button', {
+      name: '전체 기록을 문서로 저장 (사진 포함, 2건)',
+    });
+    expect(buttons[0]).toBe(reportButton);
+    expect(
+      screen.getByRole('button', { name: '복원용 백업 파일 저장 (JSON)' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '내보내기' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('필터를 걸면 조건에 맞는 기록만 남고, 건수를 함께 보여준다', async () => {
     const user = userEvent.setup();
     render(<HistoryPage />);

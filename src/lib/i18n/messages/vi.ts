@@ -956,7 +956,6 @@ export const vi: Messages = {
   'report.trialRunAbnormal': 'Có bất thường — dừng công việc',
   'report.saveOne': 'Lưu hồ sơ này thành tài liệu (kèm ảnh)',
   'report.saveAll': 'Lưu tất cả hồ sơ thành tài liệu (kèm ảnh, {count})',
-  'report.sectionTitle': 'Tài liệu hồ sơ kiểm tra',
   'report.sectionHint':
     'Lưu kết quả, mục kiểm tra và ảnh thành tài liệu dễ đọc (HTML). Có thể mở bằng trình duyệt điện thoại hoặc gửi qua KakaoTalk. Không dùng để khôi phục vào ứng dụng.',
   'report.working': 'Đang tạo tài liệu… ({done}/{total})',
@@ -966,11 +965,11 @@ export const vi: Messages = {
   'report.cancelled': 'Đã hủy chia sẻ. Tài liệu chưa được lưu.',
   'report.failed': 'Không tạo được tài liệu. Hãy thử lại.',
   'backup.restoreOnly':
-    'Tệp sao lưu này dùng để khôi phục vào ứng dụng nên khó đọc. Để giữ hồ sơ dễ đọc, hãy dùng “Tài liệu hồ sơ kiểm tra” ở trên.',
+    'Tệp sao lưu này dùng để khôi phục vào ứng dụng nên khó đọc. Để có hồ sơ dễ đọc, hãy dùng “Lưu tất cả hồ sơ thành tài liệu” ở đầu màn hình lịch sử.',
   'backup.title': 'Tệp sao lưu (JSON)',
   'backup.notice':
     'Chỉ chứa bản ghi kiểm tra và máy mài đã lưu. Không bao giờ chứa ảnh.',
-  'backup.export': 'Xuất ra',
+  'backup.export': 'Lưu tệp sao lưu để khôi phục (JSON)',
   'backup.exported': 'Đã xuất {count} bản ghi.',
   'backup.exportFailed': 'Xuất thất bại.',
   'backup.importLabel': 'Nhập tệp sao lưu',

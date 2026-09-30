@@ -853,7 +853,6 @@ export const zh: Messages = {
   'report.trialRunAbnormal': '有异常 — 停止作业',
   'report.saveOne': '将此记录保存为文档（含照片）',
   'report.saveAll': '将全部记录保存为文档（含照片，{count} 条）',
-  'report.sectionTitle': '点检记录文档',
   'report.sectionHint':
     '将判定、检查项目和照片保存为可阅读的文档（HTML）。可用手机浏览器打开或通过 KakaoTalk 发送。不能用于恢复到应用中。',
   'report.working': '正在生成文档…（{done}/{total}）',
@@ -862,10 +861,10 @@ export const zh: Messages = {
   'report.cancelled': '已取消分享。文档未保存。',
   'report.failed': '未能生成文档。请重试。',
   'backup.restoreOnly':
-    '此备份文件用于恢复到应用中，不便阅读。如需可阅读的记录，请使用上方的「点检记录文档」。',
+    '此备份文件用于恢复到应用中，不便阅读。如需可阅读的记录，请使用记录页面顶部的「将全部记录保存为文档」。',
   'backup.title': '备份文件(JSON)',
   'backup.notice': '仅包含点检记录和已保存的砂轮机。不包含照片。',
-  'backup.export': '导出',
+  'backup.export': '保存恢复用备份文件（JSON）',
   'backup.exported': '已导出 {count} 件记录。',
   'backup.exportFailed': '导出失败。',
   'backup.importLabel': '导入备份文件',
