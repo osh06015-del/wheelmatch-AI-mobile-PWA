@@ -532,6 +532,258 @@ describe('오프라인 제한 대조 표시와 진행 중 점검 복구', () => 
     expect(result.current.analysisMode).toBe('online');
   });
 
+  describe('숫돌 라벨 재분석 — AI가 낸 외관 의심과 원본 표시', () => {
+    // 확정값(wheel)에서 visibleDamage와 markings는 작업자가 확인 화면에서 본 값이
+    // 아니라 OCR이 실어 온 값이다(confirm.ts). 직접 입력이면 둘 다 비어 있다.
+    // 재분석을 받아들여 온라인 대조로 바뀌면 판정은 확정값만 보므로, 여기서 옮기지
+    // 않으면 AI가 올린 의심과 표기 대조가 판정에서 통째로 빠진다.
+
+    /** 작업자가 라벨을 직접 보고 넣은 값. 외관 판독도 원본 표시도 없다 */
+    const TYPED: WheelSpec = {
+      maxRPM: 12200,
+      diameter: 125,
+      thickness: 1.6,
+      purpose: 'cutting',
+      wheelType: 'bonded_abrasive',
+      visibleDamage: 'unknown',
+      rpmSource: 'user',
+      expiry: { year: 2099, month: 12 },
+      expiryReview: 'marked',
+      rawText: '',
+      confidence: 'high',
+    };
+
+    /** 서버가 같은 라벨 사진에서 읽은 값 */
+    const AI: WheelSpec = {
+      maxRPM: 12200,
+      diameter: 125,
+      thickness: 1.6,
+      purpose: 'cutting',
+      wheelType: 'bonded_abrasive',
+      visibleDamage: 'none_visible',
+      markings: {
+        labeledRPM: 12200,
+        peripheralSpeedMps: 80,
+        boreDiameter: 22.23,
+        expiryRaw: '12/2099',
+      },
+      rpmSource: 'label',
+      expiry: { year: 2099, month: 12 },
+      rawText: 'AI',
+      confidence: 'medium',
+    };
+
+    /** 서버로 보내는 라벨 사진. 재분석은 사진이 있을 때만 할 수 있다 */
+    const PHOTO = new Blob(['label'], { type: 'image/jpeg' });
+
+    function typedOffline(wheel: WheelSpec = TYPED) {
+      const { result } = renderHook(() => useInspection());
+      act(() => {
+        result.current.setGrinder(GRINDER, null, GRINDER);
+        result.current.setWheel(wheel, PHOTO, null);
+        result.current.setOfflineSlot('wheel', true);
+      });
+      return result;
+    }
+
+    const storedWheel = () =>
+      JSON.parse(
+        sessionStorage.getItem('wheelmatch.wheel') ?? 'null',
+      ) as WheelSpec;
+
+    it('AI가 외관 손상을 의심하면 최종값에 의심이 더해지고, 작업자가 넣은 값은 그대로다', () => {
+      const result = typedOffline();
+
+      act(() =>
+        result.current.applyReanalysis({
+          wheelOcr: { ...AI, visibleDamage: 'suspected' },
+          wheelOcrTelemetry: null,
+        }),
+      );
+
+      expect(result.current.analysisMode).toBe('online');
+      expect(result.current.wheel?.visibleDamage).toBe('suspected');
+      // 작업자가 확인 화면에서 확정한 값은 하나도 바뀌지 않는다.
+      expect(result.current.wheel).toMatchObject({
+        maxRPM: 12200,
+        diameter: 125,
+        thickness: 1.6,
+        purpose: 'cutting',
+        wheelType: 'bonded_abrasive',
+        rpmSource: 'user',
+        expiry: { year: 2099, month: 12 },
+        expiryReview: 'marked',
+        confidence: 'high',
+      });
+      // 새로고침해도 의심이 남는다.
+      expect(storedWheel().visibleDamage).toBe('suspected');
+      // OCR 원본 자리에는 AI가 읽은 그대로 들어간다.
+      expect(result.current.wheelOcr?.visibleDamage).toBe('suspected');
+    });
+
+    it('AI가 읽은 원본 표시가 최종값에 들어가고, OCR 원본과 객체를 공유하지 않는다', () => {
+      const result = typedOffline();
+
+      act(() =>
+        result.current.applyReanalysis({
+          wheelOcr: AI,
+          wheelOcrTelemetry: null,
+        }),
+      );
+
+      expect(result.current.wheel?.markings).toEqual(AI.markings);
+      expect(result.current.wheel?.markings).not.toBe(
+        result.current.wheelOcr?.markings,
+      );
+      expect(storedWheel().markings).toEqual(AI.markings);
+    });
+
+    it('AI가 손상을 의심하지 않으면 최종값의 외관 판독을 바꾸지 않는다', () => {
+      // 의심을 지어내지 않는다. 보이지 않았다는 판독으로 덮어쓰지도 않는다.
+      const result = typedOffline();
+
+      act(() =>
+        result.current.applyReanalysis({
+          wheelOcr: AI,
+          wheelOcrTelemetry: null,
+        }),
+      );
+
+      expect(result.current.wheel?.visibleDamage).toBe('unknown');
+    });
+
+    it('이미 올라와 있던 의심은 재분석이 의심하지 않아도 지워지지 않는다', () => {
+      const result = typedOffline({ ...TYPED, visibleDamage: 'suspected' });
+
+      act(() =>
+        result.current.applyReanalysis({
+          wheelOcr: AI,
+          wheelOcrTelemetry: null,
+        }),
+      );
+
+      expect(result.current.wheel?.visibleDamage).toBe('suspected');
+      expect(storedWheel().visibleDamage).toBe('suspected');
+    });
+
+    it('재분석 결과가 도착하면 전환하지 않아도 AI가 올린 의심만 최종값에 남긴다', () => {
+      // 값이 달라 전환이 막히거나 작업자가 취소해도 의심은 버리지 않는다.
+      const result = typedOffline();
+
+      act(() =>
+        result.current.keepReanalysisSuspicion(
+          {
+            wheelOcr: { ...AI, visibleDamage: 'suspected' },
+            wheelOcrTelemetry: null,
+          },
+          PHOTO,
+        ),
+      );
+
+      expect(result.current.wheel?.visibleDamage).toBe('suspected');
+      expect(storedWheel().visibleDamage).toBe('suspected');
+      // 전환한 것이 아니다. 오프라인 표시도, OCR 원본 자리도, 원본 표시도 그대로다.
+      expect(result.current.analysisMode).toBe('offline_limited');
+      expect(result.current.wheelOcr).toBeNull();
+      expect(result.current.wheel?.markings).toBeUndefined();
+      expect(sessionStorage.getItem('wheelmatch.wheelOcr')).toBe('null');
+    });
+
+    it('재분석이 의심하지 않았으면 결과가 도착해도 아무것도 바꾸지 않는다', () => {
+      const result = typedOffline();
+      const before = result.current.wheel;
+
+      act(() =>
+        result.current.keepReanalysisSuspicion(
+          { wheelOcr: AI, wheelOcrTelemetry: null },
+          PHOTO,
+        ),
+      );
+
+      expect(result.current.wheel).toBe(before);
+    });
+
+    it('응답을 기다리는 사이 숫돌을 다시 찍었으면 이전 사진의 의심을 새 숫돌에 얹지 않는다', () => {
+      // 서버 응답은 늦게 올 수 있다. 그 사이 확정된 숫돌은 AI가 본 사진의 숫돌이
+      // 아니다 — 거기에 의심을 얹으면 의심을 지어내는 것이다.
+      const result = typedOffline();
+      act(() => {
+        result.current.setWheel(
+          { ...TYPED, diameter: 115 },
+          new Blob(['other label'], { type: 'image/jpeg' }),
+          null,
+        );
+        result.current.setOfflineSlot('wheel', true);
+      });
+
+      act(() =>
+        result.current.keepReanalysisSuspicion(
+          {
+            wheelOcr: { ...AI, visibleDamage: 'suspected' },
+            wheelOcrTelemetry: null,
+          },
+          PHOTO,
+        ),
+      );
+
+      expect(result.current.wheel?.visibleDamage).toBe('unknown');
+      expect(storedWheel().visibleDamage).toBe('unknown');
+    });
+
+    it('로컬 OCR이 읽어 둔 표기는 덮지 않고 빈 자리만 채운다', () => {
+      // 로컬 OCR은 rpm 표기만 읽었다. 서버가 m/s와 내경을 더 읽었고, rpm은 다르게 읽었다.
+      const result = typedOffline({
+        ...TYPED,
+        markings: {
+          labeledRPM: 12200,
+          peripheralSpeedMps: null,
+          boreDiameter: null,
+          expiryRaw: null,
+        },
+      });
+
+      act(() =>
+        result.current.applyReanalysis({
+          wheelOcr: {
+            ...AI,
+            markings: {
+              labeledRPM: 13300,
+              peripheralSpeedMps: 80,
+              boreDiameter: 22.23,
+              expiryRaw: '12/2099',
+            },
+          },
+          wheelOcrTelemetry: null,
+        }),
+      );
+
+      expect(result.current.wheel?.markings).toEqual({
+        labeledRPM: 12200,
+        peripheralSpeedMps: 80,
+        boreDiameter: 22.23,
+        expiryRaw: '12/2099',
+      });
+      // OCR 원본 자리에는 서버가 읽은 그대로 남는다.
+      expect(result.current.wheelOcr?.markings?.labeledRPM).toBe(13300);
+    });
+
+    it('명판만 재분석하면 숫돌 최종값은 건드리지 않는다', () => {
+      const result = typedOffline();
+      const before = result.current.wheel;
+
+      act(() =>
+        result.current.applyReanalysis({
+          grinderOcr: GRINDER,
+          grinderOcrTelemetry: null,
+        }),
+      );
+
+      expect(result.current.wheel).toBe(before);
+      // 숫돌 쪽 오프라인 표시도 그대로다.
+      expect(result.current.analysisMode).toBe('offline_limited');
+    });
+  });
+
   it('체크리스트와 마친 시험운전은 메모리에만 두고, 새 숫돌이 들어오면 버린다', () => {
     const { result } = renderHook(() => useInspection());
     act(() => {

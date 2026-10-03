@@ -91,6 +91,7 @@ export default function ResultPage() {
     wheelOcrTelemetry,
     grinderCondition,
     wheelCondition,
+    setWheelCondition,
     trialRun,
     setTrialRun,
     grinderImage,
@@ -98,6 +99,7 @@ export default function ResultPage() {
     captureChecks,
     analysisMode,
     offlineSlots,
+    keepReanalysisSuspicion,
     applyReanalysis,
     checklist: storedChecklist,
     setChecklist: storeChecklist,
@@ -123,6 +125,10 @@ export default function ResultPage() {
   // 작업자가 화면의 코드를 그대로 전할 수 있어야 한다.
   const [saveErrorCode, setSaveErrorCode] = useState<string | null>(null);
   const [findings, setFindings] = useState<TrialRunFinding[]>([]);
+  // 방금 이 화면에서 작업자가 숫돌 손상을 「문제 있음」으로 답했는가(재분석 뒤 다시
+  // 물은 항목). 답은 저장소의 숫돌 상태에 남기고, 이 표시는 정지 안내를 한 번
+  // 보여주는 데만 쓴다 — 새로고침하면 사라지고 아래 가드가 평소대로 되돌린다.
+  const [damageReported, setDamageReported] = useState(false);
 
   // 규격과 작업자 직접 상태 확인이 모두 없으면 대조 결과를 보여주지 않는다.
   //
@@ -144,6 +150,10 @@ export default function ResultPage() {
         conditionItemsFor(wheel.wheelType),
       )
     ) {
+      // 방금 이 화면에서 손상을 신고했다면 곧바로 촬영 화면으로 보내지 않는다.
+      // 그러면 "이 숫돌을 사용하지 마십시오"를 한 번도 보지 못한 채 카메라가 뜬다.
+      // 정지 안내를 먼저 보이고(아래), 작업자가 눌러서 숫돌 확인으로 간다.
+      if (damageReported) return;
       router.replace('/scan/wheel');
     }
   }, [
@@ -154,6 +164,7 @@ export default function ResultPage() {
     wheel,
     grinderCondition,
     wheelCondition,
+    damageReported,
     router,
   ]);
 
@@ -177,6 +188,39 @@ export default function ResultPage() {
         : null,
     [grinder, wheel, declaredPurpose, today, analysisMode],
   );
+
+  // 재분석 뒤 다시 물은 손상 항목에 「문제 있음」으로 답한 직후. 대조 결과도 저장
+  // 버튼도 보이지 않는다 — 숫돌 상태에 문제가 있으면 규격이 맞아도 진행하지 못한다.
+  // 숫돌 확인 화면의 Gate가 같은 답에 보이는 것과 같은 정지 안내를 보인다.
+  if (damageReported) {
+    return (
+      <main className="flex flex-1 flex-col justify-center gap-4 px-6 py-6">
+        <div
+          role="alert"
+          className="rounded-xl border-2 border-red-500 bg-red-500/15 px-4 py-5"
+        >
+          <h1 className="text-xl font-black text-red-100">
+            {t('wheelCondition.stopTitle')}
+          </h1>
+          <p className="mt-2 text-base leading-relaxed text-red-100">
+            {t('wheelCondition.stopBody')}
+          </p>
+        </div>
+        <Link
+          href="/scan/wheel"
+          className="flex min-h-14 items-center justify-center rounded-lg bg-yellow-500 text-lg font-bold text-slate-950 active:bg-yellow-400"
+        >
+          {t('result.retakeWheel')}
+        </Link>
+        <Link
+          href="/"
+          className="flex min-h-14 items-center justify-center rounded-lg border border-slate-600 text-lg font-semibold text-slate-200 active:bg-slate-800"
+        >
+          {t('common.home')}
+        </Link>
+      </main>
+    );
+  }
 
   if (
     declaredPurpose === null ||
@@ -268,6 +312,22 @@ export default function ResultPage() {
     if (!record) return;
     setTrialRunRecord(record);
     setTrialRun(null);
+  }
+
+  /**
+   * 재분석이 손상을 의심해 다시 물은 항목에 작업자가 「문제 있음」으로 답했다.
+   *
+   * 답을 숫돌 상태에 그대로 남긴다(다른 항목의 답은 건드리지 않는다). 그 순간부터
+   * 이 점검은 결과 화면에 들어올 수 없다 — 새로고침하거나 주소로 다시 와도 맨 위의
+   * 가드가 숫돌 확인으로 돌려보낸다. 이 화면에서는 정지 안내를 먼저 보인다.
+   *
+   * 숫돌 확인으로 돌아가면 그 화면의 규칙대로 처음부터 다시 한다. 새 사진은 새
+   * 숫돌일 수 있어, 이 답과 이 사진의 의심은 다음 사진으로 이어지지 않는다.
+   */
+  function reportWheelDamage() {
+    if (!wheelCondition) return;
+    setDamageReported(true);
+    setWheelCondition({ ...wheelCondition, damageFree: false });
   }
 
   /**
@@ -404,7 +464,9 @@ export default function ResultPage() {
           offlineSlots={offlineSlots}
           grinderImage={grinderImage}
           wheelImage={wheelImage}
+          onAnalyzed={keepReanalysisSuspicion}
           onAccept={applyReanalysis}
+          onDamageIssue={reportWheelDamage}
         />
       )}
 

@@ -1068,7 +1068,7 @@ export const en: Messages = {
     'This result compares only the values the worker entered. RPM and diameter violations are judged as a mismatch, but no fit conclusion is given and the trial run does not open.',
   'offline.reanalyze': 'Reanalyze on the server',
   'offline.reanalyzeHint':
-    'You can reanalyze on the server. Reanalyzing does not change the values you entered; it only shows them next to the AI values.',
+    'You can reanalyze on the server. Reanalyzing does not change the values you entered; it only shows them next to the AI values. If the AI suspects damage in the photo, that warning is added to the result.',
   'offline.stillOffline':
     'Still offline. When connected, you can choose to reanalyze on the server.',
   'offline.noPhotos':
@@ -1082,6 +1082,8 @@ export const en: Messages = {
   'offline.compareDiffers': 'different',
   'offline.mismatch':
     'Some entered values differ from the AI values or the AI could not read them, so this cannot switch to an online check. Keep the offline result or take the photos again.',
+  'offline.damageRecheck':
+    'Your earlier answer about wheel damage was given before the AI warning below. Look at the actual wheel again and answer before this can switch to an online check.',
   'offline.accept':
     'Confirm the values equal the AI values and switch to an online check',
   'offline.cancel': 'Cancel and keep the offline result',

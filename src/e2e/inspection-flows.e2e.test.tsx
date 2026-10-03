@@ -714,4 +714,215 @@ describe('점검 흐름 E2E — 오프라인 제한 대조와 재연결', () => 
     expect(record.grinder.noLoadRPM).toBe(11000);
     expect(record.grinderOcr).toEqual(GRINDER);
   });
+
+  /**
+   * 명판은 온라인으로 읽고, 숫돌 라벨 분석이 네트워크로 실패해 작업자가 라벨을
+   * 보고 직접 넣어 결과까지 간다. 확정값에는 외관 판독도 원본 표시도 없다.
+   */
+  async function openOfflineWheelResult(
+    f: ReturnType<typeof inspector>,
+    extractor: FixtureExtractor,
+  ) {
+    await mountApp(extractor);
+    await f.chooseJob('cutting');
+    await f.pickPhoto();
+    await f.answerGrinderCondition();
+    await f.user.click(f.button('scan.grinder.proceed'));
+    await f.atPath('/scan/wheel');
+
+    await f.pickPhoto();
+    await f.user.click(
+      await screen.findByRole('button', {
+        name: f.t('scan.offline.continue'),
+      }),
+    );
+    await screen.findByText(f.t('scan.offline.notice'), { exact: false });
+
+    // 작업자가 라벨을 보고 값을 직접 넣는다. 추정값은 없다.
+    const [rpm, diameter, thickness] = screen.getAllByPlaceholderText(
+      f.t('field.placeholder'),
+    );
+    await f.user.type(rpm, '12200');
+    await f.user.type(diameter, '125');
+    await f.user.type(thickness, '1.6');
+    const [purpose, wheelType] = screen.getAllByRole('combobox');
+    await f.user.selectOptions(purpose, 'cutting');
+    await f.user.selectOptions(wheelType, 'bonded_abrasive');
+    await f.user.click(f.button('expiryReview.marked'));
+    await f.user.type(screen.getByPlaceholderText('MM/YYYY'), '12/2099');
+    // 값을 고치면 직접 확인이 풀린다. 맨 마지막에 누른다.
+    await f.user.click(
+      screen.getByRole('checkbox', {
+        name: new RegExp(f.t('manualConfirm.label')),
+      }),
+    );
+    await f.answerWheelCondition();
+    await f.user.click(f.button('scan.wheel.proceed'));
+    await f.atPath('/result');
+    await screen.findByText(f.t('result.title'));
+  }
+
+  const DAMAGE_SUSPECTED =
+    '사진에서 깨짐·균열로 보이는 부분이 있습니다. 이 숫돌을 사용하지 말고 직접 확인하세요.';
+
+  it('직접 넣은 숫돌을 재분석한 AI가 손상을 의심하면 — 손상 항목을 다시 확인해야 온라인 대조로 바뀌고 경고가 기록에 남는다', async () => {
+    const f = inspector('ko');
+    const reanalyzed = wheelLabel({ visibleDamage: 'suspected' });
+    await openOfflineWheelResult(
+      f,
+      new FixtureExtractor()
+        .grinder(GRINDER)
+        .wheel(failure('network'), reanalyzed),
+    );
+    expect(screen.getByText(f.t('verdict.undetermined'))).toBeInTheDocument();
+    // 서버가 사진을 보기 전이다. 외관은 확인할 수 없다고만 말한다.
+    expect(document.body).not.toHaveTextContent(DAMAGE_SUSPECTED);
+
+    await f.user.click(f.button('offline.reanalyze'));
+
+    // 경고는 전환하기 전에 결과에 더해진다. 값이 모두 같아도 전환은 아직 막혀 있다.
+    expect(
+      await screen.findByText(f.t('offline.damageRecheck')),
+    ).toBeInTheDocument();
+    expect(document.body).toHaveTextContent(DAMAGE_SUSPECTED);
+    expect(f.button('offline.accept')).toBeDisabled();
+    expect(screen.getByText(f.t('verdict.undetermined'))).toBeInTheDocument();
+
+    await f.user.click(
+      screen.getByRole('button', {
+        name: new RegExp(f.t('wheelCondition.confirmed')),
+      }),
+    );
+    await f.user.click(f.button('offline.accept'));
+
+    // 외관 손상은 경고다. 판정은 엔진이 낸 그대로다.
+    expect(
+      await screen.findByText(f.t('verdict.compatible')),
+    ).toBeInTheDocument();
+    expect(document.body).toHaveTextContent(DAMAGE_SUSPECTED);
+    await f.completeChecklist();
+    await f.user.click(f.button('trialRun.startBeforeWork', { seconds: 60 }));
+    await finishTrialRun(f);
+    await f.user.click(f.button('result.save'));
+    await f.atPath('/history');
+
+    const [record] = savedRecords();
+    expect(record.analysisMode).toBe('online');
+    expect(record.result.verdict).toBe('COMPATIBLE');
+    // AI가 올린 의심과 읽어 온 표시가 확정값에 들어가 판정 근거와 맞는다.
+    expect(record.wheel.visibleDamage).toBe('suspected');
+    expect(record.wheel.markings).toEqual(reanalyzed.markings);
+    const codes = record.result.checks.map((check) => check.detail?.code);
+    expect(codes).toContain('visibleDamage.suspected');
+    expect(codes).toContain('mountingSpec.shown');
+    // 작업자가 넣은 값과 그 출처는 그대로다.
+    expect(record.wheel).toMatchObject({
+      maxRPM: 12200,
+      diameter: 125,
+      thickness: 1.6,
+      purpose: 'cutting',
+      wheelType: 'bonded_abrasive',
+      rpmSource: 'user',
+      confidence: 'high',
+    });
+    // 숫돌 상태의 답은 작업자가 한 그대로이고, OCR 원본 자리에는 AI가 읽은 그대로다.
+    expect(record.wheelCondition?.damageFree).toBe(true);
+    expect(record.wheelOcr).toEqual(reanalyzed);
+  });
+
+  it('직접 넣은 숫돌을 재분석한 AI가 손상을 의심하고 작업자가 문제 있음으로 답하면 — 사용 중지를 알리고 저장되지 않으며, 숫돌 확인으로 돌아간다', async () => {
+    const f = inspector('ko');
+    await openOfflineWheelResult(
+      f,
+      new FixtureExtractor()
+        .grinder(GRINDER)
+        .wheel(failure('network'), wheelLabel({ visibleDamage: 'suspected' })),
+    );
+
+    await f.user.click(f.button('offline.reanalyze'));
+    await screen.findByText(f.t('offline.damageRecheck'));
+    await f.user.click(
+      screen.getByRole('button', {
+        name: new RegExp(f.t('wheelCondition.issue')),
+      }),
+    );
+
+    // 결과 화면을 닫고 사용 중지를 알린다. 판정도 저장 버튼도 없다.
+    expect(pathname()).toBe('/result');
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      f.t('wheelCondition.stopTitle'),
+    );
+    expect(document.body).not.toHaveTextContent(f.t('result.title'));
+    expect(
+      screen.queryByRole('button', { name: f.t('result.save') }),
+    ).not.toBeInTheDocument();
+    expect(
+      JSON.parse(sessionStorage.getItem('wheelmatch.wheelCondition') ?? 'null'),
+    ).toMatchObject({ damageFree: false });
+
+    await f.user.click(
+      screen.getByRole('link', { name: f.t('result.retakeWheel') }),
+    );
+    await f.atPath('/scan/wheel');
+    expect(savedRecords()).toHaveLength(0);
+    // 주소로 결과 화면에 들어와도 열리지 않는다.
+    visit('/result');
+    await f.atPath('/scan/wheel');
+  });
+
+  it('직접 넣은 숫돌을 재분석한 AI가 표기를 서로 어긋나게 읽으면 — 온라인 대조로 바꿔도 판정불가이고 시험운전이 열리지 않는다', async () => {
+    const f = inspector('ko');
+    // Φ125 12,200rpm은 약 80m/s다. 서버가 m/s를 8로 읽었다면 둘 중 하나는 오독이다.
+    const reanalyzed = wheelLabel({
+      markings: {
+        labeledRPM: 12200,
+        peripheralSpeedMps: 8,
+        boreDiameter: 22.23,
+        expiryRaw: '12/2099',
+      },
+    });
+    await openOfflineWheelResult(
+      f,
+      new FixtureExtractor()
+        .grinder(GRINDER)
+        .wheel(failure('network'), reanalyzed),
+    );
+
+    await f.user.click(f.button('offline.reanalyze'));
+    await f.user.click(
+      await screen.findByRole('button', { name: f.t('offline.accept') }),
+    );
+
+    // 오프라인 제한은 풀렸다. 막는 것은 표기 일치 규칙이다.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('heading', {
+          name: `⚠ ${f.t('rule.offlineLimited')}`,
+        }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText(f.t('verdict.undetermined'))).toBeInTheDocument();
+    expect(
+      screen.queryByText(f.t('verdict.compatible')),
+    ).not.toBeInTheDocument();
+    expect(document.body).toHaveTextContent(
+      f.t('reason.unitConsistency.mismatch'),
+    );
+    await f.completeChecklist();
+    expect(
+      screen.queryByRole('heading', { name: f.t('trialRun.title') }),
+    ).not.toBeInTheDocument();
+
+    await f.user.click(f.button('result.save'));
+    await f.atPath('/history');
+    const [record] = savedRecords();
+    expect(record.analysisMode).toBe('online');
+    expect(record.result.verdict).toBe('UNDETERMINED');
+    expect(record.trialRun).toBeUndefined();
+    expect(
+      record.result.checks.find(
+        (check) => check.detail?.code === 'unitConsistency.mismatch',
+      ),
+    ).toMatchObject({ passed: null });
+  });
 });

@@ -1086,7 +1086,7 @@ export const id: Messages = {
     'Hasil ini hanya membandingkan nilai yang dimasukkan pekerja. Pelanggaran kecepatan dan diameter dinilai tidak sesuai, tetapi tidak ada kesimpulan sesuai dan uji jalan tidak dibuka.',
   'offline.reanalyze': 'Analisis ulang di server',
   'offline.reanalyzeHint':
-    'Anda dapat menganalisis ulang di server. Analisis ulang tidak mengubah nilai yang Anda masukkan; hanya menampilkannya berdampingan dengan nilai AI.',
+    'Anda dapat menganalisis ulang di server. Analisis ulang tidak mengubah nilai yang Anda masukkan; hanya menampilkannya berdampingan dengan nilai AI. Jika AI mencurigai kerusakan pada foto, peringatan itu ditambahkan ke hasil.',
   'offline.stillOffline':
     'Masih luring. Saat terhubung, Anda dapat memilih analisis ulang di server.',
   'offline.noPhotos':
@@ -1100,6 +1100,8 @@ export const id: Messages = {
   'offline.compareDiffers': 'berbeda',
   'offline.mismatch':
     'Ada nilai masukan yang berbeda dari nilai AI atau tidak terbaca AI, jadi tidak dapat beralih ke pemeriksaan daring. Pertahankan hasil luring atau ambil foto ulang.',
+  'offline.damageRecheck':
+    'Jawaban Anda sebelumnya tentang kerusakan batu gerinda diberikan sebelum peringatan AI di bawah ini. Periksa kembali batu gerinda yang sebenarnya dan jawab sebelum dapat beralih ke pemeriksaan daring.',
   'offline.accept':
     'Konfirmasi nilai sama dengan nilai AI dan beralih ke pemeriksaan daring',
   'offline.cancel': 'Batal dan pertahankan hasil luring',

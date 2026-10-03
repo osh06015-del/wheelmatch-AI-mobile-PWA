@@ -194,6 +194,45 @@ describe('새로고침 복원 — 앱이 쓴 값', () => {
     expect(state.droppedOnReload).toBe(false);
   });
 
+  it('서버 재분석으로 옮긴 외관 의심과 원본 표시는 새로고침 뒤에도 그대로 되살아난다', async () => {
+    // 직접 입력한 숫돌(외관 unknown, 원본 표시 없음)을 결과 화면에서 재분석해 온라인
+    // 대조로 바꾼 점검. 옮긴 값이 복원 검사에 걸리면 숫돌 단계가 통째로 버려져,
+    // 새로고침 한 번에 AI가 올린 의심이 숫돌과 함께 사라진다.
+    const typed: WheelSpec = {
+      ...WHEEL_OCR,
+      visibleDamage: 'unknown',
+      rpmSource: 'user',
+      expiry: { year: 2099, month: 12 },
+    };
+    const reanalyzed: WheelSpec = { ...WHEEL, visibleDamage: 'suspected' };
+    const result = await load();
+    act(() => {
+      result.current.setPurpose('cutting', WORK);
+      result.current.setGrinder(GRINDER, null, GRINDER);
+      result.current.setGrinderCondition(GRINDER_OK);
+      result.current.setWheel(typed, null, null);
+      result.current.setOfflineSlot('wheel', true);
+      result.current.setWheelCondition(WHEEL_OK);
+      result.current.applyReanalysis({
+        wheelOcr: reanalyzed,
+        wheelOcrTelemetry: TELEMETRY,
+      });
+    });
+    cleanup();
+
+    const state = await reload();
+
+    expect(state.wheel).toEqual({
+      ...typed,
+      visibleDamage: 'suspected',
+      markings: WHEEL.markings,
+    });
+    expect(state.wheelOcr).toEqual(reanalyzed);
+    expect(state.wheelCondition).toEqual(WHEEL_OK);
+    expect(state.analysisMode).toBe('online');
+    expect(state.droppedOnReload).toBe(false);
+  });
+
   it('고르지 않았거나 수집하지 못해 null로 남긴 값은 어긋난 값이 아니다', async () => {
     // 앱은 고르지 않은 작업 조건, 받지 못한 OCR 원본·측정값을 null로 저장한다.
     const result = await load();

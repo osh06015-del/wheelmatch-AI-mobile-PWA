@@ -8,8 +8,11 @@ import { describe, expect, it } from 'vitest';
 import {
   confirmedWheelSpec,
   wheelTypeDiffersFromSuggestion,
+  withAcceptedReanalysis,
+  withReanalysisSuspicion,
   type ConfirmedWheelFields,
 } from './confirm';
+import { isValidWheelSpec } from '@/lib/backup/recordSanitize';
 import { RULE, matchSpecs } from '@/lib/rules/engine';
 import type { GrinderSpec, WheelSpec } from '@/lib/rules/types';
 import { BONDED_ABRASIVE_PROFILE } from '@/lib/rules/profiles';
@@ -534,5 +537,327 @@ describe('확인 화면을 통과한 값으로 실제 판정하기', () => {
         today: TODAY,
       }).verdict,
     ).toBe('COMPATIBLE');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// 서버 재분석 — 확정한 뒤에 도착한 OCR
+//
+// 서버 분석 없이 확정한 숫돌을 결과 화면에서 다시 분석하면 OCR이 확정보다 늦게
+// 온다. 온라인 대조로 바뀐 뒤에도 판정은 확정값만 보므로, OCR이 실어 오던 두 칸
+// (외관 손상·원본 표시)을 옮기지 않으면 같은 사진을 처음부터 온라인으로 읽었을
+// 때보다 느슨하게 대조한다. 실제로 그렇게 빠져 있었다.
+// ─────────────────────────────────────────────────────────────
+
+describe('서버 재분석 뒤의 확정값', () => {
+  /** 작업자가 라벨을 직접 보고 확인 화면에 넣은 값 */
+  const TYPED: ConfirmedWheelFields = {
+    maxRPM: 12200,
+    diameter: 125,
+    thickness: 1.6,
+    purpose: 'cutting',
+    wheelType: 'bonded_abrasive',
+    expiryText: '04/2027',
+    expiryReview: 'marked',
+    userConfirmed: true,
+  };
+
+  /** 직접 입력으로 확정한 숫돌. 외관 판독도 원본 표시도 없다 */
+  const typedWheel = () => confirmedWheelSpec(null, TYPED);
+
+  /** 로컬 OCR(글자만 읽는다)로 읽고 작업자가 종류를 골라 확정한 숫돌 */
+  function localOcrWheel(
+    markings: Partial<NonNullable<WheelSpec['markings']>>,
+  ): WheelSpec {
+    const ocr = ocrWheel(
+      { wheelType: 'unknown', visibleDamage: 'unknown' },
+      markings,
+    );
+    return confirmedWheelSpec(
+      ocr,
+      untouched(ocr, { wheelType: 'bonded_abrasive', userConfirmed: true }),
+    );
+  }
+
+  const judge = (spec: WheelSpec) =>
+    matchSpecs(grinder(), spec, {
+      profile: BONDED_ABRASIVE_PROFILE,
+      declaredPurpose: 'cutting',
+      today: TODAY,
+    });
+
+  /** 판정과 항목별 결과. 시각(timestamp)과 값 표시는 뺀다 */
+  const outcome = (spec: WheelSpec) => {
+    const result = judge(spec);
+    return {
+      verdict: result.verdict,
+      checks: result.checks.map((check) => ({
+        rule: check.rule,
+        passed: check.passed,
+        code: check.detail?.code,
+      })),
+    };
+  };
+
+  describe('외관 의심 — 전환과 무관하게 더한다', () => {
+    it('재분석이 손상을 의심하면 확정값이 의심으로 바뀌고 다른 값은 그대로다', () => {
+      const wheel = typedWheel();
+      const next = withReanalysisSuspicion(
+        wheel,
+        ocrWheel({ visibleDamage: 'suspected' }),
+      );
+
+      expect(next).toEqual({ ...wheel, visibleDamage: 'suspected' });
+      // 전환하지 않았으면 AI가 읽은 표시는 가져오지 않는다.
+      expect(next.markings).toBeUndefined();
+      expect(
+        judge(next).checks.find((c) => c.rule === RULE.VISIBLE_DAMAGE)?.detail
+          ?.code,
+      ).toBe('visibleDamage.suspected');
+    });
+
+    it.each(['none_visible', 'unknown'] as const)(
+      '재분석의 판독이 %s 이면 아무것도 바꾸지 않는다 — 의심을 지어내지 않는다',
+      (fromReanalysis) => {
+        const wheel = typedWheel();
+
+        // 보이지 않았다는 판독으로 덮어쓰지도 않는다. 같은 객체가 돌아온다.
+        expect(
+          withReanalysisSuspicion(
+            wheel,
+            ocrWheel({ visibleDamage: fromReanalysis }),
+          ),
+        ).toBe(wheel);
+      },
+    );
+
+    it.each(['none_visible', 'unknown', 'suspected'] as const)(
+      '이미 올라와 있던 의심은 재분석의 판독이 %s 여도 지워지지 않는다',
+      (fromReanalysis) => {
+        const wheel = confirmedWheelSpec(null, {
+          ...TYPED,
+          priorDamageSuspected: true,
+        });
+        const reanalyzed = ocrWheel({ visibleDamage: fromReanalysis });
+
+        expect(withReanalysisSuspicion(wheel, reanalyzed).visibleDamage).toBe(
+          'suspected',
+        );
+        expect(withAcceptedReanalysis(wheel, reanalyzed).visibleDamage).toBe(
+          'suspected',
+        );
+      },
+    );
+  });
+
+  describe('전환을 받아들일 때 — 작업자가 확정한 값은 그대로다', () => {
+    it('옮기는 것은 외관 의심과 원본 표시뿐이다', () => {
+      const wheel = typedWheel();
+      const reanalyzed = ocrWheel({
+        visibleDamage: 'suspected',
+        // 작업자 값과 다른 AI 값들. 전환이 열렸더라도 확정값을 덮지 않는다.
+        thickness: 3,
+        purpose: 'grinding',
+        wheelType: 'flap_disc',
+        expiry: { year: 2023, month: 4 },
+        confidence: 'low',
+        rawText: 'AI가 읽은 원문',
+      });
+      const next = withAcceptedReanalysis(wheel, reanalyzed);
+
+      expect(next).toEqual({
+        ...wheel,
+        visibleDamage: 'suspected',
+        markings: reanalyzed.markings,
+      });
+      expect(next.rpmSource).toBe('user');
+      expect(next.confidence).toBe('high');
+    });
+
+    it('옮겨 온 원본 표시는 OCR 원본과 객체를 공유하지 않는다', () => {
+      const reanalyzed = ocrWheel();
+      const next = withAcceptedReanalysis(typedWheel(), reanalyzed);
+
+      expect(next.markings).toEqual(reanalyzed.markings);
+      expect(next.markings).not.toBe(reanalyzed.markings);
+    });
+
+    it('옮긴 확정값은 새로고침·복구의 규격 검사를 통과한다', () => {
+      // 새로고침 복원(inspection.tsx)과 진행 중 점검 복구(draftModel.ts)는 저장된
+      // 규격을 isValidWheelSpec으로 검사하고, 통과하지 못하면 숫돌 단계를 통째로
+      // 버린다. 옮긴 값이 거기서 걸리면 화면을 한 번 새로고침한 것만으로 AI가 올린
+      // 의심과 표시가 숫돌과 함께 사라진다.
+      const reanalyzed = ocrWheel({ visibleDamage: 'suspected' });
+      const confirmed = [
+        typedWheel(),
+        localOcrWheel({ peripheralSpeedMps: null, expiryRaw: null }),
+      ];
+
+      for (const wheel of confirmed) {
+        // sessionStorage를 거치면 JSON 직렬화를 한 번 통과한다.
+        const stored = (spec: WheelSpec): unknown =>
+          JSON.parse(JSON.stringify(spec));
+
+        expect(
+          isValidWheelSpec(stored(withReanalysisSuspicion(wheel, reanalyzed))),
+        ).toBe(true);
+        expect(
+          isValidWheelSpec(stored(withAcceptedReanalysis(wheel, reanalyzed))),
+        ).toBe(true);
+      }
+    });
+
+    it('재분석이 표시를 읽지 못했으면 확정값을 바꾸지 않는다', () => {
+      // route.ts의 emptySpec — 스키마에 맞는 응답을 못 받으면 markings 없이 온다.
+      const wheel = typedWheel();
+      const reanalyzed = ocrWheel();
+      delete reanalyzed.markings;
+
+      expect(withAcceptedReanalysis(wheel, reanalyzed)).toBe(wheel);
+    });
+  });
+
+  describe('전환을 받아들일 때 — 처음부터 온라인으로 읽은 점검과 같게 대조한다', () => {
+    // 같은 라벨 사진을 처음부터 서버로 읽고 작업자가 같은 값으로 확정했다면
+    // confirmedWheelSpec(ai, TYPED)가 규칙엔진으로 갔다. 재분석을 거친 확정값이
+    // 그보다 느슨하게 판정되면 안 된다.
+    const READINGS: Array<[string, WheelSpec]> = [
+      ['멀쩡한 판독', ocrWheel()],
+      ['외관 손상 의심', ocrWheel({ visibleDamage: 'suspected' })],
+      ['rpm·m/s 표기가 서로 어긋남', ocrWheel({}, { peripheralSpeedMps: 8 })],
+      ['내경을 읽지 못함', ocrWheel({}, { boreDiameter: null })],
+      ['m/s 표기뿐', ocrWheel({}, { labeledRPM: null })],
+      [
+        '의심 + 표기 어긋남',
+        ocrWheel({ visibleDamage: 'suspected' }, { peripheralSpeedMps: 8 }),
+      ],
+    ];
+
+    it.each(READINGS)('%s', (_name, reanalyzed) => {
+      const viaReanalysis = withAcceptedReanalysis(typedWheel(), reanalyzed);
+      const onlineFromStart = confirmedWheelSpec(reanalyzed, TYPED);
+
+      expect(outcome(viaReanalysis)).toEqual(outcome(onlineFromStart));
+    });
+
+    it('표기가 서로 어긋난 판독으로 전환하면 적합이 아니라 판정불가다', () => {
+      const next = withAcceptedReanalysis(
+        typedWheel(),
+        ocrWheel({}, { peripheralSpeedMps: 8 }),
+      );
+      const result = judge(next);
+      const check = result.checks.find((c) => c.rule === RULE.UNIT_CONSISTENCY);
+
+      // 옮기기 전에는 이 항목이 아예 없어 적합으로 통과했다.
+      expect(judge(typedWheel()).verdict).toBe('COMPATIBLE');
+      expect(check?.passed).toBeNull();
+      expect(check?.advisory).toBeUndefined(); // 경고가 아니라 차단이다
+      expect(result.verdict).toBe('UNDETERMINED');
+    });
+
+    it('표기가 맞는 판독을 옮겨도 판정이 올라가지 않는다', () => {
+      // 표기 일치의 통과는 전체 판정을 올리는 근거가 못 된다. 다른 이유로
+      // 판정불가인 확정값은 표시를 옮긴 뒤에도 판정불가다.
+      const wheel = confirmedWheelSpec(null, { ...TYPED, purpose: 'unknown' });
+      const next = withAcceptedReanalysis(wheel, ocrWheel());
+
+      expect(judge(wheel).verdict).toBe('UNDETERMINED');
+      expect(
+        judge(next).checks.find((c) => c.rule === RULE.UNIT_CONSISTENCY)
+          ?.passed,
+      ).toBe(true);
+      expect(judge(next).verdict).toBe('UNDETERMINED');
+    });
+  });
+
+  describe('로컬 OCR이 읽어 둔 표기 — 빈 자리만 채운다', () => {
+    it('이미 있는 표기는 재분석이 다르게 읽어도 덮지 않는다', () => {
+      const wheel = localOcrWheel({});
+      const next = withAcceptedReanalysis(
+        wheel,
+        ocrWheel(
+          {},
+          {
+            labeledRPM: 13300,
+            peripheralSpeedMps: 63,
+            boreDiameter: 16,
+            expiryRaw: '01/2030',
+          },
+        ),
+      );
+
+      // 채울 빈 자리가 없다. 같은 객체가 돌아온다.
+      expect(next).toBe(wheel);
+    });
+
+    it('로컬 OCR이 올린 표기 불일치는 재분석이 맞게 읽어도 사라지지 않는다', () => {
+      // 덮어쓰면 재분석이 의심을 덜어내는 길이 된다.
+      const wheel = localOcrWheel({ peripheralSpeedMps: 8 });
+      expect(judge(wheel).verdict).toBe('UNDETERMINED');
+
+      const next = withAcceptedReanalysis(wheel, ocrWheel());
+
+      expect(next.markings?.peripheralSpeedMps).toBe(8);
+      expect(
+        judge(next).checks.find((c) => c.rule === RULE.UNIT_CONSISTENCY)
+          ?.passed,
+      ).toBeNull();
+      expect(judge(next).verdict).toBe('UNDETERMINED');
+    });
+
+    it('로컬 OCR이 읽지 못한 표기는 재분석이 읽은 값으로 채워 대조에 넣는다', () => {
+      // 로컬 OCR은 rpm 표기만 읽었다. 서버는 m/s를 8로 읽었다 — 어긋난다.
+      const wheel = localOcrWheel({
+        peripheralSpeedMps: null,
+        boreDiameter: null,
+        expiryRaw: null,
+      });
+      expect(
+        judge(wheel).checks.some((c) => c.rule === RULE.UNIT_CONSISTENCY),
+      ).toBe(false);
+
+      const next = withAcceptedReanalysis(
+        wheel,
+        ocrWheel({}, { peripheralSpeedMps: 8 }),
+      );
+
+      expect(next.markings).toEqual({
+        labeledRPM: 12200,
+        peripheralSpeedMps: 8,
+        boreDiameter: 22.23,
+        expiryRaw: '04/2027',
+      });
+      expect(
+        judge(next).checks.find((c) => c.rule === RULE.UNIT_CONSISTENCY)
+          ?.passed,
+      ).toBeNull();
+      expect(judge(next).verdict).toBe('UNDETERMINED');
+      // 작업자가 확정한 유효기한은 원문을 채워도 그대로다.
+      expect(next.expiry).toEqual(wheel.expiry);
+    });
+
+    it('유효기한 원문만 비어 있으면 그 칸만 채운다', () => {
+      const wheel = localOcrWheel({ expiryRaw: null });
+      const next = withAcceptedReanalysis(
+        wheel,
+        ocrWheel({}, { labeledRPM: 13300, expiryRaw: '01/2030' }),
+      );
+
+      expect(next.markings).toEqual({
+        ...wheel.markings,
+        expiryRaw: '01/2030',
+      });
+      // 원문은 판정에 쓰이지 않는다. 판정에 쓰이는 유효기한은 작업자가 확정한 값이다.
+      expect(next.expiry).toEqual(wheel.expiry);
+      expect(outcome(next)).toEqual(outcome(wheel));
+    });
+
+    it('재분석도 유효기한 원문을 읽지 못했으면 없는 칸을 만들지 않는다', () => {
+      const wheel = localOcrWheel({ expiryRaw: null });
+
+      expect(
+        withAcceptedReanalysis(wheel, ocrWheel({}, { expiryRaw: null })),
+      ).toBe(wheel);
+    });
   });
 });

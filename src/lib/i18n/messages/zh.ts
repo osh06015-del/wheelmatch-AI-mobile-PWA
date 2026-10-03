@@ -947,7 +947,7 @@ export const zh: Messages = {
     '本结果仅对照了作业人员输入的数值。转速和直径违规判为不符，但不给出一致结论，也不开启试运转。',
   'offline.reanalyze': '在服务器重新分析',
   'offline.reanalyzeHint':
-    '可以在服务器重新分析。重新分析不会更改您输入的数值，只会与AI数值并列比较。',
+    '可以在服务器重新分析。重新分析不会更改您输入的数值，只会与AI数值并列比较。如果AI怀疑照片中有损伤，该警告会加入结果。',
   'offline.stillOffline': '仍处于离线状态。连接后可选择在服务器重新分析。',
   'offline.noPhotos': '没有保存的照片，无法在服务器重新分析。',
   'offline.analyzing': '正在服务器分析...',
@@ -958,6 +958,8 @@ export const zh: Messages = {
   'offline.compareDiffers': '不同',
   'offline.mismatch':
     '部分输入值与AI值不同或AI未能读取，无法切换为在线对照。请保留离线结果或重新拍摄。',
+  'offline.damageRecheck':
+    '您之前关于砂轮损伤的回答是在看到下方AI警告之前作出的。请再次查看砂轮实物并作答，才能切换为在线对照。',
   'offline.accept': '确认与AI数值相同并切换为在线对照',
   'offline.cancel': '取消并保留离线结果',
   'draft.title': '有未完成的检查',

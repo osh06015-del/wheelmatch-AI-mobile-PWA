@@ -71,9 +71,14 @@ vi.mock('@/lib/ocr/extractor', () => ({
 }));
 
 import ResultPage from './page';
+import { WHEEL_TYPE_OPTIONS } from '@/components/WheelTypeConfirm';
 import { saveInspection } from '@/lib/db';
+import { confirmedWheelSpec } from '@/lib/ocr/confirm';
 import { CSV_COLUMNS, toCsv } from '@/lib/record/csv';
-import { BONDED_ABRASIVE_PROFILE } from '@/lib/rules/profiles';
+import {
+  BONDED_ABRASIVE_PROFILE,
+  conditionItemsFor,
+} from '@/lib/rules/profiles';
 import { RULESET_VERSION } from '@/lib/rules/version';
 import { useResearchMode } from '@/lib/record/researchMode';
 import { useInspection } from '@/lib/state/inspection';
@@ -1600,5 +1605,484 @@ describe('결과 화면 — 오프라인 제한 대조와 서버 재분석', () 
       ),
     ).toBeInTheDocument();
     online.mockRestore();
+  });
+});
+
+describe('결과 화면 — 숫돌 라벨 재분석이 낸 외관 의심과 원본 표시', () => {
+  // 숫돌 라벨을 서버 분석 없이 직접 넣은 점검은 확정값에 외관 판독도 원본 표시도
+  // 없다(confirmedWheelSpec(null, …) — visibleDamage는 unknown, markings는 없음).
+  // 결과 화면에서 서버 재분석을 받아들여 온라인 대조로 바꿀 때, 같은 사진을 처음부터
+  // 온라인으로 읽었다면 판정에 들어갔을 값이 빠지면 재분석 경로가 온라인 경로보다
+  // 느슨해진다. 의심을 덜어내는 방향이라 넣을 수 없다(docs/safety-boundaries.md).
+  const DAMAGE_SUSPECTED =
+    '사진에서 깨짐·균열로 보이는 부분이 있습니다. 이 숫돌을 사용하지 말고 직접 확인하세요.';
+  const DAMAGE_NOT_VERIFIABLE =
+    '사진으로는 미세균열을 확인할 수 없습니다. 장착 전 타음검사(가볍게 두드려 소리 확인)를 하세요.';
+  const MARKINGS_MISMATCH =
+    '라벨의 회전속도 표기와 원주속도 표기가 서로 맞지 않습니다. 둘 중 하나를 잘못 읽었을 수 있습니다. 라벨의 숫자를 다시 확인하세요.';
+  const ACCEPT = 'AI 값과 같음을 확인하고 온라인 대조로 전환';
+  const CANCEL = '취소하고 오프라인 결과 유지';
+  const AI_DAMAGE_ALERT =
+    '⚠ AI가 사진에서 눈에 띄는 손상 징후를 의심했습니다. 숫돌을 직접 자세히 확인하세요.';
+  const RECHECK_HINT =
+    '앞서 답한 숫돌 손상 확인은 아래 AI 경고를 보기 전의 답입니다. 숫돌 실물을 다시 보고 답해야 온라인 대조로 바꿀 수 있습니다.';
+  const VALUES_DIFFER =
+    '입력값과 AI 값이 다르거나 AI가 읽지 못한 값이 있어 온라인 대조로 바꿀 수 없습니다. 오프라인 결과를 유지하거나 다시 촬영하세요.';
+
+  beforeEach(() => {
+    replace.mockClear();
+    push.mockClear();
+    removeDraft.mockClear();
+    extractGrinder.mockReset();
+    extractWheel.mockReset();
+    vi.mocked(saveInspection).mockReset();
+    const result = store();
+    act(() => {
+      result.current.reset();
+      // 실제 흐름은 작업 선택 화면에서 시작한다. 작업 미선택은 따로 잰다.
+      result.current.setPurpose('cutting');
+    });
+  });
+
+  /** 확인 화면에서 작업자가 라벨을 직접 보고 넣은 값. 화면과 같은 함수로 만든다 */
+  const TYPED_WHEEL = confirmedWheelSpec(null, {
+    maxRPM: 12200,
+    diameter: 125,
+    thickness: 1.6,
+    purpose: 'cutting',
+    wheelType: 'bonded_abrasive',
+    expiryText: '12/2099',
+    expiryReview: 'marked',
+    userConfirmed: true,
+  });
+
+  /** 서버(route.ts)가 같은 라벨 사진에서 읽어 돌려주는 모양 */
+  function aiWheel(
+    overrides: Partial<WheelSpec> = {},
+    markings: Partial<NonNullable<WheelSpec['markings']>> = {},
+  ): WheelSpec {
+    return {
+      maxRPM: 12200,
+      diameter: 125,
+      thickness: 1.6,
+      purpose: 'cutting',
+      wheelType: 'bonded_abrasive',
+      visibleDamage: 'none_visible',
+      markings: {
+        labeledRPM: 12200,
+        peripheralSpeedMps: 80,
+        boreDiameter: 22.23,
+        expiryRaw: '12/2099',
+        ...markings,
+      },
+      rpmSource: 'label',
+      expiry: { year: 2099, month: 12 },
+      rawText: 'AI',
+      confidence: 'high',
+      ...overrides,
+    };
+  }
+
+  /** 명판은 온라인으로 읽고 숫돌 라벨만 직접 넣은 뒤 두 Gate를 마친 상태 */
+  function readyOfflineWheel(wheel: WheelSpec = TYPED_WHEEL) {
+    const result = store();
+    act(() => {
+      result.current.setGrinder(GRINDER, null, GRINDER);
+      result.current.setGrinderCondition(GRINDER_OK);
+      result.current.setWheel(
+        wheel,
+        new Blob(['label'], { type: 'image/jpeg' }),
+        null,
+      );
+      result.current.setOfflineSlot('wheel', true);
+      result.current.setWheelCondition(CONFIRMED);
+    });
+    return result;
+  }
+
+  async function reanalyze() {
+    await act(async () => {
+      screen.getByRole('button', { name: '서버로 다시 분석하기' }).click();
+    });
+  }
+
+  /** 전환 버튼을 누른다. 막혀 있으면 눌러도 아무 일도 일어나지 않아야 한다 */
+  async function accept() {
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: ACCEPT }));
+    });
+  }
+
+  function checkAll() {
+    for (const box of screen.getAllByRole('checkbox')) {
+      if (!(box as HTMLInputElement).checked) fireEvent.click(box);
+    }
+  }
+
+  it('직접 입력한 숫돌은 재분석 전에는 외관을 확인할 수 없다고만 말한다', () => {
+    readyOfflineWheel();
+    render(<ResultPage />);
+
+    expect(screen.getByText('판정불가')).toBeInTheDocument();
+    expect(screen.getByText(DAMAGE_NOT_VERIFIABLE)).toBeInTheDocument();
+    expect(screen.queryByText(DAMAGE_SUSPECTED)).not.toBeInTheDocument();
+  });
+
+  it('재분석한 AI가 외관 손상을 의심하면 전환하기 전에도 결과의 외관 항목이 경고로 바뀐다', async () => {
+    const result = readyOfflineWheel();
+    extractWheel.mockResolvedValue(aiWheel({ visibleDamage: 'suspected' }));
+    render(<ResultPage />);
+
+    await reanalyze();
+
+    // 아직 전환하지 않았다. 오프라인 결과 그대로이고 경고만 더해졌다.
+    expect(result.current.analysisMode).toBe('offline_limited');
+    expect(screen.getByText('판정불가')).toBeInTheDocument();
+    expect(screen.getByText(DAMAGE_SUSPECTED)).toBeInTheDocument();
+    expect(screen.queryByText(DAMAGE_NOT_VERIFIABLE)).not.toBeInTheDocument();
+    expect(result.current.wheel?.visibleDamage).toBe('suspected');
+    // AI 값은 아직 받아들이지 않았다. OCR 원본 자리도 원본 표시도 비어 있다.
+    expect(result.current.wheelOcr).toBeNull();
+    expect(result.current.wheel?.markings).toBeUndefined();
+  });
+
+  it('의심이 올라온 숫돌은 손상 항목을 다시 확인하기 전에는 온라인 대조로 바꿀 수 없다', async () => {
+    const result = readyOfflineWheel();
+    extractWheel.mockResolvedValue(aiWheel({ visibleDamage: 'suspected' }));
+    render(<ResultPage />);
+
+    await reanalyze();
+    expect(
+      screen.getByText(
+        '최고사용회전속도: 작업자 입력 12200rpm / AI 값 12200rpm · 같음',
+      ),
+    ).toBeInTheDocument();
+    // 값은 모두 같다. 그래도 경고를 보고 다시 답하기 전에는 열리지 않는다.
+    expect(screen.getByText(RECHECK_HINT)).toBeInTheDocument();
+    expect(screen.getByText(AI_DAMAGE_ALERT)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: ACCEPT })).toBeDisabled();
+    await accept();
+    expect(result.current.analysisMode).toBe('offline_limited');
+
+    // 답은 작업자가 직접 누른다. 앱이 대신 고르지 않는다.
+    expect(screen.getByRole('button', { name: /확인함/ })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    fireEvent.click(screen.getByRole('button', { name: /확인함/ }));
+    expect(screen.getByRole('button', { name: ACCEPT })).toBeEnabled();
+    await accept();
+
+    expect(result.current.analysisMode).toBe('online');
+    // 같은 사진을 처음부터 온라인으로 읽었다면 이 경고가 나왔다.
+    expect(screen.getByText(DAMAGE_SUSPECTED)).toBeInTheDocument();
+    expect(screen.queryByText(DAMAGE_NOT_VERIFIABLE)).not.toBeInTheDocument();
+    // 외관 손상은 경고다. 판정은 엔진이 낸 그대로다.
+    expect(screen.getByText('적합')).toBeInTheDocument();
+    // 숫돌 상태 기록은 작업자가 답한 그대로다.
+    expect(result.current.wheelCondition).toEqual(CONFIRMED);
+  });
+
+  it('다시 물은 손상 항목에 문제 있음으로 답하면 결과를 닫고 사용 중지를 알린다', async () => {
+    const result = readyOfflineWheel();
+    extractWheel.mockResolvedValue(aiWheel({ visibleDamage: 'suspected' }));
+    vi.mocked(saveInspection).mockResolvedValue(1);
+    const view = render(<ResultPage />);
+
+    await reanalyze();
+    fireEvent.click(screen.getByRole('button', { name: /문제 있음/ }));
+
+    // 답은 숫돌 상태에 남는다. 다른 항목의 답은 그대로다.
+    expect(result.current.wheelCondition).toEqual({
+      ...CONFIRMED,
+      damageFree: false,
+    });
+    expect(result.current.analysisMode).toBe('offline_limited');
+    // 숫돌 확인 화면의 Gate가 같은 답에 보이는 정지 안내를 여기서도 보인다. 곧바로
+    // 촬영 화면으로 보내면 이 문장을 한 번도 보지 못한다.
+    const stop = screen.getByRole('alert');
+    expect(stop).toHaveTextContent('이 숫돌을 사용하지 마십시오');
+    expect(stop).toHaveTextContent(
+      '숫돌 상태에 문제가 확인되었습니다. 장착하지 말고 사용 가능한 다른 숫돌로 교체한 뒤 다시 점검하세요.',
+    );
+    expect(replace).not.toHaveBeenCalled();
+    // 숫돌 상태에 문제가 있으면 규격이 맞아도 진행하지 못한다. 대조 결과도, 전환도,
+    // 저장도 없다.
+    expect(screen.queryByText('규격 대조 결과')).not.toBeInTheDocument();
+    expect(screen.queryByText('판정불가')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: ACCEPT }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /점검 완료 및 저장/ }),
+    ).not.toBeInTheDocument();
+    expect(saveInspection).not.toHaveBeenCalled();
+    // 작업자가 눌러서 숫돌 확인으로 간다.
+    expect(
+      screen.getByRole('link', { name: '숫돌만 다시 확인' }),
+    ).toHaveAttribute('href', '/scan/wheel');
+
+    // 새로고침하거나 주소로 다시 와도 결과는 열리지 않는다. 그때는 가드가 평소대로
+    // 숫돌 확인으로 돌려보낸다.
+    view.unmount();
+    render(<ResultPage />);
+    expect(screen.getByText(LOADING)).toBeInTheDocument();
+    expect(screen.queryByText('규격 대조 결과')).not.toBeInTheDocument();
+    expect(replace).toHaveBeenCalledWith('/scan/wheel');
+  });
+
+  it('손상 항목은 숫돌 종류가 무엇이든 숫돌 상태 확인에서 묻는 항목이다', () => {
+    // 재확인은 damageFree 하나를 다시 받고, 「문제 있음」이면 그 답을 숫돌 상태에
+    // 남겨 결과 화면의 가드가 막게 한다. 가드는 그 종류에서 묻는 항목만 보므로,
+    // 이 항목을 묻지 않는 종류가 생기면 신고한 손상이 가드에 걸리지 않는다.
+    for (const { value } of WHEEL_TYPE_OPTIONS) {
+      expect(conditionItemsFor(value), value).toContain('damageFree');
+    }
+  });
+
+  it('취소하면 AI 값은 버리지만 AI가 올린 의심은 남는다', async () => {
+    const result = readyOfflineWheel();
+    extractWheel.mockResolvedValue(aiWheel({ visibleDamage: 'suspected' }));
+    render(<ResultPage />);
+
+    await reanalyze();
+    fireEvent.click(screen.getByRole('button', { name: CANCEL }));
+
+    expect(result.current.analysisMode).toBe('offline_limited');
+    expect(result.current.wheelOcr).toBeNull();
+    expect(result.current.wheel?.markings).toBeUndefined();
+    expect(result.current.wheel?.visibleDamage).toBe('suspected');
+    expect(screen.getByText('판정불가')).toBeInTheDocument();
+    expect(screen.getByText(DAMAGE_SUSPECTED)).toBeInTheDocument();
+  });
+
+  it('값이 달라 전환이 막혀도 의심은 남고, 전환할 수 없으므로 손상 항목은 다시 묻지 않는다', async () => {
+    const result = readyOfflineWheel();
+    extractWheel.mockResolvedValue(
+      aiWheel(
+        { maxRPM: 13300, visibleDamage: 'suspected' },
+        { labeledRPM: 13300 },
+      ),
+    );
+    render(<ResultPage />);
+
+    await reanalyze();
+
+    expect(screen.getByRole('button', { name: ACCEPT })).toBeDisabled();
+    expect(screen.getByText(VALUES_DIFFER)).toBeInTheDocument();
+    expect(screen.getByText(AI_DAMAGE_ALERT)).toBeInTheDocument();
+    expect(screen.queryByText(RECHECK_HINT)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /확인함/ }),
+    ).not.toBeInTheDocument();
+    expect(result.current.wheel?.visibleDamage).toBe('suspected');
+    // 작업자가 넣은 값은 AI 값으로 바뀌지 않는다.
+    expect(result.current.wheel?.maxRPM).toBe(12200);
+    expect(screen.getByText(DAMAGE_SUSPECTED)).toBeInTheDocument();
+  });
+
+  it('전환하지 않고 저장한 기록에도 AI가 올린 의심이 남는다', async () => {
+    readyOfflineWheel();
+    extractWheel.mockResolvedValue(
+      aiWheel(
+        { maxRPM: 13300, visibleDamage: 'suspected' },
+        { labeledRPM: 13300 },
+      ),
+    );
+    vi.mocked(saveInspection).mockResolvedValueOnce(1);
+    render(<ResultPage />);
+
+    await reanalyze();
+    checkAll();
+    fireEvent.click(screen.getByRole('button', { name: /점검 완료 및 저장/ }));
+    await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
+
+    const saved = vi.mocked(saveInspection).mock.calls[0][0];
+    expect(saved.analysisMode).toBe('offline_limited');
+    expect(saved.result.verdict).toBe('UNDETERMINED');
+    expect(saved.wheel.visibleDamage).toBe('suspected');
+    expect(
+      saved.result.checks.find((check) => check.rule === '외관 손상')?.detail
+        ?.code,
+    ).toBe('visibleDamage.suspected');
+    // 받아들이지 않은 AI 값은 기록에 넣지 않는다.
+    expect(saved.wheelOcr).toBeUndefined();
+    expect(saved.wheel.markings).toBeUndefined();
+    expect(saved.wheel.maxRPM).toBe(12200);
+  });
+
+  it('취소하고 다시 분석했을 때 AI가 이번에는 의심하지 않아도 손상 항목을 다시 받는다', async () => {
+    // 앞서 올린 의심은 확정값에 남아 있고, 숫돌 상태의 답은 여전히 그 경고보다 먼저다.
+    const result = readyOfflineWheel();
+    extractWheel
+      .mockResolvedValueOnce(aiWheel({ visibleDamage: 'suspected' }))
+      .mockResolvedValueOnce(aiWheel({ visibleDamage: 'none_visible' }));
+    render(<ResultPage />);
+
+    await reanalyze();
+    fireEvent.click(screen.getByRole('button', { name: CANCEL }));
+    await reanalyze();
+
+    // 두 번째 판독이 의심하지 않았다고 의심이 지워지지 않는다.
+    expect(result.current.wheel?.visibleDamage).toBe('suspected');
+    expect(screen.getByText(RECHECK_HINT)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: ACCEPT })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: /확인함/ }));
+    await accept();
+
+    expect(result.current.analysisMode).toBe('online');
+    expect(screen.getByText(DAMAGE_SUSPECTED)).toBeInTheDocument();
+  });
+
+  it('취소하고 다시 분석하면 앞서 누른 재확인 답을 이어 쓰지 않는다', async () => {
+    readyOfflineWheel();
+    extractWheel.mockResolvedValue(aiWheel({ visibleDamage: 'suspected' }));
+    render(<ResultPage />);
+
+    await reanalyze();
+    fireEvent.click(screen.getByRole('button', { name: /확인함/ }));
+    expect(screen.getByRole('button', { name: ACCEPT })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: CANCEL }));
+    await reanalyze();
+
+    expect(screen.getByRole('button', { name: ACCEPT })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /확인함/ })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  });
+
+  describe('재분석 응답이 늦게 도착할 때', () => {
+    // 연결이 나쁜 현장이 이 기능이 쓰이는 곳이다. 응답을 기다리다 화면을 떠날 수 있다.
+
+    /** 응답을 테스트가 원하는 때에 돌려주는 재분석 */
+    function pendingReanalysis() {
+      let respond: (spec: WheelSpec) => void = () => undefined;
+      extractWheel.mockReturnValue(
+        new Promise<WheelSpec>((resolve) => {
+          respond = resolve;
+        }),
+      );
+      return (spec: WheelSpec) => act(async () => respond(spec));
+    }
+
+    it('그 사이 숫돌을 다시 찍어 확정했으면, 이전 사진의 의심을 새 숫돌에 얹지 않는다', async () => {
+      const result = readyOfflineWheel();
+      const respond = pendingReanalysis();
+      const view = render(<ResultPage />);
+      await reanalyze();
+
+      // 작업자가 기다리지 않고 숫돌 확인으로 돌아가 다른 숫돌을 찍어 확정했다.
+      view.unmount();
+      act(() => {
+        result.current.setWheel(
+          { ...TYPED_WHEEL, diameter: 115 },
+          new Blob(['other label'], { type: 'image/jpeg' }),
+          null,
+        );
+        result.current.setOfflineSlot('wheel', true);
+        result.current.setWheelCondition(CONFIRMED);
+      });
+      await respond(aiWheel({ visibleDamage: 'suspected' }));
+
+      // AI가 본 것은 이전 숫돌의 사진이다. 새 숫돌에 의심을 지어내지 않는다.
+      expect(result.current.wheel?.diameter).toBe(115);
+      expect(result.current.wheel?.visibleDamage).toBe('unknown');
+    });
+
+    it('화면만 떠났고 숫돌이 그대로면, 늦게 온 의심을 버리지 않는다', async () => {
+      const result = readyOfflineWheel();
+      const respond = pendingReanalysis();
+      const view = render(<ResultPage />);
+      await reanalyze();
+
+      view.unmount();
+      await respond(aiWheel({ visibleDamage: 'suspected' }));
+
+      expect(result.current.wheel?.visibleDamage).toBe('suspected');
+      // 전환한 것은 아니다.
+      expect(result.current.analysisMode).toBe('offline_limited');
+      expect(result.current.wheelOcr).toBeNull();
+    });
+  });
+
+  it('명판만 다시 분석할 때는 숫돌 손상 항목을 다시 묻지 않는다', async () => {
+    // 이 숫돌은 온라인으로 읽었다. 의심은 숫돌 상태 확인에서 이미 경고로 떴고
+    // 작업자는 그 경고를 보면서 답했다. 같은 것을 두 번 묻지 않는다.
+    const result = store();
+    act(() => {
+      result.current.setGrinder(
+        GRINDER,
+        new Blob(['plate'], { type: 'image/jpeg' }),
+        null,
+      );
+      result.current.setOfflineSlot('grinder', true);
+      result.current.setGrinderCondition(GRINDER_OK);
+      result.current.setWheel({ ...WHEEL, visibleDamage: 'suspected' });
+      result.current.setWheelCondition(CONFIRMED);
+    });
+    extractGrinder.mockResolvedValue({ ...GRINDER, rawText: 'AI' });
+    render(<ResultPage />);
+
+    await reanalyze();
+
+    expect(extractWheel).not.toHaveBeenCalled();
+    expect(screen.queryByText(RECHECK_HINT)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: ACCEPT })).toBeEnabled();
+    await accept();
+    expect(result.current.analysisMode).toBe('online');
+    expect(result.current.wheel?.visibleDamage).toBe('suspected');
+  });
+
+  it('재분석한 AI가 읽은 rpm·m/s 표기가 서로 어긋나면 온라인 대조로 바꿔도 적합이 되지 않는다', async () => {
+    // Φ125 12,200rpm은 약 80m/s다. AI가 m/s를 8로 읽었다면 둘 중 하나는 오독이다.
+    // 처음부터 온라인이었다면 표기 일치 규칙이 판정불가로 막았을 판독이다.
+    const result = readyOfflineWheel();
+    extractWheel.mockResolvedValue(aiWheel({}, { peripheralSpeedMps: 8 }));
+    render(<ResultPage />);
+
+    await reanalyze();
+    await accept();
+
+    expect(result.current.analysisMode).toBe('online');
+    expect(screen.getByText('판정불가')).toBeInTheDocument();
+    expect(screen.queryByText('적합')).not.toBeInTheDocument();
+    expect(screen.getByText(MARKINGS_MISMATCH)).toBeInTheDocument();
+  });
+
+  it('재분석한 AI가 읽은 내경은 직접 확인할 항목으로 나타난다', async () => {
+    readyOfflineWheel();
+    extractWheel.mockResolvedValue(aiWheel());
+    render(<ResultPage />);
+
+    await reanalyze();
+    await accept();
+
+    expect(
+      screen.getByText(
+        '라벨에 적힌 내경은 Φ22.23mm입니다. 그라인더 명판에는 축 규격이 적혀 있지 않아 이 앱이 대조할 수 없습니다. 축에 맞는지 직접 확인하세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('재분석한 AI가 손상을 의심하지 않으면 의심을 지어내지 않는다', async () => {
+    const result = readyOfflineWheel();
+    extractWheel.mockResolvedValue(aiWheel({ visibleDamage: 'none_visible' }));
+    render(<ResultPage />);
+
+    await reanalyze();
+    // 의심이 없으면 손상 항목을 다시 묻지 않는다. 값이 같으면 바로 열린다.
+    expect(screen.queryByText(RECHECK_HINT)).not.toBeInTheDocument();
+    expect(screen.queryByText(AI_DAMAGE_ALERT)).not.toBeInTheDocument();
+    expect(result.current.wheel?.visibleDamage).toBe('unknown');
+    await accept();
+
+    expect(result.current.analysisMode).toBe('online');
+    expect(screen.queryByText(DAMAGE_SUSPECTED)).not.toBeInTheDocument();
+    // 보이지 않았다는 판독을 「손상 없음」으로 바꿔 말하지도 않는다.
+    expect(screen.getByText(DAMAGE_NOT_VERIFIABLE)).toBeInTheDocument();
+    expect(result.current.wheel?.visibleDamage).toBe('unknown');
+    expect(screen.getByText('적합')).toBeInTheDocument();
   });
 });

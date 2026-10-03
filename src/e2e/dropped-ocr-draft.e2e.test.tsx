@@ -186,12 +186,18 @@ describe('점검 흐름 E2E — 저장된 AI 판독을 읽을 수 없게 된 확
     // 재분석은 작업자가 확정한 값을 덮어쓰지 않는다.
     expect(record.wheel.maxRPM).toBe(12200);
     expect(record.wheel.rpmSource).toBe('user');
-    // 그래서 재분석은 제한 대조만 푼다. 다시 읽은 판독에는 원본 표시가 있지만 판정에
-    // 쓰는 규격에는 들어가지 않아, 표기 일치·장착 규격 항목은 만들어지지 않는다 —
-    // 되찾는 길은 다시 촬영뿐이다. 메우지 못한 틈이고(docs/safety-boundaries.md),
-    // 메울 때 이 단언을 함께 고친다.
+    // 다시 읽은 판독의 원본 표시는 확정값의 빈 자리로 옮겨져 판정에 들어간다
+    // (confirm.ts의 withAcceptedReanalysis). 버린 판독의 표시를 건지는 것이 아니라
+    // 새로 읽어 받아들인 판독의 표시다. 다시 촬영한 점검처럼 장착 규격 항목이
+    // 만들어진다 — 이 라벨에는 m/s 표기가 없어 표기 일치는 대조할 상대가 없다.
     expect(record.wheelOcr?.markings).toBeDefined();
-    expect(record.wheel.markings).toBeUndefined();
+    expect(record.wheel.markings).toEqual(wheelLabel().markings);
+    const codes = record.result.checks.map((check) => check.detail?.code);
+    expect(codes).toContain('mountingSpec.shown');
+    expect(codes).not.toContain('unitConsistency.match');
+    // 버린 판독은 손상을 의심하지 않았고 다시 읽은 판독도 그렇다. 의심을 지어내지
+    // 않는다.
+    expect(record.wheel.visibleDamage).toBe('unknown');
   });
 
   it('명판 판독을 버린 경우도 같다 — 숫돌을 정상으로 읽어도 점검 전체가 제한 대조로 남는다', async () => {

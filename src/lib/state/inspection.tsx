@@ -22,6 +22,10 @@ import {
   isValidWorkConditions,
 } from '@/lib/backup/recordSanitize';
 import {
+  withAcceptedReanalysis,
+  withReanalysisSuspicion,
+} from '@/lib/ocr/confirm';
+import {
   isTrialRunProgress,
   type TrialRunProgress,
 } from '@/lib/safety/trialRun';
@@ -506,10 +510,30 @@ export interface InspectionStore extends InspectionState {
    */
   setOfflineSlot: (slot: keyof OfflineSlots, offline: boolean) => void;
   /**
+   * 서버 재분석 결과가 도착했다. 전환을 받아들이기 전에, 받아들이지 않더라도 부른다.
+   *
+   * AI가 숫돌 사진에서 외관 손상을 의심했으면 그 의심만 숫돌 확정값에 더한다.
+   * 값이 달라 전환이 막히거나 작업자가 취소해 AI 값을 버려도, 앱이 올린 경고는
+   * 버리지 않는다. 의심하지 않았으면 아무것도 바꾸지 않는다.
+   *
+   * @param analyzedWheelImage 서버로 보낸 라벨 사진. 지금 확정된 숫돌의 사진과
+   *   다르면 아무것도 하지 않는다 — 응답을 기다리는 사이 작업자가 숫돌을 다시
+   *   찍은 것이고, 이 결과는 그 숫돌을 본 것이 아니다.
+   */
+  keepReanalysisSuspicion: (
+    input: ReanalysisInput,
+    analyzedWheelImage: Blob | null,
+  ) => void;
+  /**
    * 연결이 돌아와 사용자가 서버 재분석 결과를 확인하고 온라인 대조로 바꾼다.
    *
-   * 작업자 최종값(grinder·wheel)은 건드리지 않는다. AI 값은 OCR 원본 자리에만
+   * 작업자가 확인 화면에서 확정한 값은 건드리지 않는다. AI 값은 OCR 원본 자리에
    * 넣고, 넣은 단계의 오프라인 표시만 푼다.
+   *
+   * 숫돌 확정값에서 옮기는 것은 OCR이 실어 오던 두 칸뿐이다 — 외관 의심과 원본
+   * 표시의 빈 자리(withAcceptedReanalysis). 확인 화면에 없어 작업자가 확정한 적이
+   * 없는 값이고, 판정은 확정값만 보므로 옮기지 않으면 처음부터 온라인으로 읽은
+   * 점검보다 느슨하게 대조하게 된다.
    */
   applyReanalysis: (input: ReanalysisInput) => void;
   setChecklist: (checklist: SafetyChecklist | null) => void;
@@ -721,6 +745,22 @@ export function useInspection(): InspectionStore {
     [],
   );
 
+  const keepReanalysisSuspicion = useCallback(
+    (input: ReanalysisInput, analyzedWheelImage: Blob | null) => {
+      if (!input.wheelOcr || !state.wheel) return;
+      // 서버 응답은 늦게 올 수 있다(연결이 나쁜 현장이 이 기능이 쓰이는 곳이다).
+      // 그 사이 숫돌을 다시 찍었다면 지금 확정된 숫돌은 다른 사진의 것이고, 거기에
+      // 이 결과의 의심을 얹으면 AI가 보지 않은 숫돌에 의심을 지어내는 것이 된다.
+      if (state.wheelImage !== analyzedWheelImage) return;
+      const wheel = withReanalysisSuspicion(state.wheel, input.wheelOcr);
+      // 더할 의심이 없으면 같은 객체가 돌아온다. 저장소를 건드리지 않는다.
+      if (wheel === state.wheel) return;
+      writeStored(WHEEL_KEY, wheel);
+      setState({ wheel });
+    },
+    [],
+  );
+
   const applyReanalysis = useCallback((input: ReanalysisInput) => {
     const offlineSlots = {
       grinder: input.grinderOcr ? false : state.offlineSlots.grinder,
@@ -738,6 +778,16 @@ export function useInspection(): InspectionStore {
       next.wheelOcrTelemetry = input.wheelOcrTelemetry ?? null;
       writeStored(WHEEL_OCR_KEY, input.wheelOcr);
       writeStored(WHEEL_OCR_TELEMETRY_KEY, next.wheelOcrTelemetry);
+      // 온라인 대조로 바뀌면 판정은 확정값만 본다. AI가 올린 외관 의심과 읽어 온
+      // 원본 표시를 여기서 옮기지 않으면 판정에서 통째로 빠진다. 작업자가 확정한
+      // 값은 그대로 둔다.
+      if (state.wheel) {
+        const wheel = withAcceptedReanalysis(state.wheel, input.wheelOcr);
+        if (wheel !== state.wheel) {
+          next.wheel = wheel;
+          writeStored(WHEEL_KEY, wheel);
+        }
+      }
     }
     writeStored(OFFLINE_SLOTS_KEY, offlineSlots);
     setState(next);
@@ -812,6 +862,7 @@ export function useInspection(): InspectionStore {
       hydrating: !snapshot.hydrated,
       analysisMode: analysisModeOf(snapshot.offlineSlots),
       setOfflineSlot,
+      keepReanalysisSuspicion,
       applyReanalysis,
       setChecklist,
       setTrialRunRecord,
@@ -828,6 +879,7 @@ export function useInspection(): InspectionStore {
     [
       snapshot,
       setOfflineSlot,
+      keepReanalysisSuspicion,
       applyReanalysis,
       setChecklist,
       setTrialRunRecord,

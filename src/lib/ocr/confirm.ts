@@ -22,6 +22,7 @@ import { normalizeExpiry } from './parser';
 import { refinesSuggestion } from '@/lib/rules/profiles';
 import type {
   RpmSource,
+  WheelMarkings,
   WheelPurpose,
   WheelSpec,
   WheelType,
@@ -149,4 +150,99 @@ export function confirmedWheelSpec(
     rawText: ocr?.rawText ?? '',
     confidence: fields.userConfirmed ? 'high' : (ocr?.confidence ?? 'low'),
   };
+}
+
+// ─────────────────────────────────────────────────────────────
+// 서버 재분석 — 확정한 뒤에 도착한 OCR
+//
+// 서버 분석 없이(직접 입력·로컬 OCR) 확정한 숫돌을 결과 화면에서 서버로 다시
+// 분석하면, OCR이 확정보다 늦게 온다. 그 OCR로 바꾸지 않는 것과 옮기는 것을 나눈다.
+//
+//   바꾸지 않는다 — 작업자가 확인 화면에서 확정한 값(회전속도·지름·두께·용도·종류·
+//                   유효기한·신뢰도와 그 출처). AI 값과 다르면 어느 쪽이 맞는지
+//                   앱은 모른다. 그래서 값은 나란히 보여 주기만 한다.
+//   옮긴다       — confirmedWheelSpec이 OCR에서 그대로 이어가던 두 칸, 외관 손상과
+//                   원본 표시. 확인 화면에 없어 작업자가 확정한 적이 없는 값이다.
+//
+// 옮기지 않으면 온라인 대조로 바뀐 뒤에도 판정은 확정값만 보므로, 같은 사진을
+// 처음부터 온라인으로 읽었을 때 나왔을 경고와 표기 대조가 통째로 빠진다. 재분석을
+// 거친 쪽이 더 느슨해지는 것이라 이 앱에 넣을 수 없다(docs/safety-boundaries.md).
+//
+// 둘 다 **의심을 더하는 방향으로만** 옮긴다. 이미 있는 의심과 표기는 지우지 않는다.
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * 재분석이 올린 외관 의심을 확정값에 더한다.
+ *
+ * 전환을 받아들였는지와 무관하게 부른다. 값이 달라 전환이 막히거나 작업자가
+ * 취소하면 AI 값은 버리지만, 의심은 값이 아니라 이 사진에 대해 앱이 올린 경고다.
+ * 함께 버리면 경고가 조용히 사라진다.
+ *
+ * 재분석이 의심하지 않았으면 아무것도 바꾸지 않는다(같은 객체를 돌려준다) —
+ * 'none_visible'로 덮어쓰지도 않는다. 의심을 지어내지 않고, 지우지도 않는다.
+ */
+export function withReanalysisSuspicion(
+  wheel: WheelSpec,
+  reanalyzed: WheelSpec,
+): WheelSpec {
+  if (reanalyzed.visibleDamage !== 'suspected') return wheel;
+  if (wheel.visibleDamage === 'suspected') return wheel;
+  return { ...wheel, visibleDamage: 'suspected' };
+}
+
+/**
+ * 확정값의 원본 표시에서 비어 있는 자리만 재분석이 읽은 표시로 채운다.
+ *
+ * 이미 있는 표기는 덮지 않는다. 로컬 OCR이 읽어 둔 표기가 서로 어긋나 있었다면
+ * 그 어긋남이 재분석으로 사라지면 안 된다. 빈 자리를 채우는 쪽은 표기 일치·장착
+ * 규격 항목을 새로 만들 수만 있어 판정을 느슨하게 하지 못한다 — 표기 일치의 통과는
+ * 전체 판정을 올리지 못하고(engine.ts의 decideVerdict), 어긋나면 판정불가로 막는다.
+ */
+function withBlankMarkingsFilled(
+  confirmed: WheelMarkings | undefined,
+  reanalyzed: WheelMarkings | undefined,
+): WheelMarkings | undefined {
+  if (!reanalyzed) return confirmed;
+  // 직접 입력한 확정값에는 원본 표시가 없다. 사본으로 넣는다 — confirmedWheelSpec과
+  // 같은 이유로 OCR 원본과 객체를 공유하지 않는다.
+  if (!confirmed) return { ...reanalyzed };
+
+  const filled: WheelMarkings = {
+    ...confirmed,
+    labeledRPM: confirmed.labeledRPM ?? reanalyzed.labeledRPM,
+    peripheralSpeedMps:
+      confirmed.peripheralSpeedMps ?? reanalyzed.peripheralSpeedMps,
+    boreDiameter: confirmed.boreDiameter ?? reanalyzed.boreDiameter,
+    // 유효기한 원문은 없어도 되는 칸이다. 채울 것이 있을 때만 만든다.
+    ...(confirmed.expiryRaw == null && reanalyzed.expiryRaw != null
+      ? { expiryRaw: reanalyzed.expiryRaw }
+      : {}),
+  };
+  const unchanged =
+    filled.labeledRPM === confirmed.labeledRPM &&
+    filled.peripheralSpeedMps === confirmed.peripheralSpeedMps &&
+    filled.boreDiameter === confirmed.boreDiameter &&
+    filled.expiryRaw === confirmed.expiryRaw;
+  return unchanged ? confirmed : filled;
+}
+
+/**
+ * 재분석을 받아들여 온라인 대조로 바꿀 때의 확정값.
+ *
+ * 외관 의심(withReanalysisSuspicion)에 더해 원본 표시의 빈 자리를 채운다. 표시는
+ * 전환할 때만 옮긴다 — 전환하지 않으면 AI 값은 버리는 것이고, 표시도 AI가 읽은 값이다.
+ *
+ * 바뀐 것이 없으면 같은 객체를 돌려준다.
+ */
+export function withAcceptedReanalysis(
+  wheel: WheelSpec,
+  reanalyzed: WheelSpec,
+): WheelSpec {
+  const suspected = withReanalysisSuspicion(wheel, reanalyzed);
+  const markings = withBlankMarkingsFilled(
+    suspected.markings,
+    reanalyzed.markings,
+  );
+  if (markings === suspected.markings) return suspected;
+  return { ...suspected, markings };
 }

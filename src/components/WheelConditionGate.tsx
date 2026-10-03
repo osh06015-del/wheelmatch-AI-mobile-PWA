@@ -107,6 +107,68 @@ export const WHEEL_CONDITION_ITEMS: ReadonlyArray<{
   },
 ];
 
+/**
+ * 상태 항목 하나 — 질문과 「확인함」·「문제 있음」 두 버튼.
+ *
+ * Gate 밖에서 같은 항목을 다시 받을 때도 이 요소를 그대로 쓴다(결과 화면의 서버
+ * 재분석이 손상을 의심했을 때 — OfflineReanalysisPanel). 같은 질문은 같은 모양이어야
+ * 작업자가 같은 무게로 답한다. 어느 버튼도 미리 눌러 두지 않는다.
+ */
+export function WheelConditionQuestion({
+  itemKey,
+  value,
+  index,
+  onChange,
+}: {
+  itemKey: WheelConditionKey;
+  value: boolean | null;
+  /** 목록 안의 순번(0부터). 넘기지 않으면 번호 없이 보인다 */
+  index?: number;
+  onChange: (key: WheelConditionKey, value: boolean) => void;
+}) {
+  const { t } = useLocale();
+  const { labelKey, hintKey } = ITEM_TEXT[itemKey];
+
+  return (
+    <fieldset className="rounded-xl bg-slate-800 px-4 py-4">
+      <legend className="sr-only">{t(labelKey)}</legend>
+      <div className="flex flex-col gap-1">
+        <p className="text-lg font-semibold text-slate-100">
+          {index === undefined ? '' : `${index + 1}. `}
+          {t(labelKey)}
+        </p>
+        <p className="text-base leading-relaxed text-slate-400">{t(hintKey)}</p>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          aria-pressed={value === true}
+          onClick={() => onChange(itemKey, true)}
+          className={`min-h-12 rounded-lg border text-base font-bold ${
+            value === true
+              ? 'border-green-400 bg-green-500 text-slate-950'
+              : 'border-slate-600 bg-slate-900 text-slate-200 active:bg-slate-700'
+          }`}
+        >
+          ✓ {t('wheelCondition.confirmed')}
+        </button>
+        <button
+          type="button"
+          aria-pressed={value === false}
+          onClick={() => onChange(itemKey, false)}
+          className={`min-h-12 rounded-lg border text-base font-bold ${
+            value === false
+              ? 'border-red-400 bg-red-500 text-white'
+              : 'border-slate-600 bg-slate-900 text-slate-200 active:bg-slate-700'
+          }`}
+        >
+          ⚠ {t('wheelCondition.issue')}
+        </button>
+      </div>
+    </fieldset>
+  );
+}
+
 interface WheelConditionGateProps {
   condition: WheelCondition;
   /** 이 종류에서 묻는 항목. 넘기지 않으면 기본 네 상태 항목이다 */
@@ -128,7 +190,6 @@ export function WheelConditionGate({
   const { t } = useLocale();
   const hasIssue = hasWheelConditionIssue(condition, keys);
   const unanswered = unansweredWheelConditionCount(condition, keys);
-  const items = keys.map((key) => ({ key, ...ITEM_TEXT[key] }));
 
   return (
     <section
@@ -178,51 +239,15 @@ export function WheelConditionGate({
       )}
 
       <div className="flex flex-col gap-3">
-        {items.map((item, index) => {
-          const value = condition[item.key] ?? null;
-          return (
-            <fieldset
-              key={item.key}
-              className="rounded-xl bg-slate-800 px-4 py-4"
-            >
-              <legend className="sr-only">{t(item.labelKey)}</legend>
-              <div className="flex flex-col gap-1">
-                <p className="text-lg font-semibold text-slate-100">
-                  {index + 1}. {t(item.labelKey)}
-                </p>
-                <p className="text-base leading-relaxed text-slate-400">
-                  {t(item.hintKey)}
-                </p>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  aria-pressed={value === true}
-                  onClick={() => onChange(item.key, true)}
-                  className={`min-h-12 rounded-lg border text-base font-bold ${
-                    value === true
-                      ? 'border-green-400 bg-green-500 text-slate-950'
-                      : 'border-slate-600 bg-slate-900 text-slate-200 active:bg-slate-700'
-                  }`}
-                >
-                  ✓ {t('wheelCondition.confirmed')}
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={value === false}
-                  onClick={() => onChange(item.key, false)}
-                  className={`min-h-12 rounded-lg border text-base font-bold ${
-                    value === false
-                      ? 'border-red-400 bg-red-500 text-white'
-                      : 'border-slate-600 bg-slate-900 text-slate-200 active:bg-slate-700'
-                  }`}
-                >
-                  ⚠ {t('wheelCondition.issue')}
-                </button>
-              </div>
-            </fieldset>
-          );
-        })}
+        {keys.map((key, index) => (
+          <WheelConditionQuestion
+            key={key}
+            itemKey={key}
+            value={condition[key] ?? null}
+            index={index}
+            onChange={onChange}
+          />
+        ))}
       </div>
 
       {hasIssue ? (

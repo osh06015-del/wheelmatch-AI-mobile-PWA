@@ -11,9 +11,17 @@
 // 보여주고, RPM·지름이 모두 같을 때만 "온라인 대조로 전환"을 열어 준다 — 다르면
 // 어느 쪽이 맞는지 앱이 알 수 없으므로 오프라인 결과를 유지하거나 다시 찍게 한다.
 // 취소하면 AI 값은 버리고 오프라인 결과가 그대로 남는다.
+//
+// 버리지 않는 것이 하나 있다. AI가 숫돌 사진에서 본 **외관 의심**은 견줄 값이 아니라
+// 그 사진에 대해 앱이 올린 경고라, 결과가 도착하는 대로 남긴다(onAnalyzed) — 값이
+// 달라 전환이 막혀도, 취소해도 사라지지 않는다. 그리고 의심이 올라온 숫돌을 온라인
+// 대조로 바꾸려면 손상 항목을 다시 받는다. 숫돌 상태 확인에서 한 답은 이 경고를
+// 보기 전의 것이다 — 처음부터 온라인으로 읽었다면 작업자는 경고를 보면서 답했다.
+// AI가 답을 대신 만들지는 않는다. 묻기만 한다.
 
 import { useState } from 'react';
 
+import { WheelConditionQuestion } from '@/components/WheelConditionGate';
 import { useLocale } from '@/lib/i18n';
 import { getExtractor } from '@/lib/ocr/extractor';
 import { useOnlineStatus } from '@/lib/pwa/onlineStatus';
@@ -39,19 +47,32 @@ export function OfflineReanalysisPanel({
   offlineSlots,
   grinderImage,
   wheelImage,
+  onAnalyzed,
   onAccept,
+  onDamageIssue,
 }: {
   grinder: GrinderSpec;
   wheel: WheelSpec;
   offlineSlots: OfflineSlots;
   grinderImage: Blob | null;
   wheelImage: Blob | null;
+  /**
+   * 재분석 결과가 도착했다. 전환과 무관하게 남길 것(외관 의심)을 남긴다.
+   * 어느 라벨 사진을 보낸 결과인지 함께 넘긴다 — 받는 쪽이 그 사진의 숫돌이
+   * 아직 확정값인지 확인한다.
+   */
+  onAnalyzed: (input: ReanalysisInput, analyzedWheelImage: Blob | null) => void;
   onAccept: (input: ReanalysisInput) => void;
+  /** 다시 물은 손상 항목에 작업자가 「문제 있음」으로 답했다 */
+  onDamageIssue: () => void;
 }) {
   const { t } = useLocale();
   const online = useOnlineStatus();
   const [phase, setPhase] = useState<Phase>('idle');
   const [ai, setAi] = useState<ReanalysisInput | null>(null);
+  // 다시 물은 손상 항목의 답. 재분석할 때마다 새로 받는다 — 이전 답을 이어 쓰면
+  // 묻지 않고 통과시키는 것과 같다.
+  const [damageRecheck, setDamageRecheck] = useState<boolean | null>(null);
 
   // 오프라인으로 넣은 단계의 사진만 다시 보낸다. 사진이 없으면 다시 분석할 근거가 없다.
   const photosReady =
@@ -61,6 +82,7 @@ export function OfflineReanalysisPanel({
   async function reanalyze() {
     setPhase('analyzing');
     setAi(null);
+    setDamageRecheck(null);
     try {
       // 오프라인/로컬 OCR 제한을 풀 수 있는 유일한 경로는 서버(Claude) 대조다.
       // 빌드가 tesseract 모드여도 재분석만큼은 getExtractor()의 기본값을 따르지
@@ -75,6 +97,8 @@ export function OfflineReanalysisPanel({
         next.wheelOcr = await extractor.extractWheel(wheelImage);
         next.wheelOcrTelemetry = extractor.getLastTelemetry?.() ?? null;
       }
+      // 아래 비교에서 값이 다르거나 작업자가 취소해도 AI가 올린 외관 의심은 남긴다.
+      onAnalyzed(next, wheelImage);
       setAi(next);
       setPhase('compare');
     } catch {
@@ -85,6 +109,7 @@ export function OfflineReanalysisPanel({
 
   function cancel() {
     setAi(null);
+    setDamageRecheck(null);
     setPhase('idle');
   }
 
@@ -130,6 +155,18 @@ export function OfflineReanalysisPanel({
   const allSame =
     rows.length > 0 &&
     rows.every((row) => row.ai !== null && row.ai === row.worker);
+  // 이번 재분석으로 온라인 대조로 바뀔 숫돌에 외관 의심이 올라와 있는가.
+  //
+  // 이번 판독만 보지 않고 확정값에 남아 있는 의심도 본다. 한 번 의심한 뒤 취소하고
+  // 다시 분석했을 때 AI가 이번에는 의심하지 않더라도, 앞서 올린 의심은 그대로이고
+  // 손상 항목의 답은 여전히 그 경고보다 먼저 한 것이다.
+  // 명판만 다시 분석하는 경우(ai.wheelOcr 없음)에는 묻지 않는다 — 그 숫돌은 온라인으로
+  // 읽었고, 의심이 있었다면 숫돌 상태 확인에서 이미 경고를 보며 답했다.
+  const damageSuspected =
+    ai?.wheelOcr !== undefined &&
+    (wheel.visibleDamage === 'suspected' ||
+      ai.wheelOcr.visibleDamage === 'suspected');
+  const canAccept = allSame && (!damageSuspected || damageRecheck === true);
   const show = (value: number | null, format: (value: number) => string) =>
     value === null ? '—' : format(value);
 
@@ -176,10 +213,40 @@ export function OfflineReanalysisPanel({
               {t('offline.mismatch')}
             </p>
           )}
+          {/* 값이 달라 전환할 수 없으면 물어도 달라지는 것이 없다. 그때는 경고만
+              알리고, 전환할 수 있을 때만 손상 항목을 다시 받는다. */}
+          {damageSuspected && allSame && (
+            <p className="text-base leading-relaxed text-yellow-100">
+              {t('offline.damageRecheck')}
+            </p>
+          )}
+          {damageSuspected && (
+            <p
+              role="alert"
+              className="rounded-lg border border-yellow-500/50 bg-yellow-500/10 px-4 py-4 text-base font-semibold leading-relaxed text-yellow-100"
+            >
+              ⚠ {t('wheelCondition.aiDamageWarning')}
+            </p>
+          )}
+          {damageSuspected && allSame && (
+            // 숫돌 상태 확인과 같은 질문 요소를 쓴다. Gate를 통째로 쓰지 않는 이유:
+            // Gate의 머리말과 "규격 대조로 진행" 안내는 이 자리에서 맞지 않는 말이다.
+            <WheelConditionQuestion
+              itemKey="damageFree"
+              value={damageRecheck}
+              onChange={(_key, value) => {
+                setDamageRecheck(value);
+                // 문제 있음은 곧바로 알린다. 여기에만 두면 화면 아래의 저장 버튼이
+                // 「확인함」이던 이전 답으로 기록을 남길 수 있다.
+                if (!value) onDamageIssue();
+              }}
+            />
+          )}
           <button
             type="button"
-            onClick={() => ai && onAccept(ai)}
-            disabled={!allSame}
+            // 버튼만 막으면 다른 경로로 불렸을 때 샌다. 여기서도 막는다.
+            onClick={() => ai && canAccept && onAccept(ai)}
+            disabled={!canAccept}
             className="min-h-14 rounded-lg bg-slate-100 text-lg font-bold text-slate-900 active:bg-white disabled:bg-slate-700 disabled:text-slate-400"
           >
             {t('offline.accept')}

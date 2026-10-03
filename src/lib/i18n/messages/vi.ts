@@ -1055,7 +1055,7 @@ export const vi: Messages = {
     'Kết quả này chỉ đối chiếu giá trị người làm việc nhập. Vi phạm tốc độ quay và đường kính được kết luận không khớp, nhưng không kết luận khớp và không mở chạy thử.',
   'offline.reanalyze': 'Phân tích lại trên máy chủ',
   'offline.reanalyzeHint':
-    'Có thể phân tích lại trên máy chủ. Phân tích lại không thay đổi giá trị bạn đã nhập, chỉ đặt cạnh giá trị AI để so sánh.',
+    'Có thể phân tích lại trên máy chủ. Phân tích lại không thay đổi giá trị bạn đã nhập, chỉ đặt cạnh giá trị AI để so sánh. Nếu AI nghi ngờ có hư hỏng trong ảnh, cảnh báo đó sẽ được thêm vào kết quả.',
   'offline.stillOffline':
     'Vẫn đang ngoại tuyến. Khi có kết nối, bạn có thể chọn phân tích lại trên máy chủ.',
   'offline.noPhotos':
@@ -1069,6 +1069,8 @@ export const vi: Messages = {
   'offline.compareDiffers': 'khác nhau',
   'offline.mismatch':
     'Có giá trị đã nhập khác giá trị AI hoặc AI không đọc được, nên không thể chuyển sang đối chiếu trực tuyến. Hãy giữ kết quả ngoại tuyến hoặc chụp lại.',
+  'offline.damageRecheck':
+    'Câu trả lời trước đó của bạn về hư hỏng đá mài được đưa ra trước cảnh báo AI bên dưới. Hãy xem lại đá mài thực tế và trả lời thì mới chuyển sang đối chiếu trực tuyến được.',
   'offline.accept':
     'Xác nhận giá trị giống giá trị AI và chuyển sang đối chiếu trực tuyến',
   'offline.cancel': 'Hủy và giữ kết quả ngoại tuyến',
