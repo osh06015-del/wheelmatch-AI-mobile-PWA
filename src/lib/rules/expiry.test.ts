@@ -4,7 +4,7 @@
 // 같은 입력과 같은 기준일이면 언제 어디서 돌려도 같은 결과가 나와야 한다 —
 // 나중에 사고 기록을 되짚을 때 판정이 달라지면 근거가 되지 못한다.
 //
-// 근거와 한계는 docs/regulatory-sources.md §7에 있다.
+// 근거와 한계는 docs/regulatory-sources.md §6에 있다.
 
 import { describe, expect, it } from 'vitest';
 import {

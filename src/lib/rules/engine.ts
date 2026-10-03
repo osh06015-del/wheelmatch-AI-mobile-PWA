@@ -925,7 +925,7 @@ export function checkPeripheralSpeed(
 // ─────────────────────────────────────────────────────────────
 // Rule 12 — 유효기한
 //
-// 근거와 한계는 docs/regulatory-sources.md §7에 있다. 요약하면:
+// 근거와 한계는 docs/regulatory-sources.md §6에 있다. 요약하면:
 //   · 한국 법령(산업안전보건기준에 관한 규칙 제122조)에는 유효기한 조항이 없다.
 //   · oSa 표시 요구사항(2020-04, EN 12413:2019 기준)은 수공구용 B/BF 본드
 //     제품에 "date of expiry"를 월/연으로 표시하게 한다.
