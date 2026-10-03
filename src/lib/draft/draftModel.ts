@@ -17,8 +17,15 @@ import {
   SPINDLE_THREADS,
   WHEEL_PURPOSES,
   WHEEL_TYPES,
+  isValidCaptureQualityMetrics,
+  isValidGrinderCondition,
   isValidGrinderSpec,
+  isValidOcrTelemetry,
+  isValidSafetyChecklist,
+  isValidTrialRun,
+  isValidWheelCondition,
   isValidWheelSpec,
+  isValidWorkConditions,
 } from '@/lib/backup/recordSanitize';
 import { profileRef, conditionItemsFor } from '@/lib/rules/profiles';
 import type {
@@ -33,10 +40,11 @@ import type {
 import { isGrinderConditionComplete } from '@/lib/safety/grinderCondition';
 import { isWheelConditionComplete } from '@/lib/safety/wheelCondition';
 import {
-  NO_OFFLINE_SLOTS,
-  type CaptureChecks,
+  dropOrphanedSteps,
+  isStartedAt,
+  pickCaptureChecks,
+  readOfflineSlots,
   type InspectionSnapshot,
-  type OfflineSlots,
 } from '@/lib/state/inspection';
 
 /** draft 형태를 바꾸면 올린다. 다른 버전은 형태를 하나하나 확인해 가능한 값만 살린다 */
@@ -193,34 +201,7 @@ export const isGrinderSpec: Guard<GrinderSpec> = isValidGrinderSpec;
 
 export const isWheelSpec: Guard<WheelSpec> = isValidWheelSpec;
 
-/** 모든 값이 true·false·null인 객체(작업자가 직접 답한 Gate·체크리스트) */
-const isAnswerMap = (value: unknown): boolean =>
-  isObject(value) &&
-  Object.values(value).every(
-    (answer) => answer === null || typeof answer === 'boolean',
-  );
-
 const isPlainObject = (value: unknown): boolean => isObject(value);
-
-/**
- * 사진 상태 확인 기록에서 명판·라벨 자리만 남긴다.
- *
- * 이전 버전 draft에는 다각도 확인 자리(wheelBack·wheelEdge·wheelBore)의 기록이
- * 섞여 있을 수 있다. 그 사진은 되살리지 않으므로 기록만 남기면 없는 사진에 대한
- * 기록이 저장된다.
- */
-function labelCaptureChecks(raw: Record<string, unknown>): CaptureChecks {
-  const kept: Record<string, unknown> = {};
-  for (const slot of PHOTO_SLOTS) {
-    if (isObject(raw[slot])) kept[slot] = raw[slot];
-  }
-  return kept as CaptureChecks;
-}
-
-const isOfflineSlots: Guard<OfflineSlots> = (value): value is OfflineSlots =>
-  isObject(value) &&
-  typeof value.grinder === 'boolean' &&
-  typeof value.wheel === 'boolean';
 
 /**
  * 읽어 온 draft에서 믿을 수 있는 값만 골라 되살린다.
@@ -270,44 +251,57 @@ export function recoverDraft(raw: unknown): DraftRecovery {
     };
   }
 
+  // 이전 버전 draft에는 다각도 확인 자리(wheelBack·wheelEdge·wheelBore)의 사진
+  // 상태 기록이 섞여 있을 수 있다. pickCaptureChecks는 명판·라벨 자리만 남긴다 —
+  // 그 사진은 되살리지 않으므로 기록만 남기면 없는 사진에 대한 기록이 저장된다.
   const rawCaptureChecks = pick<Record<string, unknown>>(
     'captureChecks',
     isPlainObject,
     {},
   );
+  const captureChecks = pickCaptureChecks(rawCaptureChecks);
+  if (captureChecks.dropped) warnings.add('schema');
 
+  // 오프라인 여부를 읽지 못하면 더 엄격한 쪽(오프라인)으로 본다(readOfflineSlots).
+  const offline = readOfflineSlots(source.offlineSlots);
+  if (offline.unreadable) warnings.add('schema');
+
+  // 규격이 아닌 값도 백업 정리(recordSanitize.ts)의 기준으로 본다. "객체인가"·
+  // "값이 boolean인가"로만 보던 때에는 빈 객체인 시험운전 기록이 "마쳤고 이상
+  // 없음"으로 읽혀 저장이 열렸고, 어긋난 값이 든 기록은 백업에서 조용히 빠졌다.
+  //
+  // 어긋난 값은 그 값만 버린다. 버려진 것이 작업자의 확인(상태 확인·체크리스트·
+  // 마친 시험운전)이면 그 확인은 하지 않은 것이 되어, 화면이 다시 하게 한다
+  // (resumePathFor·결과 화면의 저장 조건). 확정한 규격까지 버리지는 않는다.
   const snapshot: InspectionSnapshot = {
     declaredPurpose,
-    startedAt: pick(
-      'startedAt',
-      (v): v is number => typeof v === 'number',
-      null,
-    ),
-    workConditions: pick('workConditions', isPlainObject, null),
+    startedAt: pick('startedAt', isStartedAt, null),
+    workConditions: pick('workConditions', isValidWorkConditions, null),
     grinder: pick('grinder', isGrinderSpec, null),
     wheel: pick('wheel', isWheelSpec, null),
     grinderOcr: pick('grinderOcr', isGrinderSpec, null),
     wheelOcr: pick('wheelOcr', isWheelSpec, null),
-    grinderCondition: pick('grinderCondition', isAnswerMap, null),
-    wheelCondition: pick('wheelCondition', isAnswerMap, null),
+    grinderCondition: pick('grinderCondition', isValidGrinderCondition, null),
+    wheelCondition: pick('wheelCondition', isValidWheelCondition, null),
     trialRun: null,
     grinderImage: null,
     wheelImage: null,
-    grinderCaptureMetrics: pick('grinderCaptureMetrics', isPlainObject, null),
-    wheelCaptureMetrics: pick('wheelCaptureMetrics', isPlainObject, null),
-    grinderOcrTelemetry: pick('grinderOcrTelemetry', isPlainObject, null),
-    wheelOcrTelemetry: pick('wheelOcrTelemetry', isPlainObject, null),
-    captureChecks: labelCaptureChecks(rawCaptureChecks),
-    // 오프라인 여부를 읽지 못하면 더 엄격한 쪽(오프라인)으로 본다 — 모르는 것을
-    // 온라인으로 추정하면 적합이 근거 없이 열린다.
-    offlineSlots:
-      source.offlineSlots === undefined
-        ? NO_OFFLINE_SLOTS
-        : isOfflineSlots(source.offlineSlots)
-          ? source.offlineSlots
-          : (warnings.add('schema'), { grinder: true, wheel: true }),
-    checklist: pick('checklist', isAnswerMap, null),
-    trialRunRecord: pick('trialRunRecord', isPlainObject, null),
+    grinderCaptureMetrics: pick(
+      'grinderCaptureMetrics',
+      isValidCaptureQualityMetrics,
+      null,
+    ),
+    wheelCaptureMetrics: pick(
+      'wheelCaptureMetrics',
+      isValidCaptureQualityMetrics,
+      null,
+    ),
+    grinderOcrTelemetry: pick('grinderOcrTelemetry', isValidOcrTelemetry, null),
+    wheelOcrTelemetry: pick('wheelOcrTelemetry', isValidOcrTelemetry, null),
+    captureChecks: captureChecks.checks,
+    offlineSlots: offline.slots,
+    checklist: pick('checklist', isValidSafetyChecklist, null),
+    trialRunRecord: pick('trialRunRecord', isValidTrialRun, null),
   };
 
   // 진행 중이던 시험운전 — 되살리지 않는다(맨 위 설명).
@@ -359,35 +353,14 @@ export function recoverDraft(raw: unknown): DraftRecovery {
     warnings.add('exam');
   }
 
-  // 앞 단계가 없으면 뒤 단계는 근거가 없다.
-  if (snapshot.grinder === null) {
-    snapshot.grinderCondition = null;
-    dropWheelStep(snapshot);
-  }
-
-  if (snapshot.wheel === null) dropWheelStep(snapshot);
-
   return {
-    snapshot,
+    // 앞 단계가 없으면 뒤 단계는 근거가 없다. 명판이 없으면 장비 상태 확인과 숫돌
+    // 단계를, 숫돌이 없으면 숫돌 단계와 그 뒤(결과 화면)의 값을 버린다.
+    snapshot: dropOrphanedSteps(snapshot),
     warnings: [...warnings],
     savedAt: typeof raw.savedAt === 'string' ? raw.savedAt : null,
     resumable: true,
   };
-}
-
-/** 숫돌 단계와 그 뒤(결과 화면)의 값을 버린다. 명판 쪽은 그대로 둔다 */
-function dropWheelStep(snapshot: InspectionSnapshot): void {
-  snapshot.wheel = null;
-  snapshot.wheelOcr = null;
-  snapshot.wheelCondition = null;
-  snapshot.wheelImage = null;
-  snapshot.wheelCaptureMetrics = null;
-  snapshot.wheelOcrTelemetry = null;
-  snapshot.checklist = null;
-  snapshot.trialRunRecord = null;
-  snapshot.offlineSlots = { ...snapshot.offlineSlots, wheel: false };
-  const { grinder } = snapshot.captureChecks;
-  snapshot.captureChecks = grinder ? { grinder } : {};
 }
 
 /** 되살린 상태에서 이어갈 화면. 끝까지 마친 단계의 다음 화면이다 */

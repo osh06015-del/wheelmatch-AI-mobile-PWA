@@ -11,7 +11,20 @@
 // hydration 시점에 값이 한 박자 늦게 들어와 잘못된 화면 전환을 유발한다.
 
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
-import type { TrialRunProgress } from '@/lib/safety/trialRun';
+import {
+  isValidCaptureQualityCheck,
+  isValidCaptureQualityMetrics,
+  isValidGrinderCondition,
+  isValidGrinderSpec,
+  isValidOcrTelemetry,
+  isValidWheelCondition,
+  isValidWheelSpec,
+  isValidWorkConditions,
+} from '@/lib/backup/recordSanitize';
+import {
+  isTrialRunProgress,
+  type TrialRunProgress,
+} from '@/lib/safety/trialRun';
 import type {
   AnalysisMode,
   CaptureQualityCheck,
@@ -63,6 +76,37 @@ export function analysisModeOf(slots: OfflineSlots): AnalysisMode {
   return slots.grinder || slots.wheel ? 'offline_limited' : 'online';
 }
 
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * 저장된 오프라인 표시를 읽는다. draft 복구(lib/draft/draftModel.ts)와 새로고침
+ * 복원이 같이 쓴다.
+ *
+ * 저장된 적이 없으면(undefined) 아직 오프라인으로 넣은 단계가 없는 것이다. 값이
+ * 있는데 읽지 못하면 더 엄격한 쪽(두 단계 모두 오프라인)으로 본다 — 모르는 것을
+ * 온라인으로 추정하면 적합이 근거 없이 열린다.
+ */
+export function readOfflineSlots(value: unknown): {
+  slots: OfflineSlots;
+  /** 값이 있는데 읽지 못했는가 */
+  unreadable: boolean;
+} {
+  if (value === undefined)
+    return { slots: NO_OFFLINE_SLOTS, unreadable: false };
+  if (
+    isObject(value) &&
+    typeof value.grinder === 'boolean' &&
+    typeof value.wheel === 'boolean'
+  ) {
+    return {
+      slots: { grinder: value.grinder, wheel: value.wheel },
+      unreadable: false,
+    };
+  }
+  return { slots: { grinder: true, wheel: true }, unreadable: true };
+}
+
 /**
  * 촬영 자리별 사진 상태 확인 기록. 한 번도 찍지 않은 자리는 없다.
  *
@@ -72,6 +116,41 @@ export function analysisModeOf(slots: OfflineSlots): AnalysisMode {
 export type CaptureChecks = Partial<
   Record<'grinder' | 'wheel', CaptureQualityCheck>
 >;
+
+const CAPTURE_CHECK_SLOTS = Object.keys({
+  grinder: true,
+  wheel: true,
+} satisfies Record<keyof CaptureChecks, true>) as (keyof CaptureChecks)[];
+
+/**
+ * 저장된 사진 상태 확인 기록에서 명판·라벨 자리의 온전한 기록만 남긴다. draft
+ * 복구와 새로고침 복원이 같이 쓴다.
+ *
+ * 그 밖의 자리(이전 버전의 다각도 확인)는 보지 않는다 — 그 사진이 지금 점검에
+ * 없는데 기록만 남기면 없는 사진에 대한 기록이 저장된다. 어긋난 자리는 그 자리만
+ * 버린다. 한 자리 때문에 다른 자리의 기록까지 버릴 이유가 없다.
+ */
+export function pickCaptureChecks(raw: unknown): {
+  checks: CaptureChecks;
+  /** 값이 있는데 형태가 어긋나 버린 자리가 있는가 */
+  dropped: boolean;
+} {
+  if (raw === undefined || raw === null) return { checks: {}, dropped: false };
+  if (!isObject(raw)) return { checks: {}, dropped: true };
+  const checks: CaptureChecks = {};
+  let dropped = false;
+  for (const slot of CAPTURE_CHECK_SLOTS) {
+    const value = raw[slot];
+    if (value === undefined || value === null) continue;
+    if (isValidCaptureQualityCheck(value)) checks[slot] = value;
+    else dropped = true;
+  }
+  return { checks, dropped };
+}
+
+/** 시작 시각(epoch ms)으로 쓸 수 있는 값인가. draft 복구도 이 검사를 쓴다 */
+export const isStartedAt = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
 
 interface InspectionState {
   /** 작업자가 시작할 때 고른 오늘의 작업 */
@@ -129,10 +208,55 @@ interface InspectionState {
   trialRunRecord: TrialRun | null;
   /** 서버 렌더 결과에서는 false. 브라우저 값이 반영된 뒤에만 true가 된다. */
   hydrated: boolean;
+  /**
+   * 새로고침 때 sessionStorage에서 읽은 값 가운데 형태가 어긋나 버린 것이 있는가.
+   *
+   * 버리면 작업자는 이유 없이 앞 단계로 돌아가게 된다. 화면(DraftRecovery)이 이
+   * 표시를 보고 한 번 알린다. 점검을 새로 시작하거나(reset) draft로 복구하면
+   * (restore) 꺼진다 — 그 뒤의 상태는 버린 값과 무관하다.
+   */
+  droppedOnReload: boolean;
 }
 
-/** 진행 중 점검 복구(draft)가 저장·복원하는 전체 상태. hydrated는 화면 상태라 뺀다. */
-export type InspectionSnapshot = Omit<InspectionState, 'hydrated'>;
+/**
+ * 진행 중 점검 복구(draft)가 저장·복원하는 전체 상태. hydrated와 droppedOnReload는
+ * 화면 상태라 뺀다.
+ */
+export type InspectionSnapshot = Omit<
+  InspectionState,
+  'hydrated' | 'droppedOnReload'
+>;
+
+/**
+ * 앞 단계가 없으면 뒤 단계의 값은 근거가 없다 — 함께 버린다.
+ *
+ * 명판이 없으면 그 기계에 대한 장비 상태 확인도, 그 기계를 기준으로 한 숫돌 단계도
+ * 남길 수 없다. 숫돌이 없으면 숫돌 단계와 그 뒤(결과 화면)의 값을 버린다.
+ * setGrinder·setWheel이 값을 바꿀 때 지우는 것과 같은 범위다. draft 복구와
+ * 새로고침 복원이 같이 쓴다.
+ */
+export function dropOrphanedSteps(
+  snapshot: InspectionSnapshot,
+): InspectionSnapshot {
+  if (snapshot.grinder !== null && snapshot.wheel !== null) return snapshot;
+  const { grinder: grinderCheck } = snapshot.captureChecks;
+  return {
+    ...snapshot,
+    grinderCondition:
+      snapshot.grinder === null ? null : snapshot.grinderCondition,
+    wheel: null,
+    wheelOcr: null,
+    wheelCondition: null,
+    wheelImage: null,
+    wheelCaptureMetrics: null,
+    wheelOcrTelemetry: null,
+    trialRun: null,
+    checklist: null,
+    trialRunRecord: null,
+    offlineSlots: { ...snapshot.offlineSlots, wheel: false },
+    captureChecks: grinderCheck ? { grinder: grinderCheck } : {},
+  };
+}
 
 /** 서버 렌더와 hydration에 쓰는 고정 스냅샷. 절대 바뀌지 않는다. */
 const SERVER_SNAPSHOT: InspectionState = {
@@ -157,14 +281,30 @@ const SERVER_SNAPSHOT: InspectionState = {
   checklist: null,
   trialRunRecord: null,
   hydrated: false,
+  droppedOnReload: false,
 };
 
-function readStored<T>(key: string): T | null {
+/** 값이 있는데 JSON으로 읽히지 않는다. 어떤 검사도 통과하지 못하는 값이다. */
+const UNREADABLE = Symbol('unreadable');
+
+/**
+ * 저장된 값을 타입 없이(unknown) 읽는다. 저장된 적이 없으면 undefined다 —
+ * 읽지 못한 것(UNREADABLE)과 가른다. 둘을 같게 보면 깨진 오프라인 표시가
+ * "오프라인으로 넣은 단계 없음"으로 읽힌다.
+ */
+function readStored(key: string): unknown {
+  let raw: string | null;
   try {
-    const raw = window.sessionStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : null;
+    raw = window.sessionStorage.getItem(key);
   } catch {
-    return null;
+    // 저장소를 쓸 수 없는 환경이다. 저장된 것이 없는 것과 같다.
+    return undefined;
+  }
+  if (raw === null) return undefined;
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return UNREADABLE;
   }
 }
 
@@ -176,43 +316,127 @@ function writeStored(key: string, value: unknown): void {
   }
 }
 
+/**
+ * 새로고침용 저장(sessionStorage)을 이 상태에 맞춘다. 없는 값(null)은 키를 지운다.
+ * 사진과, 메모리에만 두는 값(체크리스트·마친 시험운전)은 쓰지 않는다.
+ */
+function persistSnapshot(snapshot: InspectionSnapshot): void {
+  const stored: Array<[string, unknown]> = [
+    [PURPOSE_KEY, snapshot.declaredPurpose],
+    [STARTED_KEY, snapshot.startedAt],
+    [WORK_CONDITIONS_KEY, snapshot.workConditions],
+    [GRINDER_KEY, snapshot.grinder],
+    [WHEEL_KEY, snapshot.wheel],
+    [GRINDER_OCR_KEY, snapshot.grinderOcr],
+    [WHEEL_OCR_KEY, snapshot.wheelOcr],
+    [GRINDER_CONDITION_KEY, snapshot.grinderCondition],
+    [WHEEL_CONDITION_KEY, snapshot.wheelCondition],
+    [TRIAL_RUN_KEY, snapshot.trialRun],
+    [GRINDER_CAPTURE_METRICS_KEY, snapshot.grinderCaptureMetrics],
+    [WHEEL_CAPTURE_METRICS_KEY, snapshot.wheelCaptureMetrics],
+    [GRINDER_OCR_TELEMETRY_KEY, snapshot.grinderOcrTelemetry],
+    [WHEEL_OCR_TELEMETRY_KEY, snapshot.wheelOcrTelemetry],
+    [OFFLINE_SLOTS_KEY, snapshot.offlineSlots],
+  ];
+  for (const [key, value] of stored) {
+    if (value === null) {
+      try {
+        window.sessionStorage.removeItem(key);
+      } catch {
+        // 메모리 상태가 기준이다. 저장을 맞추지 못해도 흐름은 이어진다.
+      }
+    } else {
+      writeStored(key, value);
+    }
+  }
+  writeStored(CAPTURE_CHECKS_KEY, snapshot.captureChecks);
+}
+
+const isWorkPurpose = (value: unknown): value is WorkPurpose =>
+  value === 'cutting' || value === 'grinding';
+
+/**
+ * sessionStorage에 남은 값으로 상태를 되살린다(새로고침·PWA 업데이트 뒤).
+ *
+ * 타입 선언은 브라우저 저장값을 검증하지 않는다. 탭을 연 채 앱이 업데이트되면
+ * 이전 버전이 쓴 값을 새 버전이 읽고, 되살린 규격은 결과 화면에서 곧바로
+ * 규칙엔진으로 들어간다. 엔진은 그 값이 타입대로라고 믿는다 — 검사 없이 넘기면
+ *   · 목록에 없는 종류 — 엔진이 예외를 던져 결과 화면이 죽는다
+ *   · 목록에 없는 용도 — 근거 없는 용도 불일치(부적합)가 된다
+ *   · {year, month}가 아닌 유효기한 — 유효기한 규칙을 통과해 적합이 나온다
+ *
+ * 그래서 값마다 draft 복구와 같은 기준(recordSanitize.ts)으로 검사하고, 어긋난
+ * 값은 비슷한 값으로 고치지 않고 버린다. 버린 것이 확정한 규격이면 그 단계와 뒤
+ * 단계를 다시 하게 되고(dropOrphanedSteps → 화면 가드), 작업자의 상태 확인이면 그
+ * 확인을 다시 하게 된다. OCR 원본·측정값은 그것만 사라진다.
+ */
 function initialClientState(): InspectionState {
   if (typeof window === 'undefined') return SERVER_SNAPSHOT;
-  // 타입 선언은 브라우저 저장값을 검증하지 않는다. 지원하는 작업만 복원해야
-  // 손상된 값이 화면의 작업 선택 완료 조건(null 여부)을 통과하지 않는다.
-  const storedPurpose = readStored<unknown>(PURPOSE_KEY);
-  return {
-    declaredPurpose:
-      storedPurpose === 'cutting' || storedPurpose === 'grinding'
-        ? storedPurpose
-        : null,
-    startedAt: readStored<number>(STARTED_KEY),
-    workConditions: readStored<WorkConditions>(WORK_CONDITIONS_KEY),
-    grinder: readStored<GrinderSpec>(GRINDER_KEY),
-    wheel: readStored<WheelSpec>(WHEEL_KEY),
-    grinderOcr: readStored<GrinderSpec>(GRINDER_OCR_KEY),
-    wheelOcr: readStored<WheelSpec>(WHEEL_OCR_KEY),
-    grinderCondition: readStored<GrinderCondition>(GRINDER_CONDITION_KEY),
-    wheelCondition: readStored<WheelCondition>(WHEEL_CONDITION_KEY),
-    trialRun: readStored<TrialRunProgress>(TRIAL_RUN_KEY),
+
+  let dropped = false;
+
+  /**
+   * 값이 있는데 형태가 어긋나면 버린다. 저장된 적이 없는 값(undefined)과 앱이
+   * "없음"으로 남긴 값(null — 고르지 않은 작업 조건, 받지 못한 OCR 원본·측정값)은
+   * 어긋난 값이 아니다.
+   */
+  function pick<T>(
+    key: string,
+    guard: (value: unknown) => value is T,
+  ): T | null {
+    const value = readStored(key);
+    if (value === undefined || value === null) return null;
+    if (guard(value)) return value;
+    dropped = true;
+    return null;
+  }
+
+  const offline = readOfflineSlots(readStored(OFFLINE_SLOTS_KEY));
+  if (offline.unreadable) dropped = true;
+  const captureChecks = pickCaptureChecks(readStored(CAPTURE_CHECKS_KEY));
+  if (captureChecks.dropped) dropped = true;
+
+  const snapshot = dropOrphanedSteps({
+    // 지원하는 작업만 복원해야 손상된 값이 화면의 작업 선택 완료 조건(null 여부)을
+    // 통과하지 않는다.
+    declaredPurpose: pick(PURPOSE_KEY, isWorkPurpose),
+    startedAt: pick(STARTED_KEY, isStartedAt),
+    workConditions: pick(WORK_CONDITIONS_KEY, isValidWorkConditions),
+    grinder: pick(GRINDER_KEY, isValidGrinderSpec),
+    wheel: pick(WHEEL_KEY, isValidWheelSpec),
+    grinderOcr: pick(GRINDER_OCR_KEY, isValidGrinderSpec),
+    wheelOcr: pick(WHEEL_OCR_KEY, isValidWheelSpec),
+    grinderCondition: pick(GRINDER_CONDITION_KEY, isValidGrinderCondition),
+    wheelCondition: pick(WHEEL_CONDITION_KEY, isValidWheelCondition),
+    // 종료시각을 읽지 못하는 타이머는 끝난 것으로 계산된다. 법정 시간과 맞는
+    // 값만 이어간다(isTrialRunProgress).
+    trialRun: pick(TRIAL_RUN_KEY, isTrialRunProgress),
     // 사진은 Blob이라 sessionStorage에 담을 수 없고 새로고침을 넘지 못한다.
     grinderImage: null,
     wheelImage: null,
-    grinderCaptureMetrics: readStored<CaptureQualityMetrics>(
+    grinderCaptureMetrics: pick(
       GRINDER_CAPTURE_METRICS_KEY,
+      isValidCaptureQualityMetrics,
     ),
-    wheelCaptureMetrics: readStored<CaptureQualityMetrics>(
+    wheelCaptureMetrics: pick(
       WHEEL_CAPTURE_METRICS_KEY,
+      isValidCaptureQualityMetrics,
     ),
-    grinderOcrTelemetry: readStored<OcrTelemetry>(GRINDER_OCR_TELEMETRY_KEY),
-    wheelOcrTelemetry: readStored<OcrTelemetry>(WHEEL_OCR_TELEMETRY_KEY),
-    captureChecks: readStored<CaptureChecks>(CAPTURE_CHECKS_KEY) ?? {},
-    offlineSlots:
-      readStored<OfflineSlots>(OFFLINE_SLOTS_KEY) ?? NO_OFFLINE_SLOTS,
+    grinderOcrTelemetry: pick(GRINDER_OCR_TELEMETRY_KEY, isValidOcrTelemetry),
+    wheelOcrTelemetry: pick(WHEEL_OCR_TELEMETRY_KEY, isValidOcrTelemetry),
+    captureChecks: captureChecks.checks,
+    offlineSlots: offline.slots,
     checklist: null,
     trialRunRecord: null,
-    hydrated: true,
-  };
+  });
+
+  // 버린 값이 있으면 새로고침용 저장도 되살린 상태에 맞춘다. 어긋난 값을 남겨
+  // 두면 새로고침할 때마다 같은 값을 다시 버리고 다시 알린다. 읽지 못한 오프라인
+  // 표시는 여기서 오프라인으로 적힌다 — 지우기만 하면 다음 새로고침에 "표시
+  // 없음"(온라인)으로 읽혀 제한이 풀린다.
+  if (dropped) persistSnapshot(snapshot);
+
+  return { ...snapshot, hydrated: true, droppedOnReload: dropped };
 }
 
 let state: InspectionState = initialClientState();
@@ -307,7 +531,7 @@ export interface ReanalysisInput {
  * "무엇이든 바뀌면 저장"을 이 참조 하나로 판단한다.
  */
 export function useInspectionState(): Readonly<
-  InspectionSnapshot & { hydrated: boolean }
+  InspectionSnapshot & { hydrated: boolean; droppedOnReload: boolean }
 > {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
@@ -527,36 +751,10 @@ export function useInspection(): InspectionStore {
   const restore = useCallback((snapshot: InspectionSnapshot) => {
     // 새로고침을 넘어가는 값은 sessionStorage에도 다시 쓴다 — 복구 뒤 한 번 더
     // 새로고침해도 복구한 상태가 기준이 되게 한다. 사진은 메모리에만 둔다.
-    const stored: Array<[string, unknown]> = [
-      [PURPOSE_KEY, snapshot.declaredPurpose],
-      [STARTED_KEY, snapshot.startedAt],
-      [WORK_CONDITIONS_KEY, snapshot.workConditions],
-      [GRINDER_KEY, snapshot.grinder],
-      [WHEEL_KEY, snapshot.wheel],
-      [GRINDER_OCR_KEY, snapshot.grinderOcr],
-      [WHEEL_OCR_KEY, snapshot.wheelOcr],
-      [GRINDER_CONDITION_KEY, snapshot.grinderCondition],
-      [WHEEL_CONDITION_KEY, snapshot.wheelCondition],
-      [TRIAL_RUN_KEY, snapshot.trialRun],
-      [GRINDER_CAPTURE_METRICS_KEY, snapshot.grinderCaptureMetrics],
-      [WHEEL_CAPTURE_METRICS_KEY, snapshot.wheelCaptureMetrics],
-      [GRINDER_OCR_TELEMETRY_KEY, snapshot.grinderOcrTelemetry],
-      [WHEEL_OCR_TELEMETRY_KEY, snapshot.wheelOcrTelemetry],
-      [OFFLINE_SLOTS_KEY, snapshot.offlineSlots],
-    ];
-    for (const [key, value] of stored) {
-      if (value === null) {
-        try {
-          window.sessionStorage.removeItem(key);
-        } catch {
-          // 메모리 상태는 아래에서 반드시 바꾼다.
-        }
-      } else {
-        writeStored(key, value);
-      }
-    }
-    writeStored(CAPTURE_CHECKS_KEY, snapshot.captureChecks);
-    setState({ ...snapshot });
+    persistSnapshot(snapshot);
+    // 상태가 draft에서 되살린 값으로 바뀐다. 새로고침 때 버린 값에 대한 알림은
+    // 더 맞지 않는다 — 이 뒤의 경고는 draft 복구가 낸다.
+    setState({ ...snapshot, droppedOnReload: false });
   }, []);
 
   const reset = useCallback(() => {
@@ -601,6 +799,7 @@ export function useInspection(): InspectionStore {
       offlineSlots: NO_OFFLINE_SLOTS,
       checklist: null,
       trialRunRecord: null,
+      droppedOnReload: false,
     });
   }, []);
 

@@ -12,6 +12,7 @@ import {
   completeTrialRun,
   formatRemaining,
   isTrialRunElapsed,
+  isTrialRunProgress,
   isTrialRunStopped,
   remainingSeconds,
   requiredTrialRunSeconds,
@@ -195,5 +196,83 @@ describe('시작 조건 — 시험운전 근거', () => {
   it('근거가 확인됐거나 넘기지 않으면(결합숫돌) 기존처럼 연다', () => {
     expect(canStartTrialRun({ ...READY, policyVerified: true })).toBe(true);
     expect(canStartTrialRun(READY)).toBe(true);
+  });
+});
+
+describe('저장된 진행 중 시험운전 — 되살려도 되는 값인가', () => {
+  // 진행 중 시험운전은 새로고침을 넘도록 저장된다. 저장소에서 읽은 값은 타입이
+  // 보장하지 않는다 — 종료시각을 읽지 못하는 값은 남은 시간이 0으로 나와, 그대로
+  // 되살리면 1분·3분을 기다리지 않고 답할 수 있다. 되살리기 전에 이 검사를 거친다.
+
+  /** 저장소를 한 번 거친 모양(JSON) */
+  const stored = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
+
+  it.each([
+    ['작업 시작 전(60초)', false],
+    ['교체 후(180초)', true],
+  ])('앱이 시작한 시험운전은 통과한다 — %s', (_name, wheelReplaced) => {
+    const progress = startTrialRun(wheelReplaced, T0);
+
+    expect(isTrialRunProgress(progress)).toBe(true);
+    expect(isTrialRunProgress(stored(progress))).toBe(true);
+  });
+
+  it('종료시각이 요구 시간보다 뒤여도 통과한다 — 더 기다리게 할 뿐이다', () => {
+    expect(
+      isTrialRunProgress({
+        ...startTrialRun(false, T0),
+        endsAt: at(90).toISOString(),
+      }),
+    ).toBe(true);
+  });
+
+  const REPLACED = startTrialRun(true, T0);
+
+  it.each([
+    ['null', null],
+    ['문자열', 'running'],
+    ['배열', []],
+    ['빈 객체', {}],
+    ['교체 여부가 없는 값', { ...REPLACED, wheelReplaced: undefined }],
+    ['교체 여부가 boolean이 아닌 값', { ...REPLACED, wheelReplaced: 'yes' }],
+    ['요구 시간이 없는 값', { ...REPLACED, requiredSeconds: undefined }],
+    ['요구 시간이 문자열인 값', { ...REPLACED, requiredSeconds: '180' }],
+    ['시작시각이 없는 값', { ...REPLACED, startedAt: undefined }],
+    ['시작시각이 숫자인 값', { ...REPLACED, startedAt: T0.getTime() }],
+    ['시작시각이 날짜가 아닌 값', { ...REPLACED, startedAt: '아까' }],
+    ['종료시각이 없는 값', { ...REPLACED, endsAt: undefined }],
+    ['종료시각이 숫자인 값', { ...REPLACED, endsAt: at(180).getTime() }],
+    ['종료시각이 날짜가 아닌 값', { ...REPLACED, endsAt: '언젠가' }],
+  ])('형태가 어긋나면 통과하지 못한다 — %s', (_name, value) => {
+    expect(isTrialRunProgress(value)).toBe(false);
+  });
+
+  it.each([
+    [
+      '법정 시간이 아닌 요구 시간(5초)',
+      { ...REPLACED, requiredSeconds: 5, endsAt: at(5).toISOString() },
+    ],
+    [
+      '교체했는데 60초인 값',
+      { ...REPLACED, requiredSeconds: 60, endsAt: at(60).toISOString() },
+    ],
+    ['교체하지 않았는데 180초인 값', { ...REPLACED, wheelReplaced: false }],
+    [
+      '종료시각이 시작 + 요구 시간보다 1초 이른 값',
+      { ...REPLACED, endsAt: at(179).toISOString() },
+    ],
+    [
+      '종료시각이 시작시각보다 앞선 값',
+      { ...REPLACED, endsAt: at(-1).toISOString() },
+    ],
+  ])('법정 시간과 맞지 않으면 통과하지 못한다 — %s', (_name, value) => {
+    // 형태는 온전해도, 이 값을 되살리면 제122조 ②의 시간보다 일찍 끝난다.
+    expect(isTrialRunProgress(value)).toBe(false);
+  });
+
+  it('경계 — 종료시각이 정확히 시작 + 요구 시간이면 통과한다', () => {
+    expect(
+      isTrialRunProgress({ ...REPLACED, endsAt: at(180).toISOString() }),
+    ).toBe(true);
   });
 });

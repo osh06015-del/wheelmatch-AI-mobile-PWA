@@ -365,3 +365,101 @@ describe('DraftRecovery — 자동 저장', () => {
     expect(remove).not.toHaveBeenCalled();
   });
 });
+
+describe('DraftRecovery — 새로고침 때 버린 값 알림', () => {
+  // 새로고침하면 화면 간 값은 sessionStorage에서 되살아난다. 형태가 어긋난 값은
+  // 버리는데(inspection.tsx), 작업자는 이유 없이 촬영 화면으로 돌아가게 된다.
+  // draft 복구 창이 뜨지 않는 경우(draft가 없거나 읽지 못한 경우)에도 같은 자리,
+  // 같은 문구로 알린다.
+
+  const NOTICE =
+    '저장 형식이 달라 일부 값만 복구했습니다. 빠진 값은 다시 입력하세요.';
+
+  afterEach(() => {
+    sessionStorage.clear();
+  });
+
+  /**
+   * 명판 단계까지 마친 점검을 앱이 쓰는 그대로 sessionStorage에 남기고, 저장된
+   * 명판 규격에서 일부 자리만 바꾼 뒤 새로고침한 화면을 그린다.
+   */
+  async function reloadWith(change: Record<string, unknown>) {
+    vi.resetModules();
+    const seeding = await import('@/lib/state/inspection');
+    const { result } = renderHook(() => seeding.useInspection());
+    act(() => {
+      result.current.setPurpose('cutting');
+      result.current.setGrinder(GRINDER);
+      result.current.setGrinderCondition(GRINDER_OK);
+    });
+    sessionStorage.setItem(
+      'wheelmatch.grinder',
+      JSON.stringify({ ...GRINDER, ...change }),
+    );
+
+    vi.resetModules();
+    const reloaded = await import('./DraftRecovery');
+    const { useInspection: useReloaded } =
+      await import('@/lib/state/inspection');
+    render(<reloaded.DraftRecovery />);
+    await flush();
+    return renderHook(() => useReloaded()).result;
+  }
+
+  it('draft가 없어도, 버린 값이 있으면 복구 경고와 같은 문구로 알린다', async () => {
+    load.mockResolvedValue({ status: 'none' });
+
+    const reloaded = await reloadWith({ guardType: 'weird' });
+
+    expect(reloaded.current.grinder).toBeNull();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(`⚠ ${NOTICE}`);
+  });
+
+  it('draft를 읽지 못한 경우에도 알린다', async () => {
+    load.mockResolvedValue({ status: 'error' });
+
+    await reloadWith({ guardType: 'weird' });
+
+    expect(screen.getByRole('status')).toHaveTextContent(`⚠ ${NOTICE}`);
+  });
+
+  it('닫기를 누르면 사라진다', async () => {
+    load.mockResolvedValue({ status: 'none' });
+    await reloadWith({ guardType: 'weird' });
+
+    await act(async () => {
+      screen.getByRole('button', { name: '닫기' }).click();
+    });
+
+    expect(screen.queryByText(`⚠ ${NOTICE}`)).not.toBeInTheDocument();
+  });
+
+  it('버린 값이 없으면 알리지 않는다', async () => {
+    load.mockResolvedValue({ status: 'none' });
+
+    const reloaded = await reloadWith({});
+
+    expect(reloaded.current.grinder).toEqual(GRINDER);
+    expect(screen.queryByText(`⚠ ${NOTICE}`)).not.toBeInTheDocument();
+  });
+
+  it('draft 복구를 묻는 동안에는 따로 알리지 않고, 이어하기 뒤에는 draft의 경고만 남는다', async () => {
+    // 묻는 창이 그 draft의 경고를 직접 보여준다. 이어하면 상태가 draft에서 되살린
+    // 값으로 바뀌므로, sessionStorage에서 버린 값에 대한 알림은 더 맞지 않는다.
+    load.mockResolvedValue({ status: 'found', draft: savedDraft() });
+
+    const reloaded = await reloadWith({ guardType: 'weird' });
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.queryByText(`⚠ ${NOTICE}`)).not.toBeInTheDocument();
+
+    await act(async () => {
+      screen.getByRole('button', { name: '이어하기' }).click();
+    });
+
+    expect(reloaded.current.grinder).toEqual(GRINDER);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByText(`⚠ ${NOTICE}`)).not.toBeInTheDocument();
+  });
+});

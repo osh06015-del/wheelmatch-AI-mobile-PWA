@@ -448,10 +448,10 @@ function passes(sanitize: () => unknown): boolean {
 
 // ── 규격 하나가 이 파일의 기준(타입·허용 목록·날짜 범위·길이)에 맞는가 ──
 //
-// draft 복구(lib/draft/draftModel.ts의 isGrinderSpec·isWheelSpec)가 저장된 규격을
-// 아래 두 함수로 검사한다. 기준을 그쪽에 따로 적으면 필드를 더할 때 한쪽만 고쳐져
-// 갈라진다 — 복구는 통과시켰는데 여기서는 버리는 값이 생기고, 그 값이 규칙엔진으로
-// 들어간다.
+// draft 복구(lib/draft/draftModel.ts의 isGrinderSpec·isWheelSpec)와 새로고침 복원
+// (lib/state/inspection.tsx)이 저장된 규격을 아래 두 함수로 검사한다. 기준을 그쪽에
+// 따로 적으면 필드를 더할 때 한쪽만 고쳐져 갈라진다 — 복구는 통과시켰는데 여기서는
+// 버리는 값이 생기고, 그 값이 규칙엔진으로 들어간다.
 
 /** 그라인더 규격이 기준에 맞는가(스핀들·덮개 종류·덮개 크기 포함) */
 export function isValidGrinderSpec(raw: unknown): raw is GrinderSpec {
@@ -646,6 +646,60 @@ function sanitizeOcrTelemetry(raw: unknown): OcrTelemetry {
     cacheCreationTokens: nullableNum(r.cacheCreationTokens),
     durationMs: nullableNum(r.durationMs),
   };
+}
+
+// ── 규격이 아닌 값 하나가 이 파일의 기준에 맞는가 ──
+//
+// 위의 isValidGrinderSpec·isValidWheelSpec과 같은 이유로 내놓는다. draft 복구
+// (lib/draft/draftModel.ts)와 새로고침 복원(lib/state/inspection.tsx)이 저장된
+// 상태 확인·체크리스트·시험운전 기록·작업 조건·측정값을 아래 함수들로 검사한다.
+//
+// 그쪽에서 "객체인가"·"값이 boolean인가"로만 보던 때에는, 빈 객체인 시험운전
+// 기록이 "시험운전을 마쳤고 이상이 없었다"로 읽혀 저장이 열렸고, 그렇게 저장된
+// 기록은 여기서 조용히 빠졌다. 기준은 이 파일 하나에만 둔다.
+
+/** 작업 조건(재료·건식/습식)이 기준에 맞는가 */
+export function isValidWorkConditions(raw: unknown): raw is WorkConditions {
+  return passes(() => sanitizeWorkConditions(raw));
+}
+
+/** 작업자가 답한 그라인더 장비 상태가 기준에 맞는가(다섯 항목 모두 boolean·null) */
+export function isValidGrinderCondition(raw: unknown): raw is GrinderCondition {
+  return passes(() => sanitizeGrinderCondition(raw));
+}
+
+/** 작업자가 답한 숫돌 상태가 기준에 맞는가(기본 다섯 항목 + 종류별 선택 항목) */
+export function isValidWheelCondition(raw: unknown): raw is WheelCondition {
+  return passes(() => sanitizeWheelCondition(raw));
+}
+
+/** 작업 전 체크리스트가 기준에 맞는가 */
+export function isValidSafetyChecklist(raw: unknown): raw is SafetyChecklist {
+  return passes(() => sanitizeSafetyChecklist(raw));
+}
+
+/** 마친 시험운전 기록이 기준에 맞는가(결과·이상 항목·시각 포함) */
+export function isValidTrialRun(raw: unknown): raw is TrialRun {
+  return passes(() => sanitizeTrialRun(raw));
+}
+
+/** 촬영 측정값이 기준에 맞는가 */
+export function isValidCaptureQualityMetrics(
+  raw: unknown,
+): raw is CaptureQualityMetrics {
+  return passes(() => sanitizeCaptureQualityMetrics(raw));
+}
+
+/** 촬영 자리 하나의 사진 상태 확인 기록이 기준에 맞는가 */
+export function isValidCaptureQualityCheck(
+  raw: unknown,
+): raw is CaptureQualityCheck {
+  return passes(() => sanitizeCaptureQualityCheck(raw));
+}
+
+/** OCR 측정값이 기준에 맞는가 */
+export function isValidOcrTelemetry(raw: unknown): raw is OcrTelemetry {
+  return passes(() => sanitizeOcrTelemetry(raw));
 }
 
 function sanitizeWheelExamFinding(raw: unknown): WheelExamFinding {

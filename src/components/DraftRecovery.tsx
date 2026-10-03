@@ -43,6 +43,12 @@ const WARNING_TEXT: Readonly<Record<DraftWarning, MessageKey>> = {
   unreadable: 'draft.warn.unreadable',
 };
 
+/**
+ * 새로고침 때 sessionStorage에서 버린 값이 있을 때 내는 알림. draft 복구가 형태가
+ * 어긋난 값을 버렸을 때와 같은 일이라 같은 문구('schema')를 쓴다.
+ */
+const RELOAD_NOTICE: readonly DraftWarning[] = ['schema'];
+
 type Status = 'checking' | 'prompt' | 'ready';
 
 export function DraftRecovery() {
@@ -53,6 +59,7 @@ export function DraftRecovery() {
   const [status, setStatus] = useState<Status>('checking');
   const [pending, setPending] = useState<Recovery | null>(null);
   const [restoredWarnings, setRestoredWarnings] = useState<DraftWarning[]>([]);
+  const [reloadNoticeClosed, setReloadNoticeClosed] = useState(false);
   const [saveResult, setSaveResult] = useState<DraftSaveResult | null>(null);
   const [discardFailed, setDiscardFailed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -82,8 +89,8 @@ export function DraftRecovery() {
 
   useEffect(() => {
     if (status !== 'ready' || !state.hydrated) return;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 화면 상태(hydrated)를 draft에서 빼는 구조분해다.
-    const { hydrated, ...snapshot } = state;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 화면 상태(hydrated·droppedOnReload)를 draft에서 빼는 구조분해다.
+    const { hydrated, droppedOnReload, ...snapshot } = state;
     if (!hasInspectionInProgress(snapshot)) return;
     const timer = window.setTimeout(() => {
       void draftStore
@@ -124,6 +131,16 @@ export function DraftRecovery() {
   }
 
   const inProgress = state.declaredPurpose !== null;
+
+  // 새로고침 때 sessionStorage에서 읽은 값 일부를 버렸다는 알림(inspection.tsx).
+  // 버리면 작업자는 이유 없이 앞 단계로 돌아가므로, draft 복구 경고와 같은 자리에
+  // 같은 문구로 알린다. 복구 창을 묻는 동안에는 내지 않는다 — 그 창이 draft의
+  // 경고를 직접 보여주고, 이어하기·삭제를 고르면 저장소가 이 표시를 끈다.
+  const reloadNotice =
+    status === 'ready' && state.droppedOnReload && !reloadNoticeClosed;
+  const shownWarnings: readonly DraftWarning[] = reloadNotice
+    ? RELOAD_NOTICE
+    : restoredWarnings;
 
   return (
     <>
@@ -187,12 +204,12 @@ export function DraftRecovery() {
         </div>
       )}
 
-      {restoredWarnings.length > 0 && (
+      {shownWarnings.length > 0 && (
         <div
           role="status"
           className="flex flex-col gap-2 border-b border-yellow-500/40 bg-yellow-500/10 px-4 py-3"
         >
-          {restoredWarnings.map((warning) => (
+          {shownWarnings.map((warning) => (
             <p
               key={warning}
               className="text-sm leading-relaxed text-yellow-100"
@@ -202,7 +219,10 @@ export function DraftRecovery() {
           ))}
           <button
             type="button"
-            onClick={() => setRestoredWarnings([])}
+            onClick={() => {
+              setRestoredWarnings([]);
+              setReloadNoticeClosed(true);
+            }}
             className="min-h-10 self-start rounded-md border border-yellow-500/60 px-3 text-sm font-semibold text-yellow-100"
           >
             {t('draft.dismiss')}

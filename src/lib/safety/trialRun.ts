@@ -67,6 +67,43 @@ export function startTrialRun(
   };
 }
 
+/**
+ * 저장소에서 읽은 값이 되살려도 되는 진행 중 시험운전인가.
+ *
+ * 진행 중 시험운전은 새로고침을 넘도록 sessionStorage에 남는다. 타입은 저장값을
+ * 보장하지 않는다 — 탭을 연 채 앱이 업데이트되면 이전 버전이 쓴 값을 읽는다.
+ *
+ * 형태만 보지 않고 **법정 시간과 맞는지**까지 본다. 종료시각을 읽지 못하는 값은
+ * 남은 시간이 0으로 계산되고(remainingSeconds), 요구 시간이 짧게 적힌 값은 그
+ * 시간만 기다리게 한다. 어느 쪽이든 그대로 되살리면 제122조 ②의 시간보다 일찍
+ * 답할 수 있다.
+ *
+ *   · 교체 여부가 boolean이다
+ *   · 요구 시간이 그 교체 여부의 법정 시간이다(requiredTrialRunSeconds)
+ *   · 시작·종료 시각이 날짜로 읽히고, 종료가 시작 + 요구 시간보다 이르지 않다
+ *
+ * 통과하지 못한 값은 호출자가 버린다 — 시험운전을 처음부터 다시 한다. 비슷한
+ * 값으로 고쳐 이어가지 않는다.
+ */
+export function isTrialRunProgress(value: unknown): value is TrialRunProgress {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const { wheelReplaced, requiredSeconds, startedAt, endsAt } = value as Record<
+    string,
+    unknown
+  >;
+  if (typeof wheelReplaced !== 'boolean') return false;
+  const required = requiredTrialRunSeconds(wheelReplaced);
+  if (requiredSeconds !== required) return false;
+  if (typeof startedAt !== 'string' || typeof endsAt !== 'string') return false;
+  const started = Date.parse(startedAt);
+  const ends = Date.parse(endsAt);
+  if (Number.isNaN(started) || Number.isNaN(ends)) return false;
+  // 더 늦게 끝나는 값은 받는다. 더 기다리게 할 뿐 시간을 줄이지 않는다.
+  return ends - started >= required * 1000;
+}
+
 /** 남은 초. 올림한다 — 0.4초 남았는데 0으로 보이면 끝난 줄 안다. */
 export function remainingSeconds(
   progress: TrialRunProgress | null,

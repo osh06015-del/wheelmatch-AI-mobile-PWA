@@ -15,19 +15,38 @@ import {
   type InspectionDraft,
 } from './draftModel';
 import { WHEEL_PURPOSE_LABEL, WHEEL_TYPE_LABEL } from '@/lib/i18n/checkText';
-import { GUARD_LABEL, SPINDLE_LABEL } from '@/lib/i18n/profileLabels';
+import {
+  COOLING_LABEL,
+  GUARD_LABEL,
+  MATERIAL_LABEL,
+  SPINDLE_LABEL,
+} from '@/lib/i18n/profileLabels';
+import { canSaveInspection } from '@/lib/safety/saveGuard';
+import { isTrialRunStopped } from '@/lib/safety/trialRun';
 import type { InspectionSnapshot } from '@/lib/state/inspection';
 import type {
+  CaptureQualityCheck,
+  CaptureQualityMetrics,
+  CaptureQualityWarning,
+  CoolingMode,
   GrinderCondition,
   GrinderSpec,
   GuardType,
+  OcrTelemetry,
   RpmSource,
+  SafetyChecklist,
   SpindleThread,
+  TrialRun,
+  TrialRunFinding,
+  TrialRunOutcome,
   VisibleDamage,
   WheelCondition,
+  WheelConditionKey,
   WheelPurpose,
   WheelSpec,
   WheelType,
+  WorkConditions,
+  WorkMaterial,
 } from '@/lib/rules/types';
 
 // 목록형 필드의 모든 값. 손으로 적은 목록이 아니라 타입이 잠근 표에서 얻는다 —
@@ -791,6 +810,573 @@ describe('recoverDraft — 규격의 없어도 되는 필드(유효기한·원�
     expectRestored({ grinder: { ...GRINDER, guardSize: 125 } });
     expectRestored({ grinder: { ...GRINDER, guardSize: null } });
   });
+});
+
+// ── 규격이 아닌 값 ──
+//
+// 아래 값들의 목록형 필드도 위와 같이 타입이 잠근 표에서 얻는다.
+const EVERY_WORK_MATERIAL = Object.keys(MATERIAL_LABEL) as WorkMaterial[];
+const EVERY_COOLING_MODE = Object.keys(COOLING_LABEL) as CoolingMode[];
+const EVERY_TRIAL_RUN_OUTCOME = Object.keys({
+  normal: true,
+  abnormal: true,
+} satisfies Record<TrialRunOutcome, true>) as TrialRunOutcome[];
+const EVERY_TRIAL_RUN_FINDING = Object.keys({
+  vibration: true,
+  noise: true,
+  wobble: true,
+  wheelDamage: true,
+  equipment: true,
+} satisfies Record<TrialRunFinding, true>) as TrialRunFinding[];
+const EVERY_CAPTURE_WARNING = Object.keys({
+  low_resolution: true,
+  blur: true,
+  too_dark: true,
+  overexposed: true,
+} satisfies Record<CaptureQualityWarning, true>) as CaptureQualityWarning[];
+type OcrEngine = OcrTelemetry['engine'];
+const EVERY_OCR_ENGINE = Object.keys({
+  claude: true,
+  tesseract: true,
+} satisfies Record<OcrEngine, true>) as OcrEngine[];
+const EVERY_WHEEL_CONDITION_KEY = Object.keys({
+  damageFree: true,
+  notDeformed: true,
+  mountingAreaUndamaged: true,
+  labelLegible: true,
+  expiryValid: true,
+  diamondRimIntact: true,
+  flapsIntact: true,
+  noDelamination: true,
+  flapBackingIntact: true,
+  threadAdapterFit: true,
+  evenWear: true,
+  dedicatedGuardFitted: true,
+  wiresIntact: true,
+  backingPadUndamaged: true,
+} satisfies Record<WheelConditionKey, true>) as WheelConditionKey[];
+const EVERY_CHECKLIST_KEY = Object.keys({
+  guardCover: true,
+  auxiliaryHandle: true,
+  wheelDamage: true,
+  ppe: true,
+  workpieceSecured: true,
+  surroundingsClear: true,
+  sparkDirection: true,
+} satisfies Record<keyof SafetyChecklist, true>) as (keyof SafetyChecklist)[];
+
+const WORK: WorkConditions = { material: 'steel', cooling: 'dry' };
+
+const CHECKLIST: SafetyChecklist = {
+  guardCover: null,
+  auxiliaryHandle: null,
+  wheelDamage: null,
+  ppe: true,
+  workpieceSecured: true,
+  surroundingsClear: true,
+};
+
+const TRIAL_RUN: TrialRun = {
+  wheelReplaced: false,
+  requiredSeconds: 60,
+  startedAt: '2026-09-17T02:00:00.000Z',
+  finishedAt: '2026-09-17T02:01:01.000Z',
+  elapsedSeconds: 61,
+  outcome: 'normal',
+  findings: [],
+  completed: true,
+};
+
+const METRICS: CaptureQualityMetrics = {
+  originalWidth: 4032,
+  originalHeight: 3024,
+  originalBytes: 7_580_000,
+  uploadWidth: 2048,
+  uploadHeight: 1536,
+  uploadBytes: 1_830_000,
+  meanBrightness: 132.5,
+  contrast: 48.1,
+  darkPixelRatio: 0.02,
+  brightPixelRatio: 0.01,
+  blurMetric: 913.4,
+  optimizeMs: 210,
+};
+
+const TELEMETRY: OcrTelemetry = {
+  engine: 'claude',
+  model: 'claude-sonnet-5',
+  inputTokens: 1500,
+  outputTokens: 80,
+  cacheReadTokens: 0,
+  cacheCreationTokens: 1500,
+  durationMs: 2100,
+};
+
+const CHECK: CaptureQualityCheck = {
+  checkVersion: 'test',
+  warnings: [],
+  usedDespiteWarning: false,
+  retakeCount: 0,
+};
+
+/** 결과 화면에서 시험운전까지 마친 점검 */
+function finished(
+  overrides: Partial<InspectionSnapshot> = {},
+): InspectionSnapshot {
+  return snapshot({
+    workConditions: WORK,
+    checklist: CHECKLIST,
+    trialRunRecord: TRIAL_RUN,
+    grinderCaptureMetrics: METRICS,
+    wheelCaptureMetrics: METRICS,
+    grinderOcrTelemetry: TELEMETRY,
+    wheelOcrTelemetry: TELEMETRY,
+    captureChecks: { grinder: CHECK, wheel: CHECK },
+    ...overrides,
+  });
+}
+
+/** 그 draft에서 저장된 값 하나를 통째로 바꾼다 */
+function finishedDraftWith(key: string, value: unknown): unknown {
+  const draft = stored(buildDraft(finished(), NOW)) as {
+    state: Record<string, unknown>;
+  };
+  draft.state[key] = value;
+  return draft;
+}
+
+/** 항목 하나가 아예 없는 값. undefined를 넣은 것과 다르다 — 키가 없다 */
+function without<T extends object>(value: T, key: keyof T): Partial<T> {
+  const copy: Partial<T> = { ...value };
+  delete copy[key];
+  return copy;
+}
+
+/** 적합 조합에서 이 시험운전 기록으로 저장이 열리는가 */
+function opensSave(trialRunRecord: TrialRun | null | undefined): boolean {
+  return canSaveInspection({
+    grinderConditionComplete: true,
+    wheelConditionComplete: true,
+    checklistComplete: true,
+    verdict: 'COMPATIBLE',
+    trialRunRecord: trialRunRecord ?? null,
+  });
+}
+
+type Malformed = ReadonlyArray<readonly [string, unknown]>;
+
+describe('recoverDraft — 규격이 아닌 값(상태 확인·체크리스트·시험운전 기록·작업 조건·측정값)', () => {
+  // 규격만 검사하고 나머지를 "객체인가"·"값이 boolean인가"로만 보면, 어긋난 값이
+  // 화면과 기록으로 그대로 들어간다. 마친 시험운전 기록이 빈 객체여도 "시험운전을
+  // 마쳤고 이상이 없었다"로 읽혀 저장이 열리고, 그런 값이 든 기록은 백업에서 조용히
+  // 빠진다. 복구는 이 값들도 백업 정리(recordSanitize.ts)와 같은 기준으로 본다.
+  //
+  // 어긋난 값은 그 값만 버린다. 버려진 것이 작업자의 확인(상태 확인·체크리스트·
+  // 시험운전)이면 그 확인은 하지 않은 것이 되어 화면이 다시 하게 한다.
+
+  it('온전한 값은 경고 없이 모두 되살린다', () => {
+    const base = finished();
+    const recovery = recoverDraft(stored(buildDraft(base, NOW)));
+
+    expect(recovery.warnings).toEqual([]);
+    expect(recovery.snapshot?.workConditions).toEqual(WORK);
+    expect(recovery.snapshot?.grinderCondition).toEqual(GRINDER_OK);
+    expect(recovery.snapshot?.wheelCondition).toEqual(WHEEL_OK);
+    expect(recovery.snapshot?.checklist).toEqual(CHECKLIST);
+    expect(recovery.snapshot?.trialRunRecord).toEqual(TRIAL_RUN);
+    expect(recovery.snapshot?.grinderCaptureMetrics).toEqual(METRICS);
+    expect(recovery.snapshot?.wheelCaptureMetrics).toEqual(METRICS);
+    expect(recovery.snapshot?.grinderOcrTelemetry).toEqual(TELEMETRY);
+    expect(recovery.snapshot?.wheelOcrTelemetry).toEqual(TELEMETRY);
+    expect(recovery.snapshot?.captureChecks).toEqual({
+      grinder: CHECK,
+      wheel: CHECK,
+    });
+    expect(opensSave(recovery.snapshot?.trialRunRecord)).toBe(true);
+  });
+
+  // ── 마친 시험운전 기록 ──
+
+  const MALFORMED_TRIAL_RUN: Malformed = [
+    ['빈 객체', {}],
+    ['결과가 없는 값', without(TRIAL_RUN, 'outcome')],
+    ['결과 — 목록에 없는 값', { ...TRIAL_RUN, outcome: 'fine' }],
+    [
+      '이상 항목 — 목록에 없는 값',
+      { ...TRIAL_RUN, outcome: 'abnormal', findings: ['smell'] },
+    ],
+    ['이상 항목 — 배열이 아님', { ...TRIAL_RUN, findings: 'none' }],
+    ['시작 시각 — 날짜가 아님', { ...TRIAL_RUN, startedAt: '아까' }],
+    ['끝난 시각이 없는 값', without(TRIAL_RUN, 'finishedAt')],
+    ['교체 여부 — boolean이 아님', { ...TRIAL_RUN, wheelReplaced: 'no' }],
+    ['요구 시간 — 정수가 아님', { ...TRIAL_RUN, requiredSeconds: 60.5 }],
+    ['흐른 시간 — 숫자가 아님', { ...TRIAL_RUN, elapsedSeconds: '61' }],
+    ['완료 표시가 없는 값', without(TRIAL_RUN, 'completed')],
+    ['배열', [TRIAL_RUN]],
+  ];
+
+  it.each(MALFORMED_TRIAL_RUN)(
+    '마친 시험운전 기록이 어긋나면 기록만 버려 시험운전을 다시 하게 한다 — %s',
+    (_name, value) => {
+      const recovery = recoverDraft(finishedDraftWith('trialRunRecord', value));
+
+      expect(recovery.warnings).toEqual(['schema']);
+      expect(recovery.snapshot?.trialRunRecord).toBeNull();
+      // 하지 않은 것으로 읽힌다 — 적합 조합이면 시험운전 전에는 저장이 열리지 않는다.
+      expect(opensSave(recovery.snapshot?.trialRunRecord)).toBe(false);
+      // 규격·상태 확인·체크리스트는 그대로다. 결과 화면에서 시험운전만 다시 한다.
+      expect(recovery.snapshot?.wheel).toEqual(WHEEL);
+      expect(recovery.snapshot?.wheelCondition).toEqual(WHEEL_OK);
+      expect(recovery.snapshot?.checklist).toEqual(CHECKLIST);
+      expect(recovery.snapshot ? resumePathFor(recovery.snapshot) : null).toBe(
+        '/result',
+      );
+    },
+  );
+
+  it.each(EVERY_TRIAL_RUN_OUTCOME)(
+    '목록에 있는 시험운전 결과는 그대로 되살린다 — %s',
+    (outcome) => {
+      // 이상이 있었던 기록(중지)도 기록이다. 버리면 중지 안내가 사라진다.
+      const trialRunRecord: TrialRun = {
+        ...TRIAL_RUN,
+        outcome,
+        findings: outcome === 'abnormal' ? EVERY_TRIAL_RUN_FINDING : [],
+      };
+      const recovery = recoverDraft(
+        stored(buildDraft(finished({ trialRunRecord }), NOW)),
+      );
+
+      expect(recovery.warnings).toEqual([]);
+      expect(recovery.snapshot?.trialRunRecord).toEqual(trialRunRecord);
+      expect(isTrialRunStopped(recovery.snapshot?.trialRunRecord ?? null)).toBe(
+        outcome === 'abnormal',
+      );
+    },
+  );
+
+  // ── 체크리스트 ──
+
+  const MALFORMED_CHECKLIST: Malformed = [
+    ['빈 객체', {}],
+    ['빠진 기본 항목', without(CHECKLIST, 'ppe')],
+    ['boolean 자리에 문자열', { ...CHECKLIST, ppe: 'yes' }],
+    ['선택 항목에 숫자', { ...CHECKLIST, workpieceSecured: 1 }],
+    ['배열', [true, true, true]],
+  ];
+
+  it.each(MALFORMED_CHECKLIST)(
+    '체크리스트가 어긋나면 체크리스트만 버려 다시 누르게 한다 — %s',
+    (_name, value) => {
+      const recovery = recoverDraft(finishedDraftWith('checklist', value));
+
+      expect(recovery.warnings).toEqual(['schema']);
+      expect(recovery.snapshot?.checklist).toBeNull();
+      expect(recovery.snapshot?.wheel).toEqual(WHEEL);
+      expect(recovery.snapshot?.wheelCondition).toEqual(WHEEL_OK);
+      expect(recovery.snapshot ? resumePathFor(recovery.snapshot) : null).toBe(
+        '/result',
+      );
+    },
+  );
+
+  it('체크리스트는 선택 항목이 있어도 없어도 그대로 되살린다', () => {
+    const every = Object.fromEntries(
+      EVERY_CHECKLIST_KEY.map((key) => [key, true]),
+    ) as unknown as SafetyChecklist;
+    const required: SafetyChecklist = {
+      guardCover: true,
+      auxiliaryHandle: false,
+      wheelDamage: null,
+      ppe: true,
+    };
+    for (const checklist of [every, required]) {
+      const recovery = recoverDraft(
+        stored(buildDraft(finished({ checklist }), NOW)),
+      );
+      expect(recovery.warnings).toEqual([]);
+      expect(recovery.snapshot?.checklist).toEqual(checklist);
+    }
+  });
+
+  // ── 작업자의 상태 확인 ──
+
+  const MALFORMED_GRINDER_CONDITION: Malformed = [
+    ['빈 객체', {}],
+    ['빠진 항목', without(GRINDER_OK, 'guardSecure')],
+    ['boolean 자리에 문자열', { ...GRINDER_OK, guardSecure: 'true' }],
+    ['boolean 자리에 숫자', { ...GRINDER_OK, bodyUndamaged: 1 }],
+    ['배열', [true, true, true, true, true]],
+  ];
+
+  it.each(MALFORMED_GRINDER_CONDITION)(
+    '장비 상태 확인이 어긋나면 그 확인만 버려 명판 단계에서 다시 하게 한다 — %s',
+    (_name, value) => {
+      const recovery = recoverDraft(
+        finishedDraftWith('grinderCondition', value),
+      );
+
+      expect(recovery.warnings).toEqual(['schema']);
+      expect(recovery.snapshot?.grinderCondition).toBeNull();
+      // 확정한 규격을 버리지는 않는다 — 어긋난 것은 규격이 아니다.
+      expect(recovery.snapshot?.grinder).toEqual(GRINDER);
+      expect(recovery.snapshot ? resumePathFor(recovery.snapshot) : null).toBe(
+        '/scan/grinder',
+      );
+    },
+  );
+
+  const MALFORMED_WHEEL_CONDITION: Malformed = [
+    ['빈 객체', {}],
+    ['빠진 기본 항목', without(WHEEL_OK, 'labelLegible')],
+    // 구버전 항목이다. Gate는 false가 아닌지만 보므로 아래 둘은 Gate를 그대로 지난다.
+    ['빠진 기한 항목', without(WHEEL_OK, 'expiryValid')],
+    ['기한 항목에 문자열', { ...WHEEL_OK, expiryValid: 'false' }],
+    ['boolean 자리에 문자열', { ...WHEEL_OK, damageFree: 'true' }],
+    ['종류별 항목에 숫자', { ...WHEEL_OK, flapsIntact: 1 }],
+    ['배열', [true, true, true, true]],
+  ];
+
+  it.each(MALFORMED_WHEEL_CONDITION)(
+    '숫돌 상태 확인이 어긋나면 그 확인만 버려 숫돌 단계에서 다시 하게 한다 — %s',
+    (_name, value) => {
+      const recovery = recoverDraft(finishedDraftWith('wheelCondition', value));
+
+      expect(recovery.warnings).toEqual(['schema']);
+      expect(recovery.snapshot?.wheelCondition).toBeNull();
+      expect(recovery.snapshot?.wheel).toEqual(WHEEL);
+      expect(recovery.snapshot?.grinderCondition).toEqual(GRINDER_OK);
+      expect(recovery.snapshot ? resumePathFor(recovery.snapshot) : null).toBe(
+        '/scan/wheel',
+      );
+    },
+  );
+
+  it('숫돌 상태 확인은 종류별 항목이 어느 것이 있어도 그대로 되살린다', () => {
+    const wheelCondition = Object.fromEntries(
+      EVERY_WHEEL_CONDITION_KEY.map((key) => [key, true]),
+    ) as unknown as WheelCondition;
+    const recovery = recoverDraft(
+      stored(buildDraft(finished({ wheelCondition }), NOW)),
+    );
+
+    expect(recovery.warnings).toEqual([]);
+    expect(recovery.snapshot?.wheelCondition).toEqual(wheelCondition);
+  });
+
+  // ── 작업 조건 ──
+
+  const MALFORMED_WORK: Malformed = [
+    ['빈 객체', {}],
+    ['재료 — 목록에 없는 값', { ...WORK, material: 'wood' }],
+    ['건식/습식 — 목록에 없는 값', { ...WORK, cooling: 'oil' }],
+    ['빠진 자리', without(WORK, 'cooling')],
+    ['배열', ['steel', 'dry']],
+  ];
+
+  it.each(MALFORMED_WORK)(
+    '작업 조건이 어긋나면 그 값만 버린다 — %s',
+    (_name, value) => {
+      const recovery = recoverDraft(finishedDraftWith('workConditions', value));
+
+      expect(recovery.warnings).toEqual(['schema']);
+      // 고르지 않은 것과 같다(화면·기록에서 unknown으로 읽는다). 비슷한 값으로
+      // 바꾸지 않는다.
+      expect(recovery.snapshot?.workConditions).toBeNull();
+      expect(recovery.snapshot?.declaredPurpose).toBe('cutting');
+      expect(recovery.snapshot?.trialRunRecord).toEqual(TRIAL_RUN);
+      expect(recovery.snapshot ? resumePathFor(recovery.snapshot) : null).toBe(
+        '/result',
+      );
+    },
+  );
+
+  it.each(EVERY_WORK_MATERIAL)(
+    '목록에 있는 재료는 그대로 되살린다 — %s',
+    (material) => {
+      const workConditions: WorkConditions = { ...WORK, material };
+      const recovery = recoverDraft(
+        stored(buildDraft(finished({ workConditions }), NOW)),
+      );
+
+      expect(recovery.warnings).toEqual([]);
+      expect(recovery.snapshot?.workConditions).toEqual(workConditions);
+    },
+  );
+
+  it.each(EVERY_COOLING_MODE)(
+    '목록에 있는 건식/습식 값은 그대로 되살린다 — %s',
+    (cooling) => {
+      const workConditions: WorkConditions = { ...WORK, cooling };
+      const recovery = recoverDraft(
+        stored(buildDraft(finished({ workConditions }), NOW)),
+      );
+
+      expect(recovery.warnings).toEqual([]);
+      expect(recovery.snapshot?.workConditions).toEqual(workConditions);
+    },
+  );
+
+  // ── 검증용 측정값 ──
+
+  const MALFORMED_METRICS: Malformed = [
+    ['빈 객체', {}],
+    ['숫자 자리에 문자열', { ...METRICS, uploadBytes: '1830000' }],
+    ['빠진 자리', without(METRICS, 'blurMetric')],
+    ['배열', [4032, 3024]],
+  ];
+
+  const MALFORMED_TELEMETRY: Malformed = [
+    ['빈 객체', {}],
+    ['엔진 — 목록에 없는 값', { ...TELEMETRY, engine: 'gpt' }],
+    ['토큰 수 — 숫자 자리에 문자열', { ...TELEMETRY, inputTokens: '1500' }],
+    ['모델 이름 — 숫자', { ...TELEMETRY, model: 5 }],
+    ['빠진 자리', without(TELEMETRY, 'durationMs')],
+  ];
+
+  it.each(
+    (['grinderCaptureMetrics', 'wheelCaptureMetrics'] as const).flatMap((key) =>
+      MALFORMED_METRICS.map(([name, value]) => [key, name, value] as const),
+    ),
+  )('촬영 측정값이 어긋나면 그 값만 버린다 — %s: %s', (key, _name, value) => {
+    const recovery = recoverDraft(finishedDraftWith(key, value));
+
+    expect(recovery.warnings).toEqual(['schema']);
+    expect(recovery.snapshot?.[key]).toBeNull();
+    // 측정값은 점검 흐름과 무관하다 — 버려도 이어갈 화면이 달라지지 않는다.
+    expect(recovery.snapshot?.wheel).toEqual(WHEEL);
+    expect(recovery.snapshot?.trialRunRecord).toEqual(TRIAL_RUN);
+    expect(recovery.snapshot ? resumePathFor(recovery.snapshot) : null).toBe(
+      '/result',
+    );
+  });
+
+  it.each(
+    (['grinderOcrTelemetry', 'wheelOcrTelemetry'] as const).flatMap((key) =>
+      MALFORMED_TELEMETRY.map(([name, value]) => [key, name, value] as const),
+    ),
+  )('OCR 측정값이 어긋나면 그 값만 버린다 — %s: %s', (key, _name, value) => {
+    const recovery = recoverDraft(finishedDraftWith(key, value));
+
+    expect(recovery.warnings).toEqual(['schema']);
+    expect(recovery.snapshot?.[key]).toBeNull();
+    expect(recovery.snapshot?.wheel).toEqual(WHEEL);
+    expect(recovery.snapshot ? resumePathFor(recovery.snapshot) : null).toBe(
+      '/result',
+    );
+  });
+
+  it('측정에 실패해 null로 채운 측정값은 어긋난 값이 아니다', () => {
+    const empty = Object.fromEntries(
+      Object.keys(METRICS).map((key) => [key, null]),
+    ) as unknown as CaptureQualityMetrics;
+    const recovery = recoverDraft(
+      stored(
+        buildDraft(
+          finished({ grinderCaptureMetrics: empty, wheelCaptureMetrics: null }),
+          NOW,
+        ),
+      ),
+    );
+
+    expect(recovery.warnings).toEqual([]);
+    expect(recovery.snapshot?.grinderCaptureMetrics).toEqual(empty);
+    expect(recovery.snapshot?.wheelCaptureMetrics).toBeNull();
+  });
+
+  it.each(EVERY_OCR_ENGINE)(
+    '목록에 있는 OCR 엔진은 그대로 되살린다 — %s',
+    (engine) => {
+      const telemetry: OcrTelemetry = { ...TELEMETRY, engine, model: null };
+      const recovery = recoverDraft(
+        stored(buildDraft(finished({ wheelOcrTelemetry: telemetry }), NOW)),
+      );
+
+      expect(recovery.warnings).toEqual([]);
+      expect(recovery.snapshot?.wheelOcrTelemetry).toEqual(telemetry);
+    },
+  );
+
+  // ── 시작 시각 ──
+
+  it.each([
+    ['문자열', '2026-09-17T02:00:00.000Z'],
+    // IndexedDB는 JSON과 달리 NaN·Infinity를 그대로 담는다.
+    ['NaN', Number.NaN],
+    ['Infinity', Number.POSITIVE_INFINITY],
+    ['객체', {}],
+  ])('시작 시각이 유한한 숫자가 아니면 버린다 — %s', (_name, value) => {
+    const recovery = recoverDraft(finishedDraftWith('startedAt', value));
+
+    expect(recovery.warnings).toEqual(['schema']);
+    // 소요시간을 지어내지 않는다 — 시작 시각이 없으면 기록에 남기지 않는다.
+    expect(recovery.snapshot?.startedAt).toBeNull();
+    expect(recovery.snapshot?.wheel).toEqual(WHEEL);
+    expect(recovery.snapshot ? resumePathFor(recovery.snapshot) : null).toBe(
+      '/result',
+    );
+  });
+
+  // ── 사진 상태 기록 ──
+
+  const MALFORMED_CHECK: Malformed = [
+    ['빈 객체', {}],
+    ['경고 — 목록에 없는 값', { ...CHECK, warnings: ['smudge'] }],
+    ['경고 — 배열이 아님', { ...CHECK, warnings: 'blur' }],
+    ['다시 찍은 횟수 — 정수가 아님', { ...CHECK, retakeCount: 1.5 }],
+    ['빠진 자리', without(CHECK, 'usedDespiteWarning')],
+  ];
+
+  it.each(MALFORMED_CHECK)(
+    '사진 상태 기록은 어긋난 자리만 버린다 — %s',
+    (_name, value) => {
+      const recovery = recoverDraft(
+        finishedDraftWith('captureChecks', { grinder: CHECK, wheel: value }),
+      );
+
+      expect(recovery.warnings).toEqual(['schema']);
+      expect(recovery.snapshot?.captureChecks).toEqual({ grinder: CHECK });
+      expect(recovery.snapshot?.wheel).toEqual(WHEEL);
+      expect(recovery.snapshot ? resumePathFor(recovery.snapshot) : null).toBe(
+        '/result',
+      );
+    },
+  );
+
+  it('사진 상태 기록의 한 자리가 객체가 아니어도 버렸다고 알린다', () => {
+    const recovery = recoverDraft(
+      finishedDraftWith('captureChecks', { grinder: 'blur', wheel: CHECK }),
+    );
+
+    expect(recovery.warnings).toEqual(['schema']);
+    expect(recovery.snapshot?.captureChecks).toEqual({ wheel: CHECK });
+  });
+
+  it.each(EVERY_CAPTURE_WARNING)(
+    '목록에 있는 사진 경고는 그대로 되살린다 — %s',
+    (warning) => {
+      const check: CaptureQualityCheck = {
+        ...CHECK,
+        warnings: [warning],
+        usedDespiteWarning: true,
+        retakeCount: 2,
+      };
+      const recovery = recoverDraft(
+        stored(
+          buildDraft(
+            finished({ captureChecks: { grinder: check, wheel: check } }),
+            NOW,
+          ),
+        ),
+      );
+
+      expect(recovery.warnings).toEqual([]);
+      expect(recovery.snapshot?.captureChecks).toEqual({
+        grinder: check,
+        wheel: check,
+      });
+    },
+  );
 });
 
 describe('resumePathFor — 이어갈 화면', () => {
