@@ -199,6 +199,40 @@ describe('DraftRecovery — draft가 있을 때', () => {
     );
   });
 
+  it('이전 버전의 다각도 확인이 들어 있던 draft는 그것을 되살리지 않았다고 알리고 이어간다', async () => {
+    // 뒷면·가장자리·중심구멍 사진과 AI 확인은 점검 흐름에서 뺐다(2026-10-03).
+    const draft = savedDraft() as unknown as {
+      state: Record<string, unknown>;
+      photos: Record<string, unknown>;
+      photoSlots: string[];
+    };
+    draft.state.wheelExam = {
+      status: 'not_observed',
+      findings: [],
+      photoQuality: [],
+      model: null,
+      promptVersion: 'test',
+      analyzedAt: '2026-09-17T02:00:00.000Z',
+    };
+    draft.photos.wheelBack = new Blob(['back'], { type: 'image/jpeg' });
+    draft.photoSlots = [...draft.photoSlots, 'wheelBack'];
+    load.mockResolvedValue({ status: 'found', draft });
+    render(<DraftRecovery />);
+    await flush();
+
+    expect(
+      screen.getByText(
+        '⚠ 이전 버전에서 넣은 추가 사진(뒷면·가장자리·중심구멍)과 AI 외관 확인 결과는 이제 쓰지 않아 복구하지 않았습니다. 나머지는 그대로 이어집니다.',
+      ),
+    ).toBeInTheDocument();
+    await act(async () => {
+      screen.getByRole('button', { name: '이어하기' }).click();
+    });
+    expect(store().current.grinder).toEqual(GRINDER);
+    expect(store().current).not.toHaveProperty('wheelExam');
+    expect(store().current).not.toHaveProperty('wheelBackImage');
+  });
+
   it('삭제하고 새로 시작을 고르면 draft를 지우고 처음 화면으로 간다', async () => {
     load.mockResolvedValue({ status: 'found', draft: savedDraft() });
     render(<DraftRecovery />);

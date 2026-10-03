@@ -110,11 +110,25 @@ export interface GrinderFormDraft {
 }
 
 /**
+ * 이전 버전(다각도 외관 확인이 있던 시기, 2026-10-03 이전)이 이 draft에 남긴 흔적.
+ *
+ * 추가 사진과 AI 결과 자체는 되살리지 않는다 — 그 단계가 이제 없고 받을 화면도
+ * 없다. 남기는 것은 두 가지뿐이다.
+ *
+ *   dropped   — 그 확인의 사진·결과를 버렸다. 화면이 버렸다고 알린다
+ *   suspected — 버렸고, 그 확인은 외관 이상을 **의심했다**. 의심은 이어간다
+ *
+ * 의심까지 버리면 앱이 스스로 올린 경고가 새 버전으로 넘어오며 조용히 사라진다.
+ * 의심을 덜어내는 방향은 이 앱에 넣지 않는다(docs/safety-boundaries.md).
+ */
+export type LegacyExamTrace = 'dropped' | 'suspected';
+
+/**
  * 숫돌 확인 화면 입력 draft.
  *
- * 다각도 외관 확인을 빼기 전(2026-10-03 이전)에 저장된 draft에는 `exam`
- * (추가 사진 세 장과 AI 확인 결과)이 함께 들어 있을 수 있다. 되살리지 않는다 —
- * 그 단계가 이제 없고, 받을 화면도 없다(recoverWheelFormDraft).
+ * 다각도 외관 확인을 빼기 전에 저장된 draft에는 `exam`(추가 사진 세 장과 AI
+ * 확인 결과)이 함께 들어 있을 수 있다. 되살리지 않고 흔적만 읽는다
+ * (recoverWheelFormDraft).
  */
 export interface WheelFormDraft {
   slot: 'wheel';
@@ -124,6 +138,11 @@ export interface WheelFormDraft {
   photo: Blob | null;
   ocr: WheelSpec | null;
   analysisSource: AnalysisSource;
+  /**
+   * 이전 버전 draft에서 이어받은 흔적. 그런 draft에서 이어진 경우에만 있다 —
+   * 다시 저장할 때 빠뜨리면 한 번 더 새로고침하는 것만으로 의심이 사라진다.
+   */
+  legacyExam?: LegacyExamTrace;
 }
 
 export type ScanFormDraft = GrinderFormDraft | WheelFormDraft;
@@ -171,6 +190,38 @@ export interface WheelFormRecovery {
   photo: Blob | null;
   ocr: WheelSpec | null;
   analysisSource: AnalysisSource;
+  /** 이전 버전의 다각도 외관 확인이 남긴 흔적. 없으면 null */
+  legacyExam: LegacyExamTrace | null;
+}
+
+/**
+ * 이전 버전의 다각도 외관 확인이 이 draft에 남긴 흔적을 읽는다.
+ *
+ * 그 확인을 요구하지 않던 종류의 draft에도 빈 `exam`(사진·결과가 모두 null)이
+ * 들어 있었다. 쓴 흔적이 없으면 버린 것도 없으므로 null이다 — 없던 일을 있던
+ * 것처럼 알리지 않는다.
+ */
+function recoverLegacyExam(
+  raw: Record<string, unknown>,
+): LegacyExamTrace | null {
+  // 이 버전이 이어받아 다시 저장한 표시. 목록에 있는 값만 믿는다.
+  if (raw.legacyExam === 'dropped' || raw.legacyExam === 'suspected') {
+    return raw.legacyExam;
+  }
+  const exam = raw.exam;
+  if (!isObject(exam)) return null;
+
+  const result = isObject(exam.exam) ? exam.exam : null;
+  // 사진이 빠졌어도 의심은 의심이다. 이전 버전은 사진이 모자라면 결과를 버렸지만,
+  // 그것은 "확인을 마쳤다"로 치지 않기 위해서였다 — 의심을 지우려던 것이 아니다.
+  if (result?.status === 'suspected') return 'suspected';
+
+  const photos = isObject(exam.photos) ? Object.values(exam.photos) : [];
+  const used =
+    result !== null ||
+    photos.some((photo) => photo !== null && photo !== undefined) ||
+    (exam.notRunReason !== null && exam.notRunReason !== undefined);
+  return used ? 'dropped' : null;
 }
 
 /** 읽어 온 그라인더 확인 화면 draft에서 믿을 수 있는 값만 골라 되살린다 */
@@ -213,5 +264,6 @@ export function recoverWheelFormDraft(raw: unknown): WheelFormRecovery | null {
     photo: raw.photo instanceof Blob ? raw.photo : null,
     ocr: isWheelSpec(raw.ocr) ? raw.ocr : null,
     analysisSource: pickAnalysisSource(raw),
+    legacyExam: recoverLegacyExam(raw),
   };
 }

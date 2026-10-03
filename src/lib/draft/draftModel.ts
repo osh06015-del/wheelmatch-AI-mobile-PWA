@@ -239,6 +239,12 @@ export function recoverDraft(raw: unknown): DraftRecovery {
     };
   }
 
+  const rawCaptureChecks = pick<Record<string, unknown>>(
+    'captureChecks',
+    isPlainObject,
+    {},
+  );
+
   const snapshot: InspectionSnapshot = {
     declaredPurpose,
     startedAt: pick(
@@ -260,9 +266,7 @@ export function recoverDraft(raw: unknown): DraftRecovery {
     wheelCaptureMetrics: pick('wheelCaptureMetrics', isPlainObject, null),
     grinderOcrTelemetry: pick('grinderOcrTelemetry', isPlainObject, null),
     wheelOcrTelemetry: pick('wheelOcrTelemetry', isPlainObject, null),
-    captureChecks: labelCaptureChecks(
-      pick<Record<string, unknown>>('captureChecks', isPlainObject, {}),
-    ),
+    captureChecks: labelCaptureChecks(rawCaptureChecks),
     // 오프라인 여부를 읽지 못하면 더 엄격한 쪽(오프라인)으로 본다 — 모르는 것을
     // 온라인으로 추정하면 적합이 근거 없이 열린다.
     offlineSlots:
@@ -309,10 +313,16 @@ export function recoverDraft(raw: unknown): DraftRecovery {
     LEGACY_EXAM_STATE_KEYS.some(
       (key) => source[key] !== undefined && source[key] !== null,
     ) ||
+    // 결과 없이 작업자의 확인 표시만 남은 경우. false는 그 확인이 없던 draft에도
+    // 들어 있던 기본값이라 흔적으로 치지 않는다.
+    source.wheelExamAcknowledged === true ||
     LEGACY_EXAM_PHOTO_SLOTS.some(
       (slot) =>
         (photos[slot] !== undefined && photos[slot] !== null) ||
-        savedSlots.includes(slot),
+        savedSlots.includes(slot) ||
+        // labelCaptureChecks가 걸러낸 그 사진의 상태 기록
+        (rawCaptureChecks[slot] !== undefined &&
+          rawCaptureChecks[slot] !== null),
     )
   ) {
     warnings.add('exam');

@@ -24,6 +24,7 @@ import {
   FORM_DRAFT_SAVE_DELAY_MS,
   FORM_DRAFT_SCHEMA_VERSION,
   recoverWheelFormDraft,
+  type LegacyExamTrace,
 } from '@/lib/draft/formDraftModel';
 import { WHEEL_FIELD_GUIDE } from '@/lib/guide/fieldGuide';
 import { useLocale } from '@/lib/i18n';
@@ -117,6 +118,10 @@ export default function WheelScanPage() {
   // 서버 분석이 아니라 로컬 OCR(tesseract)로 읽었거나 기기가 오프라인이었는가.
   // 값은 있지만 서버라는 두 번째 눈이 없었던 것이라 offline과 같은 제한 판정으로 남긴다.
   const [localOnly, setLocalOnly] = useState(false);
+  // 이전 버전(다각도 외관 확인이 있던 시기)이 남긴 draft에서 이어진 경우의 흔적.
+  // 추가 사진·AI 결과는 되살리지 않았다고 알리고, 그 확인이 의심했던 숫돌이면
+  // 의심을 이어간다. 이 라벨 사진의 숫돌에 대한 것이라 새 사진을 찍으면 지운다.
+  const [legacyExam, setLegacyExam] = useState<LegacyExamTrace | null>(null);
   // 새로고침 경합 방지: 사용자가 이미 새 사진을 찍거나 직접 입력을 골랐으면
   // 뒤늦게 도착한 draft 복원을 적용하지 않는다.
   const actedRef = useRef(false);
@@ -144,6 +149,7 @@ export default function WheelScanPage() {
       // 배지 문구가 서로 다르므로 하나의 불리언으로 합쳐 두지 않는다.
       setOffline(recovered.analysisSource === 'manual');
       setLocalOnly(recovered.analysisSource === 'local_ocr');
+      setLegacyExam(recovered.legacyExam);
       if (recovered.photo) {
         setPhoto(recovered.photo);
         setPhase('confirm');
@@ -168,10 +174,12 @@ export default function WheelScanPage() {
         // offline·localOnly를 하나의 출처 값으로 남긴다 — 복구할 때 배지 문구를
         // (직접 입력 vs 로컬 OCR) 그대로 되살리기 위해서다.
         analysisSource: offline ? 'manual' : localOnly ? 'local_ocr' : 'server',
+        // 이어받은 흔적을 다시 저장한다. 빠뜨리면 새로고침 한 번에 의심이 사라진다.
+        ...(legacyExam ? { legacyExam } : {}),
       });
     }, FORM_DRAFT_SAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [phase, form, photo, ocr, offline, localOnly]);
+  }, [phase, form, photo, ocr, offline, localOnly, legacyExam]);
 
   // 그라인더를 찍지 않았거나 장비 상태를 직접 확인하지 않은 경우 1단계로 되돌린다.
   // 화면 이동으로 Gate를 건너뛸 수 있으면 Gate가 아니다.
@@ -214,6 +222,7 @@ export default function WheelScanPage() {
     setUserConfirmed(false);
     setOffline(false);
     setLocalOnly(false);
+    setLegacyExam(null);
     // 이전 사진에 대한 확인 화면 draft는 이제 근거가 없다.
     void formDraftStore.remove('wheel');
     try {
@@ -358,6 +367,7 @@ export default function WheelScanPage() {
       expiryText: form.expiry,
       accessoryName: form.accessoryName,
       userConfirmed,
+      priorDamageSuspected,
     });
     setWheel(spec, photo, ocr, captureMetrics, ocrTelemetry);
     setCaptureCheck('wheel', toCaptureQualityCheck(labelReview));
@@ -370,6 +380,10 @@ export default function WheelScanPage() {
     setWheelCondition(pickWheelCondition(condition, conditionKeys));
     router.push('/result');
   }
+
+  // 이전 버전의 다각도 확인이 의심했던 숫돌이면 라벨 사진의 판독과 무관하게
+  // 의심으로 둔다. Gate의 경고와 규칙엔진에 넘기는 값이 같은 것을 보게 한다.
+  const priorDamageSuspected = legacyExam === 'suspected';
 
   const labelNeedsReview =
     form.maxRPM.trim() === '' ||
@@ -575,6 +589,16 @@ export default function WheelScanPage() {
           ⚠ {t('scan.offline.notice')}
         </p>
       )}
+      {/* 이전 버전에서 넣은 추가 사진과 AI 확인 결과를 되살리지 않았다는 안내.
+          조용히 버리면 작업자는 그것이 기록에 들어갈 것으로 안다. */}
+      {legacyExam && (
+        <p
+          role="status"
+          className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-base leading-relaxed text-yellow-100"
+        >
+          ⚠ {t('draft.warn.exam')}
+        </p>
+      )}
       {localOnly && !offline && (
         <p
           role="status"
@@ -608,7 +632,9 @@ export default function WheelScanPage() {
       <WheelConditionGate
         condition={condition}
         keys={conditionKeys}
-        visibleDamage={ocr?.visibleDamage ?? 'unknown'}
+        visibleDamage={
+          priorDamageSuspected ? 'suspected' : (ocr?.visibleDamage ?? 'unknown')
+        }
         labelNeedsReview={labelNeedsReview}
         expiryNeedsReview={expiryNeedsReview}
         onChange={(key, value) =>

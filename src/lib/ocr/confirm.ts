@@ -51,6 +51,15 @@ export interface ConfirmedWheelFields {
   /** ManualConfirmToggle 상태. 사람이 직접 확인해야만 신뢰도가 올라간다. */
   userConfirmed: boolean;
   /**
+   * 이 숫돌에 이미 올라와 있던 외관 의심.
+   *
+   * 지금은 한 곳에서만 온다 — 다각도 외관 확인이 있던 이전 버전이 남긴 확인 화면
+   * draft가 "의심"이었던 경우다(formDraftModel의 LegacyExamTrace). **의심을
+   * 더하는 방향으로만** 쓴다: true면 라벨 사진의 판독이 무엇이든 'suspected'이고,
+   * 아니면 라벨 사진의 판독을 그대로 둔다. 의심을 지우는 값은 받지 않는다.
+   */
+  priorDamageSuspected?: boolean;
+  /**
    * 부속품 이름(선택). 종류를 특정하지 못한 경우(other·unknown)에 작업자가
    * 적는 식별용 문구다. 판정에 쓰지 않는다.
    */
@@ -114,8 +123,10 @@ export function confirmedWheelSpec(
       : null,
     // 외관 손상은 라벨 사진에서 판별한 값이고 확인 화면에 없다. 사용자가 숫자를
     // 고쳐도 그대로 이어간다. 값이 없으면 'unknown'으로 둔다 — 'none_visible'로
-    // 채우면 보지 않은 것을 본 것처럼 남긴다.
-    visibleDamage: ocr?.visibleDamage ?? 'unknown',
+    // 채우면 보지 않은 것을 본 것처럼 남긴다. 이미 올라와 있던 의심은 지우지 않는다.
+    visibleDamage: fields.priorDamageSuspected
+      ? 'suspected'
+      : (ocr?.visibleDamage ?? 'unknown'),
     // 라벨 원본 표시. 사용자 수정으로 덮지 않는다 — 이 파일 맨 위 참고.
     //
     // 사본으로 넘긴다. 참조를 공유하면 최종값과 OCR 원본이 사실상 한 객체가

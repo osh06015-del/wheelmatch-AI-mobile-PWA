@@ -76,10 +76,10 @@ export function DataManagementPanel() {
       draftStore.load(),
       formDraftStore.load('grinder'),
       formDraftStore.load('wheel'),
-    ]).then(([wheelExam, grinderForm, wheelForm]) => {
+    ]).then(([inspection, grinderForm, wheelForm]) => {
       if (!cancelled) {
         setDraftExists(
-          wheelExam.status === 'found' ||
+          inspection.status === 'found' ||
             grinderForm.status === 'found' ||
             wheelForm.status === 'found',
         );

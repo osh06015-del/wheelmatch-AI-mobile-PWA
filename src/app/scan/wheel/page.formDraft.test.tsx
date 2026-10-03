@@ -305,80 +305,176 @@ describe('숫돌 확인 화면 — 로컬 OCR 제한 판정', () => {
 });
 
 describe('숫돌 확인 화면 — 이전 버전이 남긴 다각도 확인 draft', () => {
-  it('추가 사진·AI 결과는 되살리지 않고 입력칸만 복원한다 — 그 단계가 다시 뜨지 않는다', async () => {
-    // 다각도 외관 확인을 빼기 전(2026-10-03 이전)에 저장된 확인 화면 draft다.
+  // 다각도 외관 확인(뒷면·가장자리·중심구멍 사진 + AI 확인)을 빼기 전
+  // (2026-10-03 이전)에 저장된 확인 화면 draft의 모양이다.
+  function legacyDraft(status: 'suspected' | 'not_observed') {
+    return {
+      slot: 'wheel',
+      schemaVersion: 1,
+      savedAt: '2026-09-17T00:00:00.000Z',
+      fields: {
+        maxRPM: '12200',
+        diameter: '125',
+        thickness: '1.6',
+        purpose: 'cutting',
+        expiry: '',
+        wheelType: 'bonded_abrasive',
+        accessoryName: '',
+      },
+      photo: new Blob(['label']),
+      ocr: OCR_BONDED,
+      analysisSource: 'server',
+      exam: {
+        photos: {
+          back: new Blob(['back']),
+          edge: new Blob(['edge']),
+          bore: new Blob(['bore']),
+        },
+        metrics: { back: null, edge: null, bore: null },
+        exam: {
+          status,
+          findings:
+            status === 'suspected'
+              ? [
+                  {
+                    kind: 'crack',
+                    view: 'edge',
+                    reason: '가장자리에 균열',
+                    confidence: 'high',
+                  },
+                ]
+              : [],
+          photoQuality: [],
+          model: 'claude-sonnet-5',
+          promptVersion: 'test',
+          analyzedAt: '2026-09-17T00:00:00.000Z',
+        },
+        notRunReason: null,
+      },
+    };
+  }
+
+  const DROPPED_NOTICE =
+    '⚠ 이전 버전에서 넣은 추가 사진(뒷면·가장자리·중심구멍)과 AI 외관 확인 결과는 이제 쓰지 않아 복구하지 않았습니다. 나머지는 그대로 이어집니다.';
+  const DAMAGE_WARNING =
+    '⚠ AI가 사진에서 눈에 띄는 손상 징후를 의심했습니다. 숫돌을 직접 자세히 확인하세요.';
+
+  const proceedButton = () =>
+    screen.getByRole('button', { name: '확인 후 규격 대조' });
+
+  function answerWheelCondition() {
+    for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+      fireEvent.click(button);
+    }
+  }
+
+  it('추가 사진·AI 결과는 되살리지 않고 입력칸만 복원한다 — 버렸다는 것을 알리고, 그 단계는 다시 뜨지 않는다', async () => {
     readyGrinder();
     formLoad.mockResolvedValueOnce({
       status: 'found',
-      draft: {
-        slot: 'wheel',
-        schemaVersion: 1,
-        savedAt: '2026-09-17T00:00:00.000Z',
-        fields: {
-          maxRPM: '12200',
-          diameter: '125',
-          thickness: '1.6',
-          purpose: 'cutting',
-          expiry: '',
-          wheelType: 'bonded_abrasive',
-          accessoryName: '',
-        },
-        photo: new Blob(['label']),
-        ocr: OCR_BONDED,
-        analysisSource: 'server',
-        exam: {
-          photos: {
-            back: new Blob(['back']),
-            edge: new Blob(['edge']),
-            bore: new Blob(['bore']),
-          },
-          metrics: { back: null, edge: null, bore: null },
-          exam: {
-            status: 'suspected',
-            findings: [
-              {
-                kind: 'crack',
-                view: 'edge',
-                reason: '가장자리에 균열',
-                confidence: 'high',
-              },
-            ],
-            photoQuality: [],
-            model: 'claude-sonnet-5',
-            promptVersion: 'test',
-            analyzedAt: '2026-09-17T00:00:00.000Z',
-          },
-          notRunReason: null,
-        },
-      },
+      draft: legacyDraft('not_observed'),
     });
 
     render(<WheelScanPage />);
     await screen.findByText('읽어낸 값을 확인하세요');
 
     expect(screen.getByDisplayValue('12200')).toBeInTheDocument();
+    expect(screen.getByText(DROPPED_NOTICE)).toBeInTheDocument();
     expect(screen.queryByText('다각도 외관 확인')).not.toBeInTheDocument();
-    expect(screen.queryByText('가장자리에 균열')).not.toBeInTheDocument();
     expect(document.querySelectorAll('input[type=file]')).toHaveLength(0);
+    // 그 확인이 의심하지 않았으면 손상 경고를 지어내지 않는다.
+    expect(screen.queryByText(DAMAGE_WARNING)).not.toBeInTheDocument();
     // 확인·Gate는 여전히 다시 받는다.
-    expect(
-      screen.getByRole('button', { name: '확인 후 규격 대조' }),
-    ).toBeDisabled();
+    expect(proceedButton()).toBeDisabled();
   });
 
-  it('새로 저장하는 확인 화면 draft에는 다각도 확인 자리가 없다', async () => {
-    readyGrinder();
-    extractWheel.mockResolvedValue(OCR_BONDED);
+  it('그 확인이 의심했던 숫돌이면 의심을 이어간다 — Gate에서 알리고 규격 값으로 넘긴다', async () => {
+    // 라벨 사진의 판독은 「보이지 않음」이다. 새 버전으로 넘어왔다고 앱이 스스로
+    // 올렸던 의심이 조용히 사라지면 안 된다.
+    const result = readyGrinder();
+    formLoad.mockResolvedValueOnce({
+      status: 'found',
+      draft: legacyDraft('suspected'),
+    });
+
     render(<WheelScanPage />);
-    fireEvent.click(screen.getByRole('button', { name: '테스트 사진 고르기' }));
+    await screen.findByText('읽어낸 값을 확인하세요');
+
+    expect(screen.getByText(DROPPED_NOTICE)).toBeInTheDocument();
+    expect(screen.getByText(DAMAGE_WARNING)).toBeInTheDocument();
+    // 이전 버전의 판독 문장 자체는 되살리지 않는다.
+    expect(screen.queryByText('가장자리에 균열')).not.toBeInTheDocument();
+
+    // 의심이 Gate를 대신 채우지도, 진행을 대신 막지도 않는다 — 판단은 사람이 한다.
+    expect(proceedButton()).toBeDisabled();
+    answerWheelCondition();
+    fireEvent.click(proceedButton());
+
+    expect(push).toHaveBeenCalledWith('/result');
+    expect(result.current.wheel?.visibleDamage).toBe('suspected');
+    // 라벨 사진의 OCR 원본은 건드리지 않는다.
+    expect(result.current.wheelOcr?.visibleDamage).toBe('none_visible');
+  });
+
+  it('이어받은 의심을 다시 저장한다 — 한 번 더 새로고침해도 사라지지 않는다', async () => {
+    readyGrinder();
+    formLoad.mockResolvedValueOnce({
+      status: 'found',
+      draft: legacyDraft('suspected'),
+    });
+
+    render(<WheelScanPage />);
     await screen.findByText('읽어낸 값을 확인하세요');
 
     await waitFor(() => expect(formSave).toHaveBeenCalled(), {
       timeout: 3000,
     });
     for (const [draft] of formSave.mock.calls) {
+      expect(draft).toMatchObject({ slot: 'wheel', legacyExam: 'suspected' });
+      // 사진과 결과 자체는 다시 저장하지 않는다.
+      expect(draft).not.toHaveProperty('exam');
+    }
+  });
+
+  it('새 라벨 사진을 찍으면 이어받은 흔적을 지운다 — 다른 숫돌일 수 있다', async () => {
+    const result = readyGrinder();
+    formLoad.mockResolvedValueOnce({
+      status: 'found',
+      draft: legacyDraft('suspected'),
+    });
+    extractWheel.mockResolvedValue(OCR_BONDED);
+
+    render(<WheelScanPage />);
+    await screen.findByText('읽어낸 값을 확인하세요');
+    expect(screen.getByText(DAMAGE_WARNING)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '재촬영' }));
+    fireEvent.click(screen.getByRole('button', { name: '테스트 사진 고르기' }));
+    await screen.findByText('읽어낸 값을 확인하세요');
+
+    expect(screen.queryByText(DROPPED_NOTICE)).not.toBeInTheDocument();
+    expect(screen.queryByText(DAMAGE_WARNING)).not.toBeInTheDocument();
+
+    answerWheelCondition();
+    fireEvent.click(proceedButton());
+    expect(result.current.wheel?.visibleDamage).toBe('none_visible');
+  });
+
+  it('새로 저장하는 확인 화면 draft에는 다각도 확인 자리도, 이어받은 흔적도 없다', async () => {
+    readyGrinder();
+    extractWheel.mockResolvedValue(OCR_BONDED);
+    render(<WheelScanPage />);
+    fireEvent.click(screen.getByRole('button', { name: '테스트 사진 고르기' }));
+    await screen.findByText('읽어낸 값을 확인하세요');
+
+    expect(screen.queryByText(DROPPED_NOTICE)).not.toBeInTheDocument();
+    await waitFor(() => expect(formSave).toHaveBeenCalled(), {
+      timeout: 3000,
+    });
+    for (const [draft] of formSave.mock.calls) {
       expect(draft).toMatchObject({ slot: 'wheel' });
       expect(draft).not.toHaveProperty('exam');
+      expect(draft).not.toHaveProperty('legacyExam');
     }
   });
 });

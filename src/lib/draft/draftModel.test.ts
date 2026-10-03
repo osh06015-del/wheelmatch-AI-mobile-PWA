@@ -390,15 +390,36 @@ describe('recoverDraft — 손상·불일치', () => {
     });
 
     it('다각도 확인이 없던 draft에는 이 경고를 붙이지 않는다', () => {
-      // 빼기 전 버전도 요구하지 않는 종류에는 빈 값(null)을 저장했다.
+      // 빼기 전 버전은 그 확인을 요구하지 않는 종류에도 빈 값을 저장했다 —
+      // 결과는 null, 확인 표시는 false, 측정값은 세 자리가 모두 null인 객체다.
       const draft = stored(buildDraft(snapshot(), NOW)) as {
         state: Record<string, unknown>;
       };
       draft.state.wheelExam = null;
       draft.state.wheelExamNotRun = null;
       draft.state.wheelExamAcknowledged = false;
-      draft.state.wheelExamCaptureMetrics = null;
+      draft.state.wheelExamCaptureMetrics = {
+        back: null,
+        edge: null,
+        bore: null,
+      };
       expect(recoverDraft(draft).warnings).toEqual([]);
+    });
+
+    it('결과는 없고 그 사진의 상태 기록이나 확인 표시만 남아 있어도 버렸다고 알린다', () => {
+      const onlyChecks = stored(buildDraft(snapshot(), NOW)) as {
+        state: Record<string, unknown>;
+      };
+      onlyChecks.state.captureChecks = { wheel: CHECK, wheelEdge: CHECK };
+      const recovery = recoverDraft(onlyChecks);
+      expect(recovery.warnings).toEqual(['exam']);
+      expect(recovery.snapshot?.captureChecks).toEqual({ wheel: CHECK });
+
+      const onlyAcknowledged = stored(buildDraft(snapshot(), NOW)) as {
+        state: Record<string, unknown>;
+      };
+      onlyAcknowledged.state.wheelExamAcknowledged = true;
+      expect(recoverDraft(onlyAcknowledged).warnings).toEqual(['exam']);
     });
   });
 

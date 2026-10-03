@@ -176,6 +176,28 @@ describe('confirmedWheelSpec — 원본 표시 보존', () => {
     expect(spec.visibleDamage).toBe('none_visible');
   });
 
+  it('이미 올라와 있던 외관 의심은 라벨 사진의 판독이 무엇이든 의심으로 남긴다', () => {
+    // 다각도 외관 확인이 있던 이전 버전의 draft가 의심이었던 경우다.
+    for (const fromLabel of ['none_visible', 'unknown', 'suspected'] as const) {
+      const ocr = ocrWheel({ visibleDamage: fromLabel });
+      const spec = confirmedWheelSpec(ocr, {
+        ...untouched(ocr),
+        priorDamageSuspected: true,
+      });
+      expect(spec.visibleDamage).toBe('suspected');
+    }
+  });
+
+  it('이전 의심이 없다는 값은 라벨 사진의 의심을 지우지 못한다', () => {
+    // 이 방향이 깨지면 "새 버전으로 넘어왔더니 경고가 사라지는" 앱이 된다.
+    const ocr = ocrWheel({ visibleDamage: 'suspected' });
+    const spec = confirmedWheelSpec(ocr, {
+      ...untouched(ocr),
+      priorDamageSuspected: false,
+    });
+    expect(spec.visibleDamage).toBe('suspected');
+  });
+
   it('사진 판독이 없으면(직접 입력) 외관은 unknown이다 — 보이지 않았다고 적지 않는다', () => {
     const spec = confirmedWheelSpec(null, {
       maxRPM: 13300,

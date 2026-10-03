@@ -140,44 +140,6 @@ describe('recoverGrinderFormDraft', () => {
     expect(recovered?.fields.model).toBe('old');
   });
 
-  it('이전 버전 draft의 다각도 확인(추가 사진·AI 결과)은 되살리지 않는다 — 입력값은 그대로 살린다', () => {
-    // 다각도 외관 확인을 빼기 전(2026-10-03 이전)에 저장된 모양이다. 그 단계가
-    // 이제 없으므로 받을 화면이 없다. 나머지 입력까지 버리지는 않는다.
-    const recovered = recoverWheelFormDraft({
-      fields: {
-        ...EMPTY_WHEEL_FORM_FIELDS,
-        maxRPM: '12200',
-        wheelType: 'bonded_abrasive',
-      },
-      photo: new Blob(['label'], { type: 'image/jpeg' }),
-      ocr: null,
-      analysisSource: 'server',
-      exam: {
-        photos: {
-          back: new Blob(['back']),
-          edge: new Blob(['edge']),
-          bore: new Blob(['bore']),
-        },
-        metrics: { back: null, edge: null, bore: null },
-        exam: {
-          status: 'not_observed',
-          findings: [],
-          photoQuality: [],
-          model: 'claude-x',
-          promptVersion: 'v1',
-          analyzedAt: '2026-09-17T00:00:00.000Z',
-        },
-        notRunReason: null,
-      },
-    });
-
-    expect(recovered).not.toHaveProperty('exam');
-    expect(recovered?.fields.maxRPM).toBe('12200');
-    expect(recovered?.fields.wheelType).toBe('bonded_abrasive');
-    expect(recovered?.photo).toBeInstanceOf(Blob);
-    expect(recovered?.analysisSource).toBe('server');
-  });
-
   it('analysisSource가 없는 구버전 draft — offline:true는 직접 입력(manual)으로 옮긴다', () => {
     const recovered = recoverGrinderFormDraft({
       fields: EMPTY_GRINDER_FORM_FIELDS,
@@ -292,5 +254,150 @@ describe('recoverWheelFormDraft', () => {
       offline: false,
     });
     expect(recovered?.analysisSource).toBe('local_ocr');
+  });
+});
+
+describe('recoverWheelFormDraft — 이전 버전의 다각도 외관 확인 흔적', () => {
+  // 다각도 외관 확인(뒷면·가장자리·중심구멍 사진 + AI 확인)은 2026-10-03에 점검
+  // 흐름에서 뺐다. 그 전에 저장된 확인 화면 draft의 모양을 그대로 흉내 낸다.
+  const photos = () => ({
+    back: new Blob(['back']),
+    edge: new Blob(['edge']),
+    bore: new Blob(['bore']),
+  });
+  const result = (status: string) => ({
+    status,
+    findings: [],
+    photoQuality: [],
+    model: 'claude-x',
+    promptVersion: 'v1',
+    analyzedAt: '2026-09-17T00:00:00.000Z',
+  });
+  const legacyDraft = (exam: unknown, extra: Record<string, unknown> = {}) => ({
+    fields: {
+      ...EMPTY_WHEEL_FORM_FIELDS,
+      maxRPM: '12200',
+      wheelType: 'bonded_abrasive',
+    },
+    photo: new Blob(['label'], { type: 'image/jpeg' }),
+    ocr: null,
+    analysisSource: 'server',
+    exam,
+    ...extra,
+  });
+  const EMPTY_SLOTS = { back: null, edge: null, bore: null };
+
+  it('추가 사진·AI 결과는 되살리지 않고 버렸다는 흔적만 남긴다 — 입력값은 그대로 살린다', () => {
+    const recovered = recoverWheelFormDraft(
+      legacyDraft({
+        photos: photos(),
+        metrics: EMPTY_SLOTS,
+        exam: result('not_observed'),
+        notRunReason: null,
+      }),
+    );
+
+    expect(recovered).not.toHaveProperty('exam');
+    expect(recovered?.legacyExam).toBe('dropped');
+    expect(recovered?.fields.maxRPM).toBe('12200');
+    expect(recovered?.fields.wheelType).toBe('bonded_abrasive');
+    expect(recovered?.photo).toBeInstanceOf(Blob);
+    expect(recovered?.analysisSource).toBe('server');
+  });
+
+  it('그 확인이 외관 이상을 의심했으면 의심을 이어간다', () => {
+    const recovered = recoverWheelFormDraft(
+      legacyDraft({
+        photos: photos(),
+        metrics: EMPTY_SLOTS,
+        exam: result('suspected'),
+        notRunReason: null,
+      }),
+    );
+    expect(recovered?.legacyExam).toBe('suspected');
+  });
+
+  it('사진이 빠졌어도 의심은 의심이다 — 사진이 모자란다고 의심을 지우지 않는다', () => {
+    const recovered = recoverWheelFormDraft(
+      legacyDraft({
+        photos: { ...photos(), bore: null },
+        metrics: EMPTY_SLOTS,
+        exam: result('suspected'),
+        notRunReason: null,
+      }),
+    );
+    expect(recovered?.legacyExam).toBe('suspected');
+  });
+
+  it.each([
+    [
+      '사진만 넣고 아직 확인을 돌리지 않았다',
+      { photos: photos(), exam: null, notRunReason: null },
+    ],
+    [
+      '사진 한 장만 넣었다',
+      {
+        photos: { ...EMPTY_SLOTS, back: new Blob(['b']) },
+        exam: null,
+        notRunReason: null,
+      },
+    ],
+    [
+      'AI가 판단하지 못했다',
+      { photos: photos(), exam: result('unassessable'), notRunReason: null },
+    ],
+    [
+      'AI 확인이 실패했다',
+      { photos: EMPTY_SLOTS, exam: null, notRunReason: 'network_error' },
+    ],
+  ])('%s — 버렸다는 흔적만 남긴다(의심으로 올리지 않는다)', (_name, exam) => {
+    const recovered = recoverWheelFormDraft(
+      legacyDraft({ metrics: EMPTY_SLOTS, ...exam }),
+    );
+    expect(recovered?.legacyExam).toBe('dropped');
+  });
+
+  it('그 확인을 쓰지 않았던 draft(빈 exam)에는 흔적이 없다 — 없던 일을 알리지 않는다', () => {
+    // 그 확인을 요구하지 않던 종류의 draft에도 빈 exam이 들어 있었다.
+    const recovered = recoverWheelFormDraft(
+      legacyDraft({
+        photos: EMPTY_SLOTS,
+        metrics: EMPTY_SLOTS,
+        exam: null,
+        notRunReason: null,
+      }),
+    );
+    expect(recovered?.legacyExam).toBeNull();
+  });
+
+  it('exam이 없는 draft(이 버전이 저장한 것)와 형태가 어긋난 exam에는 흔적이 없다', () => {
+    expect(
+      recoverWheelFormDraft(legacyDraft(undefined))?.legacyExam,
+    ).toBeNull();
+    expect(
+      recoverWheelFormDraft(legacyDraft('garbage'))?.legacyExam,
+    ).toBeNull();
+  });
+
+  it('이 버전이 이어받아 다시 저장한 흔적은 그대로 되살린다 — 새로고침으로 의심이 사라지지 않는다', () => {
+    expect(
+      recoverWheelFormDraft(legacyDraft(undefined, { legacyExam: 'suspected' }))
+        ?.legacyExam,
+    ).toBe('suspected');
+    expect(
+      recoverWheelFormDraft(legacyDraft(undefined, { legacyExam: 'dropped' }))
+        ?.legacyExam,
+    ).toBe('dropped');
+  });
+
+  it('목록에 없는 흔적 값은 믿지 않는다', () => {
+    expect(
+      recoverWheelFormDraft(legacyDraft(undefined, { legacyExam: 'cleared' }))
+        ?.legacyExam,
+    ).toBeNull();
+    expect(
+      recoverWheelFormDraft(legacyDraft(undefined, { legacyExam: true }))
+        ?.legacyExam,
+    ).toBeNull();
   });
 });
