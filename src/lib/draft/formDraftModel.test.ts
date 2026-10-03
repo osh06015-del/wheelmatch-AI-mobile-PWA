@@ -12,8 +12,17 @@ import {
   recoverGrinderFormDraft,
   recoverWheelFormDraft,
 } from './formDraftModel';
-import { WHEEL_TYPE_LABEL } from '@/lib/i18n/checkText';
-import type { GrinderSpec, WheelSpec, WheelType } from '@/lib/rules/types';
+import { WHEEL_PURPOSE_LABEL, WHEEL_TYPE_LABEL } from '@/lib/i18n/checkText';
+import { GUARD_LABEL, SPINDLE_LABEL } from '@/lib/i18n/profileLabels';
+import type {
+  GrinderSpec,
+  GuardType,
+  SpindleThread,
+  VisibleDamage,
+  WheelPurpose,
+  WheelSpec,
+  WheelType,
+} from '@/lib/rules/types';
 
 /**
  * WheelType의 모든 종류. 손으로 적은 목록이 아니라 Record<WheelType, …>의 키다 —
@@ -22,6 +31,23 @@ import type { GrinderSpec, WheelSpec, WheelType } from '@/lib/rules/types';
  * 둘이 어긋나면 여기서 드러난다.
  */
 const EVERY_WHEEL_TYPE = Object.keys(WHEEL_TYPE_LABEL) as WheelType[];
+
+/** WheelPurpose의 모든 값. 종류와 같은 방식으로 타입이 잠근 표에서 얻는다 */
+const EVERY_WHEEL_PURPOSE = Object.keys(WHEEL_PURPOSE_LABEL) as WheelPurpose[];
+
+/**
+ * VisibleDamage의 모든 값. 이 타입으로 잠긴 표가 앱에 따로 없어 여기 둔다 —
+ * satisfies가 빠진 값과 남는 값을 모두 타입 검사에서 막는다.
+ */
+const EVERY_VISIBLE_DAMAGE = Object.keys({
+  suspected: true,
+  none_visible: true,
+  unknown: true,
+} satisfies Record<VisibleDamage, true>) as VisibleDamage[];
+
+/** 스핀들 규격·덮개 종류의 모든 값. 같은 방식으로 타입이 잠근 표에서 얻는다 */
+const EVERY_SPINDLE_THREAD = Object.keys(SPINDLE_LABEL) as SpindleThread[];
+const EVERY_GUARD_TYPE = Object.keys(GUARD_LABEL) as GuardType[];
 
 const GRINDER_OCR: GrinderSpec = {
   model: 'GWS 750-125',
@@ -129,6 +155,53 @@ describe('recoverGrinderFormDraft', () => {
     });
     expect(recovered?.ocr).toBeNull();
   });
+
+  it.each([
+    ['스핀들 — 목록에 없는 값', { spindleThread: 'M99' }],
+    ['덮개 종류 — 목록에 없는 값', { guardType: 'weird' }],
+    ['덮개 크기 — 숫자 자리에 문자열', { guardSize: '125' }],
+  ])(
+    'OCR 원본의 없어도 되는 필드가 어긋나도 통째로 버린다 — %s',
+    (_name, patch) => {
+      // 명판 OCR에는 이어갈 의심 신호가 없다. 고쳐 쓰지 않고 버린다 — 신뢰도는
+      // 낮음에서 다시 시작해 작업자의 직접 확인을 받는다.
+      const recovered = recoverGrinderFormDraft({
+        fields: EMPTY_GRINDER_FORM_FIELDS,
+        photo: null,
+        ocr: { ...GRINDER_OCR, ...patch },
+        analysisSource: 'server',
+      });
+      expect(recovered?.ocr).toBeNull();
+    },
+  );
+
+  it.each(EVERY_SPINDLE_THREAD)(
+    '목록에 있는 스핀들 규격은 그대로 살린다 — %s',
+    (spindleThread) => {
+      const recovered = recoverGrinderFormDraft({
+        fields: { ...EMPTY_GRINDER_FORM_FIELDS, spindleThread },
+        photo: null,
+        ocr: { ...GRINDER_OCR, spindleThread },
+        analysisSource: 'server',
+      });
+      expect(recovered?.fields.spindleThread).toBe(spindleThread);
+      expect(recovered?.ocr).toEqual({ ...GRINDER_OCR, spindleThread });
+    },
+  );
+
+  it.each(EVERY_GUARD_TYPE)(
+    '목록에 있는 덮개 종류는 그대로 살린다 — %s',
+    (guardType) => {
+      const recovered = recoverGrinderFormDraft({
+        fields: { ...EMPTY_GRINDER_FORM_FIELDS, guardType },
+        photo: null,
+        ocr: { ...GRINDER_OCR, guardType },
+        analysisSource: 'server',
+      });
+      expect(recovered?.fields.guardType).toBe(guardType);
+      expect(recovered?.ocr).toEqual({ ...GRINDER_OCR, guardType });
+    },
+  );
 
   it('구버전(스키마 불일치)이어도 값이 온전하면 그대로 살린다', () => {
     const recovered = recoverGrinderFormDraft({
@@ -310,6 +383,65 @@ describe('recoverWheelFormDraft', () => {
     );
   });
 
+  // 용도도 확인 화면의 선택칸(절단용·연삭용·모르겠음)과 규칙엔진의 작업 목적 일치
+  // 규칙으로 그대로 들어간다. 목록에 없는 문자열을 살리면 선택칸에는 맞는 선택지가
+  // 없어 첫 선택지(절단용)를 고른 것처럼 보이는데, 엔진은 모르는 용도를 받아 근거
+  // 없는 용도 불일치(부적합)를 낸다.
+  describe('숫돌 용도 허용 목록', () => {
+    const FIELDS = {
+      maxRPM: '12200',
+      diameter: '125',
+      thickness: '1.6',
+      expiry: '04/2027',
+      wheelType: 'bonded_abrasive',
+      accessoryName: '',
+    };
+    /** 용도만 바꿔 가며 만든 확인 화면 draft. 나머지 값은 온전하다 */
+    const draftWithPurpose = (purpose: unknown) => ({
+      slot: 'wheel',
+      schemaVersion: FORM_DRAFT_SCHEMA_VERSION,
+      savedAt: '2026-09-17T00:00:00.000Z',
+      fields: { ...FIELDS, purpose },
+      photo: null,
+      ocr: null,
+      analysisSource: 'server',
+    });
+
+    it.each([
+      ['목록에 없는 용도', 'polishing'],
+      ['철자 하나가 다른 값', 'cuting'],
+      ['대소문자가 다른 값', 'CUTTING'],
+      ['앞뒤에 공백이 붙은 값', ' cutting '],
+      ['빈 문자열', ''],
+      ['객체 기본 속성과 같은 이름', 'constructor'],
+    ])('목록에 없는 용도는 unknown으로 되돌린다 — %s', (_name, purpose) => {
+      const recovered = recoverWheelFormDraft(draftWithPurpose(purpose));
+
+      // 절단용·연삭용 어느 쪽으로도 추정하지 않는다. 용도는 작업자가 라벨을 보고
+      // 다시 고른다. 어긋난 것은 용도뿐이므로 나머지 입력은 그대로 살린다.
+      expect(recovered?.fields).toEqual({ ...FIELDS, purpose: 'unknown' });
+    });
+
+    it.each([
+      ['숫자', 42],
+      ['null', null],
+      ['객체', { purpose: 'cutting' }],
+    ])('문자열이 아닌 용도도 unknown으로 되돌린다 — %s', (_name, purpose) => {
+      const recovered = recoverWheelFormDraft(draftWithPurpose(purpose));
+
+      expect(recovered?.fields).toEqual({ ...FIELDS, purpose: 'unknown' });
+    });
+
+    it.each(EVERY_WHEEL_PURPOSE)(
+      '목록에 있는 용도는 그대로 살린다 — %s',
+      (purpose) => {
+        const recovered = recoverWheelFormDraft(draftWithPurpose(purpose));
+
+        expect(recovered?.fields).toEqual({ ...FIELDS, purpose });
+      },
+    );
+  });
+
   it('analysisSource가 없는 구버전 draft — offline:true는 직접 입력(manual)으로 옮긴다', () => {
     const recovered = recoverWheelFormDraft({
       fields: EMPTY_WHEEL_FORM_FIELDS,
@@ -329,6 +461,231 @@ describe('recoverWheelFormDraft', () => {
     });
     expect(recovered?.analysisSource).toBe('local_ocr');
   });
+});
+
+describe('recoverWheelFormDraft — OCR 원본의 종류·용도·외관 값', () => {
+  // 확인 화면 draft의 ocr은 AI가 라벨 사진에서 읽은 값이다. 화면은 여기서 AI 제안
+  // 종류·외관 의심·원본 표시(markings)·신뢰도를 읽고, 확정하면 기록의 OCR 원본
+  // (wheelOcr)으로 남긴다.
+  //
+  // 종류·용도·외관 값이 지금 목록에 없으면(이름이 바뀐 값·손상된 값) 그 값만
+  // unknown으로 읽는다. OCR을 통째로 버리면 그 판독이 올린 외관 의심과 표기 일치
+  // 검사의 근거(markings)가 함께 사라진다 — 의심을 덜어내는 방향은 이 앱에 넣지
+  // 않는다(docs/safety-boundaries.md). 대신 그렇게 읽은 OCR에는 손댔다는 표시를
+  // 붙여, 화면이 그것을 모델이 읽은 원본으로 기록하지 않게 한다.
+
+  /** 외관 의심·원본 표시·낮은 신뢰도까지 든 OCR 원본 */
+  const SUSPECTED_OCR: WheelSpec = {
+    maxRPM: 12200,
+    diameter: 125,
+    thickness: 1.6,
+    purpose: 'cutting',
+    wheelType: 'bonded_abrasive',
+    visibleDamage: 'suspected',
+    markings: {
+      labeledRPM: 12200,
+      peripheralSpeedMps: 80,
+      boreDiameter: 22.23,
+      expiryRaw: '04/2027',
+    },
+    rpmSource: 'label',
+    expiry: { year: 2027, month: 4 },
+    rawText: 'MAX 12200 RPM 80 m/s',
+    confidence: 'low',
+  };
+
+  const draftWithOcr = (ocr: unknown, extra: Record<string, unknown> = {}) => ({
+    slot: 'wheel',
+    schemaVersion: FORM_DRAFT_SCHEMA_VERSION,
+    savedAt: '2026-09-17T00:00:00.000Z',
+    fields: EMPTY_WHEEL_FORM_FIELDS,
+    photo: null,
+    ocr,
+    analysisSource: 'server',
+    ...extra,
+  });
+
+  it('목록에 있는 값뿐이면 그대로 살린다 — 손댔다는 표시가 없다', () => {
+    const recovered = recoverWheelFormDraft(draftWithOcr(SUSPECTED_OCR));
+
+    expect(recovered?.ocr).toEqual(SUSPECTED_OCR);
+    expect(recovered?.ocrAltered).toBe(false);
+  });
+
+  describe.each(['wheelType', 'purpose', 'visibleDamage'] as const)(
+    '%s',
+    (field) => {
+      it.each([
+        ['이름이 바뀌었거나 없어진 값', 'resin_wheel'],
+        ['대소문자가 다른 값', 'UNKNOWN'],
+        ['앞뒤에 공백이 붙은 값', ' unknown '],
+        ['빈 문자열', ''],
+        // 종류별 표가 일반 객체라, 표에서 찾으면 "있는 값"으로 보이는 이름이다.
+        ['객체 기본 속성과 같은 이름', 'constructor'],
+        ['숫자', 42],
+        ['null', null],
+        ['빠진 값', undefined],
+      ])(
+        '목록에 없는 값은 그 값만 unknown으로 읽고, 손댔다고 표시한다 — %s',
+        (_name, value) => {
+          const recovered = recoverWheelFormDraft(
+            draftWithOcr({ ...SUSPECTED_OCR, [field]: value }),
+          );
+
+          // 비슷한 값으로 추정해 바꾸지 않는다. 나머지 판독은 그대로다.
+          expect(recovered?.ocr).toEqual({
+            ...SUSPECTED_OCR,
+            [field]: 'unknown',
+          });
+          expect(recovered?.ocrAltered).toBe(true);
+        },
+      );
+    },
+  );
+
+  it('종류·용도를 읽지 못해도 그 OCR이 올린 외관 의심·원본 표시·신뢰도는 그대로 남는다', () => {
+    const recovered = recoverWheelFormDraft(
+      draftWithOcr({
+        ...SUSPECTED_OCR,
+        wheelType: 'resin_wheel',
+        purpose: 'polishing',
+      }),
+    );
+
+    // 의심을 덜어내지 않는다 — Gate의 손상 경고와 규칙엔진의 외관 손상 항목이 본다.
+    expect(recovered?.ocr?.visibleDamage).toBe('suspected');
+    // 표기 일치 검사(rpm 표기와 m/s 표기의 어긋남)의 근거다.
+    expect(recovered?.ocr?.markings).toEqual(SUSPECTED_OCR.markings);
+    // 낮은 신뢰도는 코드가 올리지 않는다.
+    expect(recovered?.ocr?.confidence).toBe('low');
+    expect(recovered?.ocr?.maxRPM).toBe(12200);
+    expect(recovered?.ocr?.rpmSource).toBe('label');
+    expect(recovered?.ocr?.rawText).toBe('MAX 12200 RPM 80 m/s');
+  });
+
+  it.each([
+    [
+      '원본 표시 — 숫자 자리에 객체',
+      'markings',
+      { labeledRPM: {}, peripheralSpeedMps: 80, boreDiameter: null },
+    ],
+    // 일부만 고쳐 살리지 않는다. 원본 표시는 확정하면 기록에 "라벨에 인쇄된
+    // 그대로"로 남는다 — 빠진 자리를 null로 메워 넣으면 고친 원본이 된다.
+    ['원본 표시 — 빠진 자리', 'markings', { labeledRPM: 12200 }],
+    ['원본 표시 — 객체가 아님', 'markings', 'x'],
+    ['회전속도 출처 — 목록에 없는 값', 'rpmSource', 'guess'],
+    ['유효기한 — 빈 객체', 'expiry', {}],
+    ['유효기한 — 문자열', 'expiry', '01/2020'],
+    ['유효기한 직접 확인 — 목록에 없는 값', 'expiryReview', 'checked_ok'],
+    ['부속품 이름 — 숫자', 'accessoryName', 42],
+  ])(
+    '없어도 되는 필드가 어긋나면 그 필드만 빼고, 손댔다고 표시한다 — %s',
+    (_name, field, value) => {
+      const recovered = recoverWheelFormDraft(
+        draftWithOcr({ ...SUSPECTED_OCR, [field]: value }),
+      );
+
+      const expected: Record<string, unknown> = { ...SUSPECTED_OCR };
+      delete expected[field];
+      expect(recovered?.ocr).toEqual(expected);
+      expect(recovered?.ocr).not.toHaveProperty(field);
+      // 그 OCR이 올린 외관 의심은 그대로다.
+      expect(recovered?.ocr?.visibleDamage).toBe('suspected');
+      expect(recovered?.ocrAltered).toBe(true);
+    },
+  );
+
+  it('외관 값을 읽지 못하면 unknown이다 — 「보이지 않음」으로도 「의심」으로도 채우지 않는다', () => {
+    const recovered = recoverWheelFormDraft(
+      draftWithOcr({ ...WHEEL_OCR, visibleDamage: 'cracked' }),
+    );
+
+    // none_visible로 채우면 보지 않은 것을 본 것처럼 남기고, suspected로 채우면
+    // 모델이 내지 않은 경고를 지어낸다.
+    expect(recovered?.ocr?.visibleDamage).toBe('unknown');
+    expect(recovered?.ocrAltered).toBe(true);
+  });
+
+  it.each([
+    ['숫자 자리에 문자열', { ...SUSPECTED_OCR, maxRPM: '12200' }],
+    ['원문이 문자열이 아님', { ...SUSPECTED_OCR, rawText: null }],
+    ['목록에 없는 신뢰도', { ...SUSPECTED_OCR, confidence: 'certain' }],
+    ['객체가 아님', 'garbage'],
+  ])(
+    '숫자·원문·신뢰도의 형태가 어긋난 OCR 원본은 통째로 버린다 — %s',
+    (_name, ocr) => {
+      const recovered = recoverWheelFormDraft(draftWithOcr(ocr));
+
+      expect(recovered?.ocr).toBeNull();
+      expect(recovered?.ocrAltered).toBe(false);
+    },
+  );
+
+  it('손댔다는 표시는 다시 저장된 draft에서도 이어진다 — 새로고침으로 원본으로 둔갑하지 않는다', () => {
+    // 한 번 복구된 뒤 화면이 다시 저장한 draft다. ocr은 이미 unknown으로 바뀌어
+    // 있어 목록 검사만으로는 처음부터 unknown이던 원본과 구분할 수 없다.
+    const resaved = { ...SUSPECTED_OCR, wheelType: 'unknown' };
+    const recovered = recoverWheelFormDraft(
+      draftWithOcr(resaved, { ocrAltered: true }),
+    );
+
+    expect(recovered?.ocr).toEqual(resaved);
+    expect(recovered?.ocrAltered).toBe(true);
+  });
+
+  it.each([
+    ['문자열', 'true'],
+    ['숫자', 1],
+    ['false', false],
+  ])('표시 값이 true가 아니면 표시로 치지 않는다 — %s', (_name, flag) => {
+    const recovered = recoverWheelFormDraft(
+      draftWithOcr(SUSPECTED_OCR, { ocrAltered: flag }),
+    );
+
+    expect(recovered?.ocrAltered).toBe(false);
+  });
+
+  it('OCR이 없으면 표시도 없다 — 기록할 원본 자체가 없다', () => {
+    const recovered = recoverWheelFormDraft(
+      draftWithOcr(null, { ocrAltered: true }),
+    );
+
+    expect(recovered?.ocr).toBeNull();
+    expect(recovered?.ocrAltered).toBe(false);
+  });
+
+  it.each(EVERY_WHEEL_TYPE)(
+    '목록에 있는 종류는 그대로 살린다 — %s',
+    (wheelType) => {
+      const ocr = { ...WHEEL_OCR, wheelType };
+      const recovered = recoverWheelFormDraft(draftWithOcr(ocr));
+
+      expect(recovered?.ocr).toEqual(ocr);
+      expect(recovered?.ocrAltered).toBe(false);
+    },
+  );
+
+  it.each(EVERY_WHEEL_PURPOSE)(
+    '목록에 있는 용도는 그대로 살린다 — %s',
+    (purpose) => {
+      const ocr = { ...WHEEL_OCR, purpose };
+      const recovered = recoverWheelFormDraft(draftWithOcr(ocr));
+
+      expect(recovered?.ocr).toEqual(ocr);
+      expect(recovered?.ocrAltered).toBe(false);
+    },
+  );
+
+  it.each(EVERY_VISIBLE_DAMAGE)(
+    '목록에 있는 외관 값은 그대로 살린다 — %s',
+    (visibleDamage) => {
+      const ocr = { ...WHEEL_OCR, visibleDamage };
+      const recovered = recoverWheelFormDraft(draftWithOcr(ocr));
+
+      expect(recovered?.ocr).toEqual(ocr);
+      expect(recovered?.ocrAltered).toBe(false);
+    },
+  );
 });
 
 describe('recoverWheelFormDraft — 이전 버전의 다각도 외관 확인 흔적', () => {

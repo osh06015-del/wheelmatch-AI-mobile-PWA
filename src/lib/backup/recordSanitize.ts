@@ -148,10 +148,21 @@ function setOpt<T, K extends keyof T>(
 }
 
 // ── 허용값 목록. types.ts는 순수 타입만 담으므로(런타임 코드 금지) 여기 둔다 ──
+//
+// export한 목록은 draft 복구도 쓴다. lib/draft/draftModel.ts의 isWheelType 등이
+// 이 목록으로, 확인 화면 draft(formDraftModel.ts)에 저장된 선택칸 값(스핀들·덮개·
+// 용도·종류)을 검사한다. 같은 목록을 두 곳에 적으면 값을 더하거나 이름을 바꿀 때
+// 한쪽만 고쳐져 갈라진다.
 
 const CONFIDENCE = ['high', 'medium', 'low'] as const;
-const SPINDLE_THREADS = ['M14', 'M10', '5/8-11', 'other', 'unknown'] as const;
-const GUARD_TYPES = [
+export const SPINDLE_THREADS = [
+  'M14',
+  'M10',
+  '5/8-11',
+  'other',
+  'unknown',
+] as const;
+export const GUARD_TYPES = [
   'grinding',
   'cutting',
   'none',
@@ -167,12 +178,7 @@ const WORK_MATERIALS = [
   'unknown',
 ] as const;
 const COOLING_MODES = ['dry', 'wet', 'unknown'] as const;
-const WHEEL_PURPOSES = ['cutting', 'grinding', 'unknown'] as const;
-/**
- * 확인 화면 draft 복구(lib/draft/formDraftModel.ts)도 저장된 숫돌 종류를 이
- * 목록으로 검사한다. 같은 목록을 두 곳에 적으면 종류를 더할 때 한쪽만 고쳐져
- * 갈라진다.
- */
+export const WHEEL_PURPOSES = ['cutting', 'grinding', 'unknown'] as const;
 export const WHEEL_TYPES = [
   'bonded_abrasive',
   'bonded_cutting',
@@ -427,6 +433,39 @@ function sanitizeWheelSpec(raw: unknown): WheelSpec {
     optOneOf(r.expiryReview, ['marked', 'not_found', 'unreadable'] as const),
   );
   return result;
+}
+
+/** 재구성이 무효 신호 없이 끝나는가 */
+function passes(sanitize: () => unknown): boolean {
+  try {
+    sanitize();
+    return true;
+  } catch (error) {
+    if (error instanceof Invalid) return false;
+    throw error;
+  }
+}
+
+// ── 규격 하나가 이 파일의 기준(타입·허용 목록·날짜 범위·길이)에 맞는가 ──
+//
+// draft 복구(lib/draft/draftModel.ts의 isGrinderSpec·isWheelSpec)가 저장된 규격을
+// 아래 두 함수로 검사한다. 기준을 그쪽에 따로 적으면 필드를 더할 때 한쪽만 고쳐져
+// 갈라진다 — 복구는 통과시켰는데 여기서는 버리는 값이 생기고, 그 값이 규칙엔진으로
+// 들어간다.
+
+/** 그라인더 규격이 기준에 맞는가(스핀들·덮개 종류·덮개 크기 포함) */
+export function isValidGrinderSpec(raw: unknown): raw is GrinderSpec {
+  return passes(() => sanitizeGrinderSpec(raw));
+}
+
+/**
+ * 숫돌 규격이 기준에 맞는가(유효기한·원본 표시 같은 선택 필드 포함).
+ *
+ * 복구가 선택 필드를 검사하지 않던 때에는 {year, month}가 아닌 유효기한이 그대로
+ * 규칙엔진에 들어가 유효기한 규칙을 통과했고, 판정이 적합으로 나왔다.
+ */
+export function isValidWheelSpec(raw: unknown): raw is WheelSpec {
+  return passes(() => sanitizeWheelSpec(raw));
 }
 
 function sanitizeCheckDetail(raw: unknown): CheckDetail {

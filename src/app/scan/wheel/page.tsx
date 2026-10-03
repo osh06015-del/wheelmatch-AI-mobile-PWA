@@ -20,6 +20,7 @@ import { ScanHeader } from '@/components/ScanHeader';
 import { WheelConditionGate } from '@/components/WheelConditionGate';
 import { WheelExpiryReview } from '@/components/WheelExpiryReview';
 import { WheelTypeConfirm } from '@/components/WheelTypeConfirm';
+import { isWheelPurpose } from '@/lib/draft/draftModel';
 import { formDraftStore } from '@/lib/draft/draftStore';
 import {
   FORM_DRAFT_SAVE_DELAY_MS,
@@ -68,7 +69,7 @@ interface FormState {
   maxRPM: string;
   diameter: string;
   thickness: string;
-  purpose: string;
+  purpose: WheelPurpose;
   /** 라벨의 유효기한 표기. 정규화는 confirmedWheelSpec이 한다. */
   expiry: string;
   expiryReview?: WheelSpec['expiryReview'];
@@ -95,6 +96,12 @@ export default function WheelScanPage() {
   const [phase, setPhase] = useState<Phase>('capture');
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [ocr, setOcr] = useState<WheelSpec | null>(null);
+  // ocr이 모델이 읽은 그대로가 아닌가. 복원한 draft의 OCR에 지금 기준에 맞지 않는
+  // 값(목록에 없는 종류·용도 등)이 있어 그 값만 모름으로 두고 읽은 경우다
+  // (recoverWheelFormDraft). 그런 OCR은 화면과 규격 대조에는 쓰되 — 외관 의심과
+  // 원본 표시를 잃지 않게 — 기록의 OCR 원본으로는 남기지 않는다. 새로 읽은 OCR은
+  // 원본이므로 지운다.
+  const [ocrAltered, setOcrAltered] = useState(false);
   const [captureMetrics, setCaptureMetrics] =
     useState<CaptureQualityMetrics | null>(null);
   const [ocrTelemetry, setOcrTelemetry] = useState<OcrTelemetry | null>(null);
@@ -149,6 +156,7 @@ export default function WheelScanPage() {
         accessoryName: recovered.fields.accessoryName,
       });
       setOcr(recovered.ocr);
+      setOcrAltered(recovered.ocrAltered);
       // 저장된 출처를 화면의 두 상태(직접 입력·로컬 OCR)로 다시 나눈다 —
       // 배지 문구가 서로 다르므로 하나의 불리언으로 합쳐 두지 않는다.
       setOffline(recovered.analysisSource === 'manual');
@@ -175,6 +183,9 @@ export default function WheelScanPage() {
         fields: form,
         photo,
         ocr,
+        // 손댄 OCR이라는 표시를 다시 저장한다. 빠뜨리면 새로고침 한 번에 모름으로
+        // 바꿔 읽은 값이 모델이 읽은 원본으로 둔갑한다.
+        ...(ocrAltered ? { ocrAltered } : {}),
         // offline·localOnly를 하나의 출처 값으로 남긴다 — 복구할 때 배지 문구를
         // (직접 입력 vs 로컬 OCR) 그대로 되살리기 위해서다.
         analysisSource: offline ? 'manual' : localOnly ? 'local_ocr' : 'server',
@@ -183,7 +194,7 @@ export default function WheelScanPage() {
       });
     }, FORM_DRAFT_SAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [phase, form, photo, ocr, offline, localOnly, legacyExam]);
+  }, [phase, form, photo, ocr, ocrAltered, offline, localOnly, legacyExam]);
 
   // 그라인더를 찍지 않았거나 장비 상태를 직접 확인하지 않은 경우 1단계로 되돌린다.
   // 화면 이동으로 Gate를 건너뛸 수 있으면 Gate가 아니다.
@@ -221,6 +232,7 @@ export default function WheelScanPage() {
     // 새 사진이다. 이전 사진으로 읽은 값과 확인은 버린다.
     setPhoto(null);
     setOcr(null);
+    setOcrAltered(false);
     setOcrTelemetry(null);
     setCaptureMetrics(null);
     setUserConfirmed(false);
@@ -261,6 +273,7 @@ export default function WheelScanPage() {
       const spec = await extractor.extractWheel(blob);
       const telemetry = extractor.getLastTelemetry?.() ?? null;
       setOcr(spec);
+      setOcrAltered(false);
       setOcrTelemetry(telemetry);
       setOffline(false);
       // 서버 분석이 아니라 로컬 OCR로 읽었거나(엔진이 tesseract) 기기가
@@ -300,6 +313,7 @@ export default function WheelScanPage() {
     setOffline(true);
     setLocalOnly(false);
     setOcr(null);
+    setOcrAltered(false);
     setOcrTelemetry(null);
     setForm({
       maxRPM: '',
@@ -324,6 +338,11 @@ export default function WheelScanPage() {
   }
 
   function updateField(key: string, value: string) {
+    // 용도는 자유 입력칸이 아니라 선택칸이다. FieldConfirm은 칸 이름과 문자열만
+    // 돌려주므로 목록에 있는 값인지는 여기서 확인한다 — 아래의 [key]: value는 타입
+    // 검사를 거치지 않아, 이 확인이 없으면 form.purpose가 WheelPurpose라는 것은
+    // 타입에만 적힌 말이 된다.
+    if (key === 'purpose' && !isWheelPurpose(value)) return;
     setForm((current) => ({
       ...current,
       [key]: value,
@@ -371,7 +390,7 @@ export default function WheelScanPage() {
       maxRPM: toNumberOrNull(form.maxRPM),
       diameter: toNumberOrNull(form.diameter),
       thickness: toNumberOrNull(form.thickness),
-      purpose: form.purpose as WheelPurpose,
+      purpose: form.purpose,
       wheelType: form.wheelType,
       expiryText: form.expiry,
       expiryReview: form.expiryReview,
@@ -379,7 +398,16 @@ export default function WheelScanPage() {
       userConfirmed,
       priorDamageSuspected,
     });
-    setWheel(spec, photo, ocr, captureMetrics, ocrTelemetry);
+    // 손댄 OCR은 원본 자리에 넣지 않는다. 모름으로 바꿔 읽은 값을 "모델이 그렇게
+    // 읽었다"로 기록하면 원본을 고쳐 쓴 것이 된다. 그 OCR이 올린 외관 의심과 원본
+    // 표시는 위에서 이미 규격(spec)으로 옮겨졌다.
+    setWheel(
+      spec,
+      photo,
+      ocrAltered ? null : ocr,
+      captureMetrics,
+      ocrTelemetry,
+    );
     setCaptureCheck('wheel', toCaptureQualityCheck(labelReview));
     // setWheel이 숫돌 쪽 오프라인 표시를 지운다. 그 뒤에 이번 라벨의 판독 경로를 넣는다.
     // 직접 입력(offline)과 로컬 OCR(localOnly) 모두 서버 대조 없이 읽은 값이다.

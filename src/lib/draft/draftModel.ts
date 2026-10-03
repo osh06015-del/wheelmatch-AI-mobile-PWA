@@ -12,11 +12,23 @@
 //   · 진행 중이던 시험운전은 되살리지 않는다 — 앱이 닫혀 있던 동안 작업자가
 //     기계를 지켜봤는지 알 수 없다.
 
+import {
+  GUARD_TYPES,
+  SPINDLE_THREADS,
+  WHEEL_PURPOSES,
+  WHEEL_TYPES,
+  isValidGrinderSpec,
+  isValidWheelSpec,
+} from '@/lib/backup/recordSanitize';
 import { profileRef, conditionItemsFor } from '@/lib/rules/profiles';
 import type {
   AccessoryProfileRef,
   GrinderSpec,
+  GuardType,
+  SpindleThread,
+  WheelPurpose,
   WheelSpec,
+  WheelType,
 } from '@/lib/rules/types';
 import { isGrinderConditionComplete } from '@/lib/safety/grinderCondition';
 import { isWheelConditionComplete } from '@/lib/safety/wheelCondition';
@@ -134,33 +146,52 @@ type Guard<T> = (value: unknown) => value is T;
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const isNumberOrNull = (value: unknown): value is number | null =>
-  value === null || (typeof value === 'number' && Number.isFinite(value));
+/**
+ * 선택칸 값(스핀들·덮개·용도·종류)의 허용 목록. 여기 따로 적지 않고 백업 정리
+ * (recordSanitize.ts)가 쓰는 목록을 그대로 쓴다 — 값이 늘거나 이름이 바뀔 때 고칠
+ * 곳이 하나여야 한다.
+ *
+ * 목록에 그 타입이 아닌 값이 섞이면 이 대입에서 타입 검사가 막는다. 반대로 목록에서
+ * 빠진 값은 타입 검사가 잡지 못해 draftModel.test.ts와 formDraftModel.test.ts가
+ * 타입 전체를 돌려 잡는다.
+ */
+const SPINDLES: readonly SpindleThread[] = SPINDLE_THREADS;
+const GUARDS: readonly GuardType[] = GUARD_TYPES;
+const PURPOSES: readonly WheelPurpose[] = WHEEL_PURPOSES;
+const WHEELS: readonly WheelType[] = WHEEL_TYPES;
 
-const isConfidence = (value: unknown): boolean =>
-  value === 'high' || value === 'medium' || value === 'low';
+const isListed = (list: readonly string[], value: unknown): boolean =>
+  typeof value === 'string' && list.includes(value);
 
-/** formDraftModel.ts(확인 화면 입력 draft)도 이 두 guard를 그대로 쓴다 */
-export const isGrinderSpec: Guard<GrinderSpec> = (
-  value,
-): value is GrinderSpec =>
-  isObject(value) &&
-  isNumberOrNull(value.noLoadRPM) &&
-  isNumberOrNull(value.maxWheelDiameter) &&
-  (value.model === null || typeof value.model === 'string') &&
-  typeof value.rawText === 'string' &&
-  isConfidence(value.confidence);
+/** formDraftModel.ts(확인 화면 입력 draft)와 확인 화면이 선택칸 값을 이 guard로 본다 */
+export const isSpindleThread = (value: unknown): value is SpindleThread =>
+  isListed(SPINDLES, value);
 
-export const isWheelSpec: Guard<WheelSpec> = (value): value is WheelSpec =>
-  isObject(value) &&
-  isNumberOrNull(value.maxRPM) &&
-  isNumberOrNull(value.diameter) &&
-  isNumberOrNull(value.thickness) &&
-  typeof value.purpose === 'string' &&
-  typeof value.wheelType === 'string' &&
-  typeof value.visibleDamage === 'string' &&
-  typeof value.rawText === 'string' &&
-  isConfidence(value.confidence);
+export const isGuardType = (value: unknown): value is GuardType =>
+  isListed(GUARDS, value);
+
+export const isWheelPurpose = (value: unknown): value is WheelPurpose =>
+  isListed(PURPOSES, value);
+
+export const isWheelType = (value: unknown): value is WheelType =>
+  isListed(WHEELS, value);
+
+/**
+ * 저장된 규격이 지금 타입 그대로인가. 백업 정리(recordSanitize.ts)의 검사를 그대로
+ * 쓴다 — 없어도 되는 필드(유효기한·원본 표시·덮개 등)와 목록형 값까지 본다.
+ *
+ * 이 guard를 통과한 값은 규칙엔진과 기록으로 그대로 들어간다. 엔진은 그 값들이
+ * 타입대로라고 믿는다. 예전에는 여기서 숫자·문자열 자리만 보았고, 그 틈으로
+ *   · 목록에 없는 종류 — 엔진이 예외를 던져 결과 화면이 죽었다
+ *   · 목록에 없는 용도 — 근거 없는 용도 불일치(부적합)가 됐다
+ *   · {year, month}가 아닌 유효기한 — 유효기한 규칙을 통과해 적합이 나왔다
+ * 그런 값이 든 기록은 백업에서도 조용히 빠졌다. 기준을 여기 따로 적지 않는 이유다.
+ *
+ * formDraftModel.ts(확인 화면 입력 draft)도 이 두 guard를 그대로 쓴다.
+ */
+export const isGrinderSpec: Guard<GrinderSpec> = isValidGrinderSpec;
+
+export const isWheelSpec: Guard<WheelSpec> = isValidWheelSpec;
 
 /** 모든 값이 true·false·null인 객체(작업자가 직접 답한 Gate·체크리스트) */
 const isAnswerMap = (value: unknown): boolean =>

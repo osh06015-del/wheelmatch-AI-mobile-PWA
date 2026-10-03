@@ -14,13 +14,46 @@ import {
   resumePathFor,
   type InspectionDraft,
 } from './draftModel';
+import { WHEEL_PURPOSE_LABEL, WHEEL_TYPE_LABEL } from '@/lib/i18n/checkText';
+import { GUARD_LABEL, SPINDLE_LABEL } from '@/lib/i18n/profileLabels';
 import type { InspectionSnapshot } from '@/lib/state/inspection';
 import type {
   GrinderCondition,
   GrinderSpec,
+  GuardType,
+  RpmSource,
+  SpindleThread,
+  VisibleDamage,
   WheelCondition,
+  WheelPurpose,
   WheelSpec,
+  WheelType,
 } from '@/lib/rules/types';
+
+// 목록형 필드의 모든 값. 손으로 적은 목록이 아니라 타입이 잠근 표에서 얻는다 —
+// 값을 더하거나 이름을 바꾸면 타입 검사가 그 표부터 고치게 하므로, 값 하나가 빠진
+// 채로 아래 테스트가 통과할 수 없다. 복구가 쓰는 허용 목록과는 다른 출처다.
+// 표가 앱에 따로 없는 타입은 satisfies로 잠근다(빠진 값·남는 값 모두 타입 오류).
+const EVERY_WHEEL_TYPE = Object.keys(WHEEL_TYPE_LABEL) as WheelType[];
+const EVERY_WHEEL_PURPOSE = Object.keys(WHEEL_PURPOSE_LABEL) as WheelPurpose[];
+const EVERY_VISIBLE_DAMAGE = Object.keys({
+  suspected: true,
+  none_visible: true,
+  unknown: true,
+} satisfies Record<VisibleDamage, true>) as VisibleDamage[];
+const EVERY_SPINDLE_THREAD = Object.keys(SPINDLE_LABEL) as SpindleThread[];
+const EVERY_GUARD_TYPE = Object.keys(GUARD_LABEL) as GuardType[];
+const EVERY_RPM_SOURCE = Object.keys({
+  label: true,
+  converted: true,
+  user: true,
+} satisfies Record<RpmSource, true>) as RpmSource[];
+type ExpiryReview = NonNullable<WheelSpec['expiryReview']>;
+const EVERY_EXPIRY_REVIEW = Object.keys({
+  marked: true,
+  not_found: true,
+  unreadable: true,
+} satisfies Record<ExpiryReview, true>) as ExpiryReview[];
 
 const GRINDER: GrinderSpec = {
   model: 'GWS 750-125',
@@ -442,6 +475,321 @@ describe('recoverDraft — 손상·불일치', () => {
 
     expect(recovery.warnings).toContain('trialRun');
     expect(recovery.snapshot?.trialRun).toBeNull();
+  });
+});
+
+/** 작업자가 확정한 숫돌 규격. 외관 의심과 원본 표시가 이미 옮겨져 있다 */
+const CONFIRMED: WheelSpec = {
+  ...WHEEL,
+  visibleDamage: 'suspected',
+  markings: {
+    labeledRPM: 12200,
+    peripheralSpeedMps: 80,
+    boreDiameter: 22.23,
+  },
+  rpmSource: 'label',
+};
+
+/** 결과 화면까지 갔던 draft에서 규격 하나의 값만 바꾼다 */
+function draftWith(
+  key: 'grinder' | 'grinderOcr' | 'wheel' | 'wheelOcr',
+  patch: Record<string, unknown>,
+): unknown {
+  const draft = stored(
+    buildDraft(snapshot({ wheel: CONFIRMED, wheelOcr: WHEEL }), NOW),
+  ) as { state: Record<string, Record<string, unknown>> };
+  draft.state[key] = { ...draft.state[key], ...patch };
+  return draft;
+}
+
+describe('recoverDraft — 숫돌 규격의 종류·용도·외관 허용 목록', () => {
+  // 되살린 숫돌 규격은 결과 화면에서 곧바로 규칙엔진으로 들어간다. 엔진은 종류·
+  // 용도·외관 값이 타입에 있는 값이라고 믿는다 — 목록에 없는 종류를 받으면 예외를
+  // 던져 결과 화면이 죽고, 목록에 없는 용도는 근거 없는 용도 불일치(부적합)가 된다.
+  // 그런 값이 든 기록은 백업에서도 조용히 빠진다(recordSanitize.ts).
+
+  const UNLISTED = [
+    ['종류', 'wheelType', 'resin_wheel'],
+    ['용도', 'purpose', 'polishing'],
+    ['외관', 'visibleDamage', 'cracked'],
+  ] as const;
+
+  it.each(UNLISTED)(
+    '확정한 숫돌 규격의 %s 값이 목록에 없으면 숫돌 단계를 버리고 다시 하게 한다',
+    (_name, field, value) => {
+      const recovery = recoverDraft(draftWith('wheel', { [field]: value }));
+
+      // 사람이 확정한 값을 앱이 비슷한 값이나 unknown으로 바꿔 이어가지 않는다.
+      expect(recovery.warnings).toEqual(['schema']);
+      expect(recovery.resumable).toBe(true);
+      expect(recovery.snapshot?.wheel).toBeNull();
+      expect(recovery.snapshot?.wheelOcr).toBeNull();
+      expect(recovery.snapshot?.wheelCondition).toBeNull();
+      expect(recovery.snapshot?.wheelImage).toBeNull();
+      // 명판 쪽은 그대로다.
+      expect(recovery.snapshot?.grinder).toEqual(GRINDER);
+      expect(recovery.snapshot?.grinderCondition).toEqual(GRINDER_OK);
+      expect(recovery.snapshot?.grinderImage).toBeInstanceOf(Blob);
+      expect(recovery.snapshot ? resumePathFor(recovery.snapshot) : null).toBe(
+        '/scan/wheel',
+      );
+    },
+  );
+
+  it.each([
+    ['대소문자가 다른 값', 'FLAP_DISC'],
+    ['앞뒤에 공백이 붙은 값', ' flap_disc '],
+    ['빈 문자열', ''],
+    // 종류별 표가 일반 객체라, 표에서 찾으면 "있는 값"으로 보이는 이름이다.
+    ['객체 기본 속성과 같은 이름', 'constructor'],
+  ])(
+    '비슷해 보이는 종류도 목록에 없으면 받지 않는다 — %s',
+    (_name, wheelType) => {
+      const recovery = recoverDraft(draftWith('wheel', { wheelType }));
+
+      expect(recovery.warnings).toEqual(['schema']);
+      expect(recovery.snapshot?.wheel).toBeNull();
+    },
+  );
+
+  it.each(UNLISTED)(
+    'OCR 원본의 %s 값만 목록에 없으면 원본만 버리고 숫돌 단계는 이어간다',
+    (_name, field, value) => {
+      const recovery = recoverDraft(draftWith('wheelOcr', { [field]: value }));
+
+      // 버린 것은 알린다. 고친 값을 모델이 읽은 원본으로 남기지 않는다.
+      expect(recovery.warnings).toEqual(['schema']);
+      expect(recovery.snapshot?.wheelOcr).toBeNull();
+      // 확정값은 그대로다 — 그 OCR이 올린 외관 의심과 원본 표시는 확정할 때 이미
+      // 숫돌 규격으로 옮겨져 있어 사라지지 않는다.
+      expect(recovery.snapshot?.wheel).toEqual(CONFIRMED);
+      expect(recovery.snapshot?.wheelCondition).toEqual(WHEEL_OK);
+      expect(recovery.snapshot?.wheelImage).toBeInstanceOf(Blob);
+      expect(recovery.snapshot ? resumePathFor(recovery.snapshot) : null).toBe(
+        '/result',
+      );
+    },
+  );
+
+  it.each(EVERY_WHEEL_TYPE)(
+    '목록에 있는 종류는 경고 없이 되살린다 — %s',
+    (wheelType) => {
+      const wheel = { ...WHEEL, wheelType };
+      const recovery = recoverDraft(
+        stored(buildDraft(snapshot({ wheel, wheelOcr: wheel }), NOW)),
+      );
+
+      expect(recovery.warnings).toEqual([]);
+      expect(recovery.snapshot?.wheel).toEqual(wheel);
+      expect(recovery.snapshot?.wheelOcr).toEqual(wheel);
+    },
+  );
+
+  it.each(EVERY_WHEEL_PURPOSE)(
+    '목록에 있는 용도는 경고 없이 되살린다 — %s',
+    (purpose) => {
+      const wheel = { ...WHEEL, purpose };
+      const recovery = recoverDraft(
+        stored(buildDraft(snapshot({ wheel, wheelOcr: wheel }), NOW)),
+      );
+
+      expect(recovery.warnings).toEqual([]);
+      expect(recovery.snapshot?.wheel).toEqual(wheel);
+      expect(recovery.snapshot?.wheelOcr).toEqual(wheel);
+    },
+  );
+
+  it.each(EVERY_VISIBLE_DAMAGE)(
+    '목록에 있는 외관 값은 경고 없이 되살린다 — %s',
+    (visibleDamage) => {
+      const wheel = { ...WHEEL, visibleDamage };
+      const recovery = recoverDraft(
+        stored(buildDraft(snapshot({ wheel, wheelOcr: wheel }), NOW)),
+      );
+
+      expect(recovery.warnings).toEqual([]);
+      expect(recovery.snapshot?.wheel).toEqual(wheel);
+      expect(recovery.snapshot?.wheelOcr).toEqual(wheel);
+    },
+  );
+});
+
+describe('recoverDraft — 규격의 없어도 되는 필드(유효기한·원본 표시·덮개 등)', () => {
+  // 없어도 되는 필드라고 형태를 보지 않으면, 어긋난 값이 규칙엔진에서 근거 없는
+  // 통과를 만든다. 유효기한이 {year, month}가 아닌 값(빈 객체·문자열)이면 유효기한
+  // 규칙이 "기한이 남아 있습니다. 표시 undefined/undefined"로 통과해, 만료됐거나
+  // 기한을 읽지 못한 숫돌이 적합으로 나온다. 복구는 백업 정리(recordSanitize.ts)와
+  // 같은 기준으로 규격 전체를 본다.
+
+  const MALFORMED_WHEEL: ReadonlyArray<
+    readonly [string, Record<string, unknown>]
+  > = [
+    ['유효기한 — 빈 객체', { expiry: {} }],
+    ['유효기한 — 문자열', { expiry: '01/2020' }],
+    ['유효기한 — 다른 이름의 필드', { expiry: { y: 2020, m: 1 } }],
+    ['유효기한 — 배열', { expiry: [2020, 1] }],
+    ['유효기한 — 숫자 자리에 문자열', { expiry: { year: '2020', month: '1' } }],
+    ['유효기한 — 없는 달', { expiry: { year: 2020, month: 13 } }],
+    ['유효기한 — 정수가 아닌 연도', { expiry: { year: 2020.5, month: 1 } }],
+    ['유효기한 직접 확인 — 목록에 없는 값', { expiryReview: 'checked_ok' }],
+    ['회전속도 출처 — 목록에 없는 값', { rpmSource: 'guess' }],
+    ['원본 표시 — 객체가 아님', { markings: 'x' }],
+    [
+      '원본 표시 — 숫자 자리에 객체',
+      {
+        markings: {
+          labeledRPM: {},
+          peripheralSpeedMps: 80,
+          boreDiameter: null,
+        },
+      },
+    ],
+    ['원본 표시 — 빠진 자리', { markings: { labeledRPM: 12200 } }],
+    ['부속품 이름 — 숫자', { accessoryName: 42 }],
+  ];
+
+  const MALFORMED_GRINDER: ReadonlyArray<
+    readonly [string, Record<string, unknown>]
+  > = [
+    ['스핀들 — 목록에 없는 값', { spindleThread: 'M99' }],
+    ['덮개 종류 — 목록에 없는 값', { guardType: 'weird' }],
+    ['덮개 크기 — 숫자 자리에 문자열', { guardSize: '125' }],
+  ];
+
+  it.each(MALFORMED_WHEEL)(
+    '확정한 숫돌 규격이 어긋나면 숫돌 단계를 버리고 다시 하게 한다 — %s',
+    (_name, patch) => {
+      const recovery = recoverDraft(draftWith('wheel', patch));
+
+      // 규칙엔진까지 가지 못한다. 어긋난 값을 비슷한 값으로 고쳐 이어가지도 않는다.
+      expect(recovery.warnings).toEqual(['schema']);
+      expect(recovery.snapshot?.wheel).toBeNull();
+      expect(recovery.snapshot?.wheelOcr).toBeNull();
+      expect(recovery.snapshot?.wheelCondition).toBeNull();
+      // 명판 쪽은 그대로다.
+      expect(recovery.snapshot?.grinder).toEqual(GRINDER);
+      expect(recovery.snapshot?.grinderCondition).toEqual(GRINDER_OK);
+      expect(recovery.snapshot ? resumePathFor(recovery.snapshot) : null).toBe(
+        '/scan/wheel',
+      );
+    },
+  );
+
+  it.each(MALFORMED_WHEEL)(
+    '숫돌 OCR 원본만 어긋나면 원본만 버리고 숫돌 단계는 이어간다 — %s',
+    (_name, patch) => {
+      const recovery = recoverDraft(draftWith('wheelOcr', patch));
+
+      expect(recovery.warnings).toEqual(['schema']);
+      expect(recovery.snapshot?.wheelOcr).toBeNull();
+      expect(recovery.snapshot?.wheel).toEqual(CONFIRMED);
+      expect(recovery.snapshot?.wheelCondition).toEqual(WHEEL_OK);
+      expect(recovery.snapshot ? resumePathFor(recovery.snapshot) : null).toBe(
+        '/result',
+      );
+    },
+  );
+
+  it.each(MALFORMED_GRINDER)(
+    '확정한 그라인더 규격이 어긋나면 명판 단계부터 다시 하게 한다 — %s',
+    (_name, patch) => {
+      const recovery = recoverDraft(draftWith('grinder', patch));
+
+      expect(recovery.warnings).toEqual(['schema']);
+      expect(recovery.resumable).toBe(true);
+      expect(recovery.snapshot?.grinder).toBeNull();
+      expect(recovery.snapshot?.grinderCondition).toBeNull();
+      // 명판이 없으면 숫돌 단계도 근거가 없다.
+      expect(recovery.snapshot?.wheel).toBeNull();
+      expect(recovery.snapshot?.declaredPurpose).toBe('cutting');
+      expect(recovery.snapshot ? resumePathFor(recovery.snapshot) : null).toBe(
+        '/scan/grinder',
+      );
+    },
+  );
+
+  it.each(MALFORMED_GRINDER)(
+    '그라인더 OCR 원본만 어긋나면 원본만 버리고 나머지는 이어간다 — %s',
+    (_name, patch) => {
+      const recovery = recoverDraft(draftWith('grinderOcr', patch));
+
+      expect(recovery.warnings).toEqual(['schema']);
+      expect(recovery.snapshot?.grinderOcr).toBeNull();
+      expect(recovery.snapshot?.grinder).toEqual(GRINDER);
+      expect(recovery.snapshot?.wheel).toEqual(CONFIRMED);
+      expect(recovery.snapshot ? resumePathFor(recovery.snapshot) : null).toBe(
+        '/result',
+      );
+    },
+  );
+
+  /** 값이 온전한 규격은 경고 없이 그대로 되살아나야 한다 */
+  function expectRestored(overrides: Partial<InspectionSnapshot>) {
+    const base = snapshot(overrides);
+    const recovery = recoverDraft(stored(buildDraft(base, NOW)));
+
+    expect(recovery.warnings).toEqual([]);
+    expect(recovery.snapshot?.grinder).toEqual(base.grinder);
+    expect(recovery.snapshot?.wheel).toEqual(base.wheel);
+  }
+
+  it('유효기한이 없거나(null) 월/연이 온전하면 그대로 되살린다', () => {
+    expectRestored({ wheel: { ...WHEEL, expiry: null } });
+    expectRestored({ wheel: { ...WHEEL, expiry: { year: 2027, month: 4 } } });
+    expectRestored({ wheel: { ...WHEEL, expiry: { year: 2027, month: 12 } } });
+  });
+
+  it('원본 표시는 유효기한 원문이 있어도 없어도 그대로 되살린다', () => {
+    const markings = {
+      labeledRPM: 12200,
+      peripheralSpeedMps: null,
+      boreDiameter: 22.23,
+    };
+    expectRestored({ wheel: { ...WHEEL, markings } });
+    expectRestored({
+      wheel: { ...WHEEL, markings: { ...markings, expiryRaw: '04/2027' } },
+    });
+    expectRestored({
+      wheel: { ...WHEEL, markings: { ...markings, expiryRaw: null } },
+    });
+  });
+
+  it('부속품 이름은 문자열이어도 null이어도 그대로 되살린다', () => {
+    expectRestored({ wheel: { ...WHEEL, accessoryName: null } });
+    expectRestored({ wheel: { ...WHEEL, accessoryName: '연마 디스크' } });
+  });
+
+  it.each(EVERY_RPM_SOURCE)(
+    '목록에 있는 회전속도 출처는 그대로 되살린다 — %s',
+    (rpmSource) => {
+      expectRestored({ wheel: { ...WHEEL, rpmSource } });
+    },
+  );
+
+  it.each(EVERY_EXPIRY_REVIEW)(
+    '목록에 있는 유효기한 직접 확인 응답은 그대로 되살린다 — %s',
+    (expiryReview) => {
+      expectRestored({ wheel: { ...WHEEL, expiryReview } });
+    },
+  );
+
+  it.each(EVERY_SPINDLE_THREAD)(
+    '목록에 있는 스핀들 규격은 그대로 되살린다 — %s',
+    (spindleThread) => {
+      expectRestored({ grinder: { ...GRINDER, spindleThread } });
+    },
+  );
+
+  it.each(EVERY_GUARD_TYPE)(
+    '목록에 있는 덮개 종류는 그대로 되살린다 — %s',
+    (guardType) => {
+      expectRestored({ grinder: { ...GRINDER, guardType } });
+    },
+  );
+
+  it('덮개 크기는 숫자여도 null이어도 그대로 되살린다', () => {
+    expectRestored({ grinder: { ...GRINDER, guardSize: 125 } });
+    expectRestored({ grinder: { ...GRINDER, guardSize: null } });
   });
 });
 

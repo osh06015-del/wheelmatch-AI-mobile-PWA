@@ -225,6 +225,207 @@ describe('숫돌 확인 화면 — 입력 draft 복구', () => {
     expect(result.current.wheelOcr?.wheelType).toBe('flap_disc');
   });
 
+  it('목록에 없는 용도가 남은 draft — 선택칸은 「모르겠음」을 가리키고, 화면에 보인 그 값이 대조로 넘어간다', async () => {
+    // 용도 선택칸은 값에 맞는 선택지가 없으면 첫 선택지(절단용)를 고른 것처럼
+    // 보인다. 화면에는 절단용이 보이는데 규칙엔진에는 모르는 용도가 넘어가면, 작업을
+    // 절단으로 고른 점검이 근거 없는 용도 불일치(부적합)로 끝난다.
+    const result = readyGrinder();
+    formLoad.mockResolvedValueOnce({
+      status: 'found',
+      draft: {
+        slot: 'wheel',
+        schemaVersion: 1,
+        savedAt: '2026-09-17T00:00:00.000Z',
+        fields: {
+          maxRPM: '12200',
+          diameter: '125',
+          thickness: '1.6',
+          purpose: 'polishing',
+          expiry: '',
+          wheelType: 'bonded_abrasive',
+          accessoryName: '',
+        },
+        photo: new Blob(['label']),
+        ocr: OCR_BONDED,
+        analysisSource: 'server',
+      },
+    });
+
+    render(<WheelScanPage />);
+    await screen.findByText('읽어낸 값을 확인하세요');
+
+    const purposeSelect = screen.getByRole('combobox', { name: /^용도/ });
+    expect(purposeSelect).toHaveDisplayValue('모르겠음');
+    expect(purposeSelect).toHaveValue('unknown');
+
+    for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+      fireEvent.click(button);
+    }
+    fireEvent.click(screen.getByRole('button', { name: '확인 후 규격 대조' }));
+
+    expect(push).toHaveBeenCalledWith('/result');
+    // 절단용·연삭용 어느 쪽으로도 추정하지 않는다. 용도는 작업자가 다시 고른다.
+    expect(result.current.wheel?.purpose).toBe('unknown');
+    // AI가 읽은 용도(OCR 원본)는 그대로 남는다.
+    expect(result.current.wheelOcr?.purpose).toBe('cutting');
+  });
+
+  describe('OCR 원본에 목록에 없는 종류가 남은 draft', () => {
+    // 종류 이름이 나중에 바뀌었거나 저장된 값이 손상된 경우다. 그 값만 「모르겠음」
+    // 으로 읽고 나머지 판독(외관 의심·원본 표시)은 그대로 쓴다. 다만 손댄 OCR을
+    // "모델이 읽은 원본"으로 기록하지는 않는다.
+    const MARKINGS = {
+      labeledRPM: 12200,
+      peripheralSpeedMps: 80,
+      boreDiameter: 22.23,
+    };
+    const DAMAGE_WARNING =
+      '⚠ AI가 사진에서 눈에 띄는 손상 징후를 의심했습니다. 숫돌을 직접 자세히 확인하세요.';
+
+    function staleOcrDraft() {
+      return {
+        slot: 'wheel',
+        schemaVersion: 1,
+        savedAt: '2026-09-17T00:00:00.000Z',
+        fields: {
+          maxRPM: '12200',
+          diameter: '125',
+          thickness: '1.6',
+          purpose: 'cutting',
+          expiry: '',
+          wheelType: 'resin_wheel',
+          accessoryName: '',
+        },
+        photo: new Blob(['label']),
+        ocr: {
+          ...OCR,
+          wheelType: 'resin_wheel',
+          visibleDamage: 'suspected',
+          markings: MARKINGS,
+          rpmSource: 'label',
+        },
+        analysisSource: 'server',
+      };
+    }
+
+    async function openStaleDraft() {
+      const result = readyGrinder();
+      formLoad.mockResolvedValueOnce({
+        status: 'found',
+        draft: staleOcrDraft(),
+      });
+      render(<WheelScanPage />);
+      await screen.findByText('읽어낸 값을 확인하세요');
+      return result;
+    }
+
+    function confirmAndProceed() {
+      for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+        fireEvent.click(button);
+      }
+      fireEvent.click(
+        screen.getByRole('button', { name: '확인 후 규격 대조' }),
+      );
+    }
+
+    it('AI 제안은 「모르겠음」으로 읽는다 — 읽지 못한 제안을 두고 선택과 다르다고 하지 않는다', async () => {
+      await openStaleDraft();
+
+      expect(screen.getByRole('combobox', { name: '숫돌 종류' })).toHaveValue(
+        'unknown',
+      );
+      expect(
+        screen.getByText(
+          'AI 제안: 모르겠음 — 사진으로 본 초기 제안값일 뿐입니다.',
+        ),
+      ).toBeInTheDocument();
+      // "AI 제안(모르겠음)과 선택한 종류(모르겠음)가 다릅니다"가 뜨면 안 된다.
+      expect(screen.queryByText(/가 다릅니다/)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          '숫돌 종류가 AI 제안과 달라 직접 확인 체크가 필요합니다.',
+        ),
+      ).not.toBeInTheDocument();
+    });
+
+    it('그 OCR이 올린 외관 의심과 원본 표시는 이어가고, 손댄 OCR은 원본으로 기록하지 않는다', async () => {
+      const result = await openStaleDraft();
+
+      // 의심을 덜어내지 않는다 — 종류를 읽지 못했다고 손상 경고까지 사라지지 않는다.
+      expect(screen.getByText(DAMAGE_WARNING)).toBeInTheDocument();
+
+      confirmAndProceed();
+
+      expect(push).toHaveBeenCalledWith('/result');
+      expect(result.current.wheel?.wheelType).toBe('unknown');
+      expect(result.current.wheel?.visibleDamage).toBe('suspected');
+      // 표기 일치 검사의 근거(원본 표시)도 규격으로 넘어간다.
+      expect(result.current.wheel?.markings).toEqual(MARKINGS);
+      // unknown으로 바꿔 읽은 값을 "모델이 unknown이라고 읽었다"로 남기지 않는다.
+      expect(result.current.wheelOcr).toBeNull();
+    });
+
+    it('손댔다는 표시를 다시 저장한다 — 한 번 더 새로고침해도 원본으로 둔갑하지 않는다', async () => {
+      await openStaleDraft();
+
+      await waitFor(() => expect(formSave).toHaveBeenCalled(), {
+        timeout: 3000,
+      });
+      for (const [draft] of formSave.mock.calls) {
+        expect(draft).toMatchObject({
+          slot: 'wheel',
+          ocrAltered: true,
+          ocr: { wheelType: 'unknown', visibleDamage: 'suspected' },
+        });
+      }
+    });
+
+    it('원본 표시가 어긋난 OCR — 그 표시만 빼고 외관 의심은 이어가며, 원본으로는 기록하지 않는다', async () => {
+      // 원본 표시는 일부만 고쳐 살리지 않는다. 확정하면 기록에 "라벨에 인쇄된
+      // 그대로"로 남는 값이라, 빈 자리를 메워 넣으면 고친 원본이 된다.
+      const result = readyGrinder();
+      formLoad.mockResolvedValueOnce({
+        status: 'found',
+        draft: {
+          ...staleOcrDraft(),
+          fields: { ...staleOcrDraft().fields, wheelType: 'bonded_abrasive' },
+          ocr: {
+            ...OCR_BONDED,
+            visibleDamage: 'suspected',
+            markings: { labeledRPM: 12200 },
+          },
+        },
+      });
+      render(<WheelScanPage />);
+      await screen.findByText('읽어낸 값을 확인하세요');
+
+      expect(screen.getByText(DAMAGE_WARNING)).toBeInTheDocument();
+
+      confirmAndProceed();
+
+      expect(push).toHaveBeenCalledWith('/result');
+      expect(result.current.wheel?.visibleDamage).toBe('suspected');
+      expect(result.current.wheel).not.toHaveProperty('markings');
+      expect(result.current.wheelOcr).toBeNull();
+    });
+
+    it('새 라벨 사진을 찍으면 표시를 지운다 — 새 판독은 원본으로 기록된다', async () => {
+      const result = await openStaleDraft();
+      extractWheel.mockResolvedValue(OCR_BONDED);
+
+      fireEvent.click(screen.getByRole('button', { name: '재촬영' }));
+      fireEvent.click(
+        screen.getByRole('button', { name: '테스트 사진 고르기' }),
+      );
+      await screen.findByText('읽어낸 값을 확인하세요');
+
+      confirmAndProceed();
+
+      expect(push).toHaveBeenCalledWith('/result');
+      expect(result.current.wheelOcr).toEqual(OCR_BONDED);
+    });
+  });
+
   it('새 사진을 찍으면 이전 확인 화면 draft를 지운다', async () => {
     readyGrinder();
     render(<WheelScanPage />);
@@ -525,6 +726,8 @@ describe('숫돌 확인 화면 — 이전 버전이 남긴 다각도 확인 draf
       expect(draft).toMatchObject({ slot: 'wheel' });
       expect(draft).not.toHaveProperty('exam');
       expect(draft).not.toHaveProperty('legacyExam');
+      // 방금 읽은 OCR은 원본이다. 손댔다는 표시가 붙지 않는다.
+      expect(draft).not.toHaveProperty('ocrAltered');
     }
   });
 });
@@ -549,6 +752,28 @@ describe('숫돌 확인 화면 — 같은 화면에서 종류를 바꾸면', () 
     // 1초 debounce가 돌기 전에 이미 지워져 있어야 한다 — 그 사이 새로고침해도
     // 이전 종류(bonded_abrasive)의 입력이 되살아나지 않는다.
     expect(formRemove).toHaveBeenCalledWith('wheel');
+  });
+
+  it('용도 선택칸에서 선택지에 없는 값이 오면 받지 않는다 — 고른 용도가 그대로 대조로 넘어간다', async () => {
+    // 입력칸 변경은 칸 이름과 문자열로만 전달돼 타입 검사가 걸러 주지 않는다.
+    // 목록에 없는 값이 화면 상태에 들어가면 선택칸이 보여주는 용도와 규칙엔진이
+    // 받는 용도가 달라진다.
+    const result = readyGrinder();
+    extractWheel.mockResolvedValue(OCR_BONDED);
+    render(<WheelScanPage />);
+    fireEvent.click(screen.getByRole('button', { name: '테스트 사진 고르기' }));
+    await screen.findByText('읽어낸 값을 확인하세요');
+    const purposeSelect = screen.getByRole('combobox', { name: /^용도/ });
+    expect(purposeSelect).toHaveValue('cutting');
+
+    fireEvent.change(purposeSelect, { target: { value: 'polishing' } });
+
+    expect(purposeSelect).toHaveValue('cutting');
+    for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+      fireEvent.click(button);
+    }
+    fireEvent.click(screen.getByRole('button', { name: '확인 후 규격 대조' }));
+    expect(result.current.wheel?.purpose).toBe('cutting');
   });
 
   it('other로 옮기면 부속품 이름 입력이 비어 있다', async () => {
