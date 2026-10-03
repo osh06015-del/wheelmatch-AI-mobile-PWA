@@ -275,36 +275,10 @@ export const ko = {
   'wheelCondition.stopBody':
     '숫돌 상태에 문제가 확인되었습니다. 장착하지 말고 사용 가능한 다른 숫돌로 교체한 뒤 다시 점검하세요.',
 
-  'exam.title': '다각도 외관 확인',
-  'exam.boundary':
-    'AI는 사진에서 보이는 이상 징후만 찾습니다. 손상 없음이나 사용 안전을 확인하지 않습니다.',
-  'exam.microCrack':
-    '미세균열과 내부 균열은 사진으로 확인할 수 없습니다. 장착 전 타음검사(가볍게 두드려 소리 확인)를 하세요.',
-  'exam.frontReused': '앞면은 방금 찍은 라벨 사진을 그대로 씁니다.',
   'exam.view.front': '앞면(라벨)',
   'exam.view.back': '뒷면 전체',
-  'exam.view.backHint': '숫돌 뒷면 전체가 한 장에 들어오게 찍으세요.',
   'exam.view.edge': '가장자리',
-  'exam.view.edgeHint':
-    '원주면(테두리)을 옆에서 찍으세요. 깨짐·조각 떨어짐이 보이는 면입니다.',
   'exam.view.bore': '중심구멍·장착부',
-  'exam.view.boreHint':
-    '중심구멍과 그 둘레를 가까이 찍으세요. 축에 닿는 부분입니다.',
-  'exam.capture': '촬영',
-  'exam.gallery': '갤러리',
-  'exam.retakeView': '{view} 다시 찍기',
-  'exam.photoReady': '사진 있음',
-  'exam.photoMissing': '아직 없음',
-  'exam.analyze': '사진 4장으로 확인하기',
-  'exam.analyzing': '사진을 확인하는 중입니다...',
-  'exam.missing':
-    '뒷면·가장자리·중심구멍 사진을 모두 넣어야 확인할 수 있습니다.',
-  'exam.status.suspected':
-    '사진에서 이상 징후가 보입니다. 실물을 직접 확인하세요.',
-  'exam.status.notObserved':
-    '뚜렷한 이상을 찾지 못했습니다. 실제 숫돌의 앞·뒤·가장자리와 중심구멍을 직접 확인하세요.',
-  'exam.status.unassessable':
-    '사진으로는 판단할 수 없습니다. 아래 안내에 따라 다시 찍거나 실물을 직접 확인하세요.',
   'exam.findingConfidence': 'AI 확신 정도: {confidence}',
   'exam.finding.crack': '균열 의심',
   'exam.finding.chip': '깨짐·조각 떨어짐 의심',
@@ -317,32 +291,7 @@ export const ko = {
   'exam.quality.glare': '반사·번쩍임',
   'exam.quality.darkness': '어두움',
   'exam.quality.incompleteView': '필요한 부위가 찍히지 않음',
-  'exam.retakeRequired':
-    '판독할 수 없는 사진이 있습니다. 아래 사진을 다시 찍으세요.',
-  'exam.acknowledge': '표시된 위치를 실물에서 직접 확인했습니다.',
-  'exam.blocked': '이상 징후를 확인한 뒤에 다음으로 넘어갈 수 있습니다.',
-  'exam.failed': 'AI가 사진을 확인하지 못했습니다.',
-  'exam.failedFallback':
-    'AI 확인 없이 진행합니다. 숫돌 앞·뒤·가장자리와 중심구멍을 작업자가 직접 확인하세요.',
-  'exam.block.photosMissing':
-    '뒷면·가장자리·중심구멍 사진을 넣고 확인해야 다음으로 넘어갈 수 있습니다.',
-  'exam.block.notAnalyzed':
-    '넣은 사진으로 확인하기를 누른 뒤에 다음으로 넘어갈 수 있습니다.',
-  'exam.block.retakeRequired':
-    '판독할 수 없는 사진을 다시 찍어야 다음으로 넘어갈 수 있습니다.',
-  'exam.block.needsAcknowledge':
-    '이상 징후를 실물에서 확인했다고 표시해야 다음으로 넘어갈 수 있습니다.',
 
-  'exam.block.needsManualContinue':
-    'AI 확인 없이 작업자 직접점검으로 진행하겠다고 표시해야 다음으로 넘어갈 수 있습니다.',
-  'exam.progress': '추가 사진 {done} / {total}장 준비됨',
-  'exam.captureView': '{view} 촬영',
-  'exam.galleryView': '{view} 갤러리에서 고르기',
-  'exam.replaceNote':
-    '사진을 바꾸면 그 사진으로 낸 확인 결과와 확인 표시가 지워집니다. 다시 확인해야 합니다.',
-  'exam.manualContinue': 'AI 확인 없이 작업자 직접점검으로 진행합니다.',
-  'exam.manualContinueHint':
-    '숫돌의 앞·뒤·가장자리와 중심구멍을 작업자가 직접 보고 확인하세요. AI는 아무것도 확인해주지 않았습니다.',
   'exam.notRun.networkError':
     '서버에 닿지 못해 AI가 사진을 확인하지 못했습니다.',
   'exam.notRun.apiError': '서버 오류로 AI가 사진을 확인하지 못했습니다.',
@@ -373,10 +322,7 @@ export const ko = {
   'photo.zoomHint':
     '확대한 사진은 손가락으로 밀어 이동하세요. 키보드에서는 사진 영역에 초점을 두고 방향키로 이동할 수 있습니다. 확대는 사진의 선명도를 높이지 않습니다.',
 
-  'exam.block.captureReview':
-    '사진 상태 경고가 있는 사진은 다시 찍거나 그래도 사용을 골라야 확인하기를 할 수 있습니다.',
   'captureCheck.title': '사진 상태 확인',
-  'captureCheck.titleFor': '{subject} 사진 상태 확인',
   'captureCheck.warning.lowResolution': '사진 해상도가 낮습니다.',
   'captureCheck.warning.blur': '사진이 흐릿해 보입니다.',
   'captureCheck.warning.tooDark': '사진이 너무 어둡습니다.',
@@ -397,7 +343,6 @@ export const ko = {
     '열 수 없는 사진으로는 진행할 수 없습니다. 다시 찍거나 다른 사진을 고르세요.',
   'captureCheck.retake': '다시 찍기',
   'captureCheck.useAnyway': '그래도 이 사진 사용',
-  'captureCheck.useAnywayFor': '{subject} 사진을 그래도 사용',
   'captureCheck.usedAnyway': '경고를 확인하고 이 사진을 쓰기로 했습니다.',
 
   'work.material.label': '재료',
@@ -1098,7 +1043,8 @@ export const ko = {
     '저장 형식이 달라 일부 값만 복구했습니다. 빠진 값은 다시 입력하세요.',
   'draft.warn.photos':
     '일부 사진을 복구하지 못했습니다. 필요한 사진은 다시 찍어야 합니다.',
-  'draft.warn.exam': '다각도 확인 사진이 없어 숫돌 단계를 다시 해야 합니다.',
+  'draft.warn.exam':
+    '이전 버전에서 넣은 추가 사진(뒷면·가장자리·중심구멍)과 AI 외관 확인 결과는 이제 쓰지 않아 복구하지 않았습니다. 나머지는 그대로 이어집니다.',
   'draft.warn.trialRun':
     '진행 중이던 시험운전은 이어갈 수 없습니다. 처음부터 다시 하세요.',
   'draft.warn.unreadable':

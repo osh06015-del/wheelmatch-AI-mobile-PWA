@@ -284,36 +284,10 @@ export const en: Messages = {
   'wheelCondition.stopBody':
     'A problem was found with the wheel. Do not mount it. Replace it with another serviceable wheel and inspect again.',
 
-  'exam.title': 'Multi-angle appearance check',
-  'exam.boundary':
-    'The AI only looks for signs of damage visible in the photos. It does not confirm that there is no damage, nor that the wheel is safe to use.',
-  'exam.microCrack':
-    'Hairline and internal cracks cannot be checked from photos. Do a ring test (tap lightly and listen) before mounting.',
-  'exam.frontReused': 'The front view reuses the label photo you just took.',
   'exam.view.front': 'Front (label)',
   'exam.view.back': 'Full back face',
-  'exam.view.backHint': 'Fit the whole back face of the wheel into one photo.',
   'exam.view.edge': 'Edge',
-  'exam.view.edgeHint':
-    'Photograph the rim from the side. This is where chips and breaks show.',
   'exam.view.bore': 'Bore and mounting area',
-  'exam.view.boreHint':
-    'Take a close photo of the centre hole and its surround — the part that sits on the spindle.',
-  'exam.capture': 'Camera',
-  'exam.gallery': 'Gallery',
-  'exam.retakeView': 'Retake {view}',
-  'exam.photoReady': 'Photo added',
-  'exam.photoMissing': 'Not yet added',
-  'exam.analyze': 'Check with all 4 photos',
-  'exam.analyzing': 'Checking the photos...',
-  'exam.missing':
-    'Add the back, edge and bore photos before the check can run.',
-  'exam.status.suspected':
-    'Signs of damage are visible in the photos. Inspect the actual wheel.',
-  'exam.status.notObserved':
-    'No clear damage was found. Inspect the front, back, edge and bore of the actual wheel yourself.',
-  'exam.status.unassessable':
-    'The photos do not allow a judgement. Retake them as shown below, or inspect the wheel directly.',
   'exam.findingConfidence': 'AI confidence: {confidence}',
   'exam.finding.crack': 'Possible crack',
   'exam.finding.chip': 'Possible chip or missing piece',
@@ -326,33 +300,7 @@ export const en: Messages = {
   'exam.quality.glare': 'glare',
   'exam.quality.darkness': 'too dark',
   'exam.quality.incompleteView': 'required area not in frame',
-  'exam.retakeRequired':
-    'Some photos could not be read. Retake the photos listed below.',
-  'exam.acknowledge': 'I checked the marked area on the actual wheel.',
-  'exam.blocked': 'You can continue once you confirm the reported signs.',
-  'exam.failed': 'The AI could not check the photos.',
-  'exam.failedFallback':
-    'Continuing without the AI check. Inspect the front, back, edge and bore of the wheel yourself.',
-  'exam.block.photosMissing':
-    'Add the back, edge and bore photos and run the check before continuing.',
-  'exam.block.notAnalyzed':
-    'Run the check on the photos you added before continuing.',
-  'exam.block.retakeRequired':
-    'Retake the photos that could not be read before continuing.',
-  'exam.block.needsAcknowledge':
-    'Mark that you checked the reported signs on the actual wheel before continuing.',
 
-  'exam.block.needsManualContinue':
-    'Mark that you are continuing with your own inspection, without the AI check, before moving on.',
-  'exam.progress': 'Extra photos ready: {done} / {total}',
-  'exam.captureView': 'Take the {view} photo',
-  'exam.galleryView': 'Pick the {view} photo from the gallery',
-  'exam.replaceNote':
-    'Replacing a photo clears the check made from it and your confirmation. You have to run the check again.',
-  'exam.manualContinue':
-    'Continue with my own inspection, without the AI check.',
-  'exam.manualContinueHint':
-    'Look at the front, back, edge and centre hole of the wheel yourself. The AI confirmed nothing.',
   'exam.notRun.networkError':
     'The AI could not look at the photos — the server could not be reached.',
   'exam.notRun.apiError':
@@ -389,10 +337,7 @@ export const en: Messages = {
   'photo.zoomHint':
     'Swipe to move around the enlarged photo. With a keyboard, focus the photo area and use the arrow keys. Zooming does not improve image clarity.',
 
-  'exam.block.captureReview':
-    'For photos with a photo-quality warning, retake them or choose to use them anyway before running the check.',
   'captureCheck.title': 'Photo quality check',
-  'captureCheck.titleFor': 'Photo quality check: {subject}',
   'captureCheck.warning.lowResolution': 'The photo resolution is low.',
   'captureCheck.warning.blur': 'The photo looks blurry.',
   'captureCheck.warning.tooDark': 'The photo is too dark.',
@@ -414,7 +359,6 @@ export const en: Messages = {
     'You cannot continue with a photo that cannot be opened. Retake it or choose another photo.',
   'captureCheck.retake': 'Retake',
   'captureCheck.useAnyway': 'Use this photo anyway',
-  'captureCheck.useAnywayFor': 'Use the {subject} photo anyway',
   'captureCheck.usedAnyway': 'You saw the warning and chose to use this photo.',
 
   'work.material.label': 'Material',
@@ -1138,7 +1082,7 @@ export const en: Messages = {
   'draft.warn.photos':
     'Some photos could not be recovered. Take the needed photos again.',
   'draft.warn.exam':
-    'The multi-angle check photos are missing, so the wheel step must be done again.',
+    'The extra photos (back face, edge, bore) and the AI appearance check from the earlier version are no longer used and were not recovered. Everything else continues as it was.',
   'draft.warn.trialRun':
     'The trial run that was in progress cannot be continued. Start it again from the beginning.',
   'draft.warn.unreadable':

@@ -35,7 +35,7 @@ const WHEEL: WheelSpec = {
   diameter: 125,
   thickness: 1.6,
   purpose: 'cutting',
-  wheelType: 'flap_disc', // 다각도 확인을 요구하지 않는 종류
+  wheelType: 'flap_disc',
   visibleDamage: 'none_visible',
   rawText: '',
   confidence: 'high',
@@ -78,18 +78,11 @@ function snapshot(
     trialRun: null,
     grinderImage: photo('grinder'),
     wheelImage: photo('wheel'),
-    wheelBackImage: null,
-    wheelEdgeImage: null,
-    wheelBoreImage: null,
-    wheelExam: null,
-    wheelExamNotRun: null,
-    wheelExamAcknowledged: false,
     grinderCaptureMetrics: null,
     wheelCaptureMetrics: null,
     grinderOcrTelemetry: null,
     wheelOcrTelemetry: null,
     captureChecks: {},
-    wheelExamCaptureMetrics: null,
     offlineSlots: { grinder: false, wheel: false },
     checklist: null,
     trialRunRecord: null,
@@ -266,26 +259,147 @@ describe('recoverDraft — 손상·불일치', () => {
     expect(recovery.snapshot?.grinder).toEqual(GRINDER);
   });
 
-  it('다각도 확인을 요구하는 종류인데 그 사진이 없으면 숫돌 단계를 버린다', () => {
-    const bonded = snapshot({
-      wheel: { ...WHEEL, wheelType: 'bonded_abrasive' },
-      wheelExam: {
-        status: 'not_observed',
-        findings: [],
-        photoQuality: [],
-        model: null,
-        promptVersion: 'test',
-        analyzedAt: '2026-09-17T02:00:00.000Z',
-      },
-    });
-    const recovery = recoverDraft(stored(buildDraft(bonded, NOW)));
+  describe('이전 버전의 다각도 외관 확인(2026-10-03에 점검 흐름에서 뺐다)', () => {
+    const CHECK = {
+      checkVersion: 'test',
+      warnings: [],
+      usedDespiteWarning: false,
+      retakeCount: 0,
+    };
+    const LEGACY_EXAM = {
+      status: 'suspected',
+      findings: [
+        {
+          kind: 'edge_break',
+          view: 'edge',
+          reason: '가장자리 조각 떨어짐',
+          confidence: 'high',
+        },
+      ],
+      photoQuality: [],
+      model: null,
+      promptVersion: 'test',
+      analyzedAt: '2026-09-17T02:00:00.000Z',
+    };
 
-    expect(recovery.warnings).toContain('exam');
-    expect(recovery.snapshot?.wheel).toBeNull();
-    expect(recovery.snapshot?.wheelExam).toBeNull();
-    expect(recovery.snapshot?.wheelCondition).toBeNull();
-    // 명판 단계는 그대로다.
-    expect(recovery.snapshot?.grinder).toEqual(GRINDER);
+    /** 다각도 확인을 마치고 결과 화면까지 갔던, 빼기 전 버전이 저장한 draft */
+    function legacyDraft() {
+      const bonded = snapshot({
+        // 그때 다각도 확인이 올린 의심은 숫돌 규격에 이미 합쳐져 있다.
+        wheel: {
+          ...WHEEL,
+          wheelType: 'bonded_abrasive',
+          visibleDamage: 'suspected',
+        },
+        wheelCondition: {
+          damageFree: true,
+          notDeformed: true,
+          mountingAreaUndamaged: true,
+          labelLegible: true,
+          expiryValid: true,
+        },
+      });
+      const draft = stored(buildDraft(bonded, NOW)) as {
+        state: Record<string, unknown>;
+        photos: Record<string, unknown>;
+        photoSlots: string[];
+      };
+      draft.state.wheelExam = LEGACY_EXAM;
+      draft.state.wheelExamNotRun = null;
+      draft.state.wheelExamAcknowledged = true;
+      draft.state.wheelExamCaptureMetrics = {
+        back: null,
+        edge: null,
+        bore: null,
+      };
+      draft.state.captureChecks = {
+        grinder: CHECK,
+        wheel: CHECK,
+        wheelBack: CHECK,
+        wheelBore: CHECK,
+      };
+      draft.photos = {
+        ...draft.photos,
+        wheelBack: photo('back'),
+        wheelEdge: photo('edge'),
+        wheelBore: photo('bore'),
+      };
+      draft.photoSlots = [
+        'grinder',
+        'wheel',
+        'wheelBack',
+        'wheelEdge',
+        'wheelBore',
+      ];
+      return draft;
+    }
+
+    it('결과·사진·그 사진의 상태 기록을 되살리지 않고, 버렸다는 것을 알린다', () => {
+      const recovery = recoverDraft(legacyDraft());
+
+      expect(recovery.warnings).toEqual(['exam']);
+      expect(recovery.resumable).toBe(true);
+      for (const key of [
+        'wheelExam',
+        'wheelExamNotRun',
+        'wheelExamAcknowledged',
+        'wheelExamCaptureMetrics',
+        'wheelBackImage',
+        'wheelEdgeImage',
+        'wheelBoreImage',
+      ]) {
+        expect(recovery.snapshot).not.toHaveProperty(key);
+      }
+      // 없는 사진에 대한 상태 기록을 남기지 않는다. 명판·라벨 것은 그대로다.
+      expect(recovery.snapshot?.captureChecks).toEqual({
+        grinder: CHECK,
+        wheel: CHECK,
+      });
+    });
+
+    it('숫돌 단계는 버리지 않는다 — 그 확인이 올린 외관 의심도 규격에 그대로 남는다', () => {
+      const recovery = recoverDraft(legacyDraft());
+
+      expect(recovery.snapshot?.wheel?.wheelType).toBe('bonded_abrasive');
+      // 의심을 덜어내지 않는다. 결과 화면의 외관 손상 경고가 그대로 뜬다.
+      expect(recovery.snapshot?.wheel?.visibleDamage).toBe('suspected');
+      expect(recovery.snapshot?.wheelImage).toBeInstanceOf(Blob);
+      expect(recovery.snapshot?.wheelCondition).not.toBeNull();
+      expect(recovery.snapshot ? resumePathFor(recovery.snapshot) : null).toBe(
+        '/result',
+      );
+    });
+
+    it('사진은 없고 결과만 남은 draft(사진 없이 저장된 경우)도 같은 경고를 낸다', () => {
+      const draft = legacyDraft();
+      draft.photos = {};
+      draft.photoSlots = [];
+      expect(recoverDraft(draft).warnings).toContain('exam');
+    });
+
+    it('AI 확인을 하지 못한 채 진행했던 draft도 같은 경고를 낸다', () => {
+      const draft = legacyDraft();
+      draft.state.wheelExam = null;
+      draft.state.wheelExamNotRun = {
+        reason: 'offline',
+        acknowledgedAt: '2026-09-17T02:00:00.000Z',
+      };
+      draft.photos = { grinder: photo('grinder'), wheel: photo('wheel') };
+      draft.photoSlots = ['grinder', 'wheel'];
+      expect(recoverDraft(draft).warnings).toEqual(['exam']);
+    });
+
+    it('다각도 확인이 없던 draft에는 이 경고를 붙이지 않는다', () => {
+      // 빼기 전 버전도 요구하지 않는 종류에는 빈 값(null)을 저장했다.
+      const draft = stored(buildDraft(snapshot(), NOW)) as {
+        state: Record<string, unknown>;
+      };
+      draft.state.wheelExam = null;
+      draft.state.wheelExamNotRun = null;
+      draft.state.wheelExamAcknowledged = false;
+      draft.state.wheelExamCaptureMetrics = null;
+      expect(recoverDraft(draft).warnings).toEqual([]);
+    });
   });
 
   it('진행 중이던 시험운전은 되살리지 않고 경고한다', () => {

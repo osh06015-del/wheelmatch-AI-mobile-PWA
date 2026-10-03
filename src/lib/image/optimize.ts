@@ -12,20 +12,6 @@ export const MAX_EDGE = 2048;
 /** 업로드 목표 상한(바이트). base64(1.33배)로 감싸도 Vercel 한도에 여유가 있다. */
 export const MAX_UPLOAD_BYTES = 2_500_000;
 
-/**
- * 한 요청에 사진을 여러 장 보낼 때의 상한.
- *
- * 다각도 외관 확인은 4장을 **한 번의 요청**으로 보낸다. 라벨용 상한(2.5MB)을
- * 그대로 쓰면 4장이 10MB가 되어 Vercel 함수의 4.5MB 요청 한도를 코드에 닿기도
- * 전에 넘는다. 그래서 장당 예산을 따로 둔다 — 0.6MB × 4장 = 2.4MB,
- * base64(1.33배)로 감싸도 약 3.2MB라 한도 안에 남는다.
- *
- * 긴 변 1280px은 깨진 모서리·조각 떨어짐처럼 **눈에 보이는** 손상을 확인하기
- * 위한 크기다. 미세균열은 어차피 사진으로 판별하지 않는다(찾으려 하지 않는다).
- */
-export const MULTI_UPLOAD_MAX_EDGE = 1280;
-export const MULTI_UPLOAD_MAX_BYTES = 600_000;
-
 /** optimizeForUpload의 예산. 넘기지 않으면 라벨 한 장 기준을 쓴다. */
 export interface OptimizeBudget {
   maxEdge?: number;

@@ -126,12 +126,6 @@ describe('일반 결합숫돌 Profile — 기존 동작 이전', () => {
     expect(BONDED_ABRASIVE_PROFILE.expiryPolicy).toBe('label_marked_month');
     expect(BONDED_ABRASIVE_PROFILE.trialRunPolicy).toBe('kr_osh_122');
     expect(BONDED_ABRASIVE_PROFILE.conditionGate).toBe('wheel_condition_v1');
-    expect(BONDED_ABRASIVE_PROFILE.requiredPhotos).toEqual([
-      'front',
-      'back',
-      'edge',
-      'bore',
-    ]);
   });
 
   it('근거를 확인하지 못한 항목은 unverified로 둔다 — 관행으로 채우지 않는다', () => {
@@ -219,7 +213,7 @@ describe('종류를 특정하지 못한 부속품(other·unknown) — 대체 Pro
     }
   });
 
-  it('작업·덮개·재료·유효기한·시험운전 근거가 없다 — 앞면 사진만 요구한다', () => {
+  it('작업·덮개·재료·유효기한·시험운전 근거가 없다', () => {
     for (const type of FALLBACK_TYPES) {
       const p = profileFor(type);
       expect(p?.allowedWork).toBe('unverified');
@@ -227,7 +221,6 @@ describe('종류를 특정하지 못한 부속품(other·unknown) — 대체 Pro
       expect(p?.equipment.guard).toBe('unverified');
       expect(p?.expiryPolicy).toBe('unverified');
       expect(p?.trialRunPolicy).toBe('unverified');
-      expect(p?.requiredPhotos).toEqual(['front']);
     }
   });
 });
@@ -670,7 +663,6 @@ describe('Profile 필드 사용 구분', () => {
     conditionGate: BONDED_ABRASIVE_PROFILE.conditionGate,
     conditionItems: BONDED_ABRASIVE_PROFILE.conditionItems,
     aiSuggestions: BONDED_ABRASIVE_PROFILE.aiSuggestions,
-    requiredPhotos: BONDED_ABRASIVE_PROFILE.requiredPhotos,
   };
 
   it('모든 요구 필드를 판정·안내·근거 미확인 중 하나로 적는다', () => {
@@ -739,8 +731,9 @@ describe('알려진 그라인더 액세서리 Profile', () => {
   const checkOf = (result: ReturnType<typeof run>, rule: string) =>
     result.checks.find((check) => check.rule === rule);
 
-  it('일반 결합숫돌 Profile은 이번 확장으로 바뀌지 않았다', () => {
-    expect(BONDED_ABRASIVE_PROFILE.version).toBe('2026.09.17-r2');
+  it('일반 결합숫돌 Profile의 판정 요구는 세부 형식 확장으로 바뀌지 않았다', () => {
+    // 버전은 추가 사진 요구(다각도 외관 확인)를 뺄 때 올렸다. 판정 요구는 그대로다.
+    expect(BONDED_ABRASIVE_PROFILE.version).toBe('2026.10.03-r1');
     expect(BONDED_ABRASIVE_PROFILE.workCheck).toBe('label_purpose');
     expect(BONDED_ABRASIVE_PROFILE.conditionItems).toEqual(
       DEFAULT_CONDITION_ITEMS,
@@ -966,17 +959,12 @@ describe('알려진 그라인더 액세서리 Profile', () => {
     }
   });
 
-  it('다각도 사진은 평형 결합숫돌에만 요구한다', () => {
-    for (const type of [
-      'bonded_abrasive',
-      'bonded_cutting',
-      'bonded_grinding',
-      'bonded_combination',
-    ] as const) {
-      expect(profileFor(type)?.requiredPhotos).toHaveLength(4);
-    }
-    for (const type of ['bonded_cup', ...UNVERIFIED_TYPES] as WheelType[]) {
-      expect(profileFor(type)?.requiredPhotos).toEqual(['front']);
+  it('어느 종류도 라벨 사진 밖의 추가 사진을 요구하지 않는다', () => {
+    // 뒷면·가장자리·중심구멍 사진(다각도 외관 확인)은 점검 흐름에서 뺐다. Profile에
+    // 사진 요구가 다시 생기면 그것을 받는 화면과 Gate도 함께 있어야 한다 — 선언만
+    // 있고 아무도 받지 않는 요구를 두지 않는다.
+    for (const profile of Object.values(ACCESSORY_PROFILES)) {
+      expect(profile).not.toHaveProperty('requiredPhotos');
     }
   });
 

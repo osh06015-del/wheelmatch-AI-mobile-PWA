@@ -849,15 +849,6 @@ describe('결과 화면 — 저장 함수 내부 재검사와 저장공간 오�
     const result = ready(wheel);
     act(() => {
       result.current.setWheel(wheel, photo);
-      result.current.setWheelExam({
-        exam: null,
-        notRun: {
-          reason: 'api_error',
-          acknowledgedAt: '2026-09-16T03:00:00.000Z',
-        },
-        photos: { back: photo, edge: photo, bore: photo },
-        acknowledged: false,
-      });
       result.current.setWheelCondition(CONFIRMED);
     });
 
@@ -880,12 +871,8 @@ describe('결과 화면 — 저장 함수 내부 재검사와 저장공간 오�
     const second = vi.mocked(saveInspection).mock.calls[1][0];
     expect(second.wheelImage).toBeUndefined();
     expect(second.grinderImage).toBeUndefined();
-    expect(second.wheelBackImage).toBeUndefined();
-    expect(second.wheelEdgeImage).toBeUndefined();
-    expect(second.wheelBoreImage).toBeUndefined();
-    // 사진만 빠진다. 결과와 미실행 사실은 그대로 남는다.
+    // 사진만 빠진다. 결과는 그대로 남는다.
     expect(second.result.verdict).toBe('INCOMPATIBLE');
-    expect(second.wheelExamNotRun?.reason).toBe('api_error');
   });
 
   it('저장공간 부족이 아니면 사진을 빼는 선택지를 내놓지 않는다', async () => {
@@ -901,42 +888,34 @@ describe('결과 화면 — 저장 함수 내부 재검사와 저장공간 오�
       screen.queryByRole('button', { name: '사진을 빼고 결과만 저장' }),
     ).not.toBeInTheDocument();
   });
-  it('AI가 본 것을 결과 화면에도 남기되 확인 항목으로 세지 않는다', () => {
-    const wheel = { ...WHEEL, maxRPM: 8500 };
-    const result = ready(wheel);
-    act(() => {
-      result.current.setWheelExam({
-        exam: {
-          status: 'not_observed',
-          findings: [],
-          photoQuality: (['front', 'back', 'edge', 'bore'] as const).map(
-            (view) => ({ view, issues: [], readable: true }),
-          ),
-          model: 'claude-sonnet-5',
-          promptVersion: '2026.09.16-r1',
-          analyzedAt: '2026-09-16T03:00:00.000Z',
-        },
-        photos: { back: null, edge: null, bore: null },
-        acknowledged: false,
-      });
-      result.current.setWheelCondition(CONFIRMED);
-    });
+  it('다각도 외관 확인 기록을 만들지 않는다 — 결과 화면에 카드가 없고 저장 기록에도 없다', async () => {
+    // 뒷면·가장자리·중심구멍 사진과 AI 확인 단계는 점검 흐름에서 뺐다. 하지 않은
+    // 확인을 화면이나 기록에 남기지 않는다(이전 기록의 것은 이력이 그대로 보인다).
+    ready({ ...WHEEL, maxRPM: 8500 });
 
     render(<ResultPage />);
+    expect(screen.queryByText('다각도 외관 확인 기록')).not.toBeInTheDocument();
 
-    expect(
-      screen.getByText('뚜렷한 이상 미탐지 — 직접 확인 필요'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'AI가 사진에서 본 것입니다. 작업자가 직접 확인하는 항목에는 들어가지 않습니다.',
-      ),
-    ).toBeInTheDocument();
-    // AI 결과가 체크리스트를 대신 채우지 않는다 — 여전히 전부 직접 눌러야 한다.
-    for (const box of screen.getAllByRole('checkbox')) {
-      expect(box).not.toBeChecked();
+    checkAll();
+    fireEvent.click(screen.getByRole('button', { name: /점검 완료 및 저장/ }));
+    await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
+
+    const saved = vi.mocked(saveInspection).mock.calls[0][0];
+    for (const key of [
+      'wheelExam',
+      'wheelExamNotRun',
+      'wheelExamAcknowledged',
+      'wheelBackImage',
+      'wheelEdgeImage',
+      'wheelBoreImage',
+      'wheelBackCaptureMetrics',
+      'wheelEdgeCaptureMetrics',
+      'wheelBoreCaptureMetrics',
+    ]) {
+      expect(saved).not.toHaveProperty(key);
     }
   });
+
   it('사진 상태 확인 기록을 함께 저장한다 — 사진을 빼고 저장해도 남는다', async () => {
     const wheel = { ...WHEEL, maxRPM: 8500 };
     const result = ready(wheel);
@@ -949,13 +928,6 @@ describe('결과 화면 — 저장 함수 내부 재검사와 저장공간 오�
     act(() => {
       result.current.setCaptureCheck('grinder', check);
       result.current.setCaptureCheck('wheel', { ...check, warnings: [] });
-      result.current.setWheelExam({
-        exam: null,
-        photos: { back: null, edge: null, bore: null },
-        acknowledged: false,
-        captureChecks: { back: check, edge: null, bore: null },
-        captureMetrics: { back: null, edge: null, bore: null },
-      });
     });
 
     const quotaError = new Error('storage full');
@@ -974,7 +946,6 @@ describe('결과 화면 — 저장 함수 내부 재검사와 저장공간 오�
     expect(saved.captureChecks).toEqual({
       grinder: check,
       wheel: { ...check, warnings: [] },
-      wheelBack: check,
     });
   });
 
@@ -988,7 +959,6 @@ describe('결과 화면 — 저장 함수 내부 재검사와 저장공간 오�
 
     const saved = vi.mocked(saveInspection).mock.calls[0][0];
     expect(saved.captureChecks).toBeUndefined();
-    expect(saved.wheelBackCaptureMetrics).toBeUndefined();
   });
 
   it('촬영 품질 측정값과 OCR telemetry를 저장한다 — 사진을 빼고 저장해도 남는다', async () => {
@@ -1010,7 +980,6 @@ describe('결과 화면 — 저장 함수 내부 재검사와 저장공간 오�
       optimizeMs: 210,
     };
     const wheelMetrics = { ...grinderMetrics, optimizeMs: 180 };
-    const backMetrics = { ...grinderMetrics, optimizeMs: 150 };
     const grinderTelemetry = {
       engine: 'claude' as const,
       model: 'claude-sonnet-5',
@@ -1037,12 +1006,6 @@ describe('결과 화면 — 저장 함수 내부 재검사와 저장공간 오�
       result.current.setGrinderCondition(GRINDER_OK);
       result.current.setWheel(wheel, null, null, wheelMetrics, wheelTelemetry);
       result.current.setWheelCondition(CONFIRMED);
-      result.current.setWheelExam({
-        exam: null,
-        photos: { back: null, edge: null, bore: null },
-        acknowledged: false,
-        captureMetrics: { back: backMetrics, edge: null, bore: null },
-      });
     });
 
     const quotaError = new Error('storage full');
@@ -1060,7 +1023,6 @@ describe('결과 화면 — 저장 함수 내부 재검사와 저장공간 오�
     const saved = vi.mocked(saveInspection).mock.calls[1][0];
     expect(saved.grinderCaptureMetrics).toEqual(grinderMetrics);
     expect(saved.wheelCaptureMetrics).toEqual(wheelMetrics);
-    expect(saved.wheelBackCaptureMetrics).toEqual(backMetrics);
     expect(saved.grinderOcrTelemetry).toEqual(grinderTelemetry);
     expect(saved.wheelOcrTelemetry).toEqual(wheelTelemetry);
     // 사진은 뺐다 — 숫자만 남고 Blob은 없다.

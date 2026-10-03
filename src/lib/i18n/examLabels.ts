@@ -1,8 +1,8 @@
 // 다각도 외관 확인 값에 붙는 문구 키.
 //
-// 촬영 화면(WheelExamPanel)과 결과·이력의 근거 카드(WheelExamEvidence)가 같은
-// 값을 서로 다른 말로 부르면 작업자가 같은 것인지 알 수 없다. 두 화면이 이
-// 표 하나를 함께 쓴다.
+// 다각도 외관 확인은 점검 흐름에서 뺐다(2026-10-03). 이 표는 그 전에 저장된
+// 기록을 이력의 근거 카드(WheelExamEvidence)가 보여줄 때 쓴다. 같은 값을 화면마다
+// 다른 말로 부르지 않도록 표 하나에 모아 둔다.
 
 import type { MessageKey } from './messages/ko';
 import type {

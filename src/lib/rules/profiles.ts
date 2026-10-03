@@ -88,13 +88,21 @@ export const BONDED_ABRASIVE_PROFILE: AccessoryProfile = {
   conditionGate: 'wheel_condition_v1',
   conditionItems: DEFAULT_CONDITION_ITEMS,
   aiSuggestions: ['bonded_abrasive'],
-  requiredPhotos: ['front', 'back', 'edge', 'bore'],
   sources: ['krOsh', 'kosha', 'osa'],
-  version: '2026.09.17-r2',
+  // 2026.10.03-r1 — 뒷면·가장자리·중심구멍 사진(다각도 외관 확인) 요구를 뺐다.
+  // 판정 규칙은 그대로다: 그 확인은 경고만 더했고 판정을 움직이지 않았다.
+  // 외관은 작업자 상태 확인 Gate(conditionItems)가 계속 직접 묻는다.
+  version: '2026.10.03-r1',
 };
 
-/** 세부 형식 Profile의 버전. 요구를 바꾸면 올린다 */
-const KNOWN_ACCESSORY_VERSION = '2026.09.17-r1';
+/**
+ * 세부 형식 Profile의 버전. 요구를 바꾸면 올린다.
+ *
+ * 2026.10.03-r1 — 사진 요구 항목(requiredPhotos)을 Profile에서 뺐다. 결합숫돌
+ * 세부 형식(Type 1/41·27/28·27/42)이 요구하던 추가 사진 세 장이 없어졌고,
+ * 나머지 종류는 원래 라벨 사진만 받았으므로 요구는 달라지지 않았다.
+ */
+const KNOWN_ACCESSORY_VERSION = '2026.10.03-r1';
 
 /**
  * 결합숫돌 세부 형식의 공통 부분.
@@ -144,7 +152,6 @@ const UNVERIFIED_BASE: Omit<
   expiryPolicy: 'unverified',
   trialRunPolicy: 'unverified',
   conditionGate: 'wheel_condition_v1',
-  requiredPhotos: ['front'],
   sources: [],
   version: KNOWN_ACCESSORY_VERSION,
 };
@@ -215,14 +222,13 @@ export const BONDED_COMBINATION_PROFILE: AccessoryProfile = {
   workCheck: 'allowed_work',
 };
 
-/** 결합 컵숫돌 Type 6/11. 다각도 확인 지시문은 평형 숫돌용이라 앞면 사진만 요구한다 */
+/** 결합 컵숫돌 Type 6/11 */
 export const BONDED_CUP_PROFILE: AccessoryProfile = {
   ...BONDED_BASE,
   type: 'bonded_cup',
   allowedWork: 'unverified',
   conditionItems: [...DEFAULT_CONDITION_ITEMS, ...CUP_ITEMS],
   aiSuggestions: ['cup_wheel', 'bonded_abrasive'],
-  requiredPhotos: ['front'],
 };
 
 /** 플랩디스크 Type 27/29: 날개 탈락·박리·백킹판 */
@@ -350,8 +356,8 @@ export const UNKNOWN_PROFILE: AccessoryProfile = {
  *
  * **required로 선언한 필드는 verdict여야 한다.** 선언만 하고 엔진이 무시하면
  * Profile을 읽는 사람이 막힌다고 믿는 조건이 실제로는 통과한다(profiles.test.ts가
- * 확인한다). 진행 Gate(conditionGate·trialRunPolicy·requiredPhotos)는 판정과
- * 다른 계층이라 guidance로 두지만, 해당 Gate가 따로 진행을 막는다.
+ * 확인한다). 진행 Gate(conditionGate·trialRunPolicy)는 판정과 다른 계층이라
+ * guidance로 두지만, 해당 Gate가 따로 진행을 막는다.
  */
 export const PROFILE_FIELD_USE = {
   supported: 'verdict', // 숫돌 종류 규칙(checkWheelType)
@@ -373,7 +379,6 @@ export const PROFILE_FIELD_USE = {
   conditionGate: 'guidance', // Wheel Condition Gate
   conditionItems: 'guidance', // Wheel Condition Gate 항목(작업자가 직접 답한다)
   aiSuggestions: 'guidance', // 종류 선택 화면의 AI 제안 비교
-  requiredPhotos: 'guidance', // 다각도 확인 Gate(wheelExamRequired)
 } as const satisfies Record<string, 'verdict' | 'guidance' | 'unverified'>;
 
 /**

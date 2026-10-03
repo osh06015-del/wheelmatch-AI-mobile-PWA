@@ -169,32 +169,25 @@ describe('confirmedWheelSpec — 원본 표시 보존', () => {
     expect(spec.visibleDamage).toBe('suspected');
   });
 
-  it('다각도 확인이 의심하면 라벨 판독이 무엇이든 의심으로 올린다', () => {
-    const ocr = ocrWheel({ visibleDamage: 'none_visible' });
-    const spec = confirmedWheelSpec(ocr, {
-      ...untouched(ocr),
-      examVisibleDamage: 'suspected',
-    });
-
-    expect(spec.visibleDamage).toBe('suspected');
-  });
-
-  it('다각도 확인이 찾지 못해도 라벨의 의심을 지우지 않는다', () => {
-    // 이 방향이 깨지면 "한 번 더 찍었더니 경고가 사라지는" 앱이 된다.
-    const ocr = ocrWheel({ visibleDamage: 'suspected' });
-    const spec = confirmedWheelSpec(ocr, {
-      ...untouched(ocr),
-      examVisibleDamage: 'unknown',
-    });
-
-    expect(spec.visibleDamage).toBe('suspected');
-  });
-
-  it('다각도 확인을 넘기지 않으면 기존 동작 그대로다', () => {
+  it('라벨 사진의 외관 판독값을 바꾸지 않고 그대로 옮긴다', () => {
     const ocr = ocrWheel({ visibleDamage: 'none_visible' });
     const spec = confirmedWheelSpec(ocr, untouched(ocr));
 
     expect(spec.visibleDamage).toBe('none_visible');
+  });
+
+  it('사진 판독이 없으면(직접 입력) 외관은 unknown이다 — 보이지 않았다고 적지 않는다', () => {
+    const spec = confirmedWheelSpec(null, {
+      maxRPM: 13300,
+      diameter: 100,
+      thickness: 1,
+      purpose: 'cutting',
+      wheelType: 'bonded_abrasive',
+      expiryText: '',
+      userConfirmed: true,
+    });
+
+    expect(spec.visibleDamage).toBe('unknown');
   });
 
   it('사용자가 유효기한을 고쳐도 라벨 원문은 그대로 남는다', () => {

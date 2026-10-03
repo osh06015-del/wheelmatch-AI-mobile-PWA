@@ -5,6 +5,8 @@
 //    그대로 규격 대조까지 흘러간다.
 // 2. 숫돌 종류는 작업자가 실물을 보고 고른다. AI가 본 종류는 제안값이고,
 //    둘이 다르면 작업자가 직접 확인해야 넘어간다.
+// 3. 확인 화면은 라벨 사진 한 장만 쓴다. 뒷면·가장자리·중심구멍 사진을 넣는
+//    단계(다각도 외관 확인)는 뺐다 — 외관은 작업자 상태 확인 Gate가 묻는다.
 
 import {
   act,
@@ -16,11 +18,10 @@ import {
 } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { replace, push, extractWheel, examine } = vi.hoisted(() => ({
+const { replace, push, extractWheel } = vi.hoisted(() => ({
   replace: vi.fn(),
   push: vi.fn(),
   extractWheel: vi.fn(),
-  examine: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -39,11 +40,6 @@ vi.mock('@/lib/ocr/extractor', () => ({
 vi.mock('@/lib/image/optimize', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/image/optimize')>()),
   optimizeForUpload: async (blob: Blob) => blob,
-}));
-
-// 다각도 외관 확인 결과도 테스트가 정한다. 실제 모델을 부르지 않는다.
-vi.mock('@/lib/vision/wheelExam', () => ({
-  getWheelExaminer: () => ({ examine }),
 }));
 
 // 카메라 대신 사진 한 장을 고르는 버튼만 둔다.
@@ -66,7 +62,6 @@ import { useInspection } from '@/lib/state/inspection';
 import type {
   GrinderCondition,
   GrinderSpec,
-  WheelExamResult,
   WheelSpec,
 } from '@/lib/rules/types';
 
@@ -107,20 +102,6 @@ const OCR: WheelSpec = {
 };
 
 const BLOCKED = '그라인더 상태 확인이 먼저입니다.';
-
-/** 네 장을 모두 살펴봤지만 찾지 못한 결과. 손상 없음이라는 뜻이 아니다. */
-const EXAM_NOT_OBSERVED: WheelExamResult = {
-  status: 'not_observed',
-  findings: [],
-  photoQuality: (['front', 'back', 'edge', 'bore'] as const).map((view) => ({
-    view,
-    issues: [],
-    readable: true,
-  })),
-  model: 'claude-sonnet-5',
-  promptVersion: 'test',
-  analyzedAt: '2026-09-16T03:00:00.000Z',
-};
 
 function store() {
   return renderHook(() => useInspection()).result;
@@ -266,29 +247,6 @@ describe('숫돌 촬영 화면 — 숫돌 종류 직접 확인', () => {
     }
   }
 
-  /** 다각도 확인: 뒷면·가장자리·중심구멍 사진을 넣고 확인을 누른다. */
-  async function completeExam(exam: WheelExamResult = EXAM_NOT_OBSERVED) {
-    examine.mockResolvedValue(exam);
-    // 자리마다 촬영·갤러리 두 입력이 있다. 자리당 앞의 것에 넣는다.
-    const inputs = [
-      ...document.querySelectorAll<HTMLInputElement>('input[type=file]'),
-    ];
-    for (const index of [0, 1, 2]) {
-      await act(async () => {
-        fireEvent.change(inputs[index * 2], {
-          target: {
-            files: [new File(['x'], `${index}.jpg`, { type: 'image/jpeg' })],
-          },
-        });
-      });
-    }
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole('button', { name: '사진 4장으로 확인하기' }),
-      );
-    });
-  }
-
   const typeSelect = () => screen.getByRole('combobox', { name: '숫돌 종류' });
   const manualToggle = () =>
     screen.getByRole('checkbox', {
@@ -312,18 +270,15 @@ describe('숫돌 촬영 화면 — 숫돌 종류 직접 확인', () => {
       ),
     ).toBeInTheDocument();
 
-    // 일반 결합숫돌은 다각도 확인을 마쳐야 넘어갈 수 있다.
-    answerWheelCondition();
+    // 작업자 상태 확인에 답하기 전에는 넘어갈 수 없다.
     expect(proceedButton()).toBeDisabled();
-
-    await completeExam();
+    answerWheelCondition();
     expect(proceedButton()).toBeEnabled();
     fireEvent.click(proceedButton());
 
     expect(push).toHaveBeenCalledWith('/result');
     expect(result.current.wheel?.wheelType).toBe('bonded_abrasive');
     expect(result.current.wheelOcr?.wheelType).toBe('bonded_abrasive');
-    expect(result.current.wheelExam?.status).toBe('not_observed');
   });
 
   it('AI가 기타로 읽으면 RPM·지름은 대조하는 종류라고 알리고 그 종류로 넘긴다', async () => {
@@ -356,7 +311,6 @@ describe('숫돌 촬영 화면 — 숫돌 종류 직접 확인', () => {
     ).toBeInTheDocument();
 
     answerWheelCondition();
-    await completeExam();
     expect(proceedButton()).toBeDisabled();
     expect(
       screen.getByText(
@@ -408,27 +362,6 @@ describe('숫돌 촬영 화면 — 숫돌 종류 직접 확인', () => {
     expect(proceedButton()).toBeDisabled();
   });
 
-  it('종류를 바꾸면 이전 종류에서 마친 다각도 확인 결과가 새 종류의 기록에 섞이지 않는다', async () => {
-    // 결합숫돌은 다각도 확인을 요구하지만 플랩디스크는 요구하지 않는다.
-    // 결합숫돌로 확인을 마친 뒤 플랩디스크로 바꾸면, 화면에서 패널은
-    // 사라져도 내부 상태가 남아 있으면 그 결과가 플랩디스크 기록으로
-    // 저장될 수 있다.
-    const result = await openConfirm(OCR); // bonded_abrasive
-    answerWheelCondition();
-    await completeExam();
-
-    fireEvent.change(typeSelect(), { target: { value: 'flap_disc' } });
-    fireEvent.click(manualToggle());
-    answerWheelCondition();
-    expect(proceedButton()).toBeEnabled();
-    fireEvent.click(proceedButton());
-
-    expect(push).toHaveBeenCalledWith('/result');
-    expect(result.current.wheel?.wheelType).toBe('flap_disc');
-    expect(result.current.wheelExam).toBeNull();
-    expect(result.current.wheelExamNotRun).toBeNull();
-  });
-
   it('종류를 바꾸면 부속품 이름 입력이 새 종류로 넘어가지 않는다', async () => {
     const result = await openConfirm({ ...OCR, wheelType: 'other' });
     const nameInput = () => screen.getByLabelText('부속품 이름(선택)');
@@ -468,8 +401,6 @@ describe('숫돌 촬영 화면 — 숫돌 종류 직접 확인', () => {
     expect(proceedButton()).toBeDisabled();
 
     fireEvent.click(manualToggle());
-    // 일반 결합숫돌로 고른 순간부터 다각도 확인도 요구된다.
-    await completeExam();
     fireEvent.click(proceedButton());
 
     expect(push).toHaveBeenCalledWith('/result');
@@ -479,12 +410,11 @@ describe('숫돌 촬영 화면 — 숫돌 종류 직접 확인', () => {
   });
 });
 
-describe('숫돌 촬영 화면 — 다각도 외관 이상 징후 확인', () => {
+describe('숫돌 촬영 화면 — 라벨 사진 한 장으로 확인한다(추가 사진 없음)', () => {
   beforeEach(() => {
     replace.mockClear();
     push.mockClear();
     extractWheel.mockReset();
-    examine.mockReset();
     const result = store();
     act(() => {
       result.current.reset();
@@ -516,244 +446,56 @@ describe('숫돌 촬영 화면 — 다각도 외관 이상 징후 확인', () =>
   const proceedButton = () =>
     screen.getByRole('button', { name: '확인 후 규격 대조' });
 
-  async function addExamPhotos() {
-    const inputs = [
-      ...document.querySelectorAll<HTMLInputElement>('input[type=file]'),
-    ];
-    for (const index of [0, 1, 2]) {
-      await act(async () => {
-        fireEvent.change(inputs[index * 2], {
-          target: {
-            files: [new File(['x'], `${index}.jpg`, { type: 'image/jpeg' })],
-          },
-        });
-      });
-    }
-  }
-
-  async function runExam(exam: WheelExamResult | Error) {
-    if (exam instanceof Error) examine.mockRejectedValue(exam);
-    else examine.mockResolvedValue(exam);
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole('button', { name: '사진 4장으로 확인하기' }),
-      );
-    });
-  }
-
-  function suspected(
-    kind: WheelExamResult['findings'][number]['kind'],
-    view: WheelExamResult['findings'][number]['view'],
-    reason: string,
-  ): WheelExamResult {
-    return {
-      ...EXAM_NOT_OBSERVED,
-      status: 'suspected',
-      findings: [{ kind, view, reason, confidence: 'high' }],
-    };
-  }
-
-  it('경계 문구는 결과와 무관하게 항상 보인다', async () => {
+  it('일반 결합숫돌도 뒷면·가장자리·중심구멍 사진을 받지 않는다', async () => {
+    // 그 사진을 넣는 자리가 다시 생기면 이 테스트가 알린다.
     await openConfirm();
 
+    expect(document.querySelectorAll('input[type=file]')).toHaveLength(0);
+    expect(screen.queryByText('다각도 외관 확인')).not.toBeInTheDocument();
     expect(
-      screen.getByText(
-        'AI는 사진에서 보이는 이상 징후만 찾습니다. 손상 없음이나 사용 안전을 확인하지 않습니다.',
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/미세균열과 내부 균열은 사진으로 확인할 수 없습니다/),
-    ).toBeInTheDocument();
+      screen.queryByRole('button', { name: '사진 4장으로 확인하기' }),
+    ).not.toBeInTheDocument();
   });
 
-  it('사진 3장을 넣기 전에는 확인 버튼이 열리지 않는다', async () => {
-    await openConfirm();
+  it('추가 사진이 없어도 작업자 상태 확인은 그대로 직접 답해야 넘어간다', async () => {
+    // 사진 단계를 뺐다고 사람의 확인까지 줄지 않는다. 다섯 항목이 모두
+    // 미확인인 채로 시작하고, 앱이 대신 채우지 않는다.
+    const result = await openConfirm();
 
-    expect(
-      screen.getByRole('button', { name: '사진 4장으로 확인하기' }),
-    ).toBeDisabled();
-    expect(
-      screen.getByText(
-        '뒷면·가장자리·중심구멍 사진을 모두 넣어야 확인할 수 있습니다.',
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it('정상 사진 — 찾지 못해도 작업자 확인 Gate는 자동으로 채워지지 않는다', async () => {
-    // 이 기능에서 가장 위험한 실패는 "AI가 못 찾았으니 통과"다.
-    await openConfirm();
-    await addExamPhotos();
-    await runExam(EXAM_NOT_OBSERVED);
-
-    expect(
-      screen.getByText(
-        '뚜렷한 이상을 찾지 못했습니다. 실제 숫돌의 앞·뒤·가장자리와 중심구멍을 직접 확인하세요.',
-      ),
-    ).toBeInTheDocument();
-    // 다섯 항목이 그대로 미확인이라 진행이 막혀 있다.
     expect(screen.queryAllByRole('button', { pressed: true })).toEqual([]);
     expect(proceedButton()).toBeDisabled();
 
     answerWheelCondition();
     expect(proceedButton()).toBeEnabled();
+    fireEvent.click(proceedButton());
+
+    expect(push).toHaveBeenCalledWith('/result');
+    expect(result.current.wheel?.wheelType).toBe('bonded_abrasive');
+    // 라벨 사진의 판독값은 바꾸지 않고 그대로 넘긴다.
+    expect(result.current.wheel?.visibleDamage).toBe('none_visible');
   });
 
-  // 파일 이름은 실물 촬영 세트의 시나리오 이름을 그대로 쓴다. 이 테스트는
-  // 모델이 그 사진에서 실제로 무엇을 찾는지가 아니라, 찾았다고 했을 때 화면과
-  // Gate가 어떻게 움직이는지를 고정한다.
-  it('11-wheel-edge-crack-chip — 가장자리 손상 의심이면 위치·이유를 보이고 진행을 막는다', async () => {
-    const result = await openConfirm();
-    await addExamPhotos();
-    await runExam(
-      suspected('edge_break', 'edge', '가장자리 2시 방향에 조각이 떨어진 자국'),
-    );
+  it('라벨 사진에서 손상이 의심되면 Gate에서 알리고, 의심을 규격 값으로 그대로 넘긴다', async () => {
+    const result = await openConfirm({ ...OCR, visibleDamage: 'suspected' });
 
-    expect(
-      screen.getByText(/사진에서 이상 징후가 보입니다/),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('가장자리 파손 의심 · 가장자리'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('가장자리 2시 방향에 조각이 떨어진 자국'),
-    ).toBeInTheDocument();
-
-    // 다섯 항목을 다 눌러도 확인 표시 전에는 넘어가지 못한다.
-    answerWheelCondition();
-    expect(proceedButton()).toBeDisabled();
     expect(
       screen.getByText(
-        '이상 징후를 실물에서 확인했다고 표시해야 다음으로 넘어갈 수 있습니다.',
+        '⚠ AI가 사진에서 눈에 띄는 손상 징후를 의심했습니다. 숫돌을 직접 자세히 확인하세요.',
       ),
     ).toBeInTheDocument();
 
-    fireEvent.click(
-      screen.getByRole('checkbox', {
-        name: /표시된 위치를 실물에서 직접 확인했습니다/,
-      }),
-    );
-    expect(proceedButton()).toBeEnabled();
+    // 경고가 Gate를 대신 채우지도, 진행을 대신 막지도 않는다 — 판단은 사람이 한다.
+    expect(proceedButton()).toBeDisabled();
+    answerWheelCondition();
     fireEvent.click(proceedButton());
 
-    // 의심은 규칙엔진이 보는 값으로도 넘어간다.
+    // 의심은 규칙엔진이 보는 값으로 넘어가 결과 화면의 외관 손상 경고가 된다.
     expect(result.current.wheel?.visibleDamage).toBe('suspected');
-    expect(result.current.wheelExam?.status).toBe('suspected');
-    expect(result.current.wheelExamAcknowledged).toBe(true);
-  });
-
-  it('12-wheel-warped — 변형 의심도 같은 방식으로 막는다', async () => {
-    const result = await openConfirm();
-    await addExamPhotos();
-    await runExam(
-      suspected('deformation', 'back', '뒷면이 한쪽으로 휘어 보입니다'),
-    );
-
-    expect(screen.getByText('휨·변형 의심 · 뒷면 전체')).toBeInTheDocument();
-    answerWheelCondition();
-    expect(proceedButton()).toBeDisabled();
-
-    fireEvent.click(
-      screen.getByRole('checkbox', {
-        name: /표시된 위치를 실물에서 직접 확인했습니다/,
-      }),
-    );
-    fireEvent.click(proceedButton());
-    expect(result.current.wheel?.visibleDamage).toBe('suspected');
-  });
-
-  it('13-wheel-center-hole-damaged — 중심구멍 손상 의심을 그 부위로 알린다', async () => {
-    await openConfirm();
-    await addExamPhotos();
-    await runExam(
-      suspected('bore_damage', 'bore', '중심구멍 둘레가 눌려 있습니다'),
-    );
-
-    expect(
-      screen.getByText('중심구멍·장착부 손상 의심 · 중심구멍·장착부'),
-    ).toBeInTheDocument();
-    answerWheelCondition();
-    expect(proceedButton()).toBeDisabled();
-  });
-
-  it('흐린 사진 — 판단할 수 없다고 알리고 그 사진을 다시 찍게 막는다', async () => {
-    await openConfirm();
-    await addExamPhotos();
-    await runExam({
-      ...EXAM_NOT_OBSERVED,
-      status: 'unassessable',
-      photoQuality: [
-        { view: 'front', issues: [], readable: true },
-        { view: 'back', issues: ['blur'], readable: false },
-        { view: 'edge', issues: [], readable: true },
-        { view: 'bore', issues: ['darkness'], readable: false },
-      ],
-    });
-
-    expect(
-      screen.getByText(/사진으로는 판단할 수 없습니다/),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        '판독할 수 없는 사진이 있습니다. 아래 사진을 다시 찍으세요.',
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText('뒷면 전체 — 흐림')).toBeInTheDocument();
-    expect(screen.getByText('중심구멍·장착부 — 어두움')).toBeInTheDocument();
-
-    answerWheelCondition();
-    expect(proceedButton()).toBeDisabled();
-    expect(
-      screen.getByText(
-        '판독할 수 없는 사진을 다시 찍어야 다음으로 넘어갈 수 있습니다.',
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it('AI 확인이 실패하면 확인하지 못했다고 알리되 사람의 점검까지 막지는 않는다', async () => {
-    // AI가 돌지 않았다고 법정 점검까지 막으면 앱이 점검을 가로막는 셈이다.
-    // 실패는 아무것도 승인하지 않는다 — 작업자 확인 Gate는 그대로 남는다.
-    const result = await openConfirm();
-    await addExamPhotos();
-    await runExam(new ExtractError('network'));
-
-    // 무엇이 실패했는지(네트워크)와 그래서 무엇을 해야 하는지를 함께 알린다.
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      '서버에 연결하지 못했습니다.',
-    );
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'AI 확인 없이 진행합니다. 숫돌 앞·뒤·가장자리와 중심구멍을 작업자가 직접 확인하세요.',
-    );
-
-    answerWheelCondition();
-    // 실패했다고 조용히 지나가지 않는다. 확인 없이는 다음으로 갈 수 없다.
-    expect(proceedButton()).toBeDisabled();
-    expect(
-      screen.getByText(
-        'AI 확인 없이 작업자 직접점검으로 진행하겠다고 표시해야 다음으로 넘어갈 수 있습니다.',
-      ),
-    ).toBeInTheDocument();
-
-    fireEvent.click(
-      screen.getByRole('checkbox', {
-        name: 'AI 확인 없이 작업자 직접점검으로 진행합니다.',
-      }),
-    );
-    expect(proceedButton()).toBeEnabled();
-    fireEvent.click(proceedButton());
-
-    // 실패는 결과로 남지 않는다. 확인하지 못한 것은 확인하지 못한 채로 둔다.
-    expect(result.current.wheelExam).toBeNull();
-    // 대신 실행되지 않았다는 사실과 그 이유가 남는다. not_observed로 바꾸지 않는다.
-    expect(result.current.wheelExamNotRun?.reason).toBe('network_error');
-    expect(result.current.wheel?.visibleDamage).not.toBe('suspected');
   });
 
   it('작업자가 문제 있음을 고르면 규격과 무관하게 사용 금지로 끝난다', async () => {
     await openConfirm();
-    await addExamPhotos();
-    await runExam(EXAM_NOT_OBSERVED);
 
-    // AI가 찾지 못했더라도 작업자의 "문제 있음"이 이긴다.
     const issues = screen.getAllByRole('button', { name: /문제 있음/ });
     fireEvent.click(issues[0]);
 
@@ -761,43 +503,14 @@ describe('숫돌 촬영 화면 — 다각도 외관 이상 징후 확인', () =>
     expect(proceedButton()).toBeDisabled();
   });
 
-  it('사진을 바꾸면 이전 분석 결과를 버린다 — 다른 사진의 결과로 넘어가지 않는다', async () => {
-    await openConfirm();
-    await addExamPhotos();
-    await runExam(EXAM_NOT_OBSERVED);
-    answerWheelCondition();
-    expect(proceedButton()).toBeEnabled();
-
-    // 뒷면 사진만 다시 넣는다.
-    const inputs = [
-      ...document.querySelectorAll<HTMLInputElement>('input[type=file]'),
-    ];
-    await act(async () => {
-      fireEvent.change(inputs[0], {
-        target: {
-          files: [new File(['new'], 'back2.jpg', { type: 'image/jpeg' })],
-        },
-      });
-    });
-
-    expect(proceedButton()).toBeDisabled();
-    expect(
-      screen.getByText(
-        '넣은 사진으로 확인하기를 누른 뒤에 다음으로 넘어갈 수 있습니다.',
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it('미지원 종류에는 다각도 확인을 요구하지 않는다 — 판정불가는 그대로다', async () => {
+  it('세부 형식을 골라야 하는 굵은 분류(다이아몬드)도 같은 흐름으로 넘어간다 — 판정불가는 그대로다', async () => {
     const result = await openConfirm({ ...OCR, wheelType: 'diamond' });
 
-    expect(screen.queryByText('다각도 외관 확인')).not.toBeInTheDocument();
     answerWheelCondition();
     fireEvent.click(proceedButton());
 
     expect(push).toHaveBeenCalledWith('/result');
     expect(result.current.wheel?.wheelType).toBe('diamond');
-    expect(result.current.wheelExam).toBeNull();
   });
 });
 

@@ -116,8 +116,9 @@ export const CSV_COLUMNS = [
   'wheelOcrCacheReadTokens',
   'wheelOcrCacheCreationTokens',
   'wheelOcrDurationMs',
-  // 다각도 외관 확인. 이 기능 도입 전 기록은 빈 칸이다. 앞선 열의 자리를
-  // 지키기 위해 맨 뒤에 붙인다.
+  // 다각도 외관 확인. 이 확인이 있던 시기(2026-10-03에 점검 흐름에서 뺐다)의
+  // 기록에만 값이 있고 나머지는 빈 칸이다. 열을 지우면 뒤 열의 자리가 밀려
+  // 이전에 내보낸 CSV와 맞지 않으므로 그대로 둔다.
   //
   // status는 suspected / not_observed / unassessable 셋뿐이다. "손상 없음"에
   // 해당하는 값이 없다는 것이 이 열의 요점이다 — not_observed는 찾지 못했다는

@@ -84,22 +84,15 @@ describe('CaptureQualityNotice — 경고', () => {
     );
   });
 
-  it('여러 장이 있는 화면에서는 어느 사진인지 이름에 붙인다', () => {
-    render(
-      <CaptureQualityNotice
-        review={review()}
-        subject="가장자리"
-        onUseAnyway={vi.fn()}
-      />,
-    );
+  it('다시 찍기를 넘기지 않으면 그 버튼을 두지 않는다', () => {
+    render(<CaptureQualityNotice review={review()} onUseAnyway={vi.fn()} />);
 
     expect(
-      screen.getByRole('region', { name: '가장자리 사진 상태 확인' }),
+      screen.getByRole('region', { name: '사진 상태 확인' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: '가장자리 사진을 그래도 사용' }),
+      screen.getByRole('button', { name: '그래도 이 사진 사용' }),
     ).toBeInTheDocument();
-    // 다시 찍기를 넘기지 않으면 버튼을 두지 않는다(자리 버튼이 이미 있다).
     expect(
       screen.queryByRole('button', { name: '다시 찍기' }),
     ).not.toBeInTheDocument();

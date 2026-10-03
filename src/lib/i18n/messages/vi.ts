@@ -283,36 +283,10 @@ export const vi: Messages = {
   'wheelCondition.stopBody':
     'Đã phát hiện vấn đề với đá mài. Không được lắp. Hãy thay bằng đá mài khác còn dùng được và kiểm tra lại.',
 
-  'exam.title': 'Kiểm tra bề ngoài nhiều góc',
-  'exam.boundary':
-    'AI chỉ tìm những dấu hiệu bất thường nhìn thấy được trong ảnh. AI không xác nhận là không có hư hỏng, cũng không xác nhận là an toàn để sử dụng.',
-  'exam.microCrack':
-    'Vết nứt nhỏ và nứt bên trong không thể kiểm tra bằng ảnh. Hãy gõ nhẹ và nghe âm thanh trước khi lắp.',
-  'exam.frontReused': 'Mặt trước dùng lại ảnh nhãn bạn vừa chụp.',
   'exam.view.front': 'Mặt trước (nhãn)',
   'exam.view.back': 'Toàn bộ mặt sau',
-  'exam.view.backHint': 'Chụp sao cho toàn bộ mặt sau nằm gọn trong một ảnh.',
   'exam.view.edge': 'Cạnh ngoài',
-  'exam.view.edgeHint':
-    'Chụp vành ngoài từ bên hông. Đây là nơi dễ thấy mẻ và vỡ.',
   'exam.view.bore': 'Lỗ tâm và phần lắp',
-  'exam.view.boreHint':
-    'Chụp cận cảnh lỗ tâm và vùng quanh nó — phần tiếp xúc với trục.',
-  'exam.capture': 'Chụp ảnh',
-  'exam.gallery': 'Thư viện',
-  'exam.retakeView': 'Chụp lại {view}',
-  'exam.photoReady': 'Đã có ảnh',
-  'exam.photoMissing': 'Chưa có',
-  'exam.analyze': 'Kiểm tra bằng 4 ảnh',
-  'exam.analyzing': 'Đang kiểm tra ảnh...',
-  'exam.missing':
-    'Cần đủ ảnh mặt sau, cạnh ngoài và lỗ tâm thì mới kiểm tra được.',
-  'exam.status.suspected':
-    'Ảnh cho thấy dấu hiệu bất thường. Hãy kiểm tra trực tiếp đá mài thật.',
-  'exam.status.notObserved':
-    'Không tìm thấy bất thường rõ ràng. Hãy tự kiểm tra mặt trước, mặt sau, cạnh ngoài và lỗ tâm của đá mài thật.',
-  'exam.status.unassessable':
-    'Không thể đánh giá bằng những ảnh này. Hãy chụp lại theo hướng dẫn bên dưới hoặc kiểm tra trực tiếp.',
   'exam.findingConfidence': 'Mức độ chắc chắn của AI: {confidence}',
   'exam.finding.crack': 'Nghi ngờ có vết nứt',
   'exam.finding.chip': 'Nghi ngờ bị mẻ hoặc bong mảnh',
@@ -325,33 +299,7 @@ export const vi: Messages = {
   'exam.quality.glare': 'bị lóa',
   'exam.quality.darkness': 'quá tối',
   'exam.quality.incompleteView': 'chưa lấy đủ phần cần xem',
-  'exam.retakeRequired':
-    'Có ảnh không đọc được. Hãy chụp lại những ảnh liệt kê bên dưới.',
-  'exam.acknowledge': 'Tôi đã kiểm tra vị trí được chỉ ra trên đá mài thật.',
-  'exam.blocked': 'Xác nhận dấu hiệu được báo rồi mới đi tiếp được.',
-  'exam.failed': 'AI không kiểm tra được ảnh.',
-  'exam.failedFallback':
-    'Tiếp tục mà không có kiểm tra của AI. Hãy tự kiểm tra mặt trước, mặt sau, cạnh ngoài và lỗ tâm của đá mài.',
-  'exam.block.photosMissing':
-    'Hãy thêm ảnh mặt sau, cạnh ngoài, lỗ tâm và chạy kiểm tra rồi mới đi tiếp.',
-  'exam.block.notAnalyzed':
-    'Hãy chạy kiểm tra trên những ảnh đã thêm rồi mới đi tiếp.',
-  'exam.block.retakeRequired':
-    'Hãy chụp lại những ảnh không đọc được rồi mới đi tiếp.',
-  'exam.block.needsAcknowledge':
-    'Hãy đánh dấu là đã kiểm tra dấu hiệu được báo trên đá mài thật rồi mới đi tiếp.',
 
-  'exam.block.needsManualContinue':
-    'Hãy đánh dấu là bạn tiếp tục bằng cách tự kiểm tra, không có phần kiểm tra của AI, rồi mới đi tiếp.',
-  'exam.progress': 'Ảnh bổ sung đã có: {done} / {total}',
-  'exam.captureView': 'Chụp ảnh {view}',
-  'exam.galleryView': 'Chọn ảnh {view} từ thư viện',
-  'exam.replaceNote':
-    'Khi thay ảnh, kết quả kiểm tra từ ảnh đó và phần bạn đã đánh dấu sẽ bị xóa. Bạn phải kiểm tra lại.',
-  'exam.manualContinue':
-    'Tiếp tục bằng cách tự kiểm tra, không có phần kiểm tra của AI.',
-  'exam.manualContinueHint':
-    'Hãy tự nhìn mặt trước, mặt sau, mép và lỗ tâm của đá mài. AI không xác nhận điều gì cả.',
   'exam.notRun.networkError':
     'AI không xem được ảnh — không kết nối được tới máy chủ.',
   'exam.notRun.apiError': 'AI không xem được ảnh — máy chủ trả về lỗi.',
@@ -384,10 +332,7 @@ export const vi: Messages = {
   'photo.zoomHint':
     'Vuốt để di chuyển ảnh đã phóng to. Với bàn phím, đặt tiêu điểm vào vùng ảnh rồi dùng các phím mũi tên. Phóng to không làm ảnh rõ hơn.',
 
-  'exam.block.captureReview':
-    'Với ảnh có cảnh báo chất lượng, hãy chụp lại hoặc chọn vẫn dùng rồi mới kiểm tra được.',
   'captureCheck.title': 'Kiểm tra chất lượng ảnh',
-  'captureCheck.titleFor': 'Kiểm tra chất lượng ảnh: {subject}',
   'captureCheck.warning.lowResolution': 'Độ phân giải của ảnh thấp.',
   'captureCheck.warning.blur': 'Ảnh có vẻ bị mờ.',
   'captureCheck.warning.tooDark': 'Ảnh quá tối.',
@@ -407,7 +352,6 @@ export const vi: Messages = {
     'Không thể tiếp tục với ảnh không mở được. Hãy chụp lại hoặc chọn ảnh khác.',
   'captureCheck.retake': 'Chụp lại',
   'captureCheck.useAnyway': 'Vẫn dùng ảnh này',
-  'captureCheck.useAnywayFor': 'Vẫn dùng ảnh {subject}',
   'captureCheck.usedAnyway': 'Bạn đã xem cảnh báo và chọn dùng ảnh này.',
 
   'work.material.label': 'Vật liệu',
@@ -1125,7 +1069,7 @@ export const vi: Messages = {
   'draft.warn.photos':
     'Không khôi phục được một số ảnh. Hãy chụp lại các ảnh cần thiết.',
   'draft.warn.exam':
-    'Thiếu ảnh kiểm tra nhiều góc nên phải làm lại bước đá mài.',
+    'Ảnh bổ sung (mặt sau, cạnh ngoài, lỗ tâm) và kết quả AI kiểm tra bề ngoài của phiên bản trước không còn được dùng nên không được khôi phục. Các phần còn lại vẫn tiếp tục như cũ.',
   'draft.warn.trialRun':
     'Không thể tiếp tục lần chạy thử đang dở. Hãy làm lại từ đầu.',
   'draft.warn.unreadable':

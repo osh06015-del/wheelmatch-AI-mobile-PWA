@@ -251,31 +251,10 @@ export const zh: Messages = {
   'wheelCondition.stopBody':
     '已确认砂轮状态存在问题。请勿安装，更换其他可用砂轮后重新检查。',
 
-  'exam.title': '多角度外观确认',
-  'exam.boundary':
-    'AI 只查找照片中可见的异常迹象。不确认没有损伤，也不确认可以安全使用。',
-  'exam.microCrack': '微裂纹和内部裂纹无法通过照片确认。安装前请做敲击音检查。',
-  'exam.frontReused': '正面直接使用刚才拍摄的标签照片。',
   'exam.view.front': '正面（标签）',
   'exam.view.back': '背面整体',
-  'exam.view.backHint': '请让砂轮背面整体完整地进入一张照片。',
   'exam.view.edge': '边缘',
-  'exam.view.edgeHint': '从侧面拍摄外圆面。缺口和破损通常出现在这里。',
   'exam.view.bore': '中心孔与安装部位',
-  'exam.view.boreHint': '近距离拍摄中心孔及其周围 — 与主轴接触的部位。',
-  'exam.capture': '拍照',
-  'exam.gallery': '相册',
-  'exam.retakeView': '重拍{view}',
-  'exam.photoReady': '已有照片',
-  'exam.photoMissing': '尚未添加',
-  'exam.analyze': '用 4 张照片确认',
-  'exam.analyzing': '正在确认照片...',
-  'exam.missing': '需要补齐背面、边缘和中心孔照片才能确认。',
-  'exam.status.suspected': '照片中可见异常迹象。请直接检查实际砂轮。',
-  'exam.status.notObserved':
-    '未找到明显异常。请亲自确认实际砂轮的正面、背面、边缘和中心孔。',
-  'exam.status.unassessable':
-    '仅凭这些照片无法判断。请按下面的提示重拍，或直接检查实物。',
   'exam.findingConfidence': 'AI 确信程度：{confidence}',
   'exam.finding.crack': '疑似裂纹',
   'exam.finding.chip': '疑似缺口或掉块',
@@ -288,29 +267,7 @@ export const zh: Messages = {
   'exam.quality.glare': '反光',
   'exam.quality.darkness': '过暗',
   'exam.quality.incompleteView': '需要查看的部位未入镜',
-  'exam.retakeRequired': '有照片无法判读。请重拍下列照片。',
-  'exam.acknowledge': '我已在实际砂轮上确认了标示的位置。',
-  'exam.blocked': '确认所报告的迹象后才能继续。',
-  'exam.failed': 'AI 未能确认照片。',
-  'exam.failedFallback':
-    '将在没有 AI 确认的情况下继续。请亲自确认砂轮的正面、背面、边缘和中心孔。',
-  'exam.block.photosMissing':
-    '请添加背面、边缘、中心孔照片并执行确认后再继续。',
-  'exam.block.notAnalyzed': '请对已添加的照片执行确认后再继续。',
-  'exam.block.retakeRequired': '请重拍无法判读的照片后再继续。',
-  'exam.block.needsAcknowledge':
-    '请标示已在实际砂轮上确认所报告的迹象后再继续。',
 
-  'exam.block.needsManualContinue':
-    '请标示将在没有 AI 检查的情况下由作业者自行检查后继续。',
-  'exam.progress': '已准备的补充照片：{done} / {total}',
-  'exam.captureView': '拍摄{view}',
-  'exam.galleryView': '从相册选择{view}',
-  'exam.replaceNote':
-    '更换照片后，基于该照片的检查结果和您的确认标示都会清除，需要重新检查。',
-  'exam.manualContinue': '在没有 AI 检查的情况下，由作业者自行检查后继续。',
-  'exam.manualContinueHint':
-    '请亲自查看砂轮的正面、背面、边缘和中心孔。AI 没有确认任何内容。',
   'exam.notRun.networkError': 'AI 未能查看照片 — 无法连接服务器。',
   'exam.notRun.apiError': 'AI 未能查看照片 — 服务器返回错误。',
   'exam.notRun.offline': 'AI 未能查看照片 — 设备处于离线状态。',
@@ -337,10 +294,7 @@ export const zh: Messages = {
   'photo.zoomHint':
     '滑动可移动放大的照片。使用键盘时，将焦点移至照片区域，再用方向键移动。放大不会提高照片清晰度。',
 
-  'exam.block.captureReview':
-    '有照片质量警告的照片，需要重新拍摄或选择仍然使用后，才能进行确认。',
   'captureCheck.title': '照片质量检查',
-  'captureCheck.titleFor': '照片质量检查：{subject}',
   'captureCheck.warning.lowResolution': '照片分辨率较低。',
   'captureCheck.warning.blur': '照片看起来模糊。',
   'captureCheck.warning.tooDark': '照片太暗。',
@@ -358,7 +312,6 @@ export const zh: Messages = {
     '无法打开的照片不能继续使用。请重新拍摄或选择其他照片。',
   'captureCheck.retake': '重新拍摄',
   'captureCheck.useAnyway': '仍然使用这张照片',
-  'captureCheck.useAnywayFor': '仍然使用{subject}照片',
   'captureCheck.usedAnyway': '已查看警告并选择使用这张照片。',
 
   'work.material.label': '材料',
@@ -1001,7 +954,8 @@ export const zh: Messages = {
   'draft.discard': '删除并重新开始',
   'draft.warn.schema': '保存格式不同，仅恢复了部分数值。请重新输入缺少的数值。',
   'draft.warn.photos': '部分照片未能恢复。请重新拍摄所需照片。',
-  'draft.warn.exam': '缺少多角度检查照片，需要重新进行砂轮步骤。',
+  'draft.warn.exam':
+    '旧版本中添加的附加照片（背面、边缘、中心孔）和 AI 外观确认结果已不再使用，未予恢复。其余内容照常继续。',
   'draft.warn.trialRun': '进行中的试运转无法继续。请从头重新开始。',
   'draft.warn.unreadable': '无法读取已保存的进度。请删除后重新开始。',
   'draft.saveFailed':

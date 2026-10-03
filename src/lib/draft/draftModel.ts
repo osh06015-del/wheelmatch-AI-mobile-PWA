@@ -7,7 +7,8 @@
 //   · 최종 기록(InspectionRecord)과 섞지 않는다. draft는 판정 결과를 담지 않는다 —
 //     이어하면 지금 규칙엔진으로 다시 대조한다. 저장된 최종 기록은 다시 계산하지 않는다.
 //   · 형태가 어긋난 값은 추정해 채우지 않고 버린다. 버린 것이 있으면 경고한다.
-//   · 사진과 함께 있어야 뜻이 있는 값(다각도 확인 결과)은 사진이 없으면 버린다.
+//   · 지금 점검 흐름에 없는 단계의 값(다각도 외관 확인 — 2026-10-03에 뺐다)은
+//     되살리지 않는다. 받을 화면이 없는 값을 기록에 실어 보내지 않는다.
 //   · 진행 중이던 시험운전은 되살리지 않는다 — 앱이 닫혀 있던 동안 작업자가
 //     기계를 지켜봤는지 알 수 없다.
 
@@ -21,10 +22,10 @@ import { isGrinderConditionComplete } from '@/lib/safety/grinderCondition';
 import { isWheelConditionComplete } from '@/lib/safety/wheelCondition';
 import {
   NO_OFFLINE_SLOTS,
+  type CaptureChecks,
   type InspectionSnapshot,
   type OfflineSlots,
 } from '@/lib/state/inspection';
-import { wheelExamRequired } from '@/lib/vision/wheelExamSafety';
 
 /** draft 형태를 바꾸면 올린다. 다른 버전은 형태를 하나하나 확인해 가능한 값만 살린다 */
 export const DRAFT_SCHEMA_VERSION = 1;
@@ -32,28 +33,35 @@ export const DRAFT_SCHEMA_VERSION = 1;
 /** 진행 중 점검은 하나뿐이다 */
 export const DRAFT_ID = 'current';
 
-export type DraftPhotoSlot =
-  'grinder' | 'wheel' | 'wheelBack' | 'wheelEdge' | 'wheelBore';
+export type DraftPhotoSlot = 'grinder' | 'wheel';
 
-const PHOTO_FIELD: Readonly<Record<DraftPhotoSlot, keyof InspectionSnapshot>> =
-  {
-    grinder: 'grinderImage',
-    wheel: 'wheelImage',
-    wheelBack: 'wheelBackImage',
-    wheelEdge: 'wheelEdgeImage',
-    wheelBore: 'wheelBoreImage',
-  };
+const PHOTO_FIELD: Readonly<
+  Record<DraftPhotoSlot, 'grinderImage' | 'wheelImage'>
+> = {
+  grinder: 'grinderImage',
+  wheel: 'wheelImage',
+};
 
 const PHOTO_SLOTS = Object.keys(PHOTO_FIELD) as DraftPhotoSlot[];
+
+/**
+ * 다각도 외관 확인이 있던 시기(2026-10-03 이전)의 draft에만 남아 있는 자리.
+ * 지금은 받는 화면이 없어 되살리지 않는다 — 있었다는 것만 알아보고 경고한다.
+ */
+const LEGACY_EXAM_PHOTO_SLOTS: readonly string[] = [
+  'wheelBack',
+  'wheelEdge',
+  'wheelBore',
+];
+const LEGACY_EXAM_STATE_KEYS: readonly string[] = [
+  'wheelExam',
+  'wheelExamNotRun',
+];
 
 /** 사진을 뺀 상태. 사진 Blob은 photos에 따로 둔다 */
 export type DraftState = Omit<
   InspectionSnapshot,
-  | 'grinderImage'
-  | 'wheelImage'
-  | 'wheelBackImage'
-  | 'wheelEdgeImage'
-  | 'wheelBoreImage'
+  'grinderImage' | 'wheelImage'
 >;
 
 export interface InspectionDraft {
@@ -74,7 +82,7 @@ export interface InspectionDraft {
 export type DraftWarning =
   | 'schema' // 형태가 달라 일부 값을 버렸다
   | 'photos' // 사진 일부를 되살리지 못했다
-  | 'exam' // 다각도 확인 사진이 없어 숫돌 단계를 버렸다
+  | 'exam' // 이전 버전의 다각도 확인(추가 사진·AI 결과)을 되살리지 않았다
   | 'trialRun' // 진행 중이던 시험운전을 버렸다
   | 'unreadable'; // 읽을 수 없는 draft다
 
@@ -97,9 +105,6 @@ export function buildDraft(
     /* eslint-disable @typescript-eslint/no-unused-vars -- 사진 필드를 state에서 빼는 목적의 구조분해다. */
     grinderImage,
     wheelImage,
-    wheelBackImage,
-    wheelEdgeImage,
-    wheelBoreImage,
     /* eslint-enable @typescript-eslint/no-unused-vars */
     ...state
   } = snapshot;
@@ -165,6 +170,21 @@ const isAnswerMap = (value: unknown): boolean =>
   );
 
 const isPlainObject = (value: unknown): boolean => isObject(value);
+
+/**
+ * 사진 상태 확인 기록에서 명판·라벨 자리만 남긴다.
+ *
+ * 이전 버전 draft에는 다각도 확인 자리(wheelBack·wheelEdge·wheelBore)의 기록이
+ * 섞여 있을 수 있다. 그 사진은 되살리지 않으므로 기록만 남기면 없는 사진에 대한
+ * 기록이 저장된다.
+ */
+function labelCaptureChecks(raw: Record<string, unknown>): CaptureChecks {
+  const kept: Record<string, unknown> = {};
+  for (const slot of PHOTO_SLOTS) {
+    if (isObject(raw[slot])) kept[slot] = raw[slot];
+  }
+  return kept as CaptureChecks;
+}
 
 const isOfflineSlots: Guard<OfflineSlots> = (value): value is OfflineSlots =>
   isObject(value) &&
@@ -236,21 +256,12 @@ export function recoverDraft(raw: unknown): DraftRecovery {
     trialRun: null,
     grinderImage: null,
     wheelImage: null,
-    wheelBackImage: null,
-    wheelEdgeImage: null,
-    wheelBoreImage: null,
-    wheelExam: pick('wheelExam', isPlainObject, null),
-    wheelExamNotRun: pick('wheelExamNotRun', isPlainObject, null),
-    wheelExamAcknowledged: source.wheelExamAcknowledged === true,
     grinderCaptureMetrics: pick('grinderCaptureMetrics', isPlainObject, null),
     wheelCaptureMetrics: pick('wheelCaptureMetrics', isPlainObject, null),
     grinderOcrTelemetry: pick('grinderOcrTelemetry', isPlainObject, null),
     wheelOcrTelemetry: pick('wheelOcrTelemetry', isPlainObject, null),
-    captureChecks: pick('captureChecks', isPlainObject, {}),
-    wheelExamCaptureMetrics: pick(
-      'wheelExamCaptureMetrics',
-      isPlainObject,
-      null,
+    captureChecks: labelCaptureChecks(
+      pick<Record<string, unknown>>('captureChecks', isPlainObject, {}),
     ),
     // 오프라인 여부를 읽지 못하면 더 엄격한 쪽(오프라인)으로 본다 — 모르는 것을
     // 온라인으로 추정하면 적합이 근거 없이 열린다.
@@ -279,13 +290,33 @@ export function recoverDraft(raw: unknown): DraftRecovery {
   for (const slot of PHOTO_SLOTS) {
     const blob = photos[slot];
     if (blob instanceof Blob) {
-      (snapshot as unknown as Record<string, unknown>)[PHOTO_FIELD[slot]] =
-        blob;
+      snapshot[PHOTO_FIELD[slot]] = blob;
     } else if (expected.includes(slot)) {
       warnings.add('photos');
     }
   }
   if (raw.photosOmitted === true && expected.length > 0) warnings.add('photos');
+
+  // 이전 버전의 다각도 외관 확인. 결과도 사진도 되살리지 않는다 — 그 단계가 이제
+  // 없다. 다만 조용히 버리지는 않는다: 작업자는 찍어 둔 사진이 기록에 들어갈
+  // 것으로 알고 있다. 숫돌 단계는 그대로 둔다(다시 하게 만들 이유가 없다).
+  // 그 확인이 올린 외관 의심은 숫돌 규격(wheel.visibleDamage)에 이미 들어 있어
+  // 그대로 이어진다 — 의심을 덜어내지 않는다.
+  const savedSlots: unknown[] = Array.isArray(raw.photoSlots)
+    ? raw.photoSlots
+    : [];
+  if (
+    LEGACY_EXAM_STATE_KEYS.some(
+      (key) => source[key] !== undefined && source[key] !== null,
+    ) ||
+    LEGACY_EXAM_PHOTO_SLOTS.some(
+      (slot) =>
+        (photos[slot] !== undefined && photos[slot] !== null) ||
+        savedSlots.includes(slot),
+    )
+  ) {
+    warnings.add('exam');
+  }
 
   // 앞 단계가 없으면 뒤 단계는 근거가 없다.
   if (snapshot.grinder === null) {
@@ -293,18 +324,6 @@ export function recoverDraft(raw: unknown): DraftRecovery {
     dropWheelStep(snapshot);
   }
 
-  // 다각도 확인을 요구하는 종류인데 그 사진이 없으면 확인 결과만 남기지 않는다.
-  // 결과만 되살리면 사진 없이 확인된 것처럼 보인다 — 숫돌 단계를 다시 하게 한다.
-  if (
-    snapshot.wheel !== null &&
-    wheelExamRequired(snapshot.wheel.wheelType) &&
-    (snapshot.wheelBackImage === null ||
-      snapshot.wheelEdgeImage === null ||
-      snapshot.wheelBoreImage === null)
-  ) {
-    warnings.add('exam');
-    dropWheelStep(snapshot);
-  }
   if (snapshot.wheel === null) dropWheelStep(snapshot);
 
   return {
@@ -321,15 +340,8 @@ function dropWheelStep(snapshot: InspectionSnapshot): void {
   snapshot.wheelOcr = null;
   snapshot.wheelCondition = null;
   snapshot.wheelImage = null;
-  snapshot.wheelBackImage = null;
-  snapshot.wheelEdgeImage = null;
-  snapshot.wheelBoreImage = null;
-  snapshot.wheelExam = null;
-  snapshot.wheelExamNotRun = null;
-  snapshot.wheelExamAcknowledged = false;
   snapshot.wheelCaptureMetrics = null;
   snapshot.wheelOcrTelemetry = null;
-  snapshot.wheelExamCaptureMetrics = null;
   snapshot.checklist = null;
   snapshot.trialRunRecord = null;
   snapshot.offlineSlots = { ...snapshot.offlineSlots, wheel: false };

@@ -289,37 +289,10 @@ export const id: Messages = {
   'wheelCondition.stopBody':
     'Ditemukan masalah pada batu gerinda. Jangan pasang. Ganti dengan batu gerinda lain yang layak dan periksa lagi.',
 
-  'exam.title': 'Pemeriksaan tampilan dari beberapa sudut',
-  'exam.boundary':
-    'AI hanya mencari tanda kelainan yang terlihat di foto. AI tidak memastikan tidak ada kerusakan, dan tidak memastikan aman digunakan.',
-  'exam.microCrack':
-    'Retak halus dan retak dalam tidak bisa diperiksa lewat foto. Lakukan uji ketuk sebelum memasang.',
-  'exam.frontReused': 'Sisi depan memakai foto label yang baru saja diambil.',
   'exam.view.front': 'Sisi depan (label)',
   'exam.view.back': 'Seluruh sisi belakang',
-  'exam.view.backHint':
-    'Ambil foto sehingga seluruh sisi belakang masuk dalam satu bingkai.',
   'exam.view.edge': 'Tepi luar',
-  'exam.view.edgeHint':
-    'Foto tepi luar dari samping. Di sinilah gompal dan pecah terlihat.',
   'exam.view.bore': 'Lubang tengah dan area pemasangan',
-  'exam.view.boreHint':
-    'Foto dari dekat lubang tengah dan sekelilingnya — bagian yang menempel pada as.',
-  'exam.capture': 'Kamera',
-  'exam.gallery': 'Galeri',
-  'exam.retakeView': 'Foto ulang {view}',
-  'exam.photoReady': 'Foto sudah ada',
-  'exam.photoMissing': 'Belum ada',
-  'exam.analyze': 'Periksa dengan 4 foto',
-  'exam.analyzing': 'Sedang memeriksa foto...',
-  'exam.missing':
-    'Lengkapi foto sisi belakang, tepi luar, dan lubang tengah agar bisa diperiksa.',
-  'exam.status.suspected':
-    'Ada tanda kelainan yang terlihat di foto. Periksa langsung batu gerinda aslinya.',
-  'exam.status.notObserved':
-    'Tidak ditemukan kelainan yang jelas. Periksa sendiri sisi depan, belakang, tepi luar, dan lubang tengah batu gerinda asli.',
-  'exam.status.unassessable':
-    'Foto ini tidak memungkinkan penilaian. Foto ulang sesuai petunjuk di bawah, atau periksa langsung.',
   'exam.findingConfidence': 'Tingkat keyakinan AI: {confidence}',
   'exam.finding.crack': 'Dugaan retak',
   'exam.finding.chip': 'Dugaan gompal atau serpihan lepas',
@@ -334,35 +307,7 @@ export const id: Messages = {
   'exam.quality.darkness': 'terlalu gelap',
   'exam.quality.incompleteView':
     'bagian yang perlu dilihat tidak masuk bingkai',
-  'exam.retakeRequired':
-    'Ada foto yang tidak terbaca. Foto ulang yang tercantum di bawah.',
-  'exam.acknowledge':
-    'Saya sudah memeriksa bagian yang ditandai pada batu gerinda asli.',
-  'exam.blocked':
-    'Anda bisa melanjutkan setelah mengonfirmasi tanda yang dilaporkan.',
-  'exam.failed': 'AI tidak dapat memeriksa foto.',
-  'exam.failedFallback':
-    'Lanjut tanpa pemeriksaan AI. Periksa sendiri sisi depan, belakang, tepi luar, dan lubang tengah batu gerinda.',
-  'exam.block.photosMissing':
-    'Tambahkan foto sisi belakang, tepi luar, dan lubang tengah lalu jalankan pemeriksaan sebelum lanjut.',
-  'exam.block.notAnalyzed':
-    'Jalankan pemeriksaan pada foto yang sudah ditambahkan sebelum lanjut.',
-  'exam.block.retakeRequired':
-    'Foto ulang gambar yang tidak terbaca sebelum lanjut.',
-  'exam.block.needsAcknowledge':
-    'Tandai bahwa Anda sudah memeriksa tanda yang dilaporkan pada batu gerinda asli sebelum lanjut.',
 
-  'exam.block.needsManualContinue':
-    'Tandai bahwa Anda lanjut dengan pemeriksaan sendiri, tanpa pemeriksaan AI, sebelum melanjutkan.',
-  'exam.progress': 'Foto tambahan siap: {done} / {total}',
-  'exam.captureView': 'Ambil foto {view}',
-  'exam.galleryView': 'Pilih foto {view} dari galeri',
-  'exam.replaceNote':
-    'Mengganti foto akan menghapus hasil pemeriksaan dari foto itu beserta tanda konfirmasi Anda. Anda harus memeriksa lagi.',
-  'exam.manualContinue':
-    'Lanjut dengan pemeriksaan sendiri, tanpa pemeriksaan AI.',
-  'exam.manualContinueHint':
-    'Lihat sendiri sisi depan, belakang, tepi, dan lubang tengah batu gerinda. AI tidak memastikan apa pun.',
   'exam.notRun.networkError':
     'AI tidak dapat melihat foto — server tidak terjangkau.',
   'exam.notRun.apiError':
@@ -401,10 +346,7 @@ export const id: Messages = {
   'photo.zoomHint':
     'Geser untuk melihat bagian foto yang diperbesar. Dengan keyboard, fokuskan area foto lalu gunakan tombol panah. Memperbesar tidak menambah kejernihan foto.',
 
-  'exam.block.captureReview':
-    'Untuk foto dengan peringatan kualitas, ambil ulang atau pilih tetap gunakan sebelum menjalankan pemeriksaan.',
   'captureCheck.title': 'Pemeriksaan kualitas foto',
-  'captureCheck.titleFor': 'Pemeriksaan kualitas foto: {subject}',
   'captureCheck.warning.lowResolution': 'Resolusi foto rendah.',
   'captureCheck.warning.blur': 'Foto tampak buram.',
   'captureCheck.warning.tooDark': 'Foto terlalu gelap.',
@@ -426,7 +368,6 @@ export const id: Messages = {
     'Tidak dapat melanjutkan dengan foto yang tidak bisa dibuka. Ambil ulang atau pilih foto lain.',
   'captureCheck.retake': 'Ambil ulang',
   'captureCheck.useAnyway': 'Tetap gunakan foto ini',
-  'captureCheck.useAnywayFor': 'Tetap gunakan foto {subject}',
   'captureCheck.usedAnyway':
     'Anda sudah melihat peringatan dan memilih memakai foto ini.',
 
@@ -1159,7 +1100,7 @@ export const id: Messages = {
   'draft.warn.photos':
     'Beberapa foto tidak dapat dipulihkan. Ambil ulang foto yang diperlukan.',
   'draft.warn.exam':
-    'Foto pemeriksaan multi-sudut hilang, jadi langkah batu gerinda harus diulang.',
+    'Foto tambahan (sisi belakang, tepi luar, lubang tengah) dan hasil pemeriksaan tampilan oleh AI dari versi sebelumnya tidak lagi dipakai dan tidak dipulihkan. Bagian lainnya tetap dilanjutkan.',
   'draft.warn.trialRun':
     'Uji jalan yang sedang berlangsung tidak dapat dilanjutkan. Mulai lagi dari awal.',
   'draft.warn.unreadable':

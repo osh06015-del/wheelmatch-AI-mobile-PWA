@@ -1,6 +1,6 @@
 'use client';
 
-// 촬영 직후 사진 상태 경고. 그라인더 명판·숫돌 라벨·다각도 확인 사진이 함께 쓴다.
+// 촬영 직후 사진 상태 경고. 그라인더 명판과 숫돌 라벨 사진이 함께 쓴다.
 //
 // 경고는 **사진**에 대한 것이다. 명판·숫돌의 상태나 사용 안전을 말하지 않고,
 // 경고가 없다고 "좋은 사진"이라고도 말하지 않는다(경고가 없으면 아무것도
@@ -31,27 +31,19 @@ export interface CaptureQualityNoticeProps {
   review: CaptureReview | null;
   /** 경고를 보고도 이 사진을 쓴다 */
   onUseAnyway: () => void;
-  /**
-   * 다시 찍기. 넘기지 않으면 버튼을 그리지 않는다 — 다각도 확인 자리처럼
-   * 바로 위에 자리별 촬영 버튼이 이미 있는 곳에서는 같은 버튼을 두 번 두지 않는다.
-   */
+  /** 다시 찍기. 넘기지 않으면 버튼을 그리지 않는다 */
   onRetake?: () => void;
-  /** 이 경고가 어느 사진에 대한 것인지. 한 화면에 여러 장이 있을 때 붙인다 */
-  subject?: string;
 }
 
 export function CaptureQualityNotice({
   review,
   onUseAnyway,
   onRetake,
-  subject,
 }: CaptureQualityNoticeProps) {
   const { t } = useLocale();
   if (!review) return null;
 
-  const title = subject
-    ? t('captureCheck.titleFor', { subject })
-    : t('captureCheck.title');
+  const title = t('captureCheck.title');
 
   if (review.decodeFailed) {
     return (
@@ -60,7 +52,6 @@ export function CaptureQualityNotice({
           role="alert"
           className="text-base font-semibold leading-relaxed text-red-100"
         >
-          {subject ? `${subject} — ` : ''}
           {t('error.imageDecode')}
         </p>
         <p className="text-base leading-relaxed text-red-100">
@@ -130,11 +121,6 @@ export function CaptureQualityNotice({
           <button
             type="button"
             onClick={onUseAnyway}
-            aria-label={
-              subject
-                ? t('captureCheck.useAnywayFor', { subject })
-                : t('captureCheck.useAnyway')
-            }
             className="min-h-14 rounded-lg border border-yellow-500/60 text-lg font-semibold text-yellow-100 active:bg-yellow-500/20"
           >
             {t('captureCheck.useAnyway')}

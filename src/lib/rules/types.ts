@@ -276,8 +276,6 @@ export interface AccessoryProfile {
    * 제안과 어긋난 것이 아니라 좁힌 것이다.
    */
   aiSuggestions: readonly WheelType[];
-  /** 필요한 사진. front는 라벨 사진이다 */
-  requiredPhotos: readonly WheelExamView[];
   /** 근거 문서. version.ts의 RULE_SOURCES 식별자 */
   sources: readonly AccessorySourceId[];
   /** Profile 버전. 요구를 바꾸면 올린다 */
@@ -344,10 +342,12 @@ export type ProfileConditionCode =
 export type VisibleDamage = 'suspected' | 'none_visible' | 'unknown';
 
 // ─────────────────────────────────────────────────────────────
-// 다각도 외관 이상 징후 확인 (WheelExam)
+// 다각도 외관 이상 징후 확인 (WheelExam) — **이전 기록을 읽기 위한 타입**
 //
-// 라벨 한 장으로는 뒷면·가장자리·중심구멍을 볼 수 없다. 앞면(라벨 사진)에
-// 뒷면·가장자리·중심구멍 사진을 더해 한 번에 살펴본 결과다.
+// 앞면(라벨 사진)에 뒷면·가장자리·중심구멍 사진을 더해 AI가 한 번에 살펴보던
+// 단계다. 2026-10-03에 점검 흐름에서 뺐다 — 이제 새 점검은 이 값을 만들지 않는다.
+// 그 전에 저장된 기록과 백업에는 결과와 사진이 남아 있으므로, 이력·문서·CSV·
+// 백업이 그것을 그대로 읽고 보여줄 수 있게 타입은 남겨 둔다.
 //
 // **이 결과는 손상이 없다고 말하지 않는다.** 보이는 이상 징후를 찾아 알릴
 // 뿐이고, 찾지 못한 경우는 "확인되지 않음"으로만 남는다. 그래서 상태에
@@ -432,7 +432,7 @@ export interface WheelExamResult {
   photoQuality: WheelExamPhotoQuality[];
   /** 어느 모델이 보았는지. 되짚을 수 없는 기록은 근거가 되지 못한다 */
   model: string | null;
-  /** 어느 지시문으로 물었는지 (src/lib/vision/wheelExamSchema.ts) */
+  /** 어느 지시문으로 물었는지. 지시문 버전 문자열이다 */
   promptVersion: string;
   analyzedAt: string;
 }
@@ -724,7 +724,12 @@ export interface CaptureQualityMetrics {
 export type CaptureQualityWarning =
   'low_resolution' | 'blur' | 'too_dark' | 'overexposed';
 
-/** 사진 상태 확인을 받는 촬영 자리. */
+/**
+ * 사진 상태 확인을 받는 촬영 자리.
+ *
+ * 지금 점검은 명판(grinder)·라벨(wheel) 두 자리만 쓴다. wheelBack·wheelEdge·
+ * wheelBore는 다각도 확인이 있던 시기(2026-10-03 이전)의 기록에 남아 있는 자리다.
+ */
 export type CaptureSlot =
   'grinder' | 'wheel' | 'wheelBack' | 'wheelEdge' | 'wheelBore';
 
@@ -810,7 +815,10 @@ export interface InspectionRecord {
    */
   grinderCaptureMetrics?: CaptureQualityMetrics;
   wheelCaptureMetrics?: CaptureQualityMetrics;
-  /** 다각도 확인 사진의 원시 측정값(검증용). 이 기능 도입 전 기록에는 없다 */
+  /**
+   * 다각도 확인 사진의 원시 측정값(검증용). 다각도 확인이 있던 시기
+   * (2026-10-03 이전)의 기록에만 있다
+   */
   wheelBackCaptureMetrics?: CaptureQualityMetrics;
   wheelEdgeCaptureMetrics?: CaptureQualityMetrics;
   wheelBoreCaptureMetrics?: CaptureQualityMetrics;
@@ -826,21 +834,25 @@ export interface InspectionRecord {
   grinderOcrTelemetry?: OcrTelemetry;
   wheelOcrTelemetry?: OcrTelemetry;
   /**
-   * 다각도 외관 확인의 AI 원본 결과. 이 기능 도입 전 기록에는 없다.
+   * 다각도 외관 확인의 AI 원본 결과. 다각도 확인이 있던 시기(2026-10-03 이전)의
+   * 기록에만 있다 — 지금 점검 흐름은 이 값을 만들지 않는다.
    * 작업자의 최종 확인(wheelCondition)과 따로 남긴다 — 둘을 합치면 AI가
    * 무엇을 보았고 사람이 무엇을 확인했는지 되짚을 수 없다.
    */
   wheelExam?: WheelExamResult;
   /**
    * 다각도 확인을 하지 못한 채 진행한 경우의 사유. wheelExam과 둘 중 하나만 있다.
-   * 둘 다 없으면 이 기능 도입 전 기록이거나 요구되지 않는 종류다.
+   * 둘 다 없으면 다각도 확인이 없던 시기의 기록이거나 요구되지 않던 종류다.
    */
   wheelExamNotRun?: WheelExamNotRun;
   /** 이상 징후 경고를 작업자가 확인했는가. 경고가 없었으면 없다 */
   wheelExamAcknowledged?: boolean;
   grinderImage?: Blob;
   wheelImage?: Blob;
-  /** 다각도 확인 사진. 앞면은 wheelImage(라벨 사진)를 그대로 쓴다 */
+  /**
+   * 다각도 확인 사진. 앞면은 wheelImage(라벨 사진)를 그대로 썼다.
+   * 다각도 확인이 있던 시기(2026-10-03 이전)의 기록에만 있다
+   */
   wheelBackImage?: Blob;
   wheelEdgeImage?: Blob;
   wheelBoreImage?: Blob;

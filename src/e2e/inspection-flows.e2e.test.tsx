@@ -11,10 +11,8 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  FixtureExaminer,
   FixtureExtractor,
   GRINDER,
-  examNotObserved,
   failure,
   finishTrialRun,
   inspector,
@@ -242,7 +240,6 @@ describe('점검 흐름 E2E — 결과까지', () => {
     expect(screen.getByLabelText(/최고사용회전속도/)).toHaveValue(null);
     expect(document.body).toHaveTextContent(f.t('wheelCondition.labelWarning'));
 
-    await f.completeWheelExam();
     await f.answerWheelCondition();
     await f.user.click(f.button('scan.wheel.proceed'));
     await f.atPath('/result');
@@ -260,59 +257,20 @@ describe('점검 흐름 E2E — 결과까지', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('다각도 확인에서 손상 의심 — 확인 전에는 막고, 확인 결과가 기록에 남는다', async () => {
+  it('라벨 사진에서 손상 의심 — 경고가 결과와 기록에 남고, 판정은 엔진이 낸 그대로다', async () => {
     const f = inspector('ko');
-    const suspected = {
-      ...examNotObserved(),
-      status: 'suspected' as const,
-      findings: [
-        {
-          kind: 'edge_break' as const,
-          view: 'edge' as const,
-          reason: '가장자리 2시 방향에 조각이 떨어진 자국이 보입니다.',
-          confidence: 'high' as const,
-        },
-      ],
-    };
-    await mountApp(
-      new FixtureExtractor().grinder(GRINDER).wheel(wheelLabel()),
-      new FixtureExaminer().result(suspected),
+    await openWheelConfirm(
+      f,
+      new FixtureExtractor()
+        .grinder(GRINDER)
+        .wheel(wheelLabel({ visibleDamage: 'suspected' })),
     );
 
-    await f.chooseJob('cutting');
-    await f.pickPhoto();
-    await f.answerGrinderCondition();
-    await f.user.click(f.button('scan.grinder.proceed'));
-    await f.atPath('/scan/wheel');
-    await f.pickPhoto();
-    await screen.findByText(f.t('scan.confirmTitle'));
-
-    // 사진 세 장을 넣고 확인한다.
-    const inputs = [
-      ...document.querySelectorAll<HTMLInputElement>('input[type=file]'),
-    ];
-    for (const index of [0, 1, 2]) {
-      await f.user.upload(
-        inputs[index * 2],
-        new File(['x'], `${index}.jpg`, { type: 'image/jpeg' }),
-      );
-    }
-    await f.user.click(f.button('exam.analyze'));
-
-    // 위치와 이유를 보여주고, 확인 전에는 진행을 막는다.
-    expect(
-      await screen.findByText(
-        '가장자리 2시 방향에 조각이 떨어진 자국이 보입니다.',
-      ),
-    ).toBeInTheDocument();
+    // 의심은 작업자 상태 확인 Gate에서 먼저 알린다. Gate는 그대로 사람이 답한다.
+    expect(document.body).toHaveTextContent(
+      f.t('wheelCondition.aiDamageWarning'),
+    );
     await f.answerWheelCondition();
-    expect(f.button('scan.wheel.proceed')).toBeDisabled();
-
-    await f.user.click(
-      screen.getByRole('checkbox', {
-        name: new RegExp(f.t('exam.acknowledge')),
-      }),
-    );
     await f.user.click(f.button('scan.wheel.proceed'));
     await f.atPath('/result');
 
@@ -331,12 +289,29 @@ describe('점검 흐름 E2E — 결과까지', () => {
     await f.user.click(f.button('result.save'));
     await f.atPath('/history');
 
-    // AI 원본 결과와 작업자 확인을 따로 남긴다.
     const saved = savedRecords()[0];
-    expect(saved.wheelExam?.status).toBe('suspected');
-    expect(saved.wheelExam?.findings[0].kind).toBe('edge_break');
-    expect(saved.wheelExamAcknowledged).toBe(true);
     expect(saved.wheel.visibleDamage).toBe('suspected');
+    // 다각도 외관 확인은 점검 흐름에 없다. 하지 않은 확인을 기록에 남기지 않는다.
+    expect(saved).not.toHaveProperty('wheelExam');
+    expect(saved).not.toHaveProperty('wheelExamNotRun');
+    expect(saved).not.toHaveProperty('wheelBackImage');
+  });
+
+  it('숫돌 확인 화면은 라벨 사진 말고 다른 사진을 받지 않는다', async () => {
+    // 뒷면·가장자리·중심구멍 사진을 넣는 단계는 뺐다. 확인 화면에 사진을 넣는
+    // 자리가 다시 생기면 이 테스트가 알린다.
+    const f = inspector('ko');
+    await openWheelConfirm(
+      f,
+      new FixtureExtractor().grinder(GRINDER).wheel(wheelLabel()),
+    );
+
+    expect(document.querySelectorAll('input[type=file]')).toHaveLength(0);
+    expect(f.button('scan.wheel.proceed')).toBeDisabled();
+
+    // 작업자 상태 확인에 답하는 것만으로 다음으로 넘어간다.
+    await f.answerWheelCondition();
+    expect(f.button('scan.wheel.proceed')).toBeEnabled();
   });
 });
 
@@ -516,9 +491,8 @@ describe('점검 흐름 E2E — Gate와 시험운전', () => {
     await f.pickPhoto();
     await screen.findByText(f.t('scan.confirmTitle'));
     expect(screen.queryAllByRole('button', { pressed: true })).toEqual([]);
-    // 라벨을 다시 찍었으므로 다각도 확인도 처음부터 다시 해야 넘어간다.
+    // 앞 숫돌에 한 직접 확인을 이어 쓰지 않으므로 아직 넘어갈 수 없다.
     expect(f.button('scan.wheel.proceed')).toBeDisabled();
-    await f.completeWheelExam();
     await f.answerWheelCondition();
     await f.user.click(f.button('scan.wheel.proceed'));
     await f.atPath('/result');
@@ -623,7 +597,6 @@ describe('점검 흐름 E2E — 오프라인 제한 대조와 재연결', () => 
 
     await f.pickPhoto();
     await screen.findByText(f.t('scan.confirmTitle'));
-    if (screen.queryByText(f.t('exam.title'))) await f.completeWheelExam();
     await f.answerWheelCondition();
     await f.user.click(f.button('scan.wheel.proceed'));
     await f.atPath('/result');

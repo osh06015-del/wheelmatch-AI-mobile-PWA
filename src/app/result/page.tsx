@@ -27,7 +27,6 @@ import { ProfileConditionsPanel } from '@/components/ProfileConditionsPanel';
 import { ResultCard } from '@/components/ResultCard';
 import { RuleVersionNote } from '@/components/RuleVersionNote';
 import { TrialRunPanel, TrialRunStopNotice } from '@/components/TrialRunPanel';
-import { WheelExamEvidence } from '@/components/WheelExamEvidence';
 import { useLocale } from '@/lib/i18n';
 import { isQuotaExceededError, saveInspection } from '@/lib/db';
 import { draftStore } from '@/lib/draft/draftStore';
@@ -96,14 +95,7 @@ export default function ResultPage() {
     setTrialRun,
     grinderImage,
     wheelImage,
-    wheelBackImage,
-    wheelEdgeImage,
-    wheelBoreImage,
-    wheelExam,
-    wheelExamNotRun,
     captureChecks,
-    wheelExamCaptureMetrics,
-    wheelExamAcknowledged,
     analysisMode,
     offlineSlots,
     applyReanalysis,
@@ -355,20 +347,8 @@ export default function ResultPage() {
         // 없는 채로 둔다.
         captureChecks:
           Object.keys(captureChecks).length > 0 ? captureChecks : undefined,
-        wheelBackCaptureMetrics: wheelExamCaptureMetrics?.back ?? undefined,
-        wheelEdgeCaptureMetrics: wheelExamCaptureMetrics?.edge ?? undefined,
-        wheelBoreCaptureMetrics: wheelExamCaptureMetrics?.bore ?? undefined,
         grinderImage: (withPhotos ? grinderImage : null) ?? undefined,
         wheelImage: (withPhotos ? wheelImage : null) ?? undefined,
-        // 다각도 확인의 AI 원본 결과와 사진. 작업자 확인(wheelCondition)과
-        // 따로 남긴다 — 합치면 AI가 본 것과 사람이 확인한 것을 구분할 수 없다.
-        wheelExam: wheelExam ?? undefined,
-        // 확인하지 못한 채 진행했다는 사실. 결과와 둘 중 하나만 남는다.
-        wheelExamNotRun: wheelExamNotRun ?? undefined,
-        wheelExamAcknowledged: wheelExam ? wheelExamAcknowledged : undefined,
-        wheelBackImage: (withPhotos ? wheelBackImage : null) ?? undefined,
-        wheelEdgeImage: (withPhotos ? wheelEdgeImage : null) ?? undefined,
-        wheelBoreImage: (withPhotos ? wheelBoreImage : null) ?? undefined,
         ruleVersion: RULESET_VERSION,
         analysisMode,
         createdAt: new Date().toISOString(),
@@ -415,20 +395,6 @@ export default function ResultPage() {
         result={result}
         grinderOcr={grinderOcr ?? undefined}
         wheelOcr={wheelOcr ?? undefined}
-      />
-
-      {/* AI가 사진에서 본 것. 아래 작업자 확인 항목과 따로 둔다 — 확인 개수에
-          섞이면 사람이 누르지 않은 것이 확인된 것처럼 보인다. */}
-      <WheelExamEvidence
-        exam={wheelExam}
-        notRun={wheelExamNotRun}
-        acknowledged={wheelExamAcknowledged}
-        photos={{
-          front: wheelImage,
-          back: wheelBackImage,
-          edge: wheelEdgeImage,
-          bore: wheelBoreImage,
-        }}
       />
 
       {offlineLimited && (

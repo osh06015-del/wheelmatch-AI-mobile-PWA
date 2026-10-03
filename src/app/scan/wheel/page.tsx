@@ -18,10 +18,6 @@ import { ManualConfirmToggle } from '@/components/ManualConfirmToggle';
 import { RequirementBanner } from '@/components/RequirementBanner';
 import { ScanHeader } from '@/components/ScanHeader';
 import { WheelConditionGate } from '@/components/WheelConditionGate';
-import {
-  WheelExamPanel,
-  type ExtraExamView,
-} from '@/components/WheelExamPanel';
 import { WheelTypeConfirm } from '@/components/WheelTypeConfirm';
 import { formDraftStore } from '@/lib/draft/draftStore';
 import {
@@ -30,7 +26,7 @@ import {
   recoverWheelFormDraft,
 } from '@/lib/draft/formDraftModel';
 import { WHEEL_FIELD_GUIDE } from '@/lib/guide/fieldGuide';
-import { useLocale, type MessageKey } from '@/lib/i18n';
+import { useLocale } from '@/lib/i18n';
 import { analysisErrorText } from '@/lib/i18n/errors';
 import {
   captureReviewSettled,
@@ -40,15 +36,6 @@ import {
   type CaptureReview,
 } from '@/lib/image/captureCheck';
 import { conditionItemsFor } from '@/lib/rules/profiles';
-import { getWheelExaminer } from '@/lib/vision/wheelExam';
-import {
-  EXTRA_EXAM_VIEWS,
-  examVisibleDamage,
-  notRunReasonFrom,
-  wheelExamBlock,
-  wheelExamRequired,
-  type WheelExamBlock,
-} from '@/lib/vision/wheelExamSafety';
 import {
   confirmedWheelSpec,
   wheelTypeDiffersFromSuggestion,
@@ -67,8 +54,6 @@ import type {
   CaptureQualityMetrics,
   OcrTelemetry,
   WheelCondition,
-  WheelExamNotRunReason,
-  WheelExamResult,
   WheelPurpose,
   WheelSpec,
   WheelType,
@@ -76,18 +61,6 @@ import type {
 
 /** review: 사진 상태 경고가 있거나 사진을 열지 못해 서버로 보내기 전에 멈춘 상태 */
 type Phase = 'capture' | 'analyzing' | 'review' | 'confirm' | 'error';
-
-/** 다각도 확인이 진행을 막는 이유별 안내 문구. */
-const EXAM_BLOCK_MESSAGE: Readonly<Record<WheelExamBlock, MessageKey>> = {
-  photosMissing: 'exam.block.photosMissing',
-  notAnalyzed: 'exam.block.notAnalyzed',
-  retakeRequired: 'exam.block.retakeRequired',
-  needsAcknowledge: 'exam.block.needsAcknowledge',
-  needsManualContinue: 'exam.block.needsManualContinue',
-  captureReview: 'exam.block.captureReview',
-};
-
-const EMPTY_EXAM_SLOTS = { back: null, edge: null, bore: null } as const;
 
 interface FormState {
   maxRPM: string;
@@ -112,7 +85,6 @@ export default function WheelScanPage() {
     hydrating,
     setWheel,
     setWheelCondition,
-    setWheelExam,
     setCaptureCheck,
     setOfflineSlot,
   } = useInspection();
@@ -149,33 +121,9 @@ export default function WheelScanPage() {
   // 뒤늦게 도착한 draft 복원을 적용하지 않는다.
   const actedRef = useRef(false);
 
-  // ── 다각도 외관 확인 ──
-  // 사진은 이 화면이 들고 있다가 proceed()에서 한 번에 저장소로 넘긴다
-  // (라벨 사진·OCR 결과와 같은 방식).
-  const [examPhotos, setExamPhotos] = useState<
-    Record<ExtraExamView, Blob | null>
-  >({ back: null, edge: null, bore: null });
-  const [exam, setExam] = useState<WheelExamResult | null>(null);
-  const [examAnalyzing, setExamAnalyzing] = useState(false);
-  const [examError, setExamError] = useState<unknown>(null);
-  const [examAcknowledged, setExamAcknowledged] = useState(false);
-  // 실패했을 때 무엇 때문이었는지. 실패한 그 순간에 정해둔다 — 나중에 다시
-  // 판단하면 그 사이에 기기가 온라인으로 돌아와 원인이 바뀐다.
-  const [examNotRunReason, setExamNotRunReason] =
-    useState<WheelExamNotRunReason | null>(null);
-  // AI가 확인하지 못한 채 작업자 직접점검으로 진행하겠다는 확인.
-  const [examManualContinue, setExamManualContinue] = useState(false);
-  // 추가 사진 자리별 사진 상태 경고와 원시 측정값. 사진과 수명을 같이 한다.
-  const [examReviews, setExamReviews] =
-    useState<Record<ExtraExamView, CaptureReview | null>>(EMPTY_EXAM_SLOTS);
-  const [examMetrics, setExamMetrics] =
-    useState<Record<ExtraExamView, CaptureQualityMetrics | null>>(
-      EMPTY_EXAM_SLOTS,
-    );
-
   // 확인 화면에서 수정 중인 입력값을 새로고침 넘어 복원한다. "다음"을 누르기
-  // 전까지는 이 저장소에만 남는다. 복원해도 userConfirmed·Gate·다각도 확인은
-  // 다시 받는다(자동 완료 금지) — 사진과 같은 수명이라 새로고침으로 어차피 사라진다.
+  // 전까지는 이 저장소에만 남는다. 복원해도 userConfirmed·Gate는 다시 받는다
+  // (자동 완료 금지).
   useEffect(() => {
     let cancelled = false;
     void formDraftStore.load('wheel').then((result) => {
@@ -196,13 +144,6 @@ export default function WheelScanPage() {
       // 배지 문구가 서로 다르므로 하나의 불리언으로 합쳐 두지 않는다.
       setOffline(recovered.analysisSource === 'manual');
       setLocalOnly(recovered.analysisSource === 'local_ocr');
-      // 다각도 확인은 지금 종류가 요구할 때만 되살아난다(recoverWheelExamDraft가
-      // Profile을 다시 본다). 사진이 없거나(손상 포함) 셋 중 하나라도 빠지면
-      // exam도 함께 비어 있다 — 재촬영해야 한다.
-      setExamPhotos(recovered.exam.photos);
-      setExamMetrics(recovered.exam.metrics);
-      setExam(recovered.exam.exam);
-      setExamNotRunReason(recovered.exam.notRunReason);
       if (recovered.photo) {
         setPhoto(recovered.photo);
         setPhase('confirm');
@@ -227,27 +168,10 @@ export default function WheelScanPage() {
         // offline·localOnly를 하나의 출처 값으로 남긴다 — 복구할 때 배지 문구를
         // (직접 입력 vs 로컬 OCR) 그대로 되살리기 위해서다.
         analysisSource: offline ? 'manual' : localOnly ? 'local_ocr' : 'server',
-        exam: {
-          photos: examPhotos,
-          metrics: examMetrics,
-          exam,
-          notRunReason: examNotRunReason,
-        },
       });
     }, FORM_DRAFT_SAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [
-    phase,
-    form,
-    photo,
-    ocr,
-    offline,
-    localOnly,
-    examPhotos,
-    examMetrics,
-    exam,
-    examNotRunReason,
-  ]);
+  }, [phase, form, photo, ocr, offline, localOnly]);
 
   // 그라인더를 찍지 않았거나 장비 상태를 직접 확인하지 않은 경우 1단계로 되돌린다.
   // 화면 이동으로 Gate를 건너뛸 수 있으면 Gate가 아니다.
@@ -270,18 +194,6 @@ export default function WheelScanPage() {
   // 날개·박리 등). 종류를 바꾸면 항목도 바뀐다 — 이전 답은 기록할 때 걸러낸다.
   const conditionKeys = conditionItemsFor(form.wheelType);
 
-  /** 다각도 확인을 처음 상태로 되돌린다. 새 숫돌이면 이전 결과를 이어 쓰지 않는다. */
-  const resetExam = () => {
-    setExamPhotos({ back: null, edge: null, bore: null });
-    setExam(null);
-    setExamError(null);
-    setExamAcknowledged(false);
-    setExamNotRunReason(null);
-    setExamManualContinue(false);
-    setExamReviews(EMPTY_EXAM_SLOTS);
-    setExamMetrics(EMPTY_EXAM_SLOTS);
-  };
-
   /**
    * 새 라벨 사진을 받는다.
    *
@@ -294,8 +206,7 @@ export default function WheelScanPage() {
     actedRef.current = true;
     setPhase('analyzing');
     setError(null);
-    // 새 사진이다. 이전 사진으로 읽은 값과 확인은 버린다. 라벨 사진은 다각도
-    // 확인의 앞면이기도 하므로 다각도 확인 결과도 함께 버린다.
+    // 새 사진이다. 이전 사진으로 읽은 값과 확인은 버린다.
     setPhoto(null);
     setOcr(null);
     setOcrTelemetry(null);
@@ -303,7 +214,6 @@ export default function WheelScanPage() {
     setUserConfirmed(false);
     setOffline(false);
     setLocalOnly(false);
-    resetExam();
     // 이전 사진에 대한 확인 화면 draft는 이제 근거가 없다.
     void formDraftStore.remove('wheel');
     try {
@@ -400,80 +310,6 @@ export default function WheelScanPage() {
     void extract(photo);
   }
 
-  /**
-   * 추가 사진 한 장을 받는다.
-   *
-   * 라벨 사진과 같은 준비(prepareCapture: 축소·측정·경고)를 거친다 — 거치지
-   * 않으면 휴대폰 원본이 그대로 올라가 요청 한도를 넘는다. 사진이 바뀌면 이전
-   * 분석 결과는 그 사진을 보고 낸 것이 아니므로 함께 버린다. 작업자가 그 결과를
-   * 보고 한 확인(이상 징후 확인·직접점검 진행)도 같이 버린다 — 다른 사진을 보고
-   * 한 확인을 새 사진에 이어 쓰면 확인하지 않은 것을 확인한 것으로 남긴다.
-   *
-   * 열지 못한 사진은 자리에 넣지 않는다. 그 자리는 빈 채로 남아 진행이 막힌다
-   * (AI 실패처럼 직접점검으로 넘어가는 길도 없다 — 사진 자체가 없기 때문이다).
-   */
-  async function pickExamPhoto(view: ExtraExamView, file: File) {
-    setExam(null);
-    setExamError(null);
-    setExamAcknowledged(false);
-    setExamNotRunReason(null);
-    setExamManualContinue(false);
-    const prepared = await prepareCapture(file);
-    setExamReviews((current) => ({
-      ...current,
-      [view]: nextCaptureReview(current[view], prepared),
-    }));
-    setExamPhotos((current) => ({
-      ...current,
-      [view]: prepared.status === 'ready' ? prepared.blob : null,
-    }));
-    setExamMetrics((current) => ({
-      ...current,
-      [view]: prepared.status === 'ready' ? prepared.metrics : null,
-    }));
-  }
-
-  /** 경고를 보고도 그 자리의 사진을 쓴다. */
-  function acceptWarnedExamPhoto(view: ExtraExamView) {
-    setExamReviews((current) => {
-      const review = current[view];
-      if (!review || review.decodeFailed) return current;
-      return { ...current, [view]: { ...review, usedDespiteWarning: true } };
-    });
-  }
-
-  /** 네 장을 한 번에 보내 살펴본다. 앞면은 라벨 사진을 그대로 쓴다. */
-  async function runExam() {
-    const { back, edge, bore } = examPhotos;
-    if (!photo || !back || !edge || !bore) return;
-    setExamAnalyzing(true);
-    setExamError(null);
-    setExamAcknowledged(false);
-    // 다시 시도하는 것이므로 앞선 실패에 대한 확인은 지운다. 새 시도가 또
-    // 실패하면 작업자는 다시 확인해야 한다.
-    setExamNotRunReason(null);
-    setExamManualContinue(false);
-    try {
-      const result = await getWheelExaminer().examine({
-        front: photo,
-        back,
-        edge,
-        bore,
-      });
-      setExam(result);
-    } catch (caught) {
-      // 실패를 결과로 꾸미지 않는다. 결과는 비워 두고 실패만 남긴다 —
-      // 화면은 AI가 확인하지 못했다고 알리고, 작업자 확인 Gate는 그대로 남는다.
-      setExam(null);
-      setExamError(caught);
-      // 실패를 not_observed·unassessable로 바꾸지 않는다. 실행되지 않았다는
-      // 사실과 그 이유만 남긴다.
-      setExamNotRunReason(notRunReasonFrom(caught, navigator.onLine));
-    } finally {
-      setExamAnalyzing(false);
-    }
-  }
-
   function updateField(key: string, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
     setUserConfirmed(false);
@@ -500,13 +336,9 @@ export default function WheelScanPage() {
     // 초기화하지 않으면 이전 종류에서 확인한 damageFree 같은 공통 키가 새
     // 종류에서도 이미 확인된 것처럼 남는다 — 다시 누르지 않아도 통과한다.
     setCondition({ ...EMPTY_WHEEL_CONDITION });
-    // 다각도 확인은 이전 종류를 보고 한 것이다. 새 종류가 요구하지 않아
-    // 화면에서 사라져도 내부 상태가 남으면 proceed()가 그 결과를 그대로
-    // 저장한다 — 평형 결합숫돌용 확인이 다른 종류의 기록에 섞인다.
-    resetExam();
     // 자동 저장은 1초 뒤에나 따라온다. 그 사이 새로고침하면 이전 종류의
-    // fields·exam이 그대로 남은 draft가 복원돼 새 종류에 섞인다 — 여기서
-    // 곧바로 지운다. 다음 debounce가 새 종류로 다시 저장한다.
+    // 입력이 그대로 남은 draft가 복원돼 새 종류에 섞인다 — 여기서 곧바로
+    // 지운다. 다음 debounce가 새 종류로 다시 저장한다.
     void formDraftStore.remove('wheel');
   }
 
@@ -514,7 +346,6 @@ export default function WheelScanPage() {
     if (!isWheelConditionComplete(condition, conditionKeys)) return;
     // 버튼만 막으면 다른 경로로 불렸을 때 샌다. 여기서도 막는다.
     if (typeNeedsConfirm) return;
-    if (examBlock !== null) return;
     // 화면이 가진 값만 넘기고, OCR 원본에서 무엇을 이어갈지는 confirmedWheelSpec이
     // 정한다. 여기서 필드를 하나하나 옮겨 적으면 선택 필드(markings·rpmSource)가
     // 조용히 빠진다 — 실제로 그렇게 빠져서 표기 일치 검사가 돌지 않았다.
@@ -527,10 +358,7 @@ export default function WheelScanPage() {
       expiryText: form.expiry,
       accessoryName: form.accessoryName,
       userConfirmed,
-      // 다각도 확인은 의심을 더하는 방향으로만 반영된다(mergeVisibleDamage).
-      examVisibleDamage: examVisibleDamage(exam),
     });
-    // setWheel이 이전 숫돌의 다각도 확인을 지운다. 그 뒤에 이번 결과를 넣는다.
     setWheel(spec, photo, ocr, captureMetrics, ocrTelemetry);
     setCaptureCheck('wheel', toCaptureQualityCheck(labelReview));
     // setWheel이 숫돌 쪽 오프라인 표시를 지운다. 그 뒤에 이번 라벨의 판독 경로를 넣는다.
@@ -538,46 +366,10 @@ export default function WheelScanPage() {
     setOfflineSlot('wheel', offline || localOnly);
     // 확정됐다. 확인 화면 draft는 더 이상 필요 없다.
     void formDraftStore.remove('wheel');
-    setWheelExam({
-      exam,
-      // 확인하지 못한 채 진행하는 경우에만 채운다. 결과와 둘 중 하나다 —
-      // 둘 다 남기면 확인한 것인지 못 한 것인지 되짚을 수 없다.
-      notRun:
-        exam === null && examNotRunReason !== null
-          ? {
-              reason: examNotRunReason,
-              acknowledgedAt: new Date().toISOString(),
-            }
-          : null,
-      photos: examPhotos,
-      acknowledged: examAcknowledged,
-      captureChecks: {
-        back: toCaptureQualityCheck(examReviews.back),
-        edge: toCaptureQualityCheck(examReviews.edge),
-        bore: toCaptureQualityCheck(examReviews.bore),
-      },
-      captureMetrics: examMetrics,
-    });
     // 이 종류에서 물은 항목의 답만 남긴다. 다른 종류로 답한 항목이 섞이지 않게.
     setWheelCondition(pickWheelCondition(condition, conditionKeys));
     router.push('/result');
   }
-
-  // 다각도 확인이 진행을 막는가. 막는 이유는 화면이 문구로 알린다.
-  // Profile이 다각도 사진을 요구하는 종류(평형 결합숫돌)에만 요구한다 — 나머지 종류는
-  // 규격 대조 자체가 판정불가로 끝나므로 사진을 더 받아도 결과가 달라지지 않는다.
-  const examBlock = wheelExamBlock({
-    required: wheelExamRequired(form.wheelType),
-    photosReady: Object.values(examPhotos).every((photo) => photo !== null),
-    captureReviewPending: EXTRA_EXAM_VIEWS.some(
-      (view) =>
-        examReviews[view] !== null && !captureReviewSettled(examReviews[view]),
-    ),
-    exam,
-    acknowledged: examAcknowledged,
-    analysisFailed: examError !== null,
-    manualContinueAcknowledged: examManualContinue,
-  });
 
   const labelNeedsReview =
     form.maxRPM.trim() === '' ||
@@ -813,28 +605,6 @@ export default function WheelScanPage() {
         checked={userConfirmed}
         onChange={setUserConfirmed}
       />
-      {/* 다각도 외관 확인은 작업자 확인 Gate **앞에** 둔다. AI가 본 것을 먼저
-          보여주고, 그 다음에 사람이 실물을 보고 직접 누르는 순서다. */}
-      {wheelExamRequired(form.wheelType) && (
-        <WheelExamPanel
-          photos={examPhotos}
-          reviews={examReviews}
-          onPick={(view, file) => void pickExamPhoto(view, file)}
-          onUseAnyway={acceptWarnedExamPhoto}
-          onAnalyze={() => void runExam()}
-          analyzing={examAnalyzing}
-          exam={exam}
-          failureText={
-            examError === null
-              ? null
-              : `${analysisErrorText(examError, 'exam.failed', t)} ${t('exam.failedFallback')}`
-          }
-          acknowledged={examAcknowledged}
-          onAcknowledge={setExamAcknowledged}
-          manualContinue={examManualContinue}
-          onManualContinue={setExamManualContinue}
-        />
-      )}
       <WheelConditionGate
         condition={condition}
         keys={conditionKeys}
@@ -851,18 +621,12 @@ export default function WheelScanPage() {
             {t('wheelTypeConfirm.needsConfirm')}
           </p>
         )}
-        {examBlock !== null && (
-          <p className="text-base leading-relaxed text-yellow-200">
-            {t(EXAM_BLOCK_MESSAGE[examBlock])}
-          </p>
-        )}
         <button
           type="button"
           onClick={proceed}
           disabled={
             !isWheelConditionComplete(condition, conditionKeys) ||
-            typeNeedsConfirm ||
-            examBlock !== null
+            typeNeedsConfirm
           }
           className="min-h-14 rounded-lg bg-green-500 text-lg font-bold text-slate-950 active:bg-green-400 disabled:bg-slate-700 disabled:text-slate-400"
         >

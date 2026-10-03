@@ -60,24 +60,12 @@ async function encodeFormDraft(
   draft: ScanFormDraft,
 ): Promise<Record<string, unknown>> {
   const photo = draft.photo ? await toStoredPhoto(draft.photo) : draft.photo;
-  if (draft.slot !== 'wheel') return { ...draft, photo };
-  return {
-    ...draft,
-    photo,
-    exam: { ...draft.exam, photos: await encodeBlobValues(draft.exam.photos) },
-  };
+  return { ...draft, photo };
 }
 
 function decodeFormDraft(raw: unknown): unknown {
   if (!isRecord(raw)) return raw;
-  const out: Record<string, unknown> = {
-    ...raw,
-    photo: fromStoredPhoto(raw.photo) ?? raw.photo,
-  };
-  if (isRecord(raw.exam) && isRecord(raw.exam.photos)) {
-    out.exam = { ...raw.exam, photos: decodeBlobValues(raw.exam.photos) };
-  }
-  return out;
+  return { ...raw, photo: fromStoredPhoto(raw.photo) ?? raw.photo };
 }
 
 /**
