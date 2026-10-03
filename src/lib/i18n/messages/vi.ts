@@ -1084,6 +1084,8 @@ export const vi: Messages = {
     'Không khôi phục được một số ảnh. Hãy chụp lại các ảnh cần thiết.',
   'draft.warn.exam':
     'Ảnh bổ sung (mặt sau, cạnh ngoài, lỗ tâm) và kết quả AI kiểm tra bề ngoài của phiên bản trước không còn được dùng nên không được khôi phục. Các phần còn lại vẫn tiếp tục như cũ.',
+  'draft.warn.ocr':
+    'Không đọc được kết quả AI đã lưu nên không khôi phục được. Hãy tự đối chiếu các giá trị bên dưới với chữ in trong ảnh, hoặc chụp lại.',
   'draft.warn.trialRun':
     'Không thể tiếp tục lần chạy thử đang dở. Hãy làm lại từ đầu.',
   'draft.warn.unreadable':

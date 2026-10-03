@@ -732,6 +732,200 @@ describe('숫돌 확인 화면 — 이전 버전이 남긴 다각도 확인 draf
   });
 });
 
+describe('숫돌 확인 화면 — 통째로 버린 OCR이 남은 draft', () => {
+  // 저장된 OCR의 숫자·원문·신뢰도가 어긋나면 그 OCR은 살릴 수 없어 통째로 버린다.
+  // 조용히 버리면 화면은 신뢰도 낮음과 종류 직접 확인 요구만 띄우고 이유를 말하지
+  // 않으며, 그 OCR이 올린 외관 의심도 함께 사라진다. 버렸다고 알리고 의심은 이어간다.
+  function brokenOcrDraft(visibleDamage: 'suspected' | 'none_visible') {
+    return {
+      slot: 'wheel',
+      schemaVersion: 1,
+      savedAt: '2026-09-17T00:00:00.000Z',
+      fields: {
+        maxRPM: '12200',
+        diameter: '125',
+        thickness: '1.6',
+        purpose: 'cutting',
+        expiry: '',
+        wheelType: 'bonded_abrasive',
+        accessoryName: '',
+      },
+      photo: new Blob(['label']),
+      // 원문이 문자열이 아니다 — 살릴 뼈대가 없는 OCR이다.
+      ocr: { ...OCR_BONDED, visibleDamage, confidence: 'low', rawText: null },
+      analysisSource: 'server',
+    };
+  }
+
+  const DROPPED_NOTICE =
+    '⚠ 저장된 AI 판독 결과를 읽을 수 없어 복구하지 못했습니다. 아래 값을 사진 속 표기와 직접 대조하거나 다시 촬영하세요.';
+  const DAMAGE_WARNING =
+    '⚠ AI가 사진에서 눈에 띄는 손상 징후를 의심했습니다. 숫돌을 직접 자세히 확인하세요.';
+
+  const proceedButton = () =>
+    screen.getByRole('button', { name: '확인 후 규격 대조' });
+
+  /** 직접 확인을 체크하고 Gate에 답한다. AI 제안이 없어 종류도 직접 확인이 필요하다 */
+  function confirmAndAnswer() {
+    fireEvent.click(screen.getByRole('checkbox', { name: /라벨을 직접 보고/ }));
+    for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+      fireEvent.click(button);
+    }
+  }
+
+  async function openDraft(draft: unknown) {
+    const result = readyGrinder();
+    formLoad.mockResolvedValueOnce({ status: 'found', draft });
+    render(<WheelScanPage />);
+    await screen.findByText('읽어낸 값을 확인하세요');
+    return result;
+  }
+
+  it('버렸다는 것을 알리고 입력칸은 복원한다 — 의심하지 않았던 OCR이면 손상 경고를 지어내지 않는다', async () => {
+    const result = await openDraft(brokenOcrDraft('none_visible'));
+
+    expect(screen.getByText(DROPPED_NOTICE)).toBeInTheDocument();
+    expect(screen.getByDisplayValue('12200')).toBeInTheDocument();
+    expect(screen.queryByText(DAMAGE_WARNING)).not.toBeInTheDocument();
+    // 확인·Gate는 여전히 다시 받는다.
+    expect(proceedButton()).toBeDisabled();
+
+    confirmAndAnswer();
+    fireEvent.click(proceedButton());
+
+    expect(push).toHaveBeenCalledWith('/result');
+    // 버린 판독의 「보이지 않음」도 되살리지 않는다 — 본 근거가 남아 있지 않다.
+    expect(result.current.wheel?.visibleDamage).toBe('unknown');
+    expect(result.current.wheelOcr).toBeNull();
+  });
+
+  it('그 OCR이 의심했던 숫돌이면 의심을 이어간다 — Gate에서 알리고 규격 값으로 넘긴다', async () => {
+    const result = await openDraft(brokenOcrDraft('suspected'));
+
+    expect(screen.getByText(DROPPED_NOTICE)).toBeInTheDocument();
+    expect(screen.getByText(DAMAGE_WARNING)).toBeInTheDocument();
+
+    // 의심이 Gate를 대신 채우지도, 진행을 대신 막지도 않는다 — 판단은 사람이 한다.
+    expect(proceedButton()).toBeDisabled();
+    confirmAndAnswer();
+    fireEvent.click(proceedButton());
+
+    expect(push).toHaveBeenCalledWith('/result');
+    expect(result.current.wheel?.visibleDamage).toBe('suspected');
+    // 읽을 수 없던 판독은 기록의 OCR 원본으로 남기지 않는다.
+    expect(result.current.wheelOcr).toBeNull();
+  });
+
+  it('이어받은 의심을 다시 저장한다 — 한 번 더 새로고침해도 사라지지 않는다', async () => {
+    await openDraft(brokenOcrDraft('suspected'));
+
+    await waitFor(() => expect(formSave).toHaveBeenCalled(), {
+      timeout: 3000,
+    });
+    for (const [draft] of formSave.mock.calls) {
+      // 버린 판독 자체는 다시 저장하지 않는다. 흔적만 남긴다.
+      expect(draft).toMatchObject({
+        slot: 'wheel',
+        ocr: null,
+        droppedOcr: 'suspected',
+      });
+    }
+  });
+
+  it('다시 저장된 draft(OCR 없음 + 흔적)에서도 알림과 의심이 그대로다', async () => {
+    // 위 테스트가 저장하는 모양이다. ocr은 null이라 흔적이 유일한 근거다.
+    await openDraft({
+      ...brokenOcrDraft('suspected'),
+      ocr: null,
+      droppedOcr: 'suspected',
+    });
+
+    expect(screen.getByText(DROPPED_NOTICE)).toBeInTheDocument();
+    expect(screen.getByText(DAMAGE_WARNING)).toBeInTheDocument();
+  });
+
+  it('새 라벨 사진을 찍으면 흔적을 지운다 — 다른 숫돌일 수 있다', async () => {
+    const result = await openDraft(brokenOcrDraft('suspected'));
+    extractWheel.mockResolvedValue(OCR_BONDED);
+    expect(screen.getByText(DAMAGE_WARNING)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '재촬영' }));
+    fireEvent.click(screen.getByRole('button', { name: '테스트 사진 고르기' }));
+    await screen.findByText('읽어낸 값을 확인하세요');
+
+    expect(screen.queryByText(DROPPED_NOTICE)).not.toBeInTheDocument();
+    expect(screen.queryByText(DAMAGE_WARNING)).not.toBeInTheDocument();
+
+    // 새 사진으로 저장되는 draft에도 흔적이 따라가지 않는다.
+    formSave.mockClear();
+    await waitFor(() => expect(formSave).toHaveBeenCalled(), {
+      timeout: 3000,
+    });
+    for (const [draft] of formSave.mock.calls) {
+      expect(draft).not.toHaveProperty('droppedOcr');
+    }
+
+    for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+      fireEvent.click(button);
+    }
+    fireEvent.click(proceedButton());
+    expect(result.current.wheel?.visibleDamage).toBe('none_visible');
+    expect(result.current.wheelOcr).toEqual(OCR_BONDED);
+  });
+
+  it('종류를 바꿔도 흔적은 남는다 — 다시 저장되는 draft에 의심이 따라간다', async () => {
+    await openDraft(brokenOcrDraft('suspected'));
+
+    // 종류 변경은 이전 draft를 곧바로 지운다. 그 뒤 다시 저장되는 draft가 흔적을
+    // 잃으면 새로고침 한 번에 의심이 사라진다.
+    fireEvent.change(screen.getByRole('combobox', { name: '숫돌 종류' }), {
+      target: { value: 'flap_disc' },
+    });
+    formSave.mockClear();
+
+    expect(screen.getByText(DROPPED_NOTICE)).toBeInTheDocument();
+    expect(screen.getByText(DAMAGE_WARNING)).toBeInTheDocument();
+    await waitFor(() => expect(formSave).toHaveBeenCalled(), {
+      timeout: 3000,
+    });
+    for (const [draft] of formSave.mock.calls) {
+      expect(draft).toMatchObject({
+        slot: 'wheel',
+        fields: { wheelType: 'flap_disc' },
+        droppedOcr: 'suspected',
+      });
+    }
+  });
+
+  it('되살린 OCR이 있는데 「의심」 흔적이 남은 draft — 의심은 이어가되, 복구하지 못했다고 알리지는 않는다', async () => {
+    // 앱이 쓰는 모양은 아니다(흔적은 OCR을 버렸을 때만 저장되고, 그때 ocr은 null이다).
+    // 그래도 의심은 덜어내지 않는다. 화면에 판독이 보이는데 복구하지 못했다고 말하지도
+    // 않는다.
+    await openDraft({
+      ...brokenOcrDraft('none_visible'),
+      ocr: OCR_BONDED,
+      droppedOcr: 'suspected',
+    });
+
+    expect(screen.getByText(DAMAGE_WARNING)).toBeInTheDocument();
+    expect(screen.queryByText(DROPPED_NOTICE)).not.toBeInTheDocument();
+  });
+
+  it('OCR이 온전한 draft에는 알림이 없다 — 없던 일을 알리지 않는다', async () => {
+    await openDraft({ ...brokenOcrDraft('none_visible'), ocr: OCR_BONDED });
+    expect(screen.queryByText(DROPPED_NOTICE)).not.toBeInTheDocument();
+  });
+
+  it('직접 입력으로 저장된 draft(OCR 없음)에도 알림이 없다', async () => {
+    await openDraft({
+      ...brokenOcrDraft('none_visible'),
+      ocr: null,
+      analysisSource: 'manual',
+    });
+    expect(screen.queryByText(DROPPED_NOTICE)).not.toBeInTheDocument();
+  });
+});
+
 describe('숫돌 확인 화면 — 같은 화면에서 종류를 바꾸면', () => {
   const typeSelect = () => screen.getByRole('combobox', { name: '숫돌 종류' });
 

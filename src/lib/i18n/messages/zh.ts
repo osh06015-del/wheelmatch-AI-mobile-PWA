@@ -970,6 +970,8 @@ export const zh: Messages = {
   'draft.warn.photos': '部分照片未能恢复。请重新拍摄所需照片。',
   'draft.warn.exam':
     '旧版本中添加的附加照片（背面、边缘、中心孔）和 AI 外观确认结果已不再使用，未予恢复。其余内容照常继续。',
+  'draft.warn.ocr':
+    '已保存的AI识别结果无法读取，未能恢复。请亲自核对下方数值是否与照片中的标示一致，或重新拍摄。',
   'draft.warn.trialRun': '进行中的试运转无法继续。请从头重新开始。',
   'draft.warn.unreadable': '无法读取已保存的进度。请删除后重新开始。',
   'draft.saveFailed':

@@ -360,3 +360,123 @@ describe('그라인더 확인 화면 — 로컬 OCR 제한 판정', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('그라인더 확인 화면 — 통째로 버린 OCR이 남은 draft', () => {
+  // 저장된 명판 OCR의 형태가 어긋나면 통째로 버린다. 조용히 버리면 화면은 신뢰도
+  // 낮음만 띄우고 이유를 말하지 않는다 — 작업자는 AI가 읽은 값이 여전히 뒤에 있다고
+  // 안다. 명판 OCR에는 외관 의심이 없어 여기서는 알림만 한다.
+  function draftWith(extra: Record<string, unknown>) {
+    return {
+      slot: 'grinder',
+      schemaVersion: 1,
+      savedAt: '2026-09-17T00:00:00.000Z',
+      fields: {
+        model: 'GWS 750-125',
+        noLoadRPM: '11000',
+        maxWheelDiameter: '125',
+        spindleThread: 'M14',
+        guardType: 'grinding',
+        guardSize: '',
+      },
+      photo: new Blob(['plate']),
+      analysisSource: 'server',
+      ...extra,
+    };
+  }
+
+  /** 원문이 문자열이 아니다 — 지금 기준에 맞지 않아 통째로 버려지는 OCR */
+  const BROKEN_OCR = { ...OCR, rawText: null };
+
+  const DROPPED_NOTICE =
+    '⚠ 저장된 AI 판독 결과를 읽을 수 없어 복구하지 못했습니다. 아래 값을 사진 속 표기와 직접 대조하거나 다시 촬영하세요.';
+
+  async function openDraft(draft: unknown) {
+    formLoad.mockResolvedValueOnce({ status: 'found', draft });
+    render(<GrinderScanPage />);
+    await screen.findByText('읽어낸 값을 확인하세요');
+  }
+
+  it('버렸다는 것을 알리고 입력칸은 복원한다 — 확정하면 OCR 원본은 남지 않는다', async () => {
+    const result = store();
+    await openDraft(draftWith({ ocr: BROKEN_OCR }));
+
+    expect(screen.getByText(DROPPED_NOTICE)).toBeInTheDocument();
+    expect(screen.getByDisplayValue('GWS 750-125')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('11000')).toBeInTheDocument();
+    // 확인·Gate는 여전히 다시 받는다.
+    expect(
+      screen.getByRole('button', { name: '확인 후 숫돌 촬영' }),
+    ).toBeDisabled();
+
+    for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+      fireEvent.click(button);
+    }
+    fireEvent.click(screen.getByRole('button', { name: '확인 후 숫돌 촬영' }));
+
+    expect(push).toHaveBeenCalledWith('/scan/wheel');
+    expect(result.current.grinderOcr).toBeNull();
+    // 읽을 수 없던 판독의 신뢰도를 이어받지 않는다. 사람이 확인하기 전에는 낮음이다.
+    expect(result.current.grinder?.confidence).toBe('low');
+  });
+
+  it('버렸다는 흔적을 다시 저장한다 — 한 번 더 새로고침해도 알림이 사라지지 않는다', async () => {
+    await openDraft(draftWith({ ocr: BROKEN_OCR }));
+
+    await waitFor(() => expect(formSave).toHaveBeenCalled(), {
+      timeout: 3000,
+    });
+    for (const [draft] of formSave.mock.calls) {
+      // 버린 판독 자체는 다시 저장하지 않는다. 흔적만 남긴다.
+      expect(draft).toMatchObject({
+        slot: 'grinder',
+        ocr: null,
+        droppedOcr: 'dropped',
+      });
+    }
+  });
+
+  it('다시 저장된 draft(OCR 없음 + 흔적)에서도 알림이 그대로다', async () => {
+    await openDraft(draftWith({ ocr: null, droppedOcr: 'dropped' }));
+
+    expect(screen.getByText(DROPPED_NOTICE)).toBeInTheDocument();
+  });
+
+  it('새 명판 사진을 찍으면 흔적을 지운다 — 새 판독은 원본으로 남는다', async () => {
+    const result = store();
+    await openDraft(draftWith({ ocr: BROKEN_OCR }));
+    expect(screen.getByText(DROPPED_NOTICE)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '재촬영' }));
+    fireEvent.click(screen.getByRole('button', { name: '테스트 사진 고르기' }));
+    await screen.findByText('읽어낸 값을 확인하세요');
+
+    expect(screen.queryByText(DROPPED_NOTICE)).not.toBeInTheDocument();
+
+    // 새 사진으로 저장되는 draft에도 흔적이 따라가지 않는다.
+    formSave.mockClear();
+    await waitFor(() => expect(formSave).toHaveBeenCalled(), {
+      timeout: 3000,
+    });
+    for (const [draft] of formSave.mock.calls) {
+      expect(draft).not.toHaveProperty('droppedOcr');
+    }
+
+    for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+      fireEvent.click(button);
+    }
+    fireEvent.click(screen.getByRole('button', { name: '확인 후 숫돌 촬영' }));
+    expect(result.current.grinderOcr).toEqual(OCR);
+  });
+
+  it('OCR이 온전한 draft에는 알림이 없다 — 없던 일을 알리지 않는다', async () => {
+    await openDraft(draftWith({ ocr: OCR }));
+
+    expect(screen.queryByText(DROPPED_NOTICE)).not.toBeInTheDocument();
+  });
+
+  it('직접 입력으로 저장된 draft(OCR 없음)에도 알림이 없다', async () => {
+    await openDraft(draftWith({ ocr: null, analysisSource: 'manual' }));
+
+    expect(screen.queryByText(DROPPED_NOTICE)).not.toBeInTheDocument();
+  });
+});

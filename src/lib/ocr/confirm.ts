@@ -54,10 +54,12 @@ export interface ConfirmedWheelFields {
   /**
    * 이 숫돌에 이미 올라와 있던 외관 의심.
    *
-   * 지금은 한 곳에서만 온다 — 다각도 외관 확인이 있던 이전 버전이 남긴 확인 화면
-   * draft가 "의심"이었던 경우다(formDraftModel의 LegacyExamTrace). **의심을
-   * 더하는 방향으로만** 쓴다: true면 라벨 사진의 판독이 무엇이든 'suspected'이고,
-   * 아니면 라벨 사진의 판독을 그대로 둔다. 의심을 지우는 값은 받지 않는다.
+   * 두 곳에서 온다. 다각도 외관 확인이 있던 이전 버전이 남긴 확인 화면 draft가
+   * "의심"이었던 경우(formDraftModel의 LegacyExamTrace)와, 확인 화면 draft의 OCR을
+   * 읽을 수 없어 통째로 버렸는데 그 OCR이 "의심"이었던 경우(DroppedOcrTrace)다.
+   * **의심을 더하는 방향으로만** 쓴다: true면 라벨 사진의 판독이 무엇이든
+   * 'suspected'이고, 아니면 라벨 사진의 판독을 그대로 둔다. 의심을 지우는 값은
+   * 받지 않는다.
    */
   priorDamageSuspected?: boolean;
   /**

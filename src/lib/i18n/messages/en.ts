@@ -1097,6 +1097,8 @@ export const en: Messages = {
     'Some photos could not be recovered. Take the needed photos again.',
   'draft.warn.exam':
     'The extra photos (back face, edge, bore) and the AI appearance check from the earlier version are no longer used and were not recovered. Everything else continues as it was.',
+  'draft.warn.ocr':
+    'The saved AI result could not be read, so it was not recovered. Check the values below against what is printed in the photo yourself, or retake the photo.',
   'draft.warn.trialRun':
     'The trial run that was in progress cannot be continued. Start it again from the beginning.',
   'draft.warn.unreadable':

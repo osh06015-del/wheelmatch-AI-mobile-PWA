@@ -106,6 +106,10 @@ export default function GrinderScanPage() {
   // 값은 있지만(직접 입력이 아니다) 두 번째 눈(서버 대조) 없이 읽은 값이라
   // offline과 같은 제한 판정으로 취급한다(setOfflineSlot에서 합친다).
   const [localOnly, setLocalOnly] = useState(false);
+  // 복원한 draft의 OCR을 읽을 수 없어 버린 경우의 흔적. 버렸다고 알린다 — 조용히
+  // 버리면 신뢰도가 왜 낮음으로 떨어졌는지 화면이 말하지 않는다. 그 명판 사진의
+  // 판독에 대한 것이라 새 사진을 찍으면 지운다.
+  const [droppedOcr, setDroppedOcr] = useState<'dropped' | null>(null);
   // 새로고침 경합 방지: 사용자가 이미 새 사진을 찍거나 직접 입력을 골랐으면
   // 뒤늦게 도착한 draft 복원을 적용하지 않는다.
   const actedRef = useRef(false);
@@ -129,6 +133,7 @@ export default function GrinderScanPage() {
       setForm(fields);
       setMounting({ spindleThread, guardType, guardSize });
       setOcr(recovered.ocr);
+      setDroppedOcr(recovered.droppedOcr);
       // 저장된 출처를 화면의 두 상태(직접 입력·로컬 OCR)로 다시 나눈다 —
       // 배지 문구가 서로 다르므로 하나의 불리언으로 합쳐 두지 않는다.
       setOffline(recovered.analysisSource === 'manual');
@@ -156,13 +161,16 @@ export default function GrinderScanPage() {
         fields: { ...form, ...mounting },
         photo,
         ocr,
+        // 버린 OCR의 흔적을 다시 저장한다. 여기 저장되는 ocr은 null이라, 빠뜨리면
+        // 새로고침 한 번에 처음부터 OCR이 없던 draft와 구분할 수 없게 된다.
+        ...(droppedOcr ? { droppedOcr } : {}),
         // offline·localOnly를 하나의 출처 값으로 남긴다 — 복구할 때 배지 문구를
         // (직접 입력 vs 로컬 OCR) 그대로 되살리기 위해서다.
         analysisSource: offline ? 'manual' : localOnly ? 'local_ocr' : 'server',
       });
     }, FORM_DRAFT_SAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [phase, form, mounting, photo, ocr, offline, localOnly]);
+  }, [phase, form, mounting, photo, ocr, droppedOcr, offline, localOnly]);
 
   /**
    * 새 사진을 받는다.
@@ -185,6 +193,7 @@ export default function GrinderScanPage() {
     setUserConfirmed(false);
     setOffline(false);
     setLocalOnly(false);
+    setDroppedOcr(null);
     // 이전 사진에 대한 확인 화면 draft는 이제 근거가 없다.
     void formDraftStore.remove('grinder');
     try {
@@ -493,6 +502,15 @@ export default function GrinderScanPage() {
           className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-base leading-relaxed text-yellow-100"
         >
           ⚠ {t('scan.localOcr.notice')}
+        </p>
+      )}
+      {/* 저장된 AI 판독을 읽을 수 없어 버렸다는 안내(숫돌 확인 화면과 같은 문구). */}
+      {droppedOcr && (
+        <p
+          role="status"
+          className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-base leading-relaxed text-yellow-100"
+        >
+          ⚠ {t('draft.warn.ocr')}
         </p>
       )}
       <SavedGrinderPanel

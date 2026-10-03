@@ -132,6 +132,7 @@ describe('recoverGrinderFormDraft', () => {
       },
       photo: null,
       ocr: null,
+      droppedOcr: null,
       analysisSource: 'manual',
     });
   });
@@ -252,6 +253,97 @@ describe('recoverGrinderFormDraft', () => {
       ocr: null,
     });
     expect(recovered?.analysisSource).toBe('local_ocr');
+  });
+});
+
+describe('recoverGrinderFormDraft — 통째로 버린 OCR 원본의 흔적', () => {
+  // 명판 OCR은 형태가 어긋나면 통째로 버린다. 조용히 버리면 작업자는 신뢰도가 왜
+  // 낮음으로 떨어졌는지, 확정한 기록에 AI 판독이 왜 없는지 알 수 없다. 버렸다는
+  // 흔적을 남겨 화면이 알리게 한다. 명판 OCR에는 이어갈 의심 신호가 없어 흔적은
+  // dropped뿐이다.
+  const draftWithOcr = (ocr: unknown, extra: Record<string, unknown> = {}) => ({
+    slot: 'grinder',
+    schemaVersion: FORM_DRAFT_SCHEMA_VERSION,
+    savedAt: '2026-09-17T00:00:00.000Z',
+    fields: { ...EMPTY_GRINDER_FORM_FIELDS, noLoadRPM: '11000' },
+    photo: null,
+    ocr,
+    analysisSource: 'server',
+    ...extra,
+  });
+
+  it.each([
+    ['숫자 자리에 문자열', { ...GRINDER_OCR, noLoadRPM: '11000' }],
+    ['원문이 문자열이 아님', { ...GRINDER_OCR, rawText: null }],
+    ['목록에 없는 신뢰도', { ...GRINDER_OCR, confidence: 'certain' }],
+    ['목록에 없는 스핀들', { ...GRINDER_OCR, spindleThread: 'M99' }],
+    ['객체가 아님', 'garbage'],
+    ['배열', [GRINDER_OCR]],
+  ])(
+    '형태가 어긋난 OCR 원본을 버리면 버렸다는 흔적을 남긴다 — %s',
+    (_name, ocr) => {
+      const recovered = recoverGrinderFormDraft(draftWithOcr(ocr));
+
+      expect(recovered?.ocr).toBeNull();
+      expect(recovered?.droppedOcr).toBe('dropped');
+      // 입력칸의 값은 OCR과 따로 저장돼 있다. 그대로 살린다.
+      expect(recovered?.fields.noLoadRPM).toBe('11000');
+    },
+  );
+
+  it.each([
+    ['null — 직접 입력한 draft', null],
+    ['빠진 값', undefined],
+  ])(
+    '저장된 OCR이 없었으면 흔적도 없다 — 없던 일을 알리지 않는다 — %s',
+    (_name, ocr) => {
+      const recovered = recoverGrinderFormDraft(draftWithOcr(ocr));
+
+      expect(recovered?.ocr).toBeNull();
+      expect(recovered?.droppedOcr).toBeNull();
+    },
+  );
+
+  it('온전한 OCR 원본에는 흔적이 없다', () => {
+    const recovered = recoverGrinderFormDraft(draftWithOcr(GRINDER_OCR));
+
+    expect(recovered?.ocr).toEqual(GRINDER_OCR);
+    expect(recovered?.droppedOcr).toBeNull();
+  });
+
+  it('이 버전이 다시 저장한 흔적은 그대로 되살린다 — 새로고침으로 알림이 사라지지 않는다', () => {
+    // 한 번 복구된 뒤 화면이 다시 저장한 draft다. ocr은 이미 null이라, 흔적이 없으면
+    // 처음부터 OCR이 없던 draft(직접 입력)와 구분할 수 없다.
+    const recovered = recoverGrinderFormDraft(
+      draftWithOcr(null, { droppedOcr: 'dropped' }),
+    );
+
+    expect(recovered?.droppedOcr).toBe('dropped');
+  });
+
+  it('되살린 OCR이 있으면 저장된 흔적은 받지 않는다 — 없던 일을 알리지 않는다', () => {
+    // 이 버전은 OCR을 버렸을 때만 흔적을 저장하고, 그때 ocr은 null이다. OCR이
+    // 온전한데 흔적이 붙은 draft는 앱이 쓰는 모양이 아니다 — 화면이 판독을
+    // 보여주면서 복구하지 못했다고 말하게 두지 않는다.
+    const recovered = recoverGrinderFormDraft(
+      draftWithOcr(GRINDER_OCR, { droppedOcr: 'dropped' }),
+    );
+
+    expect(recovered?.ocr).toEqual(GRINDER_OCR);
+    expect(recovered?.droppedOcr).toBeNull();
+  });
+
+  it.each([
+    // 명판 OCR에는 외관 의심이 없다. 숫돌 쪽 값이 섞여 들어와도 받지 않는다.
+    ['숫돌 쪽 흔적 값', 'suspected'],
+    ['불리언', true],
+    ['대소문자가 다른 값', 'DROPPED'],
+  ])('목록에 없는 흔적 값은 믿지 않는다 — %s', (_name, droppedOcr) => {
+    const recovered = recoverGrinderFormDraft(
+      draftWithOcr(null, { droppedOcr }),
+    );
+
+    expect(recovered?.droppedOcr).toBeNull();
   });
 });
 
@@ -686,6 +778,244 @@ describe('recoverWheelFormDraft — OCR 원본의 종류·용도·외관 값', (
       expect(recovered?.ocrAltered).toBe(false);
     },
   );
+});
+
+describe('recoverWheelFormDraft — 통째로 버린 OCR 원본의 흔적', () => {
+  // 숫자·원문·신뢰도가 어긋난 OCR은 살릴 뼈대가 없어 통째로 버린다. 그때 그 판독이
+  // 올린 외관 의심까지 함께 버리면, 앱이 스스로 올린 경고가 새로고침 한 번에 조용히
+  // 사라진다 — 의심을 덜어내는 방향은 이 앱에 넣지 않는다(docs/safety-boundaries.md).
+  //
+  // 판독 자체는 되살리지 않고 흔적만 남긴다. 버렸다는 사실(화면이 알린다)과, 그
+  // OCR이 의심했다는 사실(이어간다)이다. 이전 버전의 다각도 확인 흔적과 같은 방식이다.
+
+  /** 외관 의심이 든 OCR 원본 */
+  const SUSPECTED_OCR: WheelSpec = {
+    ...WHEEL_OCR,
+    wheelType: 'bonded_abrasive',
+    visibleDamage: 'suspected',
+    confidence: 'low',
+  };
+
+  const FIELDS = {
+    ...EMPTY_WHEEL_FORM_FIELDS,
+    maxRPM: '12200',
+    diameter: '125',
+    purpose: 'cutting',
+    wheelType: 'bonded_abrasive',
+  };
+
+  const draftWithOcr = (ocr: unknown, extra: Record<string, unknown> = {}) => ({
+    slot: 'wheel',
+    schemaVersion: FORM_DRAFT_SCHEMA_VERSION,
+    savedAt: '2026-09-17T00:00:00.000Z',
+    fields: FIELDS,
+    photo: new Blob(['label']),
+    ocr,
+    analysisSource: 'server',
+    ...extra,
+  });
+
+  /** 숫자·원문·신뢰도 가운데 하나가 어긋나 OCR을 살릴 수 없게 만드는 값 */
+  const UNSALVAGEABLE: Array<[string, Record<string, unknown>]> = [
+    ['숫자 자리에 문자열', { maxRPM: '12200' }],
+    ['원문이 문자열이 아님', { rawText: null }],
+    ['목록에 없는 신뢰도', { confidence: 'certain' }],
+  ];
+
+  it.each(UNSALVAGEABLE)(
+    '버린 OCR이 외관 손상을 의심했으면 의심을 이어간다 — %s',
+    (_name, patch) => {
+      const recovered = recoverWheelFormDraft(
+        draftWithOcr({ ...SUSPECTED_OCR, ...patch }),
+      );
+
+      // 판독 자체는 되살리지 않는다.
+      expect(recovered?.ocr).toBeNull();
+      expect(recovered?.ocrAltered).toBe(false);
+      expect(recovered?.droppedOcr).toBe('suspected');
+    },
+  );
+
+  it.each(UNSALVAGEABLE)(
+    '의심하지 않았던 OCR을 버리면 버렸다는 흔적만 남긴다 — %s',
+    (_name, patch) => {
+      const recovered = recoverWheelFormDraft(
+        draftWithOcr({ ...WHEEL_OCR, ...patch }),
+      );
+
+      expect(recovered?.ocr).toBeNull();
+      expect(recovered?.droppedOcr).toBe('dropped');
+    },
+  );
+
+  it.each([
+    ['모름', 'unknown'],
+    // 목록에 없는 외관 값이다. 비슷해 보여도 의심으로 올리지 않는다.
+    ['목록에 없는 값', 'cracked'],
+    ['대소문자가 다른 값', 'SUSPECTED'],
+    ['앞뒤에 공백이 붙은 값', ' suspected '],
+    ['불리언', true],
+    ['객체', { status: 'suspected' }],
+    ['배열', ['suspected']],
+    ['null', null],
+    ['빠진 값', undefined],
+  ])(
+    '버린 OCR의 외관 값이 정확히 「의심」이 아니면 의심을 지어내지 않는다 — %s',
+    (_name, visibleDamage) => {
+      const recovered = recoverWheelFormDraft(
+        draftWithOcr({ ...SUSPECTED_OCR, rawText: null, visibleDamage }),
+      );
+
+      expect(recovered?.ocr).toBeNull();
+      // 버렸다는 것은 알린다. 모델이 내지 않은 경고는 만들지 않는다.
+      expect(recovered?.droppedOcr).toBe('dropped');
+    },
+  );
+
+  it('남은 값이 거의 없는 객체여도 의심은 의심이다 — 형태가 어긋났다고 의심을 지우지 않는다', () => {
+    const recovered = recoverWheelFormDraft(
+      draftWithOcr({ visibleDamage: 'suspected' }),
+    );
+
+    expect(recovered?.ocr).toBeNull();
+    expect(recovered?.droppedOcr).toBe('suspected');
+  });
+
+  it.each([
+    ['문자열', 'garbage'],
+    ['숫자', 42],
+    // 배열은 OCR이 아니다. 안에 든 값을 뒤져 의심을 찾지 않는다.
+    ['배열', [SUSPECTED_OCR]],
+  ])(
+    '객체가 아닌 OCR은 버렸다는 흔적만 남긴다 — 읽을 의심이 없다 — %s',
+    (_name, ocr) => {
+      const recovered = recoverWheelFormDraft(draftWithOcr(ocr));
+
+      expect(recovered?.ocr).toBeNull();
+      expect(recovered?.droppedOcr).toBe('dropped');
+    },
+  );
+
+  it.each([
+    ['null — 직접 입력한 draft', null],
+    ['빠진 값', undefined],
+  ])(
+    '저장된 OCR이 없었으면 흔적도 없다 — 없던 일을 알리지 않는다 — %s',
+    (_name, ocr) => {
+      const recovered = recoverWheelFormDraft(draftWithOcr(ocr));
+
+      expect(recovered?.ocr).toBeNull();
+      expect(recovered?.droppedOcr).toBeNull();
+    },
+  );
+
+  it('온전한 OCR과 일부만 모름으로 읽은 OCR에는 흔적이 없다 — 의심은 그 OCR 안에 그대로 있다', () => {
+    const intact = recoverWheelFormDraft(draftWithOcr(SUSPECTED_OCR));
+    expect(intact?.ocr?.visibleDamage).toBe('suspected');
+    expect(intact?.droppedOcr).toBeNull();
+
+    const altered = recoverWheelFormDraft(
+      draftWithOcr({ ...SUSPECTED_OCR, wheelType: 'resin_wheel' }),
+    );
+    expect(altered?.ocr?.visibleDamage).toBe('suspected');
+    expect(altered?.ocrAltered).toBe(true);
+    expect(altered?.droppedOcr).toBeNull();
+  });
+
+  it('OCR을 버려도 입력칸의 값·사진·출처는 그대로 살린다', () => {
+    const recovered = recoverWheelFormDraft(
+      draftWithOcr({ ...SUSPECTED_OCR, rawText: null }),
+    );
+
+    expect(recovered?.fields).toEqual(FIELDS);
+    expect(recovered?.photo).toBeInstanceOf(Blob);
+    expect(recovered?.analysisSource).toBe('server');
+  });
+
+  it('이 버전이 다시 저장한 흔적은 그대로 되살린다 — 새로고침으로 의심이 사라지지 않는다', () => {
+    // 한 번 복구된 뒤 화면이 다시 저장한 draft다. ocr은 이미 null이라, 흔적이 없으면
+    // 처음부터 OCR이 없던 draft(직접 입력)와 구분할 수 없다.
+    expect(
+      recoverWheelFormDraft(draftWithOcr(null, { droppedOcr: 'suspected' }))
+        ?.droppedOcr,
+    ).toBe('suspected');
+    expect(
+      recoverWheelFormDraft(draftWithOcr(null, { droppedOcr: 'dropped' }))
+        ?.droppedOcr,
+    ).toBe('dropped');
+  });
+
+  it.each([
+    ['목록에 없는 값', 'cleared'],
+    ['불리언', true],
+    ['대소문자가 다른 값', 'SUSPECTED'],
+  ])('목록에 없는 흔적 값은 믿지 않는다 — %s', (_name, droppedOcr) => {
+    const recovered = recoverWheelFormDraft(draftWithOcr(null, { droppedOcr }));
+
+    expect(recovered?.droppedOcr).toBeNull();
+  });
+
+  it('저장된 흔적과 지금 버린 OCR 가운데 한쪽이라도 의심이면 의심이다 — 의심을 덜어내지 않는다', () => {
+    // 저장된 흔적은 의심인데, 지금 버린 OCR은 의심하지 않았다.
+    expect(
+      recoverWheelFormDraft(
+        draftWithOcr(
+          { ...WHEEL_OCR, rawText: null },
+          { droppedOcr: 'suspected' },
+        ),
+      )?.droppedOcr,
+    ).toBe('suspected');
+    // 저장된 흔적은 버림뿐인데, 지금 버린 OCR은 의심했다.
+    expect(
+      recoverWheelFormDraft(
+        draftWithOcr(
+          { ...SUSPECTED_OCR, rawText: null },
+          { droppedOcr: 'dropped' },
+        ),
+      )?.droppedOcr,
+    ).toBe('suspected');
+  });
+
+  it('되살린 OCR이 있으면 저장된 「버림」 흔적은 받지 않는다 — 없던 일을 알리지 않는다', () => {
+    // 이 버전은 OCR을 버렸을 때만 흔적을 저장하고, 그때 ocr은 null이다. OCR이
+    // 있는데 흔적이 붙은 draft는 앱이 쓰는 모양이 아니다 — 화면이 판독을
+    // 보여주면서 복구하지 못했다고 말하게 두지 않는다.
+    expect(
+      recoverWheelFormDraft(draftWithOcr(WHEEL_OCR, { droppedOcr: 'dropped' }))
+        ?.droppedOcr,
+    ).toBeNull();
+    // 일부만 모름으로 읽은 OCR도 되살린 OCR이다.
+    expect(
+      recoverWheelFormDraft(
+        draftWithOcr(
+          { ...WHEEL_OCR, wheelType: 'resin_wheel' },
+          { droppedOcr: 'dropped' },
+        ),
+      )?.droppedOcr,
+    ).toBeNull();
+  });
+
+  it('저장된 「의심」 흔적은 되살린 OCR이 있어도 지우지 않는다 — 의심을 덜어내지 않는다', () => {
+    const recovered = recoverWheelFormDraft(
+      draftWithOcr(WHEEL_OCR, { droppedOcr: 'suspected' }),
+    );
+
+    // 되살린 OCR은 손대지 않는다. 의심은 흔적으로만 이어간다.
+    expect(recovered?.ocr).toEqual(WHEEL_OCR);
+    expect(recovered?.droppedOcr).toBe('suspected');
+  });
+
+  it('이전 버전의 다각도 확인 흔적과 따로 남는다 — 한쪽이 다른 쪽을 덮지 않는다', () => {
+    const recovered = recoverWheelFormDraft(
+      draftWithOcr(
+        { ...WHEEL_OCR, rawText: null },
+        { legacyExam: 'suspected' },
+      ),
+    );
+
+    expect(recovered?.legacyExam).toBe('suspected');
+    expect(recovered?.droppedOcr).toBe('dropped');
+  });
 });
 
 describe('recoverWheelFormDraft — 이전 버전의 다각도 외관 확인 흔적', () => {

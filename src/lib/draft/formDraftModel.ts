@@ -109,6 +109,25 @@ export const EMPTY_WHEEL_FORM_FIELDS: WheelFormFields = {
   accessoryName: '',
 };
 
+/**
+ * 통째로 버린 OCR 원본이 이 draft에 남긴 흔적.
+ *
+ * 저장된 OCR이 지금 기준에 맞지 않아 살릴 수 없으면 버린다(recoverWheelOcr·
+ * recoverGrinderFormDraft). 버린 판독 자체는 되살리지 않는다. 남기는 것은 두
+ * 가지뿐이다.
+ *
+ *   dropped   — 저장된 OCR을 버렸다. 화면이 버렸다고 알린다
+ *   suspected — 버렸고, 그 OCR은 외관 손상을 **의심했다**. 의심은 이어간다
+ *
+ * LegacyExamTrace와 같은 이유다. 의심까지 버리면 앱이 스스로 올린 경고가 새로고침
+ * 한 번에 조용히 사라진다 — 의심을 덜어내는 방향은 이 앱에 넣지 않는다
+ * (docs/safety-boundaries.md). 알리지 않고 버리면 작업자는 신뢰도가 왜 낮음으로
+ * 떨어졌는지, 확정한 기록에 AI 판독이 왜 없는지 알 수 없다.
+ *
+ * 명판 OCR에는 외관 의심이 없어 그라인더 쪽은 dropped뿐이다.
+ */
+export type DroppedOcrTrace = 'dropped' | 'suspected';
+
 export interface GrinderFormDraft {
   slot: 'grinder';
   schemaVersion: number;
@@ -117,6 +136,11 @@ export interface GrinderFormDraft {
   /** 최적화(축소)를 마친 명판 사진. 촬영하지 않았으면 null */
   photo: Blob | null;
   ocr: GrinderSpec | null;
+  /**
+   * 저장된 OCR을 버렸다는 흔적. 버린 draft에서 이어진 경우에만 있다 — 다시 저장된
+   * ocr은 null이라, 빠뜨리면 처음부터 OCR이 없던 draft(직접 입력)와 구분할 수 없다.
+   */
+  droppedOcr?: 'dropped';
   analysisSource: AnalysisSource;
 }
 
@@ -156,6 +180,12 @@ export interface WheelFormDraft {
    * 한 번 더 새로고침하면 처음부터 그렇게 읽힌 원본과 구분할 수 없다.
    */
   ocrAltered?: true;
+  /**
+   * 저장된 OCR을 통째로 버렸다는 흔적. 버린 draft에서 이어진 경우에만 있다 —
+   * 다시 저장된 ocr은 null이라, 빠뜨리면 한 번 더 새로고침하는 것만으로 그 OCR이
+   * 올린 의심이 사라진다.
+   */
+  droppedOcr?: DroppedOcrTrace;
   analysisSource: AnalysisSource;
   /**
    * 이전 버전 draft에서 이어받은 흔적. 그런 draft에서 이어진 경우에만 있다 —
@@ -176,10 +206,19 @@ function pickString(value: unknown, fallback: string): string {
   return isString(value) ? value : fallback;
 }
 
+/**
+ * 이 자리에 저장된 것이 있었는가. OCR 자리의 null·없음은 처음부터 OCR이 없던
+ * draft(직접 입력)다 — 버린 것이 없으므로 버렸다고 알리지 않는다.
+ */
+const wasStored = (value: unknown): boolean =>
+  value !== null && value !== undefined;
+
 export interface GrinderFormRecovery {
   fields: GrinderFormFields;
   photo: Blob | null;
   ocr: GrinderSpec | null;
+  /** 저장된 OCR을 버렸다는 흔적. 버린 것이 없으면 null */
+  droppedOcr: 'dropped' | null;
   analysisSource: AnalysisSource;
 }
 
@@ -192,6 +231,8 @@ export interface WheelFormRecovery {
    * 규격 대조에는 쓰되 기록의 OCR 원본(wheelOcr)으로는 남기지 않는다.
    */
   ocrAltered: boolean;
+  /** 저장된 OCR을 통째로 버렸다는 흔적. 버린 것이 없으면 null */
+  droppedOcr: DroppedOcrTrace | null;
   analysisSource: AnalysisSource;
   /** 이전 버전의 다각도 외관 확인이 남긴 흔적. 없으면 null */
   legacyExam: LegacyExamTrace | null;
@@ -242,15 +283,28 @@ const RESTORABLE_OCR_FIELDS: Record<
  * 그것을 기록의 OCR 원본으로 남기지 않게 한다 — 고친 값을 원본 자리에 적지 않는다
  * (.claude/rules/safety-critical.md 2번).
  *
- * 숫자·원문·신뢰도가 어긋난 OCR은 예전처럼 통째로 버린다. 이 경우에는 그 OCR이
- * 올린 외관 의심도 함께 사라진다 — 이어갈 길을 아직 만들지 않았다(남은 틈이다).
+ * 숫자·원문·신뢰도가 어긋난 OCR은 살릴 뼈대가 없어 통째로 버린다. 버린 판독은
+ * 되살리지 않고 흔적(dropped)만 남긴다 — 버렸다는 사실과, 그 OCR이 외관 손상을
+ * 의심했다는 사실이다(DroppedOcrTrace).
+ *
+ * 형태가 어긋난 객체에 든 값이지만 'suspected'는 믿는다. 틀리게 이어가면 경고가 한
+ * 줄 더 뜰 뿐이고(외관 손상 규칙은 경고만 하고 판정을 움직이지 않는다), 놓치면
+ * 앱이 올린 경고가 조용히 사라진다. 저장된 값이 정확히 'suspected'일 때만이다 —
+ * 읽지 못한 외관 값을 의심으로 채우면 모델이 내지 않은 경고를 지어낸다.
+ *
+ * 버린 OCR의 원본 표시는 건지지 않는다. 의심과 달리 원본 표시는 표기 일치 항목을
+ * **통과**시키는 근거로도 쓰인다 — 믿을 수 없는 판독에서 건지면 의심을 더하는 것이
+ * 아니라 통과의 근거를 만든다. 되찾는 길은 다시 촬영하는 것이고, 화면이 그렇게
+ * 알린다.
  */
 function recoverWheelOcr(raw: unknown): {
   ocr: WheelSpec | null;
   altered: boolean;
+  dropped: DroppedOcrTrace | null;
 } {
-  if (isWheelSpec(raw)) return { ocr: raw, altered: false };
-  if (!isObject(raw)) return { ocr: null, altered: false };
+  if (isWheelSpec(raw)) return { ocr: raw, altered: false, dropped: null };
+  if (!wasStored(raw)) return { ocr: null, altered: false, dropped: null };
+  if (!isObject(raw)) return { ocr: null, altered: false, dropped: 'dropped' };
 
   // 읽지 못해도 되는 필드를 모두 모름으로 둔 뼈대. 이것조차 기준에 맞지 않으면
   // 숫자·원문·신뢰도가 어긋난 것이다.
@@ -264,7 +318,13 @@ function recoverWheelOcr(raw: unknown): {
     rawText: raw.rawText,
     confidence: raw.confidence,
   };
-  if (!isWheelSpec(skeleton)) return { ocr: null, altered: false };
+  if (!isWheelSpec(skeleton)) {
+    return {
+      ocr: null,
+      altered: false,
+      dropped: raw.visibleDamage === 'suspected' ? 'suspected' : 'dropped',
+    };
+  }
 
   // 저장된 값을 하나씩 되돌려 본다. 되돌려도 기준에 맞는 값만 남는다. 필드마다
   // 검사 규칙을 여기 다시 적지 않고 규격 전체의 기준(isWheelSpec) 하나로 본다.
@@ -274,7 +334,30 @@ function recoverWheelOcr(raw: unknown): {
     const restored = { ...ocr, [key]: raw[key] };
     if (isWheelSpec(restored)) ocr = restored;
   }
-  return { ocr, altered: true };
+  return { ocr, altered: true, dropped: null };
+}
+
+/**
+ * 이 draft에 남은 「OCR을 통째로 버렸다」는 흔적 — 지금 버린 것(now)과, 이 버전이
+ * 이어받아 다시 저장한 표시(saved)를 합친다. 다시 저장된 draft의 ocr은 null이라,
+ * 저장된 표시가 없으면 버린 적이 있는지 알 수 없다.
+ *
+ * 한쪽이라도 의심이면 의심이다. 의심을 덜어내는 쪽으로 합치지 않는다 — 되살린
+ * OCR이 있어도 마찬가지다.
+ *
+ * 버렸다는 표시는 되살린 OCR이 없을 때만 받는다. 이 버전은 OCR을 버렸을 때만 표시를
+ * 저장하고 그때 ocr은 null이다. OCR이 있는데 버렸다고 알리면 없던 일을 알리는
+ * 것이다(ocrAltered가 OCR이 있을 때만 뜻이 있는 것과 짝이다).
+ */
+function mergeDroppedOcr(
+  saved: unknown,
+  now: DroppedOcrTrace | null,
+  ocr: WheelSpec | null,
+): DroppedOcrTrace | null {
+  // 저장된 표시는 목록에 있는 값만 믿는다.
+  if (saved === 'suspected' || now === 'suspected') return 'suspected';
+  if (ocr !== null) return null;
+  return saved === 'dropped' ? 'dropped' : now;
 }
 
 /**
@@ -313,6 +396,13 @@ export function recoverGrinderFormDraft(
 ): GrinderFormRecovery | null {
   if (!isObject(raw) || !isObject(raw.fields)) return null;
   const f = raw.fields;
+  // 명판 OCR은 고쳐 살리지 않는다. 기준에 맞지 않으면 통째로 버린다 — 이어갈 의심
+  // 신호가 없고, 신뢰도는 낮음에서 다시 시작해 작업자의 직접 확인을 받는다.
+  const ocr = isGrinderSpec(raw.ocr) ? raw.ocr : null;
+  // 버렸다는 흔적은 되살린 OCR이 없을 때만 사실이다. 지금 버렸거나, 이 버전이 버린
+  // 뒤 다시 저장한 표시(GrinderFormDraft.droppedOcr)가 남아 있는 경우다.
+  const dropped =
+    ocr === null && (wasStored(raw.ocr) || raw.droppedOcr === 'dropped');
   return {
     fields: {
       model: pickString(f.model, ''),
@@ -325,7 +415,8 @@ export function recoverGrinderFormDraft(
       guardSize: pickString(f.guardSize, ''),
     },
     photo: raw.photo instanceof Blob ? raw.photo : null,
-    ocr: isGrinderSpec(raw.ocr) ? raw.ocr : null,
+    ocr,
+    droppedOcr: dropped ? 'dropped' : null,
     analysisSource: pickAnalysisSource(raw),
   };
 }
@@ -334,7 +425,7 @@ export function recoverGrinderFormDraft(
 export function recoverWheelFormDraft(raw: unknown): WheelFormRecovery | null {
   if (!isObject(raw) || !isObject(raw.fields)) return null;
   const f = raw.fields;
-  const { ocr, altered } = recoverWheelOcr(raw.ocr);
+  const { ocr, altered, dropped } = recoverWheelOcr(raw.ocr);
   return {
     fields: {
       maxRPM: pickString(f.maxRPM, ''),
@@ -355,6 +446,7 @@ export function recoverWheelFormDraft(raw: unknown): WheelFormRecovery | null {
     // 이 버전이 다시 저장한 표시도 이어받는다(WheelFormDraft.ocrAltered).
     // OCR이 없으면 기록할 원본 자체가 없으므로 표시도 없다.
     ocrAltered: ocr !== null && (altered || raw.ocrAltered === true),
+    droppedOcr: mergeDroppedOcr(raw.droppedOcr, dropped, ocr),
     analysisSource: pickAnalysisSource(raw),
     legacyExam: recoverLegacyExam(raw),
   };

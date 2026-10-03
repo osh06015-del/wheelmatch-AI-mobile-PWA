@@ -26,6 +26,7 @@ import {
   FORM_DRAFT_SAVE_DELAY_MS,
   FORM_DRAFT_SCHEMA_VERSION,
   recoverWheelFormDraft,
+  type DroppedOcrTrace,
   type LegacyExamTrace,
 } from '@/lib/draft/formDraftModel';
 import { WHEEL_FIELD_GUIDE } from '@/lib/guide/fieldGuide';
@@ -131,6 +132,10 @@ export default function WheelScanPage() {
   // 추가 사진·AI 결과는 되살리지 않았다고 알리고, 그 확인이 의심했던 숫돌이면
   // 의심을 이어간다. 이 라벨 사진의 숫돌에 대한 것이라 새 사진을 찍으면 지운다.
   const [legacyExam, setLegacyExam] = useState<LegacyExamTrace | null>(null);
+  // 복원한 draft의 OCR을 읽을 수 없어 통째로 버린 경우의 흔적. 버렸다고 알리고,
+  // 그 OCR이 의심했던 숫돌이면 의심을 이어간다. 이것도 이 라벨 사진의 숫돌에 대한
+  // 것이라 새 사진을 찍으면 지운다.
+  const [droppedOcr, setDroppedOcr] = useState<DroppedOcrTrace | null>(null);
   // 새로고침 경합 방지: 사용자가 이미 새 사진을 찍거나 직접 입력을 골랐으면
   // 뒤늦게 도착한 draft 복원을 적용하지 않는다.
   const actedRef = useRef(false);
@@ -157,6 +162,7 @@ export default function WheelScanPage() {
       });
       setOcr(recovered.ocr);
       setOcrAltered(recovered.ocrAltered);
+      setDroppedOcr(recovered.droppedOcr);
       // 저장된 출처를 화면의 두 상태(직접 입력·로컬 OCR)로 다시 나눈다 —
       // 배지 문구가 서로 다르므로 하나의 불리언으로 합쳐 두지 않는다.
       setOffline(recovered.analysisSource === 'manual');
@@ -186,6 +192,9 @@ export default function WheelScanPage() {
         // 손댄 OCR이라는 표시를 다시 저장한다. 빠뜨리면 새로고침 한 번에 모름으로
         // 바꿔 읽은 값이 모델이 읽은 원본으로 둔갑한다.
         ...(ocrAltered ? { ocrAltered } : {}),
+        // 버린 OCR의 흔적도 다시 저장한다. 여기 저장되는 ocr은 null이라, 빠뜨리면
+        // 새로고침 한 번에 그 OCR이 올린 의심이 사라진다.
+        ...(droppedOcr ? { droppedOcr } : {}),
         // offline·localOnly를 하나의 출처 값으로 남긴다 — 복구할 때 배지 문구를
         // (직접 입력 vs 로컬 OCR) 그대로 되살리기 위해서다.
         analysisSource: offline ? 'manual' : localOnly ? 'local_ocr' : 'server',
@@ -194,7 +203,17 @@ export default function WheelScanPage() {
       });
     }, FORM_DRAFT_SAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [phase, form, photo, ocr, ocrAltered, offline, localOnly, legacyExam]);
+  }, [
+    phase,
+    form,
+    photo,
+    ocr,
+    ocrAltered,
+    droppedOcr,
+    offline,
+    localOnly,
+    legacyExam,
+  ]);
 
   // 그라인더를 찍지 않았거나 장비 상태를 직접 확인하지 않은 경우 1단계로 되돌린다.
   // 화면 이동으로 Gate를 건너뛸 수 있으면 Gate가 아니다.
@@ -239,6 +258,7 @@ export default function WheelScanPage() {
     setOffline(false);
     setLocalOnly(false);
     setLegacyExam(null);
+    setDroppedOcr(null);
     // 이전 사진에 대한 확인 화면 draft는 이제 근거가 없다.
     void formDraftStore.remove('wheel');
     try {
@@ -419,9 +439,11 @@ export default function WheelScanPage() {
     router.push('/result');
   }
 
-  // 이전 버전의 다각도 확인이 의심했던 숫돌이면 라벨 사진의 판독과 무관하게
-  // 의심으로 둔다. Gate의 경고와 규칙엔진에 넘기는 값이 같은 것을 보게 한다.
-  const priorDamageSuspected = legacyExam === 'suspected';
+  // 이전 버전의 다각도 확인이 의심했던 숫돌이거나, 읽을 수 없어 버린 OCR이 의심했던
+  // 숫돌이면 화면에 남은 판독과 무관하게 의심으로 둔다. Gate의 경고와 규칙엔진에
+  // 넘기는 값이 같은 것을 보게 한다.
+  const priorDamageSuspected =
+    legacyExam === 'suspected' || droppedOcr === 'suspected';
 
   const labelNeedsReview =
     form.maxRPM.trim() === '' ||
@@ -627,6 +649,18 @@ export default function WheelScanPage() {
           className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-base leading-relaxed text-yellow-100"
         >
           ⚠ {t('draft.warn.exam')}
+        </p>
+      )}
+      {/* 저장된 AI 판독을 읽을 수 없어 버렸다는 안내. 조용히 버리면 신뢰도가 왜
+          낮음인지, AI 제안이 왜 모르겠음인지 화면이 말하지 않는다. 화면에 판독이
+          있으면(ocr) 버렸다고 말하지 않는다 — 의심 흔적은 그때도 이어가지만
+          (priorDamageSuspected) 알림은 사실일 때만 띄운다. */}
+      {droppedOcr && ocr === null && (
+        <p
+          role="status"
+          className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-base leading-relaxed text-yellow-100"
+        >
+          ⚠ {t('draft.warn.ocr')}
         </p>
       )}
       {localOnly && !offline && (

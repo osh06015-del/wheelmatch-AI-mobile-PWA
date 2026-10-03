@@ -1115,6 +1115,8 @@ export const id: Messages = {
     'Beberapa foto tidak dapat dipulihkan. Ambil ulang foto yang diperlukan.',
   'draft.warn.exam':
     'Foto tambahan (sisi belakang, tepi luar, lubang tengah) dan hasil pemeriksaan tampilan oleh AI dari versi sebelumnya tidak lagi dipakai dan tidak dipulihkan. Bagian lainnya tetap dilanjutkan.',
+  'draft.warn.ocr':
+    'Hasil AI yang tersimpan tidak dapat dibaca sehingga tidak dipulihkan. Cocokkan sendiri nilai di bawah dengan tulisan di foto, atau foto ulang.',
   'draft.warn.trialRun':
     'Uji jalan yang sedang berlangsung tidak dapat dilanjutkan. Mulai lagi dari awal.',
   'draft.warn.unreadable':
