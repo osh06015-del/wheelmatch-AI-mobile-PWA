@@ -20,6 +20,8 @@ const {
   formLoad,
   formSave,
   formRemove,
+  decodeLabel,
+  measureLabel,
 } = vi.hoisted(() => ({
   replace: vi.fn(),
   push: vi.fn(),
@@ -30,6 +32,14 @@ const {
   formLoad: vi.fn(),
   formSave: vi.fn(),
   formRemove: vi.fn(),
+  // 사진 상태 확인 단계를 밟아야 하는 테스트만 쓴다. 정해 주지 않으면 사진은
+  // 그대로 열리고 측정값도 실제 값이다(경고 없음).
+  decodeLabel: vi.fn(async (): Promise<void> => {}),
+  measureLabel: vi.fn(
+    async (): Promise<
+      import('@/lib/rules/types').CaptureQualityMetrics | undefined
+    > => undefined,
+  ),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -50,8 +60,21 @@ vi.mock('@/lib/draft/draftStore', () => ({
 
 vi.mock('@/lib/image/optimize', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/image/optimize')>()),
-  optimizeForUpload: async (blob: Blob) => blob,
+  optimizeForUpload: async (blob: Blob) => {
+    await decodeLabel();
+    return blob;
+  },
 }));
+
+vi.mock('@/lib/image/quality', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/lib/image/quality')>();
+  return {
+    ...original,
+    measureCapture: async (
+      ...args: Parameters<typeof original.measureCapture>
+    ) => (await measureLabel()) ?? original.measureCapture(...args),
+  };
+});
 
 vi.mock('@/components/CameraView', () => ({
   CameraView: ({ onPickFile }: { onPickFile: (file: File) => void }) => (
@@ -67,8 +90,14 @@ vi.mock('@/components/CameraView', () => ({
 }));
 
 import WheelScanPage from './page';
+import { carriedDamageOnlyDraft } from '@/lib/draft/formDraftModel';
+import { ko } from '@/lib/i18n/messages/ko';
+import { ImageDecodeError } from '@/lib/image/optimize';
+import { EMPTY_CAPTURE_METRICS } from '@/lib/image/quality';
+import { ExtractError } from '@/lib/ocr/errors';
 import { useInspection } from '@/lib/state/inspection';
 import type {
+  CaptureQualityMetrics,
   GrinderCondition,
   GrinderSpec,
   WheelSpec,
@@ -125,6 +154,8 @@ beforeEach(() => {
   formLoad.mockReset().mockResolvedValue({ status: 'none' });
   formSave.mockReset();
   formRemove.mockReset();
+  decodeLabel.mockReset();
+  measureLabel.mockReset();
   extractWheel.mockResolvedValue(OCR);
   const result = store();
   act(() => {
@@ -742,6 +773,7 @@ describe('숫돌 확인 화면 — 이전 버전이 남긴 다각도 확인 draf
       expect(draft).toMatchObject({ slot: 'wheel' });
       expect(draft).not.toHaveProperty('exam');
       expect(draft).not.toHaveProperty('legacyExam');
+      expect(draft).not.toHaveProperty('carriedDamage');
       // 방금 읽은 OCR은 원본이다. 손댔다는 표시가 붙지 않는다.
       expect(draft).not.toHaveProperty('ocrAltered');
     }
@@ -945,8 +977,9 @@ describe('숫돌 확인 화면 — 통째로 버린 OCR이 남은 draft', () => 
   it('종류를 바꿔도 흔적은 남는다 — 다시 저장되는 draft에 의심이 따라간다', async () => {
     await openDraft(brokenOcrDraft('suspected'));
 
-    // 종류 변경은 이전 draft를 곧바로 지운다. 그 뒤 다시 저장되는 draft가 흔적을
-    // 잃으면 새로고침 한 번에 의심이 사라진다.
+    // 종류 변경은 이전 draft를 곧바로 치운다(의심이 있으면 의심만 담은 draft로
+    // 바꿔 둔다). 그 뒤 다시 저장되는 draft가 흔적을 잃으면 새로고침 한 번에 의심이
+    // 사라진다.
     fireEvent.change(screen.getByRole('combobox', { name: '숫돌 종류' }), {
       target: { value: 'flap_disc' },
     });
@@ -1005,6 +1038,575 @@ describe('숫돌 확인 화면 — 통째로 버린 OCR이 남은 draft', () => 
       analysisSource: 'manual',
     });
     expect(screen.queryByText(DROPPED_NOTICE)).not.toBeInTheDocument();
+  });
+});
+
+describe('숫돌 확인 화면 — 확인 화면을 되살리지 못한 draft', () => {
+  // 저장 공간이 모자라면 확인 화면 draft는 사진만 빼고 저장된다(draftStore의
+  // savedWithoutPhoto). 저장된 사진 값이 손상돼 되살리지 못한 경우도 같다. 판독값을
+  // 대조할 사진이 없어 확인 화면은 열리지 않고, 작업자는 라벨을 다시 찍어야 한다.
+  //
+  // 손상 의심은 확인 화면에서만 그려지므로, 그런 draft의 의심은 한 번도 보이지 않은
+  // 채 다시 찍는 순간 지워졌다. 보인 적 없는 의심은 새 사진을 찍어도 이어간다 — 그
+  // 사진은 작업자가 고른 것이 아니라 앱이 요구한 것이다. 확인 화면에서 경고를 본 뒤
+  // 스스로 다시 찍으면 다른 흔적처럼 지운다(다른 숫돌일 수 있다).
+  function photolessDraft(extra: Record<string, unknown> = {}) {
+    return {
+      slot: 'wheel',
+      schemaVersion: 1,
+      savedAt: '2026-09-17T00:00:00.000Z',
+      fields: {
+        maxRPM: '9900',
+        diameter: '125',
+        thickness: '1.6',
+        purpose: 'cutting',
+        expiry: '',
+        wheelType: 'bonded_abrasive',
+        accessoryName: '',
+      },
+      photo: null,
+      ocr: OCR_BONDED,
+      analysisSource: 'server',
+      ...extra,
+    };
+  }
+
+  /** 손상 의심만 담은 draft — 저장된 draft가 없어진 자리에 화면이 남기는 모양 */
+  const CARRY_ONLY_DRAFT = {
+    slot: 'wheel',
+    schemaVersion: 1,
+    savedAt: expect.any(String),
+    fields: {
+      maxRPM: '',
+      diameter: '',
+      thickness: '',
+      purpose: 'unknown',
+      expiry: '',
+      wheelType: 'unknown',
+      accessoryName: '',
+    },
+    photo: null,
+    ocr: null,
+    analysisSource: 'local_ocr',
+    carriedDamage: 'suspected',
+  };
+
+  const CARRIED_NOTICE =
+    '⚠ 이 사진을 찍기 전에 저장돼 있던 숫돌 확인에 AI의 손상 의심이 있었습니다. 그 의심은 지우지 않고 이어갑니다. 다른 숫돌을 촬영했더라도 실물을 직접 확인하세요.';
+  const DAMAGE_WARNING =
+    '⚠ AI가 사진에서 눈에 띄는 손상 징후를 의심했습니다. 숫돌을 직접 자세히 확인하세요.';
+  // 이 두 알림은 이 묶음에서 「뜨지 않는다」로만 단정한다. 문장을 여기 따로 적어
+  // 두면 문구가 바뀔 때 그 단정이 조용히 아무것도 보지 않게 된다 — 실제로 한 번
+  // 그렇게 됐다. 문구 표에서 그대로 가져온다. 문장 자체는 위 두 묶음이 고정한다.
+  const EXAM_DROPPED_NOTICE = `⚠ ${ko['draft.warn.exam']}`;
+  const OCR_DROPPED_NOTICE = `⚠ ${ko['draft.warn.ocr']}`;
+
+  /** 흐림 경고가 나오는 측정값 */
+  const BLURRY: CaptureQualityMetrics = {
+    ...EMPTY_CAPTURE_METRICS,
+    originalWidth: 4032,
+    originalHeight: 3024,
+    meanBrightness: 130,
+    darkPixelRatio: 0.05,
+    brightPixelRatio: 0.05,
+    blurMetric: 1,
+  };
+
+  /**
+   * 손상 의심이 화면 어디에도 없다.
+   *
+   * 두 문구의 부재를 그대로 고정한다. 경고·알림 자리에 「의심」이라는 말이 있는지도
+   * 함께 본다 — 문구를 바꾸면서 이 단정이 조용히 아무것도 보지 않게 되는 것을 막는다.
+   */
+  function expectNoSuspicion() {
+    expect(screen.queryByText(CARRIED_NOTICE)).not.toBeInTheDocument();
+    expect(screen.queryByText(DAMAGE_WARNING)).not.toBeInTheDocument();
+    const mentions = [
+      ...screen.queryAllByRole('alert'),
+      ...screen.queryAllByRole('status'),
+    ].filter((element) => element.textContent?.includes('의심') ?? false);
+    expect(mentions).toHaveLength(0);
+  }
+
+  function expectCarriedSuspicion() {
+    expect(screen.getByText(CARRIED_NOTICE)).toBeInTheDocument();
+    expect(screen.getByText(DAMAGE_WARNING)).toBeInTheDocument();
+  }
+
+  const proceedButton = () =>
+    screen.getByRole('button', { name: '확인 후 규격 대조' });
+
+  const pickPhoto = () =>
+    fireEvent.click(screen.getByRole('button', { name: '테스트 사진 고르기' }));
+
+  const changeWheelType = (value: string) =>
+    fireEvent.change(screen.getByRole('combobox', { name: '숫돌 종류' }), {
+      target: { value },
+    });
+
+  function answerWheelCondition() {
+    for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+      fireEvent.click(button);
+    }
+  }
+
+  async function openDraft(draft: unknown) {
+    const result = readyGrinder();
+    formLoad.mockResolvedValueOnce({ status: 'found', draft });
+    // 다시 찍은 라벨 사진의 판독은 「보이지 않음」이다.
+    extractWheel.mockResolvedValue(OCR_BONDED);
+    render(<WheelScanPage />);
+    // 사진 없는 draft는 화면이 바뀌지 않아 기다릴 문구가 없다. 저장소에서 읽은 값이
+    // 화면 상태에 반영될 때까지만 기다린다.
+    await waitFor(() => expect(formLoad).toHaveBeenCalledWith('wheel'));
+    await act(async () => {});
+    return result;
+  }
+
+  /** 라벨을 다시 찍어 확인 화면까지 간다 */
+  async function retakeLabel() {
+    pickPhoto();
+    await screen.findByText('읽어낸 값을 확인하세요');
+  }
+
+  /** 지금 확인 화면이 저장하는 draft들 */
+  async function savedDrafts() {
+    formSave.mockClear();
+    await waitFor(() => expect(formSave).toHaveBeenCalled(), {
+      timeout: 3000,
+    });
+    return formSave.mock.calls.map(([draft]) => draft);
+  }
+
+  it('대조할 사진이 없으면 확인 화면을 열지 않는다 — 라벨을 다시 찍게 하고, 촬영 화면에는 알림을 얹지 않는다', async () => {
+    await openDraft(photolessDraft({ legacyExam: 'suspected' }));
+
+    expect(
+      screen.queryByText('읽어낸 값을 확인하세요'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '테스트 사진 고르기' }),
+    ).toBeInTheDocument();
+    // 의심은 다시 찍은 뒤의 확인 화면에서 알린다. 촬영 화면의 배치는 그대로다.
+    expectNoSuspicion();
+    // 의심이 남아 있는 저장된 draft는 그대로 둔다. 다시 쓰지도 지우지도 않는다.
+    expect(formSave).not.toHaveBeenCalled();
+    expect(formRemove).not.toHaveBeenCalled();
+  });
+
+  it.each<[string, Record<string, unknown>]>([
+    ['이전 버전의 다각도 확인', { legacyExam: 'suspected' }],
+    ['통째로 버린 OCR의 흔적', { ocr: null, droppedOcr: 'suspected' }],
+    [
+      '읽을 수 없어 통째로 버리는 OCR',
+      { ocr: { ...OCR_BONDED, visibleDamage: 'suspected', rawText: null } },
+    ],
+    ['온전한 OCR', { ocr: { ...OCR_BONDED, visibleDamage: 'suspected' } }],
+    [
+      '일부만 모름으로 읽은 OCR',
+      {
+        ocr: {
+          ...OCR_BONDED,
+          wheelType: 'resin_wheel',
+          visibleDamage: 'suspected',
+        },
+      },
+    ],
+    [
+      '앞서 이어받은 의심(사진이 또 빠진 draft)',
+      { carriedDamage: 'suspected' },
+    ],
+  ])(
+    '%s — 그 의심은 다시 찍은 뒤에도 이어간다. Gate에서 알리고 규격 값으로 넘긴다',
+    async (_name, extra) => {
+      const result = await openDraft(photolessDraft(extra));
+
+      await retakeLabel();
+
+      expectCarriedSuspicion();
+      // 값은 새 사진에서 다시 읽었다. 저장돼 있던 입력을 되살리지도, 그 draft에서
+      // 버린 것을 이제 와서 알리지도 않는다.
+      expect(screen.getByDisplayValue('12200')).toBeInTheDocument();
+      expect(screen.queryByDisplayValue('9900')).not.toBeInTheDocument();
+      expect(screen.queryByText(EXAM_DROPPED_NOTICE)).not.toBeInTheDocument();
+      expect(screen.queryByText(OCR_DROPPED_NOTICE)).not.toBeInTheDocument();
+
+      // 의심이 Gate를 대신 채우지도, 진행을 대신 막지도 않는다 — 판단은 사람이 한다.
+      expect(proceedButton()).toBeDisabled();
+      answerWheelCondition();
+      fireEvent.click(proceedButton());
+
+      expect(push).toHaveBeenCalledWith('/result');
+      expect(result.current.wheel?.visibleDamage).toBe('suspected');
+      // 다시 찍은 사진의 판독은 모델이 읽은 그대로 기록한다. 이어받은 의심을 그
+      // 판독에 섞어 넣지 않는다.
+      expect(result.current.wheelOcr).toEqual(OCR_BONDED);
+    },
+  );
+
+  it('다시 찍는 동안 저장된 draft를 지우지 않는다 — 판독 중에 새로고침해도 의심이 남는다', async () => {
+    await openDraft(photolessDraft({ legacyExam: 'suspected' }));
+
+    await retakeLabel();
+
+    // 의심이 남은 곳이 그 draft뿐이다. 새 확인 화면이 저장되며 덮어쓸 때까지 둔다.
+    expect(formRemove).not.toHaveBeenCalled();
+  });
+
+  it('이어받은 의심을 새 확인 화면 draft에 저장한다 — 한 번 더 새로고침해도 사라지지 않는다', async () => {
+    await openDraft(photolessDraft({ legacyExam: 'suspected' }));
+    await retakeLabel();
+
+    for (const draft of await savedDrafts()) {
+      expect(draft).toMatchObject({
+        slot: 'wheel',
+        ocr: OCR_BONDED,
+        carriedDamage: 'suspected',
+      });
+      expect(draft.photo).toBeInstanceOf(Blob);
+      // 다시 찍기 전 draft의 흔적은 따라가지 않는다. 그 판독과 사진은 이미 없다.
+      expect(draft).not.toHaveProperty('legacyExam');
+      expect(draft).not.toHaveProperty('droppedOcr');
+    }
+  });
+
+  it('다시 저장된 draft(새 사진 + 이어받은 의심)에서도 알림과 의심이 그대로다', async () => {
+    // 위 테스트가 저장하는 모양이다. 사진이 있어 확인 화면이 바로 열린다.
+    await openDraft(
+      photolessDraft({
+        photo: new Blob(['label']),
+        carriedDamage: 'suspected',
+      }),
+    );
+    await screen.findByText('읽어낸 값을 확인하세요');
+
+    expectCarriedSuspicion();
+    for (const draft of await savedDrafts()) {
+      expect(draft).toMatchObject({ carriedDamage: 'suspected' });
+    }
+  });
+
+  it('확인 화면에서 경고를 본 뒤 스스로 다시 찍으면 지운다 — 다른 숫돌일 수 있다', async () => {
+    const result = await openDraft(photolessDraft({ legacyExam: 'suspected' }));
+    await retakeLabel();
+    expectCarriedSuspicion();
+
+    fireEvent.click(screen.getByRole('button', { name: '재촬영' }));
+    // 「재촬영」을 누른 것만으로는 저장된 draft를 지우지 않는다. 찍지 않고
+    // 새로고침하면 그 draft에서 의심이 그대로 되살아나야 한다.
+    expect(formRemove).not.toHaveBeenCalled();
+
+    pickPhoto();
+    await screen.findByText('읽어낸 값을 확인하세요');
+
+    expect(formRemove).toHaveBeenCalledWith('wheel');
+    expectNoSuspicion();
+    for (const draft of await savedDrafts()) {
+      expect(draft).not.toHaveProperty('carriedDamage');
+    }
+
+    answerWheelCondition();
+    fireEvent.click(proceedButton());
+    expect(result.current.wheel?.visibleDamage).toBe('none_visible');
+  });
+
+  it('판독에 실패해 다시 찍어도 이어간다 — 그 의심은 아직 한 번도 보이지 않았다', async () => {
+    await openDraft(photolessDraft({ legacyExam: 'suspected' }));
+    extractWheel.mockRejectedValueOnce(new ExtractError('upstream', 502));
+
+    pickPhoto();
+    await screen.findByRole('button', { name: '같은 사진으로 다시 분석' });
+    // 오류 화면의 「재촬영」은 확인 화면을 본 뒤의 선택이 아니다.
+    fireEvent.click(screen.getByRole('button', { name: '재촬영' }));
+    await retakeLabel();
+
+    expectCarriedSuspicion();
+    expect(formRemove).not.toHaveBeenCalled();
+  });
+
+  it('사진 상태 확인에서 다시 찍어도, 경고를 보고 그 사진을 써도 이어간다', async () => {
+    await openDraft(photolessDraft({ legacyExam: 'suspected' }));
+
+    // 1번째 사진: 열지 못했다 → 다시 찍기. 확인 화면을 본 뒤의 선택이 아니다.
+    decodeLabel.mockRejectedValueOnce(new ImageDecodeError());
+    pickPhoto();
+    fireEvent.click(await screen.findByRole('button', { name: '다시 찍기' }));
+
+    // 2번째 사진: 흐림 경고 → 그래도 사용.
+    measureLabel.mockResolvedValueOnce(BLURRY);
+    pickPhoto();
+    fireEvent.click(
+      await screen.findByRole('button', { name: '그래도 이 사진 사용' }),
+    );
+    await screen.findByText('읽어낸 값을 확인하세요');
+
+    expectCarriedSuspicion();
+    expect(formRemove).not.toHaveBeenCalled();
+  });
+
+  it('서버에 닿지 못해 직접 입력으로 넘어가도 이어간다', async () => {
+    await openDraft(photolessDraft({ legacyExam: 'suspected' }));
+    extractWheel.mockRejectedValueOnce(new ExtractError('network'));
+
+    pickPhoto();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: '오프라인 제한 대조로 직접 입력',
+      }),
+    );
+    await screen.findByText('읽어낸 값을 확인하세요');
+
+    expectCarriedSuspicion();
+    for (const draft of await savedDrafts()) {
+      expect(draft).toMatchObject({
+        ocr: null,
+        analysisSource: 'manual',
+        carriedDamage: 'suspected',
+      });
+    }
+  });
+
+  it.each<[string, Record<string, unknown>]>([
+    ['흔적이 없는 draft', {}],
+    ['다각도 확인을 버렸다는 흔적만 있는 draft', { legacyExam: 'dropped' }],
+    ['OCR을 버렸다는 흔적만 있는 draft', { ocr: null, droppedOcr: 'dropped' }],
+    [
+      '의심하지 않았던 OCR을 통째로 버리는 draft',
+      { ocr: { ...OCR_BONDED, rawText: null } },
+    ],
+    [
+      '외관을 모름으로 읽은 OCR이 남은 draft',
+      { ocr: { ...OCR_BONDED, visibleDamage: 'unknown' } },
+    ],
+    ['목록에 없는 흔적 값이 남은 draft', { carriedDamage: 'cleared' }],
+  ])(
+    '%s — 의심이 없었으면 다시 찍어도 손상 경고를 지어내지 않는다',
+    async (_name, extra) => {
+      const result = await openDraft(photolessDraft(extra));
+
+      await retakeLabel();
+
+      expectNoSuspicion();
+      expect(screen.queryByText(EXAM_DROPPED_NOTICE)).not.toBeInTheDocument();
+      expect(screen.queryByText(OCR_DROPPED_NOTICE)).not.toBeInTheDocument();
+      // 이어갈 것이 없는 draft는 지금까지처럼 새 사진과 함께 지운다.
+      expect(formRemove).toHaveBeenCalledWith('wheel');
+
+      answerWheelCondition();
+      fireEvent.click(proceedButton());
+      expect(result.current.wheel?.visibleDamage).toBe('none_visible');
+    },
+  );
+
+  describe('손상 의심이 올라와 있는 확인 화면에서 종류를 바꾸면', () => {
+    // 종류를 바꾸면 이전 종류의 입력이 섞이지 않게 저장된 draft를 곧바로 지우고, 새
+    // draft는 1초쯤 뒤에 저장된다. 통째로 지우면 그 사이의 새로고침에 의심까지
+    // 사라지고, 작업자는 경고 없이 라벨을 다시 찍게 된다.
+    it.each<[string, Record<string, unknown>]>([
+      ['이전 버전의 다각도 확인이 의심했던 draft', { legacyExam: 'suspected' }],
+      [
+        '통째로 버린 OCR이 의심했던 draft',
+        { ocr: null, droppedOcr: 'suspected' },
+      ],
+      [
+        '지금 사진의 판독이 의심한 draft',
+        { ocr: { ...OCR_BONDED, visibleDamage: 'suspected' } },
+      ],
+      ['다시 찍기 전의 의심을 이어받은 draft', { carriedDamage: 'suspected' }],
+    ])(
+      '%s — 지우는 대신 의심만 담은 draft로 바꿔 둔다',
+      async (_name, extra) => {
+        await openDraft(
+          photolessDraft({ photo: new Blob(['label']), ...extra }),
+        );
+        await screen.findByText('읽어낸 값을 확인하세요');
+        expect(screen.getByText(DAMAGE_WARNING)).toBeInTheDocument();
+        formSave.mockClear();
+
+        changeWheelType('flap_disc');
+
+        expect(formRemove).not.toHaveBeenCalled();
+        // 이전 종류의 입력·사진·판독은 남기지 않는다. 남는 것은 의심 하나다.
+        expect(formSave.mock.calls).toEqual([[CARRY_ONLY_DRAFT]]);
+        expect(screen.getByText(DAMAGE_WARNING)).toBeInTheDocument();
+      },
+    );
+
+    it('이어받은 의심은 새 종류로 다시 저장되는 draft에도 따라간다', async () => {
+      await openDraft(photolessDraft({ legacyExam: 'suspected' }));
+      await retakeLabel();
+
+      changeWheelType('flap_disc');
+
+      expectCarriedSuspicion();
+      for (const draft of await savedDrafts()) {
+        expect(draft).toMatchObject({
+          slot: 'wheel',
+          fields: { wheelType: 'flap_disc' },
+          carriedDamage: 'suspected',
+        });
+      }
+    });
+
+    it('의심만 담은 draft로 돌아오면 — 확인 화면은 열지 않고, 다시 찍은 뒤 의심을 이어간다', async () => {
+      // 종류를 바꾼 직후 새로고침한 경우다. 위 테스트가 저장하는 모양 그대로 읽는다.
+      const result = await openDraft(
+        carriedDamageOnlyDraft('2026-09-17T00:00:00.000Z'),
+      );
+      expect(
+        screen.queryByText('읽어낸 값을 확인하세요'),
+      ).not.toBeInTheDocument();
+
+      await retakeLabel();
+
+      expectCarriedSuspicion();
+      answerWheelCondition();
+      fireEvent.click(proceedButton());
+      expect(result.current.wheel?.visibleDamage).toBe('suspected');
+    });
+
+    it('의심이 없으면 지금까지처럼 지운다 — 없는 의심을 저장하지 않는다', async () => {
+      await openDraft(photolessDraft({ photo: new Blob(['label']) }));
+      await screen.findByText('읽어낸 값을 확인하세요');
+      formSave.mockClear();
+
+      changeWheelType('flap_disc');
+
+      expect(formRemove).toHaveBeenCalledWith('wheel');
+      expect(formSave).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('입력칸 자리가 어긋나 통째로 읽지 못한 draft', () => {
+    // 되살릴 화면이 없다(recoverWheelFormDraft가 null을 돌려준다). 사진이 남아 있어도
+    // 확인 화면은 열지 않는다. 그 안에 남은 의심만 이어간다.
+    const unreadableDraft = (extra: Record<string, unknown>) => ({
+      ...photolessDraft({ photo: new Blob(['label']), ...extra }),
+      fields: null,
+    });
+
+    it('화면은 되살리지 않고 그 안의 의심만 이어간다', async () => {
+      const result = await openDraft(
+        unreadableDraft({
+          ocr: { ...OCR_BONDED, visibleDamage: 'suspected' },
+        }),
+      );
+      expect(
+        screen.queryByText('읽어낸 값을 확인하세요'),
+      ).not.toBeInTheDocument();
+
+      await retakeLabel();
+
+      expectCarriedSuspicion();
+      answerWheelCondition();
+      fireEvent.click(proceedButton());
+      expect(result.current.wheel?.visibleDamage).toBe('suspected');
+      expect(result.current.wheelOcr).toEqual(OCR_BONDED);
+    });
+
+    it('의심이 없었으면 아무것도 이어가지 않는다', async () => {
+      await openDraft(unreadableDraft({}));
+      expect(
+        screen.queryByText('읽어낸 값을 확인하세요'),
+      ).not.toBeInTheDocument();
+
+      await retakeLabel();
+
+      expectNoSuspicion();
+      expect(formRemove).toHaveBeenCalledWith('wheel');
+    });
+  });
+
+  describe('작업자가 복원보다 먼저 새 사진을 찍었으면', () => {
+    // 저장소 읽기가 늦게 끝난 경우다. 뒤늦게 도착한 입력칸은 적용하지 않는다 —
+    // 작업자의 새 촬영이 우선한다. 그 draft의 의심도 작업자는 본 적이 없다.
+    //
+    // 그 draft는 새 사진이 들어올 때 이미 지워졌다(그때는 의심이 든 draft인 줄 알 수
+    // 없었다). 의심이 화면 상태에만 남으면 새로고침 한 번에 사라지므로, 의심만 담은
+    // draft를 다시 남긴다.
+    const OLD_DRAFT = photolessDraft({
+      photo: new Blob(['old label']),
+      legacyExam: 'suspected',
+    });
+
+    /** 저장소 읽기를 붙잡아 둔 채 화면을 연다. 돌려받은 함수로 읽기를 끝낸다 */
+    function openWithSlowLoad() {
+      const result = readyGrinder();
+      let finishLoad: (value: unknown) => void = () => {};
+      formLoad.mockReturnValueOnce(
+        new Promise((resolve) => {
+          finishLoad = resolve;
+        }),
+      );
+      extractWheel.mockResolvedValue(OCR_BONDED);
+      render(<WheelScanPage />);
+      const arrive = (draft: unknown) =>
+        act(async () => {
+          finishLoad({ status: 'found', draft });
+        });
+      return { result, arrive };
+    }
+
+    it('입력칸은 되살리지 않고, 그 draft의 의심만 이어간다', async () => {
+      const { result, arrive } = openWithSlowLoad();
+      await retakeLabel();
+      expectNoSuspicion();
+      expect(formRemove).toHaveBeenCalledWith('wheel');
+      formSave.mockClear();
+
+      await arrive(OLD_DRAFT);
+
+      expect(screen.getByDisplayValue('12200')).toBeInTheDocument();
+      expect(screen.queryByDisplayValue('9900')).not.toBeInTheDocument();
+      expectCarriedSuspicion();
+      // 화면이 다시 저장하기 전에도 의심이 저장소에 남아 있다.
+      expect(formSave.mock.calls).toEqual([[CARRY_ONLY_DRAFT]]);
+      for (const draft of await savedDrafts()) {
+        expect(draft).toMatchObject({
+          ocr: OCR_BONDED,
+          carriedDamage: 'suspected',
+        });
+        expect(draft.photo).toBeInstanceOf(Blob);
+      }
+
+      answerWheelCondition();
+      fireEvent.click(proceedButton());
+      expect(result.current.wheel?.visibleDamage).toBe('suspected');
+    });
+
+    it('판독에 실패한 화면에서 도착해도 의심을 저장소에 남긴다 — 새로고침해도 사라지지 않는다', async () => {
+      const { arrive } = openWithSlowLoad();
+      extractWheel.mockRejectedValueOnce(new ExtractError('upstream', 502));
+      pickPhoto();
+      await screen.findByRole('button', { name: '같은 사진으로 다시 분석' });
+      expect(formRemove).toHaveBeenCalledWith('wheel');
+
+      await arrive(OLD_DRAFT);
+
+      // 오류 화면은 draft를 저장하지 않는다. 의심만 담은 draft가 그 자리를 지킨다.
+      expect(formSave.mock.calls).toEqual([[CARRY_ONLY_DRAFT]]);
+
+      // 그 뒤 다시 찍어도 그 draft를 지우지 않고 의심을 이어간다.
+      formRemove.mockClear();
+      fireEvent.click(screen.getByRole('button', { name: '재촬영' }));
+      await retakeLabel();
+
+      expect(formRemove).not.toHaveBeenCalled();
+      expectCarriedSuspicion();
+    });
+
+    it('의심이 없던 draft면 아무것도 적용하지 않는다', async () => {
+      const { arrive } = openWithSlowLoad();
+      await retakeLabel();
+      formSave.mockClear();
+
+      await arrive(photolessDraft({ photo: new Blob(['old label']) }));
+
+      expect(screen.getByDisplayValue('12200')).toBeInTheDocument();
+      expect(screen.queryByDisplayValue('9900')).not.toBeInTheDocument();
+      expectNoSuspicion();
+      expect(formSave).not.toHaveBeenCalled();
+    });
   });
 });
 

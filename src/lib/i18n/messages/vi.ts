@@ -1088,6 +1088,8 @@ export const vi: Messages = {
     'Ảnh bổ sung (mặt sau, cạnh ngoài, lỗ tâm) và kết quả AI kiểm tra bề ngoài của phiên bản trước không còn được dùng nên không được khôi phục. Các phần còn lại vẫn tiếp tục như cũ.',
   'draft.warn.ocr':
     'Không đọc được kết quả AI đã lưu nên không khôi phục được. Nếu tiếp tục như hiện tại, lần kiểm tra này không thể nhận kết luận khớp. Hãy chụp lại, hoặc phân tích lại trên máy chủ ở màn hình kết quả.',
+  'draft.warn.carriedDamage':
+    'Phần kiểm tra đá mài đã lưu trước khi chụp ảnh này có nghi ngờ hư hỏng do AI nêu ra. Nghi ngờ đó vẫn được giữ, không bị xóa. Dù bạn đã chụp một viên đá mài khác, hãy tự kiểm tra đá mài thực tế.',
   'draft.warn.trialRun':
     'Không thể tiếp tục lần chạy thử đang dở. Hãy làm lại từ đầu.',
   'draft.warn.unreadable':

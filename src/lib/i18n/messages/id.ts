@@ -1119,6 +1119,8 @@ export const id: Messages = {
     'Foto tambahan (sisi belakang, tepi luar, lubang tengah) dan hasil pemeriksaan tampilan oleh AI dari versi sebelumnya tidak lagi dipakai dan tidak dipulihkan. Bagian lainnya tetap dilanjutkan.',
   'draft.warn.ocr':
     'Hasil AI yang tersimpan tidak dapat dibaca sehingga tidak dipulihkan. Jika dilanjutkan seperti ini, pemeriksaan ini tidak bisa mendapat kesimpulan sesuai. Foto ulang, atau analisis ulang di server pada layar hasil.',
+  'draft.warn.carriedDamage':
+    'Pemeriksaan batu gerinda yang tersimpan sebelum foto ini diambil memuat kecurigaan kerusakan dari AI. Kecurigaan itu tetap dilanjutkan, tidak dihapus. Meskipun yang difoto batu gerinda lain, periksa sendiri batu gerinda yang sebenarnya.',
   'draft.warn.trialRun':
     'Uji jalan yang sedang berlangsung tidak dapat dilanjutkan. Mulai lagi dari awal.',
   'draft.warn.unreadable':

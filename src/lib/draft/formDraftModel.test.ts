@@ -9,8 +9,10 @@ import {
   EMPTY_GRINDER_FORM_FIELDS,
   EMPTY_WHEEL_FORM_FIELDS,
   FORM_DRAFT_SCHEMA_VERSION,
+  carriedDamageOnlyDraft,
   recoverGrinderFormDraft,
   recoverWheelFormDraft,
+  wheelDraftDamageSuspected,
 } from './formDraftModel';
 import { WHEEL_PURPOSE_LABEL, WHEEL_TYPE_LABEL } from '@/lib/i18n/checkText';
 import { GUARD_LABEL, SPINDLE_LABEL } from '@/lib/i18n/profileLabels';
@@ -1194,5 +1196,257 @@ describe('recoverWheelFormDraft — 이전 버전의 다각도 외관 확인 흔
       recoverWheelFormDraft(legacyDraft(undefined, { legacyExam: true }))
         ?.legacyExam,
     ).toBeNull();
+  });
+});
+
+describe('확인 화면을 되살리지 못한 draft의 손상 의심', () => {
+  // 사진을 되살리지 못했거나 입력칸 자리가 어긋나 draft를 통째로 읽지 못하면 확인
+  // 화면을 열 수 없다. 손상 의심은 확인 화면에서만 보이므로, 그 draft에 남은 의심은
+  // 작업자가 한 번도 보지 못한 채 새 사진과 함께 지워졌다. 그 의심만은 읽어서
+  // 이어간다(wheelDraftDamageSuspected). 다시 찍은 뒤에는 흔적(carriedDamage)으로
+  // 저장한다.
+
+  /** 외관 의심이 든 OCR 원본 */
+  const SUSPECTED_OCR: WheelSpec = {
+    ...WHEEL_OCR,
+    wheelType: 'bonded_abrasive',
+    visibleDamage: 'suspected',
+  };
+
+  const FIELDS = {
+    ...EMPTY_WHEEL_FORM_FIELDS,
+    maxRPM: '12200',
+    diameter: '125',
+    purpose: 'cutting',
+    wheelType: 'bonded_abrasive',
+  };
+
+  const draft = (extra: Record<string, unknown> = {}) => ({
+    slot: 'wheel',
+    schemaVersion: FORM_DRAFT_SCHEMA_VERSION,
+    savedAt: '2026-09-17T00:00:00.000Z',
+    fields: FIELDS,
+    photo: new Blob(['label']),
+    ocr: WHEEL_OCR,
+    analysisSource: 'server',
+    ...extra,
+  });
+
+  /** 이전 버전(다각도 외관 확인)이 draft에 넣어 두던 자리 */
+  const legacyExam = (status: string) => ({
+    photos: { back: new Blob(['back']), edge: null, bore: null },
+    exam: { status, findings: [] },
+    notRunReason: null,
+  });
+
+  /** 손상 의심이 남은 draft. 의심이 올 수 있는 자리 전부다 */
+  const SUSPECTED: Array<[string, Record<string, unknown>]> = [
+    ['온전한 OCR', { ocr: SUSPECTED_OCR }],
+    [
+      '일부만 모름으로 읽은 OCR',
+      { ocr: { ...SUSPECTED_OCR, wheelType: 'resin_wheel' } },
+    ],
+    ['통째로 버리는 OCR', { ocr: { ...SUSPECTED_OCR, rawText: null } }],
+    ['남은 값이 거의 없는 OCR 객체', { ocr: { visibleDamage: 'suspected' } }],
+    ['통째로 버린 OCR의 흔적', { ocr: null, droppedOcr: 'suspected' }],
+    ['이전 버전의 다각도 확인 결과', { exam: legacyExam('suspected') }],
+    ['이전 버전의 다각도 확인 흔적', { legacyExam: 'suspected' }],
+    ['앞서 이어받은 의심의 흔적', { carriedDamage: 'suspected' }],
+  ];
+
+  /** 손상 의심이 없는 draft. 비슷해 보이는 값도 의심으로 올리지 않는다 */
+  const NOT_SUSPECTED: Array<[string, Record<string, unknown>]> = [
+    ['흔적이 없는 draft', {}],
+    ['직접 입력한 draft(OCR 없음)', { ocr: null }],
+    [
+      '외관을 모름으로 읽은 OCR',
+      { ocr: { ...WHEEL_OCR, visibleDamage: 'unknown' } },
+    ],
+    [
+      '의심하지 않았던 OCR을 통째로 버리는 경우',
+      { ocr: { ...WHEEL_OCR, rawText: null } },
+    ],
+    [
+      '버리는 OCR의 외관 값이 목록에 없는 값',
+      { ocr: { ...SUSPECTED_OCR, rawText: null, visibleDamage: 'cracked' } },
+    ],
+    [
+      '버리는 OCR의 외관 값이 대소문자가 다른 값',
+      { ocr: { ...SUSPECTED_OCR, rawText: null, visibleDamage: 'SUSPECTED' } },
+    ],
+    [
+      '버리는 OCR의 외관 값이 객체',
+      {
+        ocr: {
+          ...SUSPECTED_OCR,
+          rawText: null,
+          visibleDamage: { status: 'suspected' },
+        },
+      },
+    ],
+    // 문자열·배열은 OCR이 아니다. 안에 든 값을 뒤져 의심을 찾지 않는다.
+    ['문자열인 OCR', { ocr: 'suspected' }],
+    ['배열인 OCR', { ocr: [SUSPECTED_OCR] }],
+    ['OCR을 버렸다는 흔적만', { ocr: null, droppedOcr: 'dropped' }],
+    ['목록에 없는 버림 흔적', { ocr: null, droppedOcr: 'SUSPECTED' }],
+    ['다각도 확인을 버렸다는 흔적만', { legacyExam: 'dropped' }],
+    ['의심하지 않았던 다각도 확인 결과', { exam: legacyExam('not_observed') }],
+    ['목록에 없는 다각도 확인 흔적', { legacyExam: true }],
+    ['목록에 없는 이어받은 흔적 — 다른 문자열', { carriedDamage: 'dropped' }],
+    ['목록에 없는 이어받은 흔적 — 대소문자', { carriedDamage: 'SUSPECTED' }],
+    ['목록에 없는 이어받은 흔적 — 불리언', { carriedDamage: true }],
+  ];
+
+  describe('recoverWheelFormDraft — 이어받은 의심의 흔적', () => {
+    it('이 버전이 다시 저장한 흔적은 그대로 되살린다 — 새로고침으로 의심이 사라지지 않는다', () => {
+      const recovered = recoverWheelFormDraft(
+        draft({ carriedDamage: 'suspected' }),
+      );
+
+      expect(recovered?.carriedDamage).toBe('suspected');
+      // 다시 찍은 사진의 판독은 손대지 않는다. 의심은 흔적으로만 이어간다.
+      expect(recovered?.ocr).toEqual(WHEEL_OCR);
+      expect(recovered?.ocrAltered).toBe(false);
+    });
+
+    it.each(NOT_SUSPECTED)(
+      '저장된 값이 정확히 「의심」이 아니면 흔적이 없다 — %s',
+      (_name, extra) => {
+        expect(recoverWheelFormDraft(draft(extra))?.carriedDamage).toBeNull();
+      },
+    );
+
+    it('다른 자리의 의심을 이 흔적으로 옮겨 적지 않는다 — 되살린 화면에서는 각자의 자리에서 보인다', () => {
+      // 확인 화면을 되살릴 수 있는 draft다. 의심은 OCR과 다른 흔적에 그대로 있고,
+      // 화면이 거기서 읽는다. 이 흔적은 다시 찍은 뒤에만 생긴다.
+      const recovered = recoverWheelFormDraft(
+        draft({ ocr: SUSPECTED_OCR, legacyExam: 'suspected' }),
+      );
+
+      expect(recovered?.carriedDamage).toBeNull();
+      expect(recovered?.ocr?.visibleDamage).toBe('suspected');
+      expect(recovered?.legacyExam).toBe('suspected');
+    });
+
+    it('다른 흔적과 따로 남는다 — 한쪽이 다른 쪽을 덮지 않는다', () => {
+      const recovered = recoverWheelFormDraft(
+        draft({
+          ocr: { ...WHEEL_OCR, rawText: null },
+          legacyExam: 'dropped',
+          carriedDamage: 'suspected',
+        }),
+      );
+
+      expect(recovered?.carriedDamage).toBe('suspected');
+      expect(recovered?.droppedOcr).toBe('dropped');
+      expect(recovered?.legacyExam).toBe('dropped');
+    });
+  });
+
+  describe('wheelDraftDamageSuspected', () => {
+    it.each(SUSPECTED)('의심이 남아 있으면 읽는다 — %s', (_name, extra) => {
+      expect(wheelDraftDamageSuspected(draft(extra))).toBe(true);
+    });
+
+    it.each(SUSPECTED)(
+      '사진을 되살리지 못한 draft에서도 읽는다 — %s',
+      (_name, extra) => {
+        expect(
+          wheelDraftDamageSuspected(draft({ ...extra, photo: null })),
+        ).toBe(true);
+        // 저장된 사진 값이 손상돼 Blob으로 되돌리지 못한 경우다.
+        expect(
+          wheelDraftDamageSuspected(draft({ ...extra, photo: { kind: '?' } })),
+        ).toBe(true);
+      },
+    );
+
+    it.each(SUSPECTED)(
+      '입력칸 자리가 어긋나 통째로 읽지 못하는 draft에서도 읽는다 — %s',
+      (_name, extra) => {
+        for (const fields of [null, undefined, 'not an object', [FIELDS]]) {
+          const broken = draft({ ...extra, fields });
+          // 되살릴 화면이 없다는 계약은 그대로다. 입력칸·사진·판독은 되살리지 않는다.
+          expect(recoverWheelFormDraft(broken)).toBeNull();
+          expect(wheelDraftDamageSuspected(broken)).toBe(true);
+        }
+      },
+    );
+
+    it.each(NOT_SUSPECTED)(
+      '저장된 값이 정확히 「의심」이 아니면 의심을 지어내지 않는다 — %s',
+      (_name, extra) => {
+        expect(wheelDraftDamageSuspected(draft(extra))).toBe(false);
+        // 사진이 없거나 입력칸을 읽지 못했다는 것이 의심의 근거가 되지 않는다.
+        expect(
+          wheelDraftDamageSuspected(draft({ ...extra, photo: null })),
+        ).toBe(false);
+        expect(
+          wheelDraftDamageSuspected(draft({ ...extra, fields: null })),
+        ).toBe(false);
+      },
+    );
+
+    it.each([
+      ['빠진 값', undefined],
+      ['null', null],
+      ['문자열', 'suspected'],
+      ['숫자', 42],
+      // 배열은 draft가 아니다. 안에 든 값을 뒤져 의심을 찾지 않는다.
+      ['배열', [{ ocr: SUSPECTED_OCR, carriedDamage: 'suspected' }]],
+    ])('draft가 객체가 아니면 읽을 의심이 없다 — %s', (_name, raw) => {
+      expect(wheelDraftDamageSuspected(raw)).toBe(false);
+    });
+
+    it.each([...SUSPECTED, ...NOT_SUSPECTED])(
+      '되살릴 수 있는 draft에서는 확인 화면이 보여 주는 의심과 같다 — %s',
+      (_name, extra) => {
+        // 확인 화면은 되살린 값의 네 자리에서 의심을 읽는다(scan/wheel/page.tsx).
+        // 두 판독이 어긋나면, 사진이 있을 때는 보이던 의심이 사진이 없을 때는
+        // 사라지거나 그 반대가 된다.
+        const raw = draft(extra);
+        const recovered = recoverWheelFormDraft(raw);
+        const shownOnConfirmScreen =
+          recovered?.ocr?.visibleDamage === 'suspected' ||
+          recovered?.droppedOcr === 'suspected' ||
+          recovered?.legacyExam === 'suspected' ||
+          recovered?.carriedDamage === 'suspected';
+
+        expect(recovered).not.toBeNull();
+        expect(wheelDraftDamageSuspected(raw)).toBe(shownOnConfirmScreen);
+      },
+    );
+  });
+
+  describe('carriedDamageOnlyDraft — 의심만 담은 draft', () => {
+    // 저장된 draft가 없어졌는데 이어가야 할 의심이 있을 때 화면이 남긴다(작업자가
+    // 복원보다 먼저 찍었을 때, 종류를 바꿔 draft를 치웠을 때).
+    const carryOnly = carriedDamageOnlyDraft('2026-09-17T00:00:00.000Z');
+
+    it('읽히는 것은 의심 하나다', () => {
+      expect(recoverWheelFormDraft(carryOnly)?.carriedDamage).toBe('suspected');
+      expect(wheelDraftDamageSuspected(carryOnly)).toBe(true);
+    });
+
+    it('되살릴 화면이 없다 — 사진·판독·입력칸이 비어 있고, 버렸다고 알릴 흔적도 없다', () => {
+      const recovered = recoverWheelFormDraft(carryOnly);
+
+      // 사진이 없으면 확인 화면은 열리지 않는다. 작업자는 라벨을 다시 찍는다.
+      expect(recovered?.photo).toBeNull();
+      expect(recovered?.ocr).toBeNull();
+      expect(recovered?.ocrAltered).toBe(false);
+      expect(recovered?.fields).toEqual(EMPTY_WHEEL_FORM_FIELDS);
+      expect(recovered?.droppedOcr).toBeNull();
+      expect(recovered?.legacyExam).toBeNull();
+    });
+
+    it('서버 분석을 거쳤다고 적어 두지 않는다', () => {
+      expect(carryOnly.analysisSource).toBe('local_ocr');
+    });
+
+    it('입력칸 기본값 표를 함께 쓰지 않는다 — 한쪽을 고쳐도 다른 쪽이 바뀌지 않는다', () => {
+      expect(carryOnly.fields).toEqual(EMPTY_WHEEL_FORM_FIELDS);
+      expect(carryOnly.fields).not.toBe(EMPTY_WHEEL_FORM_FIELDS);
+    });
   });
 });

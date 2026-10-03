@@ -182,6 +182,33 @@ export interface GrinderFormDraft {
 export type LegacyExamTrace = 'dropped' | 'suspected';
 
 /**
+ * 확인 화면을 되살리지 못한 draft에서 이어받은 손상 의심.
+ *
+ * 저장된 draft로 확인 화면을 다시 열지 못하는 경우가 있다.
+ *
+ *   - 대조할 사진을 되살리지 못했다(저장 공간이 모자라 사진만 빼고 저장했다·저장된
+ *     사진 값이 손상됐다)
+ *   - 입력칸 자리가 어긋나 draft를 통째로 읽지 못했다
+ *   - 작업자가 복원보다 먼저 새 사진을 찍었다(저장소 읽기가 늦었다)
+ *   - 확인 화면이 draft를 지운 직후였다(숫돌 종류를 바꾸면 이전 종류의 입력이 섞이지
+ *     않게 곧바로 지우고, 새 draft는 조금 뒤에 저장된다)
+ *
+ * 어느 경우든 작업자는 라벨을 다시 찍는다. 그 draft에 남아 있던 의심은 새 사진과
+ * 함께 지워져 다시 찍은 뒤의 확인 화면에 나타나지 않았고, 작업자는 경고 없이 숫돌
+ * 상태 확인에 답했다. 앞의 세 경우에는 그 경고를 한 번도 보지 못한 채였다. 앱이
+ * 스스로 올린 경고를 앱이 덜어낸 것이다(docs/safety-boundaries.md).
+ *
+ * 그래서 그 의심은 새 사진을 찍어도 지우지 않고 이 흔적으로 이어간다
+ * (wheelDraftDamageSuspected). 어디서 온 의심이든 — 온전한 OCR, 일부만 모름으로 읽은
+ * OCR, 통째로 버린 OCR(DroppedOcrTrace), 이전 버전의 다각도 확인(LegacyExamTrace) —
+ * 다시 찍은 뒤에는 이 흔적 하나로 남는다. 그 판독과 사진은 이미 없다.
+ *
+ * 값은 의심 하나뿐이다. 「버렸다」는 흔적은 두지 않는다 — 다시 찍으면 값을 새
+ * 사진에서 다시 읽으므로 알릴 것이 남지 않는다.
+ */
+export type CarriedDamageTrace = 'suspected';
+
+/**
  * 숫돌 확인 화면 입력 draft.
  *
  * 다각도 외관 확인을 빼기 전에 저장된 draft에는 `exam`(추가 사진 세 장과 AI
@@ -215,6 +242,12 @@ export interface WheelFormDraft {
    * 다시 저장할 때 빠뜨리면 한 번 더 새로고침하는 것만으로 의심이 사라진다.
    */
   legacyExam?: LegacyExamTrace;
+  /**
+   * 확인 화면을 되살리지 못한 draft에서 이어받은 손상 의심. 그렇게 이어받은 경우에만
+   * 있다 — 여기 저장되는 ocr은 다시 찍은 사진의 판독이라, 빠뜨리면 한 번 더
+   * 새로고침하는 것만으로 의심이 사라진다.
+   */
+  carriedDamage?: CarriedDamageTrace;
 }
 
 export type ScanFormDraft = GrinderFormDraft | WheelFormDraft;
@@ -259,6 +292,8 @@ export interface WheelFormRecovery {
   analysisSource: AnalysisSource;
   /** 이전 버전의 다각도 외관 확인이 남긴 흔적. 없으면 null */
   legacyExam: LegacyExamTrace | null;
+  /** 확인 화면을 되살리지 못한 draft에서 이어받은 손상 의심. 없으면 null */
+  carriedDamage: CarriedDamageTrace | null;
 }
 
 /** 숫돌 OCR에서 읽지 못하면 OCR 전체를 믿을 수 없는 값 */
@@ -413,6 +448,16 @@ function recoverLegacyExam(
   return used ? 'dropped' : null;
 }
 
+/**
+ * 확인 화면을 되살리지 못한 draft에서 이어받아 다시 저장한 의심(CarriedDamageTrace)을
+ * 읽는다. 목록에 있는 값만 믿는다.
+ */
+function recoverCarriedDamage(
+  raw: Record<string, unknown>,
+): CarriedDamageTrace | null {
+  return raw.carriedDamage === 'suspected' ? 'suspected' : null;
+}
+
 /** 읽어 온 그라인더 확인 화면 draft에서 믿을 수 있는 값만 골라 되살린다 */
 export function recoverGrinderFormDraft(
   raw: unknown,
@@ -472,5 +517,55 @@ export function recoverWheelFormDraft(raw: unknown): WheelFormRecovery | null {
     droppedOcr: mergeDroppedOcr(raw.droppedOcr, dropped, ocr),
     analysisSource: pickAnalysisSource(raw),
     legacyExam: recoverLegacyExam(raw),
+    carriedDamage: recoverCarriedDamage(raw),
+  };
+}
+
+/**
+ * 이 draft에 손상 의심이 남아 있는가 — 확인 화면을 되살리지 못할 때 읽는다.
+ *
+ * 의심이 남는 네 자리 — 되살린 OCR, 통째로 버린 OCR의 흔적, 이전 버전의 다각도
+ * 확인 흔적, 앞서 이어받은 흔적 — 를 recoverWheelFormDraft와 같은 함수로 읽는다.
+ * 다른 것은 입력칸 자리(fields)를 요구하지 않는다는 점 하나다. 입력칸을 읽지 못한
+ * draft는 되살릴 화면이 없어 recoverWheelFormDraft가 null을 돌려주지만(그 계약은
+ * 그대로다), 그 안에 남은 의심까지 버릴 이유는 아니다. 입력칸·사진·판독은 여기서
+ * 되살리지 않는다.
+ *
+ * 저장된 값이 정확히 'suspected'일 때만 true다. 읽지 못한 값을 의심으로 채우면
+ * 모델이 내지 않은 경고를 지어낸다.
+ */
+export function wheelDraftDamageSuspected(raw: unknown): boolean {
+  if (!isObject(raw)) return false;
+  const { ocr, dropped } = recoverWheelOcr(raw.ocr);
+  return (
+    ocr?.visibleDamage === 'suspected' ||
+    mergeDroppedOcr(raw.droppedOcr, dropped, ocr) === 'suspected' ||
+    recoverLegacyExam(raw) === 'suspected' ||
+    recoverCarriedDamage(raw) === 'suspected'
+  );
+}
+
+/**
+ * 손상 의심만 담은 숫돌 확인 화면 draft.
+ *
+ * 저장된 draft가 없어졌는데 이어가야 할 의심이 있을 때 남긴다. 의심이 남은 곳이
+ * 화면 상태뿐이면 새로고침 한 번에 사라진다 — 확인 화면이 다시 저장할 때까지 이
+ * draft가 그 자리를 지킨다.
+ *
+ * 입력칸·사진·판독은 비워 둔다. 사진이 없어 이 draft로는 확인 화면이 열리지 않고,
+ * 읽히는 것은 의심 하나다(wheelDraftDamageSuspected). 작업자는 라벨을 다시 찍는다.
+ */
+export function carriedDamageOnlyDraft(savedAt: string): WheelFormDraft {
+  return {
+    slot: 'wheel',
+    schemaVersion: FORM_DRAFT_SCHEMA_VERSION,
+    savedAt,
+    fields: { ...EMPTY_WHEEL_FORM_FIELDS },
+    photo: null,
+    ocr: null,
+    // 되살릴 화면이 없어 쓰이지 않는 값이다. 그래도 서버 분석을 거쳤다고 적어 두지는
+    // 않는다 — 출처를 확정할 수 없을 때의 값(pickAnalysisSource)과 같게 둔다.
+    analysisSource: 'local_ocr',
+    carriedDamage: 'suspected',
   };
 }

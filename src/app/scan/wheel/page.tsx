@@ -25,7 +25,9 @@ import { formDraftStore } from '@/lib/draft/draftStore';
 import {
   FORM_DRAFT_SAVE_DELAY_MS,
   FORM_DRAFT_SCHEMA_VERSION,
+  carriedDamageOnlyDraft,
   recoverWheelFormDraft,
+  wheelDraftDamageSuspected,
   type DroppedOcrTrace,
   type LegacyExamTrace,
 } from '@/lib/draft/formDraftModel';
@@ -78,6 +80,16 @@ interface FormState {
   wheelType: WheelType;
   /** 부속품 이름(선택). 종류를 특정하지 못했을 때(other·unknown)만 보여준다. */
   accessoryName: string;
+}
+
+/**
+ * 저장된 draft가 없어진 자리에 손상 의심만 담은 draft를 남긴다.
+ *
+ * 의심이 남은 곳이 화면 상태뿐이면 새로고침 한 번에 사라진다. 다음 확인 화면이
+ * 저장되면서 덮어쓴다.
+ */
+function persistCarriedDamage() {
+  void formDraftStore.save(carriedDamageOnlyDraft(new Date().toISOString()));
 }
 
 export default function WheelScanPage() {
@@ -137,6 +149,12 @@ export default function WheelScanPage() {
   // 나간다(ocrDropped). 이것도 이 라벨 사진의 숫돌에 대한 것이라 새 사진을 찍으면
   // 지운다.
   const [droppedOcr, setDroppedOcr] = useState<DroppedOcrTrace | null>(null);
+  // 확인 화면을 되살리지 못한 draft에 손상 의심이 남아 있었는가(formDraftModel의
+  // CarriedDamageTrace). 위 두 흔적과 달리 새 사진을 찍어도 지우지 않는다 — 그 사진은
+  // 작업자가 고른 것이 아니라, 확인 화면을 되살리지 못한 앱이 요구한 것이다.
+  // 작업자가 확인 화면에서 경고를 보고 스스로 다시 찍기를 고르면 그때 놓는다
+  // (retakeFromConfirm).
+  const [carriedDamage, setCarriedDamage] = useState(false);
   // 새로고침 경합 방지: 사용자가 이미 새 사진을 찍거나 직접 입력을 골랐으면
   // 뒤늦게 도착한 draft 복원을 적용하지 않는다.
   const actedRef = useRef(false);
@@ -147,9 +165,27 @@ export default function WheelScanPage() {
   useEffect(() => {
     let cancelled = false;
     void formDraftStore.load('wheel').then((result) => {
-      if (cancelled || actedRef.current || result.status !== 'found') return;
-      const recovered = recoverWheelFormDraft(result.draft);
-      if (!recovered) return;
+      if (cancelled || result.status !== 'found') return;
+      const recovered = actedRef.current
+        ? null
+        : recoverWheelFormDraft(result.draft);
+      if (!recovered?.photo) {
+        // 확인 화면을 되살리지 못한다. 판독값을 대조할 사진이 없거나(저장 공간이
+        // 모자라 사진만 빼고 저장했다·저장된 사진 값이 손상됐다), draft를 통째로 읽지
+        // 못했거나, 작업자가 복원보다 먼저 새 사진을 찍었다. 입력칸과 판독은 새
+        // 사진에서 다시 읽으므로 되살리지 않는다.
+        //
+        // 그 draft에 남은 손상 의심만은 이어간다. 의심은 확인 화면에서만 보이므로,
+        // 여기서 놓으면 작업자가 한 번도 보지 못한 채 사라진다.
+        if (!wheelDraftDamageSuspected(result.draft)) return;
+        setCarriedDamage(true);
+        // 작업자가 먼저 찍었으면 analyze가 이 draft를 이미 지웠다 — 그때는 의심이 든
+        // draft인 줄 알 수 없었다. 의심이 남은 곳이 화면 상태뿐이라, 판독 중이거나
+        // 판독에 실패한 화면에서 새로고침하면 사라진다. 의심만 담은 draft를 다시
+        // 남긴다. 새 확인 화면이 저장되면서 덮어쓴다.
+        if (actedRef.current) persistCarriedDamage();
+        return;
+      }
       setForm({
         maxRPM: recovered.fields.maxRPM,
         diameter: recovered.fields.diameter,
@@ -169,10 +205,9 @@ export default function WheelScanPage() {
       setOffline(recovered.analysisSource === 'manual');
       setLocalOnly(recovered.analysisSource === 'local_ocr');
       setLegacyExam(recovered.legacyExam);
-      if (recovered.photo) {
-        setPhoto(recovered.photo);
-        setPhase('confirm');
-      }
+      setCarriedDamage(recovered.carriedDamage === 'suspected');
+      setPhoto(recovered.photo);
+      setPhase('confirm');
     });
     return () => {
       cancelled = true;
@@ -201,6 +236,9 @@ export default function WheelScanPage() {
         analysisSource: offline ? 'manual' : localOnly ? 'local_ocr' : 'server',
         // 이어받은 흔적을 다시 저장한다. 빠뜨리면 새로고침 한 번에 의심이 사라진다.
         ...(legacyExam ? { legacyExam } : {}),
+        // 확인 화면을 되살리지 못한 draft에서 이어받은 의심도 같다. 여기 저장되는
+        // ocr은 다시 찍은 사진의 판독이라 그 의심을 담고 있지 않다.
+        ...(carriedDamage ? { carriedDamage: 'suspected' as const } : {}),
       });
     }, FORM_DRAFT_SAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
@@ -214,6 +252,7 @@ export default function WheelScanPage() {
     offline,
     localOnly,
     legacyExam,
+    carriedDamage,
   ]);
 
   // 그라인더를 찍지 않았거나 장비 상태를 직접 확인하지 않은 경우 1단계로 되돌린다.
@@ -260,8 +299,17 @@ export default function WheelScanPage() {
     setLocalOnly(false);
     setLegacyExam(null);
     setDroppedOcr(null);
-    // 이전 사진에 대한 확인 화면 draft는 이제 근거가 없다.
-    void formDraftStore.remove('wheel');
+    // 확인 화면을 되살리지 못한 draft에서 이어받은 의심(carriedDamage)은 여기서
+    // 지우지 않는다. 이 사진이 작업자가 고른 것인지 앱이 요구한 것인지 여기서는 알
+    // 수 없다 — 작업자가 확인 화면에서 스스로 다시 찍기를 고르면 그때 이미 놓았다
+    // (retakeFromConfirm). 확인 화면에서 촬영 화면으로 가는 길은 그것 하나다. 다른
+    // 길이 생겨 놓지 않은 채 넘어오면 의심이 한 번 더 이어질 뿐이다 — 덜어내는
+    // 쪽으로는 틀리지 않는다.
+    //
+    // 이전 사진에 대한 확인 화면 draft는 이제 근거가 없다. 다만 이어가는 의심이
+    // 있으면 지우지 않는다. 그 의심이 남은 곳이 저장된 draft뿐이라, 지우면 판독 중에
+    // 새로고침하는 것만으로 사라진다. 새 확인 화면이 저장되면서 의심과 함께 덮어쓴다.
+    if (!carriedDamage) void formDraftStore.remove('wheel');
     try {
       // 원본 사진은 Vercel 함수의 4.5MB 요청 한도를 넘길 수 있다. 먼저 줄인다.
       const prepared = await prepareCapture(source);
@@ -351,6 +399,19 @@ export default function WheelScanPage() {
     setPhase('confirm');
   }
 
+  /**
+   * 확인 화면에서 작업자가 스스로 다시 찍는다.
+   *
+   * 이 화면의 손상 경고를 본 뒤의 선택이다. 이어받은 의심도 이때부터는 다른 흔적과
+   * 같은 규칙을 따른다 — 새 사진을 찍으면 지운다(다른 숫돌일 수 있다). 그래서 여기서
+   * 놓는다. 저장된 draft는 여기서 지우지 않고 새 사진이 들어올 때 지운다(analyze).
+   * 찍지 않고 새로고침하면 그 draft에 남은 의심이 그대로 되살아난다.
+   */
+  function retakeFromConfirm() {
+    setCarriedDamage(false);
+    setPhase('capture');
+  }
+
   /** 경고를 보고도 이 라벨 사진을 쓴다. 열지 못한 사진에는 이 길이 없다. */
   function acceptWarnedLabel() {
     if (!photo || !labelReview || labelReview.decodeFailed) return;
@@ -397,7 +458,13 @@ export default function WheelScanPage() {
     // 자동 저장은 1초 뒤에나 따라온다. 그 사이 새로고침하면 이전 종류의
     // 입력이 그대로 남은 draft가 복원돼 새 종류에 섞인다 — 여기서 곧바로
     // 지운다. 다음 debounce가 새 종류로 다시 저장한다.
-    void formDraftStore.remove('wheel');
+    //
+    // 이 화면에 손상 의심이 올라와 있으면 지우는 대신 의심만 담은 draft로 바꿔
+    // 둔다. 통째로 지우면 그 1초 사이의 새로고침에 의심까지 사라지고, 작업자는 경고
+    // 없이 라벨을 다시 찍게 된다. 입력칸은 비어 있어 이전 종류의 입력이 섞이지 않는
+    // 것은 그대로다.
+    if (shownDamage === 'suspected') persistCarriedDamage();
+    else void formDraftStore.remove('wheel');
   }
 
   function proceed() {
@@ -445,10 +512,15 @@ export default function WheelScanPage() {
   }
 
   // 이전 버전의 다각도 확인이 의심했던 숫돌이거나, 읽을 수 없어 버린 OCR이 의심했던
-  // 숫돌이면 화면에 남은 판독과 무관하게 의심으로 둔다. Gate의 경고와 규칙엔진에
-  // 넘기는 값이 같은 것을 보게 한다.
+  // 숫돌이거나, 확인 화면을 되살리지 못한 draft에서 의심을 이어받았으면 화면에 남은
+  // 판독과 무관하게 의심으로 둔다. Gate의 경고와 규칙엔진에 넘기는 값이 같은 것을
+  // 보게 한다.
   const priorDamageSuspected =
-    legacyExam === 'suspected' || droppedOcr === 'suspected';
+    legacyExam === 'suspected' || droppedOcr === 'suspected' || carriedDamage;
+  // 이 확인 화면이 작업자에게 보여 주는 외관 값. Gate가 이 값으로 손상 경고를 띄운다.
+  const shownDamage = priorDamageSuspected
+    ? 'suspected'
+    : (ocr?.visibleDamage ?? 'unknown');
 
   // 저장된 AI 판독을 통째로 버려 화면에 판독이 없는가. 버렸다는 안내와 제한 대조가
   // 이 한 조건을 함께 본다 — 알리지 않은 채 적합만 막거나, 복구하지 못했다고
@@ -675,6 +747,18 @@ export default function WheelScanPage() {
           ⚠ {t('draft.warn.ocr')}
         </p>
       )}
+      {/* 확인 화면을 되살리지 못한 draft에서 손상 의심을 이어받았다는 안내. 아래
+          Gate의 손상 경고는 지금 화면의 사진에서 나온 것이 아니다 — 출처를 말하지
+          않으면 작업자는 이 사진에서 무엇이 의심됐는지 찾게 된다. 같은 숫돌인지는
+          앱이 알 수 없으므로 그것도 함께 알린다. */}
+      {carriedDamage && (
+        <p
+          role="status"
+          className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-base leading-relaxed text-yellow-100"
+        >
+          ⚠ {t('draft.warn.carriedDamage')}
+        </p>
+      )}
       {localOnly && !offline && (
         <p
           role="status"
@@ -708,9 +792,7 @@ export default function WheelScanPage() {
       <WheelConditionGate
         condition={condition}
         keys={conditionKeys}
-        visibleDamage={
-          priorDamageSuspected ? 'suspected' : (ocr?.visibleDamage ?? 'unknown')
-        }
+        visibleDamage={shownDamage}
         labelNeedsReview={labelNeedsReview}
         expiryNeedsReview={expiryNeedsReview}
         onChange={(key, value) =>
@@ -746,7 +828,7 @@ export default function WheelScanPage() {
         </button>
         <button
           type="button"
-          onClick={() => setPhase('capture')}
+          onClick={retakeFromConfirm}
           className="min-h-14 rounded-lg border border-slate-600 text-lg font-semibold text-slate-200 active:bg-slate-800"
         >
           {t('scan.retake')}

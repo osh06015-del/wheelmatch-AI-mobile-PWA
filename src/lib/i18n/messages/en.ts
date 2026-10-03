@@ -1101,6 +1101,8 @@ export const en: Messages = {
     'The extra photos (back face, edge, bore) and the AI appearance check from the earlier version are no longer used and were not recovered. Everything else continues as it was.',
   'draft.warn.ocr':
     'The saved AI result could not be read, so it was not recovered. If you continue as is, this inspection cannot receive a fit conclusion. Retake the photo, or reanalyze on the server from the result screen.',
+  'draft.warn.carriedDamage':
+    'The wheel check saved before this photo was taken carried a damage suspicion raised by the AI. That suspicion is kept, not cleared. Even if you photographed a different wheel, inspect the actual wheel yourself.',
   'draft.warn.trialRun':
     'The trial run that was in progress cannot be continued. Start it again from the beginning.',
   'draft.warn.unreadable':
