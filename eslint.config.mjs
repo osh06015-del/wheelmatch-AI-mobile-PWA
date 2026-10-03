@@ -114,6 +114,8 @@ const eslintConfig = defineConfig([
     // 커버리지 리포터가 만드는 산출물. .gitignore·.prettierignore에는 이미 있다.
     // 여기 빠져 있으면 생성된 js를 검사해 엉뚱한 경고가 뜬다.
     'coverage/**',
+    // 별도 Claude 작업 사본과 그 빌드 산출물은 이 체크아웃의 검사 대상이 아니다.
+    '.claude/worktrees/**',
   ]),
 ]);
 

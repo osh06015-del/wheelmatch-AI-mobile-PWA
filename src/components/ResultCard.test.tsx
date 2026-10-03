@@ -42,6 +42,23 @@ function wheel(overrides: Partial<WheelSpec> = {}): WheelSpec {
 }
 
 describe('ResultCard — 판정 표시', () => {
+  it('사용기한 미확인은 상단 판정과 직접 확인 항목에 함께 남긴다', () => {
+    const result = matchSpecs(
+      grinder(),
+      wheel({ expiry: null, expiryReview: 'not_found' }),
+      {
+        declaredPurpose: 'cutting',
+        profile: BONDED_ABRASIVE_PROFILE,
+        today: TODAY,
+      },
+    );
+    render(<ResultCard result={result} />);
+    expect(screen.getByText('규격 적합 — 사용기한 미확인')).toBeInTheDocument();
+    expect(screen.queryByText('적합', { exact: true })).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/작업자가 사용기한 표시를 찾지 못했습니다/),
+    ).toBeInTheDocument();
+  });
   it('적합이면 "적합"만 표시하고 "부적합"은 표시하지 않는다', () => {
     render(
       <ResultCard

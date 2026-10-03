@@ -187,6 +187,7 @@ export const CSV_COLUMNS = [
   // 판독 경로(online/offline_limited). 이 기능 도입 전 기록은 빈 칸이다 —
   // online으로 채우지 않는다. 앞선 열의 자리를 지키기 위해 맨 뒤에 붙인다.
   'analysisMode',
+  'wheelExpiryReview',
 ] as const;
 
 /**
@@ -400,6 +401,7 @@ function row(record: InspectionRecord): string {
     record.accessoryProfile?.scope,
     wheel.accessoryName,
     record.analysisMode,
+    wheel.expiryReview,
   ];
 
   return values.map(cell).join(',');

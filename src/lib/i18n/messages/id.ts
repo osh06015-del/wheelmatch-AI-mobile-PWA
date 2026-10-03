@@ -9,6 +9,22 @@
 import type { Messages } from './ko';
 
 export const id: Messages = {
+  'expiryReview.title': 'Masa berlaku — pemeriksaan pekerja',
+  'expiryReview.note':
+    'Masukkan tanggal hanya jika tercantum. Tanda yang tidak ditemukan atau tidak terbaca tetap belum terkonfirmasi, bukan berarti masih berlaku.',
+  'expiryReview.marked': 'Ada tanda — masukkan tanggal',
+  'expiryReview.not_found': 'Tanda tidak ditemukan',
+  'expiryReview.unreadable': 'Ada tanda tetapi tidak terbaca',
+  'expiryReview.keptDate':
+    'Tanggal yang ada tetap disimpan dan diperiksa kedaluwarsanya. Koreksi salah baca pada kolom di atas.',
+  'expiryReview.unconfirmed':
+    'Masa berlaku belum terkonfirmasi — periksa produk, kemasan, atau petunjuk produsen. Perbandingan spesifikasi bukan persetujuan keselamatan.',
+  'verdict.compatibleExpiryUnconfirmed':
+    'SPESIFIKASI SESUAI — MASA BERLAKU BELUM TERKONFIRMASI',
+  'reason.expiry.notFound':
+    'Pekerja tidak menemukan tanda masa berlaku. Masa berlaku belum terkonfirmasi. Periksa produk, kemasan, atau petunjuk produsen. Perbandingan spesifikasi tidak menyetujui masa pakai atau keselamatan kerja.',
+  'reason.expiry.manualUnreadable':
+    'Pekerja melaporkan tanda masa berlaku tidak terbaca. Masa berlaku belum terkonfirmasi. Periksa produk, kemasan, atau petunjuk produsen. Perbandingan spesifikasi tidak menyetujui masa pakai atau keselamatan kerja.',
   'common.home': 'Beranda',
   'common.grinder': 'Gerinda',
   'common.wheel': 'Batu gerinda',

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   EMPTY_WHEEL_CONDITION,
+  WHEEL_CONDITION_KEYS,
   hasWheelConditionIssue,
   isWheelConditionComplete,
   unansweredWheelConditionCount,
@@ -18,11 +19,16 @@ const CONFIRMED: WheelCondition = {
 };
 
 describe('Wheel Condition Gate', () => {
-  it('다섯 항목을 모두 작업자가 확인해야 열린다', () => {
+  it('구버전에서 기한 문제 있음이라고 답한 상태는 자동 통과시키지 않는다', () => {
+    const condition = { ...CONFIRMED, expiryValid: false };
+    expect(isWheelConditionComplete(condition)).toBe(false);
+    expect(hasWheelConditionIssue(condition)).toBe(true);
+  });
+  it('네 상태 항목을 모두 작업자가 확인해야 열린다', () => {
     expect(isWheelConditionComplete(CONFIRMED)).toBe(true);
     expect(isWheelConditionComplete(null)).toBe(false);
 
-    for (const key of Object.keys(CONFIRMED) as Array<keyof WheelCondition>) {
+    for (const key of WHEEL_CONDITION_KEYS) {
       expect(isWheelConditionComplete({ ...CONFIRMED, [key]: null })).toBe(
         false,
       );
@@ -38,14 +44,14 @@ describe('Wheel Condition Gate', () => {
     );
   });
 
-  it('AI가 채울 기본값 없이 다섯 항목 모두 미확인으로 시작한다', () => {
-    expect(unansweredWheelConditionCount(EMPTY_WHEEL_CONDITION)).toBe(5);
+  it('AI가 채울 기본값 없이 네 상태 항목 모두 미확인으로 시작한다', () => {
+    expect(unansweredWheelConditionCount(EMPTY_WHEEL_CONDITION)).toBe(4);
     expect(hasWheelConditionIssue(EMPTY_WHEEL_CONDITION)).toBe(false);
   });
 
   it('상태 자체가 없으면 전부 미확인으로 본다', () => {
     // 기록이 없는 것을 "문제 없음"으로 읽으면 Gate가 통째로 열린다.
-    expect(unansweredWheelConditionCount(null)).toBe(5);
+    expect(unansweredWheelConditionCount(null)).toBe(4);
     expect(hasWheelConditionIssue(null)).toBe(false);
   });
 });
@@ -74,8 +80,9 @@ describe('종류별 Gate 항목', () => {
   it('그 종류에서 묻는 항목을 모두 확인하면 연다 — 묻지 않는 유효기한은 보지 않는다', () => {
     const answered = { ...allTrue, diamondRimIntact: true };
     expect(isWheelConditionComplete(answered, DIAMOND_KEYS)).toBe(true);
-    // 기본 다섯 항목으로 보면 유효기한 미확인이라 열리지 않는다.
-    expect(isWheelConditionComplete(answered)).toBe(false);
+    // 유효기한은 엔진과 직접 확인 응답이 맡는다. 상태 정상으로 채우지 않는다.
+    expect(isWheelConditionComplete(answered)).toBe(true);
+    expect(answered.expiryValid).toBeNull();
   });
 
   it('종류별 항목에서 문제 있음이면 중지 경고 대상이다', () => {

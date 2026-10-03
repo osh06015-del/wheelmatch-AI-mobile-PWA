@@ -18,6 +18,7 @@ import { ManualConfirmToggle } from '@/components/ManualConfirmToggle';
 import { RequirementBanner } from '@/components/RequirementBanner';
 import { ScanHeader } from '@/components/ScanHeader';
 import { WheelConditionGate } from '@/components/WheelConditionGate';
+import { WheelExpiryReview } from '@/components/WheelExpiryReview';
 import { WheelTypeConfirm } from '@/components/WheelTypeConfirm';
 import { formDraftStore } from '@/lib/draft/draftStore';
 import {
@@ -70,6 +71,7 @@ interface FormState {
   purpose: string;
   /** 라벨의 유효기한 표기. 정규화는 confirmedWheelSpec이 한다. */
   expiry: string;
+  expiryReview?: WheelSpec['expiryReview'];
   /** 작업자가 실물을 보고 고른 종류. 처음에는 AI 제안값이 들어간다. */
   wheelType: WheelType;
   /** 부속품 이름(선택). 종류를 특정하지 못했을 때(other·unknown)만 보여준다. */
@@ -141,6 +143,8 @@ export default function WheelScanPage() {
         thickness: recovered.fields.thickness,
         purpose: recovered.fields.purpose,
         expiry: recovered.fields.expiry,
+        // 날짜만 복구하고 직접 확인 응답은 다시 받는다.
+        expiryReview: undefined,
         wheelType: recovered.fields.wheelType as WheelType,
         accessoryName: recovered.fields.accessoryName,
       });
@@ -320,7 +324,11 @@ export default function WheelScanPage() {
   }
 
   function updateField(key: string, value: string) {
-    setForm((current) => ({ ...current, [key]: value }));
+    setForm((current) => ({
+      ...current,
+      [key]: value,
+      ...(key === 'expiry' ? { expiryReview: 'marked' as const } : {}),
+    }));
     setUserConfirmed(false);
     // 값을 고친 뒤에는 관련 직접 확인도 다시 받아야 한다.
     setCondition((current) => ({
@@ -338,6 +346,7 @@ export default function WheelScanPage() {
       // 예전 이름이 그대로 저장), 되돌아왔을 때 이전 부속품의 이름이 이번
       // 부속품 것처럼 보인다.
       accessoryName: '',
+      expiryReview: undefined,
     }));
     // 앞서 한 직접 확인은 다른 종류를 두고 한 확인이었다. 다시 받는다.
     setUserConfirmed(false);
@@ -365,6 +374,7 @@ export default function WheelScanPage() {
       purpose: form.purpose as WheelPurpose,
       wheelType: form.wheelType,
       expiryText: form.expiry,
+      expiryReview: form.expiryReview,
       accessoryName: form.accessoryName,
       userConfirmed,
       priorDamageSuspected,
@@ -426,14 +436,6 @@ export default function WheelScanPage() {
       kind: 'purpose',
       value: form.purpose,
       guide: WHEEL_FIELD_GUIDE.purpose,
-    },
-    {
-      key: 'expiry',
-      label: t('field.expiry'),
-      unit: 'MM/YYYY',
-      kind: 'text',
-      value: form.expiry,
-      guide: WHEEL_FIELD_GUIDE.expiry,
     },
     // 종류를 특정하지 못했을 때만 보여준다. 이름이 있는 종류는 종류 자체가
     // 식별값이라 따로 물을 필요가 없다.
@@ -640,6 +642,16 @@ export default function WheelScanPage() {
         onChange={(key, value) =>
           setCondition((current) => ({ ...current, [key]: value }))
         }
+      />
+      <WheelExpiryReview
+        value={form.expiryReview}
+        text={form.expiry}
+        onReview={(expiryReview) => {
+          // 선택으로 이미 읽은 기한을 지우지 않는다. 오독은 입력칸에서 바로잡는다.
+          setForm((current) => ({ ...current, expiryReview }));
+          setUserConfirmed(false);
+        }}
+        onText={(text) => updateField('expiry', text)}
       />
       <div className="flex flex-col gap-3">
         {typeNeedsConfirm && (

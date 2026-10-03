@@ -3,7 +3,7 @@
 // 숫돌을 장착하기 전 작업자 직접 상태 확인.
 //
 // 사진 분석은 의심을 알릴 수만 있다. 정상 버튼은 절대 자동으로 선택하지 않는다.
-// 작업자가 다섯 항목을 모두 직접 확인해야 규격 대조 버튼이 열린다.
+// 작업자가 상태 항목을 모두 직접 확인해야 규격 대조 버튼이 열린다.
 
 import { useLocale, type MessageKey } from '@/lib/i18n';
 import {
@@ -79,7 +79,7 @@ const ITEM_TEXT: Readonly<
   },
 };
 
-/** 기본 다섯 항목(Profile이 없는 종류·일반 결합숫돌). */
+/** 기본 네 상태 항목(Profile이 없는 종류·일반 결합숫돌). */
 export const WHEEL_CONDITION_ITEMS: ReadonlyArray<{
   key: WheelConditionKey;
   labelKey: MessageKey;
@@ -105,16 +105,11 @@ export const WHEEL_CONDITION_ITEMS: ReadonlyArray<{
     labelKey: 'wheelCondition.labelLegible',
     hintKey: 'wheelCondition.labelLegibleHint',
   },
-  {
-    key: 'expiryValid',
-    labelKey: 'wheelCondition.expiryValid',
-    hintKey: 'wheelCondition.expiryValidHint',
-  },
 ];
 
 interface WheelConditionGateProps {
   condition: WheelCondition;
-  /** 이 종류에서 묻는 항목. 넘기지 않으면 기본 다섯 항목이다 */
+  /** 이 종류에서 묻는 항목. 넘기지 않으면 기본 네 상태 항목이다 */
   keys?: ReadonlyArray<WheelConditionKey>;
   visibleDamage: VisibleDamage;
   labelNeedsReview: boolean;

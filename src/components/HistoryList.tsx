@@ -15,6 +15,7 @@ import { WheelExamEvidence } from './WheelExamEvidence';
 
 import { useLocale, type MessageKey, type Translate } from '@/lib/i18n';
 import { checkReasonText } from '@/lib/i18n/checkText';
+import { hasUnconfirmedExpiry } from '@/lib/i18n/expiryNotice';
 import { ruleLabelText } from '@/lib/i18n/ruleLabel';
 import { formatDateTime } from '@/lib/record/datetime';
 import { formatElapsed } from '@/lib/record/elapsed';
@@ -119,7 +120,12 @@ export function HistoryList({
                 <span
                   className={`shrink-0 rounded-md px-3 py-1 text-base font-bold ${BADGE_STYLE[record.result.verdict]}`}
                 >
-                  {t(BADGE_TEXT[record.result.verdict])}
+                  {t(
+                    record.result.verdict === 'COMPATIBLE' &&
+                      hasUnconfirmedExpiry(record.result)
+                      ? 'verdict.compatibleExpiryUnconfirmed'
+                      : BADGE_TEXT[record.result.verdict],
+                  )}
                 </span>
                 <span className="flex flex-1 flex-col gap-1">
                   {/* 한 줄에 다 넣으면 좁은 화면에서 접혀 읽기 나빠진다.

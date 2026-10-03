@@ -9,6 +9,21 @@
 import type { Messages } from './ko';
 
 export const vi: Messages = {
+  'expiryReview.title': 'Hạn sử dụng — người lao động kiểm tra',
+  'expiryReview.note':
+    'Chỉ nhập ngày khi có ghi trên sản phẩm. Không tìm thấy hoặc không đọc được vẫn là chưa xác nhận, không có nghĩa là còn hạn.',
+  'expiryReview.marked': 'Có ghi — nhập ngày',
+  'expiryReview.not_found': 'Không tìm thấy hạn sử dụng',
+  'expiryReview.unreadable': 'Có ghi nhưng không đọc được',
+  'expiryReview.keptDate':
+    'Ngày đã có được giữ lại và kiểm tra hết hạn. Sửa lỗi đọc trong ô phía trên.',
+  'expiryReview.unconfirmed':
+    'Chưa xác nhận hạn sử dụng — xem sản phẩm, bao bì hoặc hướng dẫn của nhà sản xuất. Đối chiếu thông số không phải phê duyệt an toàn.',
+  'verdict.compatibleExpiryUnconfirmed': 'THÔNG SỐ KHỚP — CHƯA XÁC NHẬN HẠN',
+  'reason.expiry.notFound':
+    'Người lao động không tìm thấy hạn sử dụng. Hạn sử dụng chưa được xác nhận. Xem sản phẩm, bao bì hoặc hướng dẫn của nhà sản xuất. Đối chiếu thông số không phê duyệt thời hạn sử dụng hay an toàn công việc.',
+  'reason.expiry.manualUnreadable':
+    'Người lao động báo không đọc được hạn sử dụng. Hạn sử dụng chưa được xác nhận. Xem sản phẩm, bao bì hoặc hướng dẫn của nhà sản xuất. Đối chiếu thông số không phê duyệt thời hạn sử dụng hay an toàn công việc.',
   'common.home': 'Trang chủ',
   'common.grinder': 'Máy mài',
   'common.wheel': 'Đá mài',

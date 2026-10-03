@@ -1008,7 +1008,8 @@ export function expiryLastValidDate(expiry: ExpiryMonth): string {
  * 때마다 판정이 달라져 근거를 되짚을 수 없다.
  *
  *   기준일 없음/형식 오류  → 판정불가 (비교할 기준이 없다)
- *   표시 없음/모호/판독실패 → 판정불가 (통과도 부적합도 아니다)
+ *   날짜·직접 응답 없음    → 판정불가 (통과도 부적합도 아니다)
+ *   미표기/판독 곤란 응답  → 직접 확인 경고 (사용기한 미확인)
  *   기한 지남              → **부적합**
  *   기한 남음              → 통과
  *
@@ -1020,7 +1021,8 @@ export function expiryLastValidDate(expiry: ExpiryMonth): string {
  * 왜 표시가 없을 때 부적합이 아닌가:
  * 표시 의무는 수공구용 B/BF 본드 제품에만 있다(oSa 2020-04). 표시가 없는
  * 숫돌이 정상일 수 있다. 다만 확인하지 못한 것을 확인한 것처럼 넘기지도
- * 않으므로 경고(advisory)로 두지 않는다 — 판정은 적합까지 가지 못한다.
+ * 않는다. 응답도 없으면 판정불가다. 작업자가 미표기/판독 곤란을 명시한
+ * 경우에만 미확인(advisory)으로 분리하며 결과에 그 한계를 함께 표시한다.
  */
 export function checkExpiry(
   wheel: WheelSpec,
@@ -1060,6 +1062,26 @@ export function checkExpiry(
   }
 
   if (expiry === null) {
+    // 작업자가 표시를 찾지 못했거나 읽기 어렵다고 답한 경우만 직접 확인으로
+    // 분리한다. null을 통과로 바꾸지 않으며, 유효한 날짜가 있으면 이 경로를
+    // 타지 않으므로 '표시 없음' 응답으로 이미 확인된 만료를 덮을 수 없다.
+    if (
+      wheel.expiryReview === 'not_found' ||
+      wheel.expiryReview === 'unreadable'
+    ) {
+      const notFound = wheel.expiryReview === 'not_found';
+      return {
+        ...base,
+        passed: null,
+        advisory: true,
+        reason: notFound
+          ? '작업자가 사용기한 표시를 찾지 못했습니다. 사용기한은 미확인입니다. 제품·포장 또는 제조사 안내를 확인하세요. 규격 대조 결과는 사용기한이나 작업 안전을 승인하지 않습니다.'
+          : '작업자가 사용기한 표시를 읽기 어렵다고 답했습니다. 사용기한은 미확인입니다. 제품·포장 또는 제조사 안내를 확인하세요. 규격 대조 결과는 사용기한이나 작업 안전을 승인하지 않습니다.',
+        detail: {
+          code: notFound ? 'expiry.notFound' : 'expiry.manualUnreadable',
+        },
+      };
+    }
     return {
       ...base,
       passed: null,

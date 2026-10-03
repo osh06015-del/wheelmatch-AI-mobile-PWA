@@ -6,6 +6,21 @@
 import type { Messages } from './ko';
 
 export const en: Messages = {
+  'expiryReview.title': 'Expiry — worker review',
+  'expiryReview.note':
+    'Enter a date only when marked. A missing or unreadable marking remains unconfirmed; it does not mean the expiry is valid.',
+  'expiryReview.marked': 'Marking present — enter date',
+  'expiryReview.not_found': 'Could not find a marking',
+  'expiryReview.unreadable': 'Marking present but unreadable',
+  'expiryReview.keptDate':
+    'The existing date is retained and checked for expiry. Correct any misreading in the field above.',
+  'expiryReview.unconfirmed':
+    'Expiry unconfirmed — check the product, packaging or manufacturer instructions. Specification comparison is not safety approval.',
+  'verdict.compatibleExpiryUnconfirmed': 'SPECS MATCH — EXPIRY UNCONFIRMED',
+  'reason.expiry.notFound':
+    'The worker could not find an expiry marking. Expiry remains unconfirmed. Check the product, packaging or manufacturer instructions. Specification comparison does not approve service life or work safety.',
+  'reason.expiry.manualUnreadable':
+    'The worker reported an unreadable expiry marking. Expiry remains unconfirmed. Check the product, packaging or manufacturer instructions. Specification comparison does not approve service life or work safety.',
   'common.home': 'Home',
   'common.grinder': 'Grinder',
   'common.wheel': 'Wheel',

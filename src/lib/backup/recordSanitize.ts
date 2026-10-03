@@ -274,6 +274,8 @@ const REASON_CODES = [
   'expiry.expired',
   'expiry.valid',
   'expiry.noPolicy',
+  'expiry.notFound',
+  'expiry.manualUnreadable',
   'guard.missing',
   'guard.smallerThanWheel',
   'guard.manualCheck',
@@ -414,6 +416,11 @@ function sanitizeWheelSpec(raw: unknown): WheelSpec {
         : sanitizeExpiryMonth(r.expiry),
   );
   setOpt(result, 'accessoryName', optNullableStr(r.accessoryName));
+  setOpt(
+    result,
+    'expiryReview',
+    optOneOf(r.expiryReview, ['marked', 'not_found', 'unreadable'] as const),
+  );
   return result;
 }
 

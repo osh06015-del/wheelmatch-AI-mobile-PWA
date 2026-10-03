@@ -9,6 +9,21 @@
 import type { Messages } from './ko';
 
 export const zh: Messages = {
+  'expiryReview.title': '使用期限 — 作业人员直接确认',
+  'expiryReview.note':
+    '仅在标有日期时填写。未找到或无法辨认的标记仍为未确认，不代表仍在有效期内。',
+  'expiryReview.marked': '有标记 — 输入日期',
+  'expiryReview.not_found': '未找到期限标记',
+  'expiryReview.unreadable': '有标记但无法辨认',
+  'expiryReview.keptDate':
+    '保留已有日期并继续检查是否过期。如识别有误，请在上方输入框中更正。',
+  'expiryReview.unconfirmed':
+    '使用期限未确认 — 请查看产品、包装或制造商说明。规格比对不代表安全许可。',
+  'verdict.compatibleExpiryUnconfirmed': '规格匹配 — 使用期限未确认',
+  'reason.expiry.notFound':
+    '作业人员未找到使用期限标记。使用期限仍未确认。请查看产品、包装或制造商说明。规格比对不批准使用期限或作业安全。',
+  'reason.expiry.manualUnreadable':
+    '作业人员报告使用期限标记无法辨认。使用期限仍未确认。请查看产品、包装或制造商说明。规格比对不批准使用期限或作业安全。',
   'common.home': '首页',
   'common.grinder': '角磨机',
   'common.wheel': '砂轮',

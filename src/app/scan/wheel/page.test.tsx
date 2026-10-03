@@ -255,6 +255,49 @@ describe('숫돌 촬영 화면 — 숫돌 종류 직접 확인', () => {
   const proceedButton = () =>
     screen.getByRole('button', { name: '확인 후 규격 대조' });
 
+  it.each(['표시를 찾지 못함', '표시가 있지만 읽기 어려움'])(
+    '사용기한 %s 응답을 유효함으로 바꾸지 않고 저장한다',
+    async (label) => {
+      const result = await openConfirm({
+        ...OCR,
+        expiry: null,
+        markings: {
+          labeledRPM: null,
+          peripheralSpeedMps: null,
+          boreDiameter: null,
+          expiryRaw: null,
+        },
+      });
+      expect(
+        screen.queryByRole('textbox', { name: '유효기한' }),
+      ).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: label }));
+      expect(proceedButton()).toBeDisabled();
+      answerWheelCondition();
+      fireEvent.click(proceedButton());
+      expect(result.current.wheel?.expiry).toBeNull();
+      expect(result.current.wheel?.expiryReview).toBe(
+        label === '표시를 찾지 못함' ? 'not_found' : 'unreadable',
+      );
+      expect(result.current.wheelCondition?.expiryValid).toBeNull();
+      expect(result.current.wheelOcr).not.toHaveProperty('expiryReview');
+    },
+  );
+
+  it('표시 없음 응답은 기존 날짜를 지우지 않고 종류 변경은 응답을 초기화한다', async () => {
+    const result = await openConfirm(OCR);
+    fireEvent.click(screen.getByRole('button', { name: '표시를 찾지 못함' }));
+    expect(screen.getByDisplayValue('06/2099')).toBeInTheDocument();
+    fireEvent.change(typeSelect(), { target: { value: 'bonded_cutting' } });
+    expect(
+      screen.getByRole('button', { name: '표시를 찾지 못함' }),
+    ).toHaveAttribute('aria-pressed', 'false');
+    answerWheelCondition();
+    fireEvent.click(proceedButton());
+    expect(result.current.wheel?.expiry).toEqual({ year: 2099, month: 6 });
+    expect(result.current.wheel?.expiryReview).toBeUndefined();
+  });
+
   it('AI가 일반 결합숫돌로 읽으면 제안값으로 채우고, 같으면 따로 확인을 요구하지 않는다', async () => {
     const result = await openConfirm(OCR);
 

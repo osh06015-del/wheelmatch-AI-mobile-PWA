@@ -136,6 +136,8 @@ export interface WheelSpec {
    * 읽지 못했거나 형식이 모호하면 null이다. 이 기능 도입 전 기록에는 없다.
    */
   expiry?: ExpiryMonth | null;
+  /** 작업자 직접 확인 결과. 미표기·판독 곤란은 유효함이 아니라 미확인이다. OCR은 채우지 않는다. */
+  expiryReview?: 'marked' | 'not_found' | 'unreadable';
   /**
    * 부속품 이름(선택). Profile이 세부 형식을 모르는 종류(other·unknown)에서
    * 작업자가 적어 두는 식별용 문구다. 판정에 쓰지 않는다 — RPM·지름 규칙과
@@ -524,6 +526,7 @@ export interface WheelCondition {
   notDeformed: boolean | null;
   mountingAreaUndamaged: boolean | null;
   labelLegible: boolean | null;
+  /** 구기록 호환용. 새 점검은 expiryReview로 답하며 이 값은 null로 둔다. */
   expiryValid: boolean | null;
   // ── 종류별 항목. Profile의 conditionItems에 있을 때만 묻는다. 기존 기록에는 없다 ──
   /** 다이아몬드: 세그먼트·림 탈락·깨짐 없음 */
@@ -607,6 +610,8 @@ export type ReasonCode =
   | 'expiry.expired'
   | 'expiry.valid'
   | 'expiry.noPolicy'
+  | 'expiry.notFound'
+  | 'expiry.manualUnreadable'
   | 'guard.missing'
   | 'guard.smallerThanWheel'
   | 'guard.manualCheck'

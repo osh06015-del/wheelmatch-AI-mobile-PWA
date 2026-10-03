@@ -168,7 +168,7 @@ describe('결과 화면 — Wheel Condition Gate 우회 차단', () => {
       result.current.setGrinder(GRINDER);
       result.current.setGrinderCondition(GRINDER_OK);
       result.current.setWheel(WHEEL);
-      result.current.setWheelCondition({ ...CONFIRMED, expiryValid: null });
+      result.current.setWheelCondition({ ...CONFIRMED, labelLegible: null });
     });
 
     render(<ResultPage />);

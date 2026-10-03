@@ -125,6 +125,15 @@ function fullRecordRaw(): Record<string, unknown> {
 }
 
 describe('sanitizeInspectionRecord — 정상 라운드트립', () => {
+  it('사용기한 직접 응답은 보존하고 임의의 확인 완료 값은 거부한다', () => {
+    const raw = fullRecordRaw();
+    const wheel = raw.wheel as Record<string, unknown>;
+    wheel.expiry = null;
+    wheel.expiryReview = 'not_found';
+    expect(sanitizeInspectionRecord(raw)?.wheel.expiryReview).toBe('not_found');
+    wheel.expiryReview = 'safe';
+    expect(sanitizeInspectionRecord(raw)).toBeNull();
+  });
   it('허용된 필드는 깊은 곳까지 그대로 남는다', () => {
     const raw = fullRecordRaw();
     expect(sanitizeInspectionRecord(raw)).toEqual(raw);

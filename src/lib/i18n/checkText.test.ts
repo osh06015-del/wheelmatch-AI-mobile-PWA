@@ -100,6 +100,8 @@ const WHEELS: WheelSpec[] = [
   wheel({ wheelType: 'bonded_cutting', purpose: 'grinding' }),
   wheel({ visibleDamage: 'suspected' }),
   wheel({ expiry: null }),
+  wheel({ expiry: null, expiryReview: 'not_found' }),
+  wheel({ expiry: null, expiryReview: 'unreadable' }),
   wheel({ expiry: { year: 2020, month: 1 } }),
   wheel({ maxRPM: 122000 }), // 가장자리 속도가 상식 밖으로 높다
   wheel({ confidence: 'low' }),

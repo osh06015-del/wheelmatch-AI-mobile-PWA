@@ -732,8 +732,8 @@ describe('알려진 그라인더 액세서리 Profile', () => {
     result.checks.find((check) => check.rule === rule);
 
   it('일반 결합숫돌 Profile의 판정 요구는 세부 형식 확장으로 바뀌지 않았다', () => {
-    // 버전은 추가 사진 요구(다각도 외관 확인)를 뺄 때 올렸다. 판정 요구는 그대로다.
-    expect(BONDED_ABRASIVE_PROFILE.version).toBe('2026.10.03-r1');
+    // 사용기한 직접 확인 분리로 버전을 올렸다. 작업 종류 대조는 그대로다.
+    expect(BONDED_ABRASIVE_PROFILE.version).toBe('2026.10.03-r2');
     expect(BONDED_ABRASIVE_PROFILE.workCheck).toBe('label_purpose');
     expect(BONDED_ABRASIVE_PROFILE.conditionItems).toEqual(
       DEFAULT_CONDITION_ITEMS,
@@ -937,7 +937,6 @@ describe('알려진 그라인더 액세서리 Profile', () => {
     );
     expect(conditionItemsFor('bonded_cup')).toEqual(
       expect.arrayContaining([
-        'expiryValid',
         'threadAdapterFit',
         'evenWear',
         'dedicatedGuardFitted',

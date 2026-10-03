@@ -61,6 +61,46 @@ afterEach(() => {
 });
 
 describe('점검 흐름 E2E — 결과까지', () => {
+  it('기한 미표기 — 직접 응답 후 규격 대조·저장·이력까지 미확인을 보존한다', async () => {
+    const f = inspector('ko');
+    await openWheelConfirm(
+      f,
+      new FixtureExtractor().grinder(GRINDER).wheel(
+        wheelLabel({
+          expiry: null,
+          markings: {
+            labeledRPM: null,
+            peripheralSpeedMps: null,
+            boreDiameter: null,
+            expiryRaw: null,
+          },
+        }),
+      ),
+    );
+    await f.user.click(f.button('expiryReview.not_found'));
+    await f.answerWheelCondition();
+    await f.user.click(f.button('scan.wheel.proceed'));
+    await f.atPath('/result');
+    expect(
+      await screen.findByText(f.t('verdict.compatibleExpiryUnconfirmed')),
+    ).toBeInTheDocument();
+    expect(f.button('result.save')).toBeDisabled();
+    await f.completeChecklist();
+    await f.user.click(f.button('trialRun.startBeforeWork', { seconds: 60 }));
+    await finishTrialRun(f);
+    await f.user.click(f.button('result.save'));
+    await f.atPath('/history');
+    const [record] = savedRecords();
+    expect(record.wheel.expiry).toBeNull();
+    expect(record.wheel.expiryReview).toBe('not_found');
+    expect(record.wheelCondition?.expiryValid).toBeNull();
+    expect(
+      record.result.checks.find((c) => c.detail?.code === 'expiry.notFound'),
+    ).toMatchObject({ passed: null, advisory: true });
+    expect(
+      await screen.findByText(f.t('verdict.compatibleExpiryUnconfirmed')),
+    ).toBeInTheDocument();
+  });
   it('정상 호환 — 작업 선택부터 시험운전·저장까지 끝난다', async () => {
     const f = inspector('ko');
     await openResult(
@@ -84,7 +124,10 @@ describe('점검 흐름 E2E — 결과까지', () => {
     expect(record.result.verdict).toBe('COMPATIBLE');
     expect(record.declaredPurpose).toBe('cutting');
     expect(record.grinderOcr).toEqual(GRINDER);
-    expect(record.wheelCondition).toEqual(ALL_CONFIRMED);
+    expect(record.wheelCondition).toEqual({
+      ...ALL_CONFIRMED,
+      expiryValid: null,
+    });
     expect(record.trialRun).toMatchObject({
       requiredSeconds: 60,
       outcome: 'normal',

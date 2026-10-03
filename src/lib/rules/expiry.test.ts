@@ -371,6 +371,60 @@ describe('같은 입력과 같은 기준일이면 같은 결과', () => {
 // ─────────────────────────────────────────────────────────────
 
 describe('checkExpiry 직접 호출', () => {
+  it.each(['not_found', 'unreadable'] as const)(
+    '직접 응답 %s는 미확인 경고이며 다른 필수 규칙은 유지한다',
+    (expiryReview) => {
+      const w = wheel({ expiry: null, expiryReview });
+      const options = {
+        declaredPurpose: 'cutting' as const,
+        profile: BONDED_ABRASIVE_PROFILE,
+        today: '2026-10-03',
+      };
+      const result = matchSpecs(grinder(), w, options);
+      expect(result.verdict).toBe('COMPATIBLE');
+      expect(result.checks.find((c) => c.rule === RULE.EXPIRY)).toMatchObject({
+        passed: null,
+        advisory: true,
+        wheelValue: null,
+      });
+      expect(
+        matchSpecs(grinder(), { ...w, maxRPM: 10999 }, options).verdict,
+      ).toBe('INCOMPATIBLE');
+      expect(
+        matchSpecs(grinder(), { ...w, diameter: 150 }, options).verdict,
+      ).toBe('INCOMPATIBLE');
+      expect(
+        matchSpecs(grinder(), { ...w, maxRPM: null }, options).verdict,
+      ).toBe('UNDETERMINED');
+      expect(
+        matchSpecs(grinder(), w, {
+          ...options,
+          analysisMode: 'offline_limited',
+        }).verdict,
+      ).toBe('UNDETERMINED');
+      expect(
+        matchSpecs(grinder(), wheel({ expiryReview }), options).verdict,
+      ).toBe('INCOMPATIBLE');
+      expect(
+        matchSpecs(
+          grinder(),
+          { ...w, expiry: { year: 2099, month: 1 } },
+          options,
+        ).verdict,
+      ).toBe('COMPATIBLE');
+    },
+  );
+  it('날짜도 직접 응답도 없거나 표시 있음인데 날짜가 없으면 판정불가', () => {
+    for (const expiryReview of [undefined, 'marked'] as const) {
+      expect(
+        matchSpecs(grinder(), wheel({ expiry: null, expiryReview }), {
+          declaredPurpose: 'cutting',
+          profile: BONDED_ABRASIVE_PROFILE,
+          today: '2026-10-03',
+        }).verdict,
+      ).toBe('UNDETERMINED');
+    }
+  });
   it('항목 이름과 값 칸이 고정돼 있다', () => {
     const check = checkExpiry(wheel(), '2023-04-01', BONDED_ABRASIVE_PROFILE);
     expect(check.rule).toBe(RULE.EXPIRY);

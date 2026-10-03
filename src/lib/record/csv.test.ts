@@ -98,6 +98,15 @@ function parse(csv: string): string[][] {
 }
 
 describe('toCsv', () => {
+  it('사용기한 직접 응답은 새 마지막 열에만 쓰고 구기록은 비워 둔다', () => {
+    const [, row] = parse(
+      toCsv([record({ wheel: { ...WHEEL, expiryReview: 'not_found' } })]),
+    );
+    expect(CSV_COLUMNS.at(-1)).toBe('wheelExpiryReview');
+    expect(row.at(-1)).toBe('not_found');
+    const [, legacy] = parse(toCsv([record()]));
+    expect(legacy.at(-1)).toBe('');
+  });
   it('첫 줄은 열 이름이다', () => {
     const [header] = parse(toCsv([]));
     expect(header).toEqual([...CSV_COLUMNS]);
@@ -350,6 +359,7 @@ describe('toCsv', () => {
       'accessoryProfileScope',
       'wheelAccessoryName',
       'analysisMode',
+      'wheelExpiryReview',
     ]);
   });
 
@@ -809,7 +819,7 @@ describe('다각도 외관 확인 열', () => {
     // Profile 열 8개, 종류별 상태 항목 열 9개, 판정 범위·부속품 이름·판독 경로 열 1개씩.
     expect(CSV_COLUMNS.indexOf('conditionDiamondRimIntact')).toBe(116);
     expect(CSV_COLUMNS.indexOf('accessoryProfileScope')).toBe(125);
-    expect(CSV_COLUMNS.slice(start)).toHaveLength(20);
+    expect(CSV_COLUMNS.slice(start)).toHaveLength(21);
     for (const column of CSV_COLUMNS.slice(start)) {
       expect(row[CSV_COLUMNS.indexOf(column)]).toBe('');
     }
@@ -884,7 +894,7 @@ describe('다각도 외관 확인 열', () => {
     expect(offline[CSV_COLUMNS.indexOf('analysisMode')]).toBe(
       'offline_limited',
     );
-    expect(CSV_COLUMNS[CSV_COLUMNS.length - 1]).toBe('analysisMode');
+    expect(CSV_COLUMNS[CSV_COLUMNS.length - 2]).toBe('analysisMode');
 
     const [, online] = parse(toCsv([record({ analysisMode: 'online' })]));
     expect(online[CSV_COLUMNS.indexOf('analysisMode')]).toBe('online');

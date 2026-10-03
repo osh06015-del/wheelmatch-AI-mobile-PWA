@@ -62,6 +62,8 @@ export const REASON_MESSAGE_KEY: Readonly<Record<ReasonCode, MessageKey>> = {
   'expiry.expired': 'reason.expiry.expired',
   'expiry.valid': 'reason.expiry.valid',
   'expiry.noPolicy': 'reason.expiry.noPolicy',
+  'expiry.notFound': 'reason.expiry.notFound',
+  'expiry.manualUnreadable': 'reason.expiry.manualUnreadable',
   'guard.missing': 'reason.guard.missing',
   'guard.smallerThanWheel': 'reason.guard.smallerThanWheel',
   'guard.manualCheck': 'reason.guard.manualCheck',

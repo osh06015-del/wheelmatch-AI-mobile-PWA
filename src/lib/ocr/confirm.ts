@@ -48,6 +48,7 @@ export interface ConfirmedWheelFields {
    * OCR이 읽은 원문(markings.expiryRaw)은 이 값과 무관하게 그대로 남는다.
    */
   expiryText: string;
+  expiryReview?: WheelSpec['expiryReview'];
   /** ManualConfirmToggle 상태. 사람이 직접 확인해야만 신뢰도가 올라간다. */
   userConfirmed: boolean;
   /**
@@ -142,6 +143,7 @@ export function confirmedWheelSpec(
     expiry: normalizeExpiry(
       fields.expiryText.trim() === '' ? null : fields.expiryText,
     ),
+    ...(fields.expiryReview ? { expiryReview: fields.expiryReview } : {}),
     rawText: ocr?.rawText ?? '',
     confidence: fields.userConfirmed ? 'high' : (ocr?.confidence ?? 'low'),
   };

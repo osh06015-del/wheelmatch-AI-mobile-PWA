@@ -34,7 +34,7 @@ import type {
 } from './types';
 
 /**
- * 기존 Wheel Condition Gate의 다섯 항목. Profile이 없는 종류와 결합숫돌이 쓴다.
+ * Wheel Condition Gate의 네 상태 항목. 사용기한은 별도 직접 응답으로 남긴다.
  * 순서가 곧 화면 순서다.
  */
 export const DEFAULT_CONDITION_ITEMS: readonly WheelConditionKey[] = [
@@ -42,7 +42,6 @@ export const DEFAULT_CONDITION_ITEMS: readonly WheelConditionKey[] = [
   'notDeformed',
   'mountingAreaUndamaged',
   'labelLegible',
-  'expiryValid',
 ];
 
 /**
@@ -89,10 +88,11 @@ export const BONDED_ABRASIVE_PROFILE: AccessoryProfile = {
   conditionItems: DEFAULT_CONDITION_ITEMS,
   aiSuggestions: ['bonded_abrasive'],
   sources: ['krOsh', 'kosha', 'osa'],
+  // 2026.10.03-r2 — expiryValid 정상 확인을 별도 expiryReview 응답으로 분리했다.
   // 2026.10.03-r1 — 뒷면·가장자리·중심구멍 사진(다각도 외관 확인) 요구를 뺐다.
   // 판정 규칙은 그대로다: 그 확인은 경고만 더했고 판정을 움직이지 않았다.
   // 외관은 작업자 상태 확인 Gate(conditionItems)가 계속 직접 묻는다.
-  version: '2026.10.03-r1',
+  version: '2026.10.03-r2',
 };
 
 /**
@@ -102,7 +102,7 @@ export const BONDED_ABRASIVE_PROFILE: AccessoryProfile = {
  * 세부 형식(Type 1/41·27/28·27/42)이 요구하던 추가 사진 세 장이 없어졌고,
  * 나머지 종류는 원래 라벨 사진만 받았으므로 요구는 달라지지 않았다.
  */
-const KNOWN_ACCESSORY_VERSION = '2026.10.03-r1';
+const KNOWN_ACCESSORY_VERSION = '2026.10.03-r2';
 
 /**
  * 결합숫돌 세부 형식의 공통 부분.

@@ -7,6 +7,21 @@
 // 안전 문구를 한 언어만 고쳐두면 사람에 따라 다른 지시를 받게 된다.
 
 export const ko = {
+  'expiryReview.title': '사용기한 — 작업자 직접 확인',
+  'expiryReview.note':
+    '날짜 표기가 있을 때만 입력하세요. 표시를 찾지 못했거나 읽기 어려우면 미확인으로 남으며, 기한이 유효하다는 뜻이 아닙니다.',
+  'expiryReview.marked': '표시 있음 — 날짜 입력',
+  'expiryReview.not_found': '표시를 찾지 못함',
+  'expiryReview.unreadable': '표시가 있지만 읽기 어려움',
+  'expiryReview.keptDate':
+    '이미 읽거나 입력한 날짜는 지우지 않습니다. 오독이면 위 입력칸에서 바로잡으세요. 입력된 날짜의 만료 검사는 유지됩니다.',
+  'expiryReview.unconfirmed':
+    '사용기한 미확인 — 제품·포장 또는 제조사 안내를 확인하세요. 규격 대조는 작업 안전 승인이 아닙니다.',
+  'verdict.compatibleExpiryUnconfirmed': '규격 적합 — 사용기한 미확인',
+  'reason.expiry.notFound':
+    '작업자가 사용기한 표시를 찾지 못했습니다. 사용기한은 미확인입니다. 제품·포장 또는 제조사 안내를 확인하세요. 규격 대조 결과는 사용기한이나 작업 안전을 승인하지 않습니다.',
+  'reason.expiry.manualUnreadable':
+    '작업자가 사용기한 표시를 읽기 어렵다고 답했습니다. 사용기한은 미확인입니다. 제품·포장 또는 제조사 안내를 확인하세요. 규격 대조 결과는 사용기한이나 작업 안전을 승인하지 않습니다.',
   'common.home': '처음으로',
   'common.grinder': '그라인더',
   'common.wheel': '숫돌',
