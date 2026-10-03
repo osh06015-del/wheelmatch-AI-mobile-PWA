@@ -11,6 +11,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  E2E_TEST_TIMEOUT_MS,
   FixtureExtractor,
   GRINDER,
   failure,
@@ -36,6 +37,9 @@ vi.mock('@/lib/db', async () => (await import('./harness')).dbModule());
 vi.mock('dexie-react-hooks', async () =>
   (await import('./liveQuery')).liveQueryModule(),
 );
+
+// 흐름 테스트는 단위 테스트용 기본 제한(5초)으로 재지 않는다. 값과 근거는 harness.tsx.
+vi.setConfig({ testTimeout: E2E_TEST_TIMEOUT_MS });
 
 const T0 = new Date('2026-09-16T03:00:00.000Z');
 
