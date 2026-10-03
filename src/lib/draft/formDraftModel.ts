@@ -32,14 +32,17 @@ export const FORM_DRAFT_SAVE_DELAY_MS = 1000;
 export type ScanFormSlot = 'grinder' | 'wheel';
 
 /**
- * 이 값을 어떻게 얻었는가. 셋 다 서버 대조 없이 읽힌 값이라 제한 판정
- * (offline_limited)으로 대조되지만, 화면 문구는 서로 다르다 — 작업자가
+ * 이 값을 어떻게 얻었는가. local_ocr과 manual은 서버 대조 없이 읽힌 값이라 제한
+ * 판정(offline_limited)으로 대조되지만, 화면 문구는 서로 다르다 — 작업자가
  * 다시 확인해야 할 대상이 다르기 때문이다(직접 입력한 값 vs 기기가 읽었지만
  * 검증 못 한 값).
  *
  *   - server:    서버 분석을 거쳤다(정상 경로)
  *   - local_ocr: 기기 안 OCR(Tesseract)로 읽었거나 그때 기기가 오프라인이었다
  *   - manual:    서버에 닿지 못해 작업자가 명판·라벨을 보고 직접 입력했다
+ *
+ * server여도 저장된 OCR을 통째로 버린 draft는 제한 판정으로 나간다. 그것은 출처가
+ * 아니라 버렸다는 흔적(DroppedOcrTrace)이 정한다 — 출처는 바꿔 적지 않는다.
  */
 export type AnalysisSource = 'server' | 'local_ocr' | 'manual';
 
@@ -125,6 +128,24 @@ export const EMPTY_WHEEL_FORM_FIELDS: WheelFormFields = {
  * 떨어졌는지, 확정한 기록에 AI 판독이 왜 없는지 알 수 없다.
  *
  * 명판 OCR에는 외관 의심이 없어 그라인더 쪽은 dropped뿐이다.
+ *
+ * 흔적이 남은 채(화면에 판독 없이) 확정한 값은 **제한 대조**(offline_limited)로
+ * 나간다 — 두 확인 화면의 proceed가 그렇게 넘긴다. 확정 시점에 앱이 내놓을 AI
+ * 판독이 없고, 확정한 값은 직접 입력과 내용이 같다(OCR 원본 없음·원문 없음). draft에
+ * 남은 출처(server) 하나만 믿고 온라인으로 내보내면, 직접 입력으로는 받지 못하는
+ * 적합을 작업자의 확인만으로 받는다.
+ *
+ * 그래도 출처(analysisSource)는 server 그대로 둔다. 서버 분석을 거친 것은 사실이라,
+ * local_ocr·manual로 바꿔 적으면 화면이 「이 기기에서 읽었다」·「서버로 분석하지
+ * 못했다」는 사실과 다른 배지를 띄운다.
+ *
+ * 푸는 길은 둘이고 되찾는 범위가 다르다. 다시 촬영하면 새 판독이 원본 표시까지
+ * 그대로 들어온다. 결과 화면의 서버 재분석은 제한 대조만 풀고 기록의 OCR 원본을
+ * 다시 채운다 — 확정한 값은 바꾸지 않으므로 버린 원본 표시는 돌아오지 않는다
+ * (표기 일치 항목이 만들어지지 않는다. 직접 입력을 재분석으로 푼 것과 같은 범위다).
+ *
+ * 일부 필드만 모름으로 두고 살린 OCR(ocrAltered)은 낮추지 않는다. 숫자·원문·
+ * 신뢰도가 기준에 맞는 판독이 화면에 남아 있다.
  */
 export type DroppedOcrTrace = 'dropped' | 'suspected';
 

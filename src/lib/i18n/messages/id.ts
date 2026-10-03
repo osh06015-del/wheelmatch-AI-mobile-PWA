@@ -1086,7 +1086,7 @@ export const id: Messages = {
     'Hasil ini hanya membandingkan nilai yang dimasukkan pekerja. Pelanggaran kecepatan dan diameter dinilai tidak sesuai, tetapi tidak ada kesimpulan sesuai dan uji jalan tidak dibuka.',
   'offline.reanalyze': 'Analisis ulang di server',
   'offline.reanalyzeHint':
-    'Koneksi sudah kembali. Analisis ulang tidak mengubah nilai yang Anda masukkan; hanya menampilkannya berdampingan dengan nilai AI.',
+    'Anda dapat menganalisis ulang di server. Analisis ulang tidak mengubah nilai yang Anda masukkan; hanya menampilkannya berdampingan dengan nilai AI.',
   'offline.stillOffline':
     'Masih luring. Saat terhubung, Anda dapat memilih analisis ulang di server.',
   'offline.noPhotos':
@@ -1116,7 +1116,7 @@ export const id: Messages = {
   'draft.warn.exam':
     'Foto tambahan (sisi belakang, tepi luar, lubang tengah) dan hasil pemeriksaan tampilan oleh AI dari versi sebelumnya tidak lagi dipakai dan tidak dipulihkan. Bagian lainnya tetap dilanjutkan.',
   'draft.warn.ocr':
-    'Hasil AI yang tersimpan tidak dapat dibaca sehingga tidak dipulihkan. Cocokkan sendiri nilai di bawah dengan tulisan di foto, atau foto ulang.',
+    'Hasil AI yang tersimpan tidak dapat dibaca sehingga tidak dipulihkan. Jika dilanjutkan seperti ini, pemeriksaan ini tidak bisa mendapat kesimpulan sesuai. Foto ulang, atau analisis ulang di server pada layar hasil.',
   'draft.warn.trialRun':
     'Uji jalan yang sedang berlangsung tidak dapat dilanjutkan. Mulai lagi dari awal.',
   'draft.warn.unreadable':

@@ -947,7 +947,7 @@ export const zh: Messages = {
     '本结果仅对照了作业人员输入的数值。转速和直径违规判为不符，但不给出一致结论，也不开启试运转。',
   'offline.reanalyze': '在服务器重新分析',
   'offline.reanalyzeHint':
-    '连接已恢复。重新分析不会更改您输入的数值，只会与AI数值并列比较。',
+    '可以在服务器重新分析。重新分析不会更改您输入的数值，只会与AI数值并列比较。',
   'offline.stillOffline': '仍处于离线状态。连接后可选择在服务器重新分析。',
   'offline.noPhotos': '没有保存的照片，无法在服务器重新分析。',
   'offline.analyzing': '正在服务器分析...',
@@ -971,7 +971,7 @@ export const zh: Messages = {
   'draft.warn.exam':
     '旧版本中添加的附加照片（背面、边缘、中心孔）和 AI 外观确认结果已不再使用，未予恢复。其余内容照常继续。',
   'draft.warn.ocr':
-    '已保存的AI识别结果无法读取，未能恢复。请亲自核对下方数值是否与照片中的标示一致，或重新拍摄。',
+    '已保存的AI识别结果无法读取，未能恢复。如果就这样继续，本次检查无法得到一致结论。请重新拍摄，或在结果页选择在服务器重新分析。',
   'draft.warn.trialRun': '进行中的试运转无法继续。请从头重新开始。',
   'draft.warn.unreadable': '无法读取已保存的进度。请删除后重新开始。',
   'draft.saveFailed':

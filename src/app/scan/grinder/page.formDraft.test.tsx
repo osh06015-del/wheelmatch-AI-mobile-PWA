@@ -364,7 +364,10 @@ describe('그라인더 확인 화면 — 로컬 OCR 제한 판정', () => {
 describe('그라인더 확인 화면 — 통째로 버린 OCR이 남은 draft', () => {
   // 저장된 명판 OCR의 형태가 어긋나면 통째로 버린다. 조용히 버리면 화면은 신뢰도
   // 낮음만 띄우고 이유를 말하지 않는다 — 작업자는 AI가 읽은 값이 여전히 뒤에 있다고
-  // 안다. 명판 OCR에는 외관 의심이 없어 여기서는 알림만 한다.
+  // 안다. 명판 OCR에는 외관 의심이 없어 이어갈 것은 없다.
+  //
+  // 버린 판독으로 확정한 점검은 제한 대조로 남긴다(2026-10-04). draft에 남은 출처
+  // (server)는 그대로 두고, 버렸다는 흔적으로 낮춘다.
   function draftWith(extra: Record<string, unknown>) {
     return {
       slot: 'grinder',
@@ -388,12 +391,21 @@ describe('그라인더 확인 화면 — 통째로 버린 OCR이 남은 draft', 
   const BROKEN_OCR = { ...OCR, rawText: null };
 
   const DROPPED_NOTICE =
-    '⚠ 저장된 AI 판독 결과를 읽을 수 없어 복구하지 못했습니다. 아래 값을 사진 속 표기와 직접 대조하거나 다시 촬영하세요.';
+    '⚠ 저장된 AI 판독 결과를 읽을 수 없어 복구하지 못했습니다. 이대로 진행하면 적합 판정을 받을 수 없습니다. 다시 촬영하거나, 결과 화면에서 서버로 다시 분석하세요.';
 
   async function openDraft(draft: unknown) {
     formLoad.mockResolvedValueOnce({ status: 'found', draft });
     render(<GrinderScanPage />);
     await screen.findByText('읽어낸 값을 확인하세요');
+  }
+
+  /** 직접 확인을 체크하고 장비 상태에 답한 뒤 확정한다 */
+  function confirmAndProceed() {
+    fireEvent.click(screen.getByRole('checkbox', { name: /라벨을 직접 보고/ }));
+    for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+      fireEvent.click(button);
+    }
+    fireEvent.click(screen.getByRole('button', { name: '확인 후 숫돌 촬영' }));
   }
 
   it('버렸다는 것을 알리고 입력칸은 복원한다 — 확정하면 OCR 원본은 남지 않는다', async () => {
@@ -419,6 +431,23 @@ describe('그라인더 확인 화면 — 통째로 버린 OCR이 남은 draft', 
     expect(result.current.grinder?.confidence).toBe('low');
   });
 
+  it('버린 판독으로 확정하면 제한 대조로 남긴다 — 직접 확인을 체크해도 온라인 대조로 나가지 않는다', async () => {
+    // 화면에 내놓을 AI 판독이 없다. 확정한 값은 직접 입력과 내용이 같은데(OCR 원본
+    // 없음·원문 없음), draft에 남은 출처(server)만 믿고 온라인으로 내보내면 작업자의
+    // 확인만으로 적합까지 간다 — 직접 입력은 같은 값으로 적합을 받지 못한다.
+    const result = store();
+    await openDraft(draftWith({ ocr: BROKEN_OCR }));
+
+    confirmAndProceed();
+
+    expect(push).toHaveBeenCalledWith('/scan/wheel');
+    // 직접 확인으로 신뢰도는 올라간다. 적합을 막는 것은 신뢰도가 아니라 판독 경로다.
+    expect(result.current.grinder?.confidence).toBe('high');
+    expect(result.current.grinder?.rawText).toBe('');
+    expect(result.current.offlineSlots.grinder).toBe(true);
+    expect(result.current.analysisMode).toBe('offline_limited');
+  });
+
   it('버렸다는 흔적을 다시 저장한다 — 한 번 더 새로고침해도 알림이 사라지지 않는다', async () => {
     await openDraft(draftWith({ ocr: BROKEN_OCR }));
 
@@ -431,6 +460,10 @@ describe('그라인더 확인 화면 — 통째로 버린 OCR이 남은 draft', 
         slot: 'grinder',
         ocr: null,
         droppedOcr: 'dropped',
+        // 출처는 바꿔 적지 않는다. 서버 분석을 거친 것은 사실이고, 로컬 판독이나
+        // 직접 입력이었다고 적으면 화면이 사실과 다른 배지를 띄운다. 제한 대조는
+        // 흔적이 정한다.
+        analysisSource: 'server',
       });
     }
   });
@@ -439,6 +472,28 @@ describe('그라인더 확인 화면 — 통째로 버린 OCR이 남은 draft', 
     await openDraft(draftWith({ ocr: null, droppedOcr: 'dropped' }));
 
     expect(screen.getByText(DROPPED_NOTICE)).toBeInTheDocument();
+  });
+
+  it('다시 저장된 draft(OCR 없음 + 흔적)로 확정해도 제한 대조다 — 새로고침 한 번으로 풀리지 않는다', async () => {
+    const result = store();
+    await openDraft(draftWith({ ocr: null, droppedOcr: 'dropped' }));
+
+    confirmAndProceed();
+
+    expect(push).toHaveBeenCalledWith('/scan/wheel');
+    expect(result.current.offlineSlots.grinder).toBe(true);
+    expect(result.current.analysisMode).toBe('offline_limited');
+  });
+
+  it('출처가 server인 제한 대조에 로컬 OCR·직접 입력 배지를 띄우지 않는다 — 사실과 다른 말이다', async () => {
+    await openDraft(draftWith({ ocr: BROKEN_OCR }));
+
+    expect(screen.getByText(DROPPED_NOTICE)).toBeInTheDocument();
+    // 두 배지는 모두 「오프라인 제한 대조 — 」로 시작한다. 위 「로컬 OCR 제한 판정」
+    // 묶음이 같은 문구로 배지가 뜨는 것을 확인한다.
+    expect(
+      screen.queryByText('오프라인 제한 대조', { exact: false }),
+    ).not.toBeInTheDocument();
   });
 
   it('새 명판 사진을 찍으면 흔적을 지운다 — 새 판독은 원본으로 남는다', async () => {
@@ -466,12 +521,27 @@ describe('그라인더 확인 화면 — 통째로 버린 OCR이 남은 draft', 
     }
     fireEvent.click(screen.getByRole('button', { name: '확인 후 숫돌 촬영' }));
     expect(result.current.grinderOcr).toEqual(OCR);
+    // 새 판독이 화면에 있고 기록의 원본으로 남는다. 제한 대조도 함께 풀린다.
+    expect(result.current.offlineSlots.grinder).toBe(false);
+    expect(result.current.analysisMode).toBe('online');
   });
 
   it('OCR이 온전한 draft에는 알림이 없다 — 없던 일을 알리지 않는다', async () => {
+    const result = store();
     await openDraft(draftWith({ ocr: OCR }));
 
     expect(screen.queryByText(DROPPED_NOTICE)).not.toBeInTheDocument();
+
+    // 판독이 온전하면 예전처럼 온라인 대조다. 버린 판독만 낮춘다.
+    for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+      fireEvent.click(button);
+    }
+    fireEvent.click(screen.getByRole('button', { name: '확인 후 숫돌 촬영' }));
+
+    expect(push).toHaveBeenCalledWith('/scan/wheel');
+    expect(result.current.grinderOcr).toEqual(OCR);
+    expect(result.current.offlineSlots.grinder).toBe(false);
+    expect(result.current.analysisMode).toBe('online');
   });
 
   it('직접 입력으로 저장된 draft(OCR 없음)에도 알림이 없다', async () => {

@@ -409,6 +409,22 @@ describe('숫돌 확인 화면 — 입력 draft 복구', () => {
       expect(result.current.wheelOcr).toBeNull();
     });
 
+    it('일부만 모름으로 읽은 OCR로 확정하면 온라인 대조로 남는다 — 통째로 버린 판독과 달리 판독이 화면에 있다', async () => {
+      // 통째로 버린 판독은 제한 대조로 낮춘다(아래 「통째로 버린 OCR」 묶음). 이쪽은
+      // 낮추지 않는다 — 숫자·원문·신뢰도가 기준에 맞는 판독이 화면에 남아 있고,
+      // 확정한 규격에 그 판독의 회전속도 출처와 원본 표시가 실린다. 직접 입력과
+      // 같은 증거가 아니다.
+      const result = await openStaleDraft();
+
+      confirmAndProceed();
+
+      expect(push).toHaveBeenCalledWith('/result');
+      expect(result.current.wheel?.rpmSource).toBe('label');
+      expect(result.current.wheel?.markings).toEqual(MARKINGS);
+      expect(result.current.offlineSlots.wheel).toBe(false);
+      expect(result.current.analysisMode).toBe('online');
+    });
+
     it('새 라벨 사진을 찍으면 표시를 지운다 — 새 판독은 원본으로 기록된다', async () => {
       const result = await openStaleDraft();
       extractWheel.mockResolvedValue(OCR_BONDED);
@@ -736,6 +752,9 @@ describe('숫돌 확인 화면 — 통째로 버린 OCR이 남은 draft', () => 
   // 저장된 OCR의 숫자·원문·신뢰도가 어긋나면 그 OCR은 살릴 수 없어 통째로 버린다.
   // 조용히 버리면 화면은 신뢰도 낮음과 종류 직접 확인 요구만 띄우고 이유를 말하지
   // 않으며, 그 OCR이 올린 외관 의심도 함께 사라진다. 버렸다고 알리고 의심은 이어간다.
+  //
+  // 버린 판독으로 확정한 점검은 제한 대조로 남긴다(2026-10-04). draft에 남은 출처
+  // (server)는 그대로 두고, 버렸다는 흔적으로 낮춘다.
   function brokenOcrDraft(visibleDamage: 'suspected' | 'none_visible') {
     return {
       slot: 'wheel',
@@ -758,7 +777,7 @@ describe('숫돌 확인 화면 — 통째로 버린 OCR이 남은 draft', () => 
   }
 
   const DROPPED_NOTICE =
-    '⚠ 저장된 AI 판독 결과를 읽을 수 없어 복구하지 못했습니다. 아래 값을 사진 속 표기와 직접 대조하거나 다시 촬영하세요.';
+    '⚠ 저장된 AI 판독 결과를 읽을 수 없어 복구하지 못했습니다. 이대로 진행하면 적합 판정을 받을 수 없습니다. 다시 촬영하거나, 결과 화면에서 서버로 다시 분석하세요.';
   const DAMAGE_WARNING =
     '⚠ AI가 사진에서 눈에 띄는 손상 징후를 의심했습니다. 숫돌을 직접 자세히 확인하세요.';
 
@@ -816,6 +835,23 @@ describe('숫돌 확인 화면 — 통째로 버린 OCR이 남은 draft', () => 
     expect(result.current.wheelOcr).toBeNull();
   });
 
+  it('버린 판독으로 확정하면 제한 대조로 남긴다 — 직접 확인을 체크해도 온라인 대조로 나가지 않는다', async () => {
+    // 화면에 내놓을 AI 판독이 없다. 확정한 값은 직접 입력과 내용이 같은데(OCR 원본
+    // 없음·원문 없음), draft에 남은 출처(server)만 믿고 온라인으로 내보내면 작업자의
+    // 확인만으로 적합까지 간다 — 직접 입력은 같은 값으로 적합을 받지 못한다.
+    const result = await openDraft(brokenOcrDraft('none_visible'));
+
+    confirmAndAnswer();
+    fireEvent.click(proceedButton());
+
+    expect(push).toHaveBeenCalledWith('/result');
+    // 직접 확인으로 신뢰도는 올라간다. 적합을 막는 것은 신뢰도가 아니라 판독 경로다.
+    expect(result.current.wheel?.confidence).toBe('high');
+    expect(result.current.wheel?.rawText).toBe('');
+    expect(result.current.offlineSlots.wheel).toBe(true);
+    expect(result.current.analysisMode).toBe('offline_limited');
+  });
+
   it('이어받은 의심을 다시 저장한다 — 한 번 더 새로고침해도 사라지지 않는다', async () => {
     await openDraft(brokenOcrDraft('suspected'));
 
@@ -828,6 +864,10 @@ describe('숫돌 확인 화면 — 통째로 버린 OCR이 남은 draft', () => 
         slot: 'wheel',
         ocr: null,
         droppedOcr: 'suspected',
+        // 출처는 바꿔 적지 않는다. 서버 분석을 거친 것은 사실이고, 로컬 판독이나
+        // 직접 입력이었다고 적으면 화면이 사실과 다른 배지를 띄운다. 제한 대조는
+        // 흔적이 정한다.
+        analysisSource: 'server',
       });
     }
   });
@@ -842,6 +882,32 @@ describe('숫돌 확인 화면 — 통째로 버린 OCR이 남은 draft', () => 
 
     expect(screen.getByText(DROPPED_NOTICE)).toBeInTheDocument();
     expect(screen.getByText(DAMAGE_WARNING)).toBeInTheDocument();
+  });
+
+  it('다시 저장된 draft(OCR 없음 + 흔적)로 확정해도 제한 대조다 — 새로고침 한 번으로 풀리지 않는다', async () => {
+    const result = await openDraft({
+      ...brokenOcrDraft('none_visible'),
+      ocr: null,
+      droppedOcr: 'dropped',
+    });
+
+    confirmAndAnswer();
+    fireEvent.click(proceedButton());
+
+    expect(push).toHaveBeenCalledWith('/result');
+    expect(result.current.offlineSlots.wheel).toBe(true);
+    expect(result.current.analysisMode).toBe('offline_limited');
+  });
+
+  it('출처가 server인 제한 대조에 로컬 OCR·직접 입력 배지를 띄우지 않는다 — 사실과 다른 말이다', async () => {
+    await openDraft(brokenOcrDraft('none_visible'));
+
+    expect(screen.getByText(DROPPED_NOTICE)).toBeInTheDocument();
+    // 두 배지는 모두 「오프라인 제한 대조 — 」로 시작한다. 위 「로컬 OCR 제한 판정」
+    // 묶음이 같은 문구로 배지가 뜨는 것을 확인한다.
+    expect(
+      screen.queryByText('오프라인 제한 대조', { exact: false }),
+    ).not.toBeInTheDocument();
   });
 
   it('새 라벨 사진을 찍으면 흔적을 지운다 — 다른 숫돌일 수 있다', async () => {
@@ -871,6 +937,9 @@ describe('숫돌 확인 화면 — 통째로 버린 OCR이 남은 draft', () => 
     fireEvent.click(proceedButton());
     expect(result.current.wheel?.visibleDamage).toBe('none_visible');
     expect(result.current.wheelOcr).toEqual(OCR_BONDED);
+    // 새 판독이 화면에 있고 기록의 원본으로 남는다. 제한 대조도 함께 풀린다.
+    expect(result.current.offlineSlots.wheel).toBe(false);
+    expect(result.current.analysisMode).toBe('online');
   });
 
   it('종류를 바꿔도 흔적은 남는다 — 다시 저장되는 draft에 의심이 따라간다', async () => {
@@ -901,7 +970,7 @@ describe('숫돌 확인 화면 — 통째로 버린 OCR이 남은 draft', () => 
     // 앱이 쓰는 모양은 아니다(흔적은 OCR을 버렸을 때만 저장되고, 그때 ocr은 null이다).
     // 그래도 의심은 덜어내지 않는다. 화면에 판독이 보이는데 복구하지 못했다고 말하지도
     // 않는다.
-    await openDraft({
+    const result = await openDraft({
       ...brokenOcrDraft('none_visible'),
       ocr: OCR_BONDED,
       droppedOcr: 'suspected',
@@ -909,6 +978,19 @@ describe('숫돌 확인 화면 — 통째로 버린 OCR이 남은 draft', () => 
 
     expect(screen.getByText(DAMAGE_WARNING)).toBeInTheDocument();
     expect(screen.queryByText(DROPPED_NOTICE)).not.toBeInTheDocument();
+
+    // 알림과 제한 대조는 같은 조건이다 — 화면에 판독이 있으면 제한하지 않는다.
+    // 복구하지 못했다고 알리지 않으면서 적합만 막으면 작업자는 이유를 알 수 없다.
+    for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+      fireEvent.click(button);
+    }
+    fireEvent.click(proceedButton());
+
+    expect(push).toHaveBeenCalledWith('/result');
+    expect(result.current.wheel?.visibleDamage).toBe('suspected');
+    expect(result.current.wheelOcr).toEqual(OCR_BONDED);
+    expect(result.current.offlineSlots.wheel).toBe(false);
+    expect(result.current.analysisMode).toBe('online');
   });
 
   it('OCR이 온전한 draft에는 알림이 없다 — 없던 일을 알리지 않는다', async () => {

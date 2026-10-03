@@ -133,8 +133,9 @@ export default function WheelScanPage() {
   // 의심을 이어간다. 이 라벨 사진의 숫돌에 대한 것이라 새 사진을 찍으면 지운다.
   const [legacyExam, setLegacyExam] = useState<LegacyExamTrace | null>(null);
   // 복원한 draft의 OCR을 읽을 수 없어 통째로 버린 경우의 흔적. 버렸다고 알리고,
-  // 그 OCR이 의심했던 숫돌이면 의심을 이어간다. 이것도 이 라벨 사진의 숫돌에 대한
-  // 것이라 새 사진을 찍으면 지운다.
+  // 그 OCR이 의심했던 숫돌이면 의심을 이어간다. 이대로 확정한 값은 제한 대조로
+  // 나간다(ocrDropped). 이것도 이 라벨 사진의 숫돌에 대한 것이라 새 사진을 찍으면
+  // 지운다.
   const [droppedOcr, setDroppedOcr] = useState<DroppedOcrTrace | null>(null);
   // 새로고침 경합 방지: 사용자가 이미 새 사진을 찍거나 직접 입력을 골랐으면
   // 뒤늦게 도착한 draft 복원을 적용하지 않는다.
@@ -431,7 +432,11 @@ export default function WheelScanPage() {
     setCaptureCheck('wheel', toCaptureQualityCheck(labelReview));
     // setWheel이 숫돌 쪽 오프라인 표시를 지운다. 그 뒤에 이번 라벨의 판독 경로를 넣는다.
     // 직접 입력(offline)과 로컬 OCR(localOnly) 모두 서버 대조 없이 읽은 값이다.
-    setOfflineSlot('wheel', offline || localOnly);
+    // 저장된 판독을 통째로 버린 경우(ocrDropped)도 제한 대조로 남긴다. 서버 분석을
+    // 거쳤더라도 지금 내놓을 판독이 없고, 여기서 확정하는 값은 직접 입력과 내용이
+    // 같다 — draft에 남은 출처만 믿고 온라인으로 내보내면 작업자의 확인만으로
+    // 적합까지 간다.
+    setOfflineSlot('wheel', offline || localOnly || ocrDropped);
     // 확정됐다. 확인 화면 draft는 더 이상 필요 없다.
     void formDraftStore.remove('wheel');
     // 이 종류에서 물은 항목의 답만 남긴다. 다른 종류로 답한 항목이 섞이지 않게.
@@ -444,6 +449,12 @@ export default function WheelScanPage() {
   // 넘기는 값이 같은 것을 보게 한다.
   const priorDamageSuspected =
     legacyExam === 'suspected' || droppedOcr === 'suspected';
+
+  // 저장된 AI 판독을 통째로 버려 화면에 판독이 없는가. 버렸다는 안내와 제한 대조가
+  // 이 한 조건을 함께 본다 — 알리지 않은 채 적합만 막거나, 복구하지 못했다고
+  // 알리면서 온라인 대조로 내보내지 않기 위해서다. 화면에 판독이 있으면(ocr) 흔적이
+  // 남아 있어도 해당하지 않는다. 의심 흔적은 그때도 이어간다(priorDamageSuspected).
+  const ocrDropped = droppedOcr !== null && ocr === null;
 
   const labelNeedsReview =
     form.maxRPM.trim() === '' ||
@@ -652,10 +663,11 @@ export default function WheelScanPage() {
         </p>
       )}
       {/* 저장된 AI 판독을 읽을 수 없어 버렸다는 안내. 조용히 버리면 신뢰도가 왜
-          낮음인지, AI 제안이 왜 모르겠음인지 화면이 말하지 않는다. 화면에 판독이
-          있으면(ocr) 버렸다고 말하지 않는다 — 의심 흔적은 그때도 이어가지만
-          (priorDamageSuspected) 알림은 사실일 때만 띄운다. */}
-      {droppedOcr && ocr === null && (
+          낮음인지, AI 제안이 왜 모르겠음인지 화면이 말하지 않는다. 이대로 확정하면
+          제한 대조가 되므로 적합이 나오지 않는다는 것과 푸는 길도 여기서 알린다 —
+          결과 화면에서 처음 알게 두지 않는다. 화면에 판독이 있으면 버렸다고 말하지
+          않는다(ocrDropped). */}
+      {ocrDropped && (
         <p
           role="status"
           className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-base leading-relaxed text-yellow-100"

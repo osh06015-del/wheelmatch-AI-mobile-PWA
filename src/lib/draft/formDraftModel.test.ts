@@ -311,6 +311,23 @@ describe('recoverGrinderFormDraft — 통째로 버린 OCR 원본의 흔적', ()
     expect(recovered?.droppedOcr).toBeNull();
   });
 
+  it.each([
+    ['지금 버린 OCR', draftWithOcr({ ...GRINDER_OCR, rawText: null })],
+    ['다시 저장된 흔적', draftWithOcr(null, { droppedOcr: 'dropped' })],
+  ])(
+    'OCR을 버려도 저장된 출처(server)는 바꿔 적지 않는다 — 제한 대조는 흔적이 정한다 — %s',
+    (_name, draft) => {
+      // 버린 판독으로 확정한 점검은 제한 대조로 나간다. 그 근거는 이 흔적이고,
+      // 출처를 local_ocr·manual로 바꿔 적어서가 아니다 — 서버 분석을 거친 것은
+      // 사실이라, 바꿔 적으면 확인 화면이 「이 기기에서 읽었다」·「서버로 분석하지
+      // 못했다」는 사실과 다른 배지를 띄운다.
+      const recovered = recoverGrinderFormDraft(draft);
+
+      expect(recovered?.droppedOcr).toBe('dropped');
+      expect(recovered?.analysisSource).toBe('server');
+    },
+  );
+
   it('이 버전이 다시 저장한 흔적은 그대로 되살린다 — 새로고침으로 알림이 사라지지 않는다', () => {
     // 한 번 복구된 뒤 화면이 다시 저장한 draft다. ocr은 이미 null이라, 흔적이 없으면
     // 처음부터 OCR이 없던 draft(직접 입력)와 구분할 수 없다.
@@ -931,6 +948,23 @@ describe('recoverWheelFormDraft — 통째로 버린 OCR 원본의 흔적', () =
     expect(recovered?.photo).toBeInstanceOf(Blob);
     expect(recovered?.analysisSource).toBe('server');
   });
+
+  it.each([
+    ['지금 버린 OCR', draftWithOcr({ ...WHEEL_OCR, rawText: null })],
+    ['다시 저장된 흔적', draftWithOcr(null, { droppedOcr: 'dropped' })],
+  ])(
+    'OCR을 버려도 저장된 출처(server)는 바꿔 적지 않는다 — 제한 대조는 흔적이 정한다 — %s',
+    (_name, draft) => {
+      // 버린 판독으로 확정한 점검은 제한 대조로 나간다. 그 근거는 이 흔적이고,
+      // 출처를 local_ocr·manual로 바꿔 적어서가 아니다 — 서버 분석을 거친 것은
+      // 사실이라, 바꿔 적으면 확인 화면이 「이 기기에서 읽었다」·「서버로 분석하지
+      // 못했다」는 사실과 다른 배지를 띄운다.
+      const recovered = recoverWheelFormDraft(draft);
+
+      expect(recovered?.droppedOcr).toBe('dropped');
+      expect(recovered?.analysisSource).toBe('server');
+    },
+  );
 
   it('이 버전이 다시 저장한 흔적은 그대로 되살린다 — 새로고침으로 의심이 사라지지 않는다', () => {
     // 한 번 복구된 뒤 화면이 다시 저장한 draft다. ocr은 이미 null이라, 흔적이 없으면

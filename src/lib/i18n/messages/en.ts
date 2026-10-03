@@ -1068,7 +1068,7 @@ export const en: Messages = {
     'This result compares only the values the worker entered. RPM and diameter violations are judged as a mismatch, but no fit conclusion is given and the trial run does not open.',
   'offline.reanalyze': 'Reanalyze on the server',
   'offline.reanalyzeHint':
-    'The connection is back. Reanalyzing does not change the values you entered; it only shows them next to the AI values.',
+    'You can reanalyze on the server. Reanalyzing does not change the values you entered; it only shows them next to the AI values.',
   'offline.stillOffline':
     'Still offline. When connected, you can choose to reanalyze on the server.',
   'offline.noPhotos':
@@ -1098,7 +1098,7 @@ export const en: Messages = {
   'draft.warn.exam':
     'The extra photos (back face, edge, bore) and the AI appearance check from the earlier version are no longer used and were not recovered. Everything else continues as it was.',
   'draft.warn.ocr':
-    'The saved AI result could not be read, so it was not recovered. Check the values below against what is printed in the photo yourself, or retake the photo.',
+    'The saved AI result could not be read, so it was not recovered. If you continue as is, this inspection cannot receive a fit conclusion. Retake the photo, or reanalyze on the server from the result screen.',
   'draft.warn.trialRun':
     'The trial run that was in progress cannot be continued. Start it again from the beginning.',
   'draft.warn.unreadable':

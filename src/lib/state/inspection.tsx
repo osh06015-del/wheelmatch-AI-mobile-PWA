@@ -58,7 +58,10 @@ const WORK_CONDITIONS_KEY = 'wheelmatch.workConditions';
 const OFFLINE_SLOTS_KEY = 'wheelmatch.offlineSlots';
 
 /**
- * 어느 단계를 서버 분석 없이(오프라인 제한 대조) 작업자가 직접 입력했는가.
+ * 어느 단계를 서버 판독의 뒷받침 없이(오프라인 제한 대조) 확정했는가. 세 경우다 —
+ * 서버에 닿지 못해 작업자가 직접 입력했거나, 기기 안 OCR로만 읽었거나, 확인 화면
+ * draft에 저장된 서버 판독을 읽을 수 없어 통째로 버린 채 확정했다
+ * (formDraftModel.ts의 DroppedOcrTrace).
  *
  * 한 단계라도 true면 이 점검 전체가 offline_limited다(analysisModeOf). 단계별로
  * 두는 이유: 명판을 다시 찍어 온라인으로 읽으면 명판 쪽만 풀려야 하고, 숫돌을

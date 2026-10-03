@@ -1055,7 +1055,7 @@ export const vi: Messages = {
     'Kết quả này chỉ đối chiếu giá trị người làm việc nhập. Vi phạm tốc độ quay và đường kính được kết luận không khớp, nhưng không kết luận khớp và không mở chạy thử.',
   'offline.reanalyze': 'Phân tích lại trên máy chủ',
   'offline.reanalyzeHint':
-    'Đã có kết nối lại. Phân tích lại không thay đổi giá trị bạn đã nhập, chỉ đặt cạnh giá trị AI để so sánh.',
+    'Có thể phân tích lại trên máy chủ. Phân tích lại không thay đổi giá trị bạn đã nhập, chỉ đặt cạnh giá trị AI để so sánh.',
   'offline.stillOffline':
     'Vẫn đang ngoại tuyến. Khi có kết nối, bạn có thể chọn phân tích lại trên máy chủ.',
   'offline.noPhotos':
@@ -1085,7 +1085,7 @@ export const vi: Messages = {
   'draft.warn.exam':
     'Ảnh bổ sung (mặt sau, cạnh ngoài, lỗ tâm) và kết quả AI kiểm tra bề ngoài của phiên bản trước không còn được dùng nên không được khôi phục. Các phần còn lại vẫn tiếp tục như cũ.',
   'draft.warn.ocr':
-    'Không đọc được kết quả AI đã lưu nên không khôi phục được. Hãy tự đối chiếu các giá trị bên dưới với chữ in trong ảnh, hoặc chụp lại.',
+    'Không đọc được kết quả AI đã lưu nên không khôi phục được. Nếu tiếp tục như hiện tại, lần kiểm tra này không thể nhận kết luận khớp. Hãy chụp lại, hoặc phân tích lại trên máy chủ ở màn hình kết quả.',
   'draft.warn.trialRun':
     'Không thể tiếp tục lần chạy thử đang dở. Hãy làm lại từ đầu.',
   'draft.warn.unreadable':
