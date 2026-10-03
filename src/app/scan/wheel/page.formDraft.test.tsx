@@ -175,6 +175,56 @@ describe('숫돌 확인 화면 — 입력 draft 복구', () => {
     ).not.toBeChecked();
   });
 
+  it('목록에 없는 숫돌 종류가 남은 draft — 선택칸은 「모르겠음」을 가리키고, 화면에 보인 그 값이 대조로 넘어간다', async () => {
+    // 종류 이름이 나중에 바뀌었거나 저장된 값이 손상된 경우다. 선택지에 없는 값을
+    // 그대로 들이면 선택칸이 보여주는 종류와 실제로 넘어가는 값이 서로 달라진다.
+    const result = readyGrinder();
+    formLoad.mockResolvedValueOnce({
+      status: 'found',
+      draft: {
+        slot: 'wheel',
+        schemaVersion: 1,
+        savedAt: '2026-09-17T00:00:00.000Z',
+        fields: {
+          maxRPM: '12200',
+          diameter: '125',
+          thickness: '1.6',
+          purpose: 'cutting',
+          expiry: '',
+          wheelType: 'resin_wheel',
+          accessoryName: '',
+        },
+        photo: new Blob(['label']),
+        ocr: OCR,
+        analysisSource: 'server',
+      },
+    });
+
+    render(<WheelScanPage />);
+    await screen.findByText('읽어낸 값을 확인하세요');
+
+    const typeSelect = screen.getByRole('combobox', { name: '숫돌 종류' });
+    expect(typeSelect).toHaveDisplayValue('모르겠음');
+    expect(typeSelect).toHaveValue('unknown');
+    // 되살리지 못한 선택을 AI 제안으로 메우지 않는다. 종류는 작업자가 다시 고른다.
+    expect(
+      screen.getByText(
+        '⚠ AI 제안(플랩디스크)과 선택한 종류(모르겠음)가 다릅니다. 실물을 다시 보고 아래 직접 확인을 체크해야 진행할 수 있습니다.',
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /라벨을 직접 보고/ }));
+    for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+      fireEvent.click(button);
+    }
+    fireEvent.click(screen.getByRole('button', { name: '확인 후 규격 대조' }));
+
+    expect(push).toHaveBeenCalledWith('/result');
+    expect(result.current.wheel?.wheelType).toBe('unknown');
+    // AI가 본 종류(OCR 원본)는 그대로 남는다.
+    expect(result.current.wheelOcr?.wheelType).toBe('flap_disc');
+  });
+
   it('새 사진을 찍으면 이전 확인 화면 draft를 지운다', async () => {
     readyGrinder();
     render(<WheelScanPage />);

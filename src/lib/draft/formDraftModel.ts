@@ -8,11 +8,13 @@
 // 입력칸만 되돌리고, 확인은 다시 받는다 — 값을 지어내지 않는 것과 같은 원칙이다.
 
 import { isGrinderSpec, isWheelSpec } from './draftModel';
+import { WHEEL_TYPES } from '@/lib/backup/recordSanitize';
 import type {
   GrinderSpec,
   GuardType,
   SpindleThread,
   WheelSpec,
+  WheelType,
 } from '@/lib/rules/types';
 
 export const FORM_DRAFT_SCHEMA_VERSION = 1;
@@ -75,7 +77,8 @@ export interface WheelFormFields {
   thickness: string;
   purpose: string;
   expiry: string;
-  wheelType: string;
+  /** 선택칸에서 고른 종류. 자유 입력이 아니라 선택지 값이라 종류로 좁혀 둔다 */
+  wheelType: WheelType;
   accessoryName: string;
 }
 
@@ -173,6 +176,19 @@ const isSpindleThread = (value: unknown): value is SpindleThread =>
 const isGuardType = (value: unknown): value is GuardType =>
   isString(value) && (GUARDS as readonly string[]).includes(value);
 
+/**
+ * 숫돌 종류의 허용 목록. 여기 따로 적지 않고 백업 정리(recordSanitize.ts)가 쓰는
+ * 목록을 그대로 쓴다 — 종류가 늘거나 이름이 바뀔 때 고칠 곳이 하나여야 한다.
+ *
+ * 목록에 WheelType이 아닌 값이 섞이면 이 대입에서 타입 검사가 막는다. 반대로
+ * 목록에서 빠진 종류는 타입 검사가 잡지 못해 formDraftModel.test.ts가 WheelType
+ * 전체를 돌려 잡는다.
+ */
+const WHEELS: readonly WheelType[] = WHEEL_TYPES;
+
+const isWheelType = (value: unknown): value is WheelType =>
+  isString(value) && (WHEELS as readonly string[]).includes(value);
+
 /** 값이 있는데 형태가 어긋나면 기본값으로 되돌린다. 없던 값은 기본값을 그대로 쓴다 */
 function pickString(value: unknown, fallback: string): string {
   return isString(value) ? value : fallback;
@@ -258,7 +274,11 @@ export function recoverWheelFormDraft(raw: unknown): WheelFormRecovery | null {
       thickness: pickString(f.thickness, ''),
       purpose: pickString(f.purpose, 'unknown'),
       expiry: pickString(f.expiry, ''),
-      wheelType: pickString(f.wheelType, 'unknown'),
+      // 지금 종류 목록에 없는 값(이름이 바뀐 종류·손상된 값)을 그대로 살리면
+      // 선택칸에는 맞는 선택지가 없어 화면이 다른 종류를 고른 것처럼 보이고,
+      // 규칙엔진은 모르는 종류를 받는다. 비슷한 종류로 추정해 바꾸지 않고
+      // unknown으로 둔다 — 종류는 작업자가 실물을 보고 다시 고른다.
+      wheelType: isWheelType(f.wheelType) ? f.wheelType : 'unknown',
       accessoryName: pickString(f.accessoryName, ''),
     },
     photo: raw.photo instanceof Blob ? raw.photo : null,

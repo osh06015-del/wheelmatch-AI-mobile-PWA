@@ -145,7 +145,7 @@ export default function WheelScanPage() {
         expiry: recovered.fields.expiry,
         // 날짜만 복구하고 직접 확인 응답은 다시 받는다.
         expiryReview: undefined,
-        wheelType: recovered.fields.wheelType as WheelType,
+        wheelType: recovered.fields.wheelType,
         accessoryName: recovered.fields.accessoryName,
       });
       setOcr(recovered.ocr);

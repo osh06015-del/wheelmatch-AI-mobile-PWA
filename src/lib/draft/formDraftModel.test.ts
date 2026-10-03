@@ -12,7 +12,16 @@ import {
   recoverGrinderFormDraft,
   recoverWheelFormDraft,
 } from './formDraftModel';
-import type { GrinderSpec, WheelSpec } from '@/lib/rules/types';
+import { WHEEL_TYPE_LABEL } from '@/lib/i18n/checkText';
+import type { GrinderSpec, WheelSpec, WheelType } from '@/lib/rules/types';
+
+/**
+ * WheelType의 모든 종류. 손으로 적은 목록이 아니라 Record<WheelType, …>의 키다 —
+ * 종류를 더하거나 이름을 바꾸면 타입 검사가 그 표부터 고치게 하므로, 종류 하나가
+ * 빠진 채로 이 테스트가 통과할 수 없다. 복구가 쓰는 허용 목록과는 다른 출처라
+ * 둘이 어긋나면 여기서 드러난다.
+ */
+const EVERY_WHEEL_TYPE = Object.keys(WHEEL_TYPE_LABEL) as WheelType[];
 
 const GRINDER_OCR: GrinderSpec = {
   model: 'GWS 750-125',
@@ -234,6 +243,71 @@ describe('recoverWheelFormDraft', () => {
       wheelType: 'flap_disc',
       accessoryName: '',
     });
+  });
+
+  // 숫돌 종류는 확인 화면의 선택칸과 규칙엔진으로 그대로 들어간다. 지금 WheelType에
+  // 없는 문자열 — 나중에 종류 이름이 바뀌었거나 값이 손상된 경우다 — 을 그대로
+  // 살리면 선택칸에는 맞는 선택지가 없고 엔진은 모르는 종류를 받는다.
+  describe('숫돌 종류 허용 목록', () => {
+    const FIELDS = {
+      maxRPM: '12200',
+      diameter: '125',
+      thickness: '1.6',
+      purpose: 'cutting',
+      expiry: '04/2027',
+      accessoryName: '',
+    };
+    /** 숫돌 종류만 바꿔 가며 만든 확인 화면 draft. 나머지 값은 온전하다 */
+    const draftWithType = (wheelType: unknown) => ({
+      slot: 'wheel',
+      schemaVersion: FORM_DRAFT_SCHEMA_VERSION,
+      savedAt: '2026-09-17T00:00:00.000Z',
+      fields: { ...FIELDS, wheelType },
+      photo: null,
+      ocr: null,
+      analysisSource: 'server',
+    });
+
+    it.each([
+      ['이름이 바뀌었거나 없어진 종류', 'resin_wheel'],
+      ['철자 하나가 다른 값', 'flap_disk'],
+      ['대소문자가 다른 값', 'FLAP_DISC'],
+      ['앞뒤에 공백이 붙은 값', ' flap_disc '],
+      ['빈 문자열', ''],
+      // 종류별 표가 일반 객체라, 표에서 찾으면 "있는 값"으로 보이는 이름이다.
+      ['객체 기본 속성과 같은 이름', 'constructor'],
+    ])(
+      '목록에 없는 숫돌 종류는 unknown으로 되돌린다 — %s',
+      (_name, wheelType) => {
+        const recovered = recoverWheelFormDraft(draftWithType(wheelType));
+
+        // 비슷해 보여도 다른 종류로 추정해 바꾸지 않는다. 모르는 것은 모르는 것으로 둔다.
+        // 어긋난 것은 종류뿐이므로 나머지 입력은 그대로 살린다.
+        expect(recovered?.fields).toEqual({ ...FIELDS, wheelType: 'unknown' });
+      },
+    );
+
+    it.each([
+      ['숫자', 42],
+      ['null', null],
+      ['객체', { type: 'flap_disc' }],
+    ])(
+      '문자열이 아닌 숫돌 종류도 unknown으로 되돌린다 — %s',
+      (_name, wheelType) => {
+        const recovered = recoverWheelFormDraft(draftWithType(wheelType));
+
+        expect(recovered?.fields).toEqual({ ...FIELDS, wheelType: 'unknown' });
+      },
+    );
+
+    it.each(EVERY_WHEEL_TYPE)(
+      '목록에 있는 숫돌 종류는 그대로 살린다 — %s',
+      (wheelType) => {
+        const recovered = recoverWheelFormDraft(draftWithType(wheelType));
+
+        expect(recovered?.fields).toEqual({ ...FIELDS, wheelType });
+      },
+    );
   });
 
   it('analysisSource가 없는 구버전 draft — offline:true는 직접 입력(manual)으로 옮긴다', () => {

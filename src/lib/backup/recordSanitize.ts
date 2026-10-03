@@ -168,7 +168,12 @@ const WORK_MATERIALS = [
 ] as const;
 const COOLING_MODES = ['dry', 'wet', 'unknown'] as const;
 const WHEEL_PURPOSES = ['cutting', 'grinding', 'unknown'] as const;
-const WHEEL_TYPES = [
+/**
+ * 확인 화면 draft 복구(lib/draft/formDraftModel.ts)도 저장된 숫돌 종류를 이
+ * 목록으로 검사한다. 같은 목록을 두 곳에 적으면 종류를 더할 때 한쪽만 고쳐져
+ * 갈라진다.
+ */
+export const WHEEL_TYPES = [
   'bonded_abrasive',
   'bonded_cutting',
   'bonded_grinding',
