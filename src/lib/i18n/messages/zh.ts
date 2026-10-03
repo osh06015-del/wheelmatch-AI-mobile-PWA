@@ -19,7 +19,6 @@ export const zh: Messages = {
     '保留已有日期并继续检查是否过期。如识别有误，请在上方输入框中更正。',
   'expiryReview.unconfirmed':
     '使用期限未确认 — 请查看产品、包装或制造商说明。规格比对不代表安全许可。',
-  'verdict.compatibleExpiryUnconfirmed': '规格匹配 — 使用期限未确认',
   'reason.expiry.notFound':
     '作业人员未找到使用期限标记。使用期限仍未确认。请查看产品、包装或制造商说明。规格比对不批准使用期限或作业安全。',
   'reason.expiry.manualUnreadable':

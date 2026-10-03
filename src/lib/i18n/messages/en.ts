@@ -16,7 +16,6 @@ export const en: Messages = {
     'The existing date is retained and checked for expiry. Correct any misreading in the field above.',
   'expiryReview.unconfirmed':
     'Expiry unconfirmed — check the product, packaging or manufacturer instructions. Specification comparison is not safety approval.',
-  'verdict.compatibleExpiryUnconfirmed': 'SPECS MATCH — EXPIRY UNCONFIRMED',
   'reason.expiry.notFound':
     'The worker could not find an expiry marking. Expiry remains unconfirmed. Check the product, packaging or manufacturer instructions. Specification comparison does not approve service life or work safety.',
   'reason.expiry.manualUnreadable':

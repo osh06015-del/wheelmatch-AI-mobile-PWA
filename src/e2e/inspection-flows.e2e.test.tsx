@@ -82,7 +82,7 @@ describe('점검 흐름 E2E — 결과까지', () => {
     await f.user.click(f.button('scan.wheel.proceed'));
     await f.atPath('/result');
     expect(
-      await screen.findByText(f.t('verdict.compatibleExpiryUnconfirmed')),
+      await screen.findByText(f.t('verdict.compatible'), { exact: true }),
     ).toBeInTheDocument();
     expect(f.button('result.save')).toBeDisabled();
     await f.completeChecklist();
@@ -98,7 +98,10 @@ describe('점검 흐름 E2E — 결과까지', () => {
       record.result.checks.find((c) => c.detail?.code === 'expiry.notFound'),
     ).toMatchObject({ passed: null, advisory: true });
     expect(
-      await screen.findByText(f.t('verdict.compatibleExpiryUnconfirmed')),
+      await screen.findByText(f.t('verdict.compatible'), {
+        exact: true,
+        selector: 'span',
+      }),
     ).toBeInTheDocument();
   });
   it('정상 호환 — 작업 선택부터 시험운전·저장까지 끝난다', async () => {

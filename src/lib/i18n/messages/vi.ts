@@ -19,7 +19,6 @@ export const vi: Messages = {
     'Ngày đã có được giữ lại và kiểm tra hết hạn. Sửa lỗi đọc trong ô phía trên.',
   'expiryReview.unconfirmed':
     'Chưa xác nhận hạn sử dụng — xem sản phẩm, bao bì hoặc hướng dẫn của nhà sản xuất. Đối chiếu thông số không phải phê duyệt an toàn.',
-  'verdict.compatibleExpiryUnconfirmed': 'THÔNG SỐ KHỚP — CHƯA XÁC NHẬN HẠN',
   'reason.expiry.notFound':
     'Người lao động không tìm thấy hạn sử dụng. Hạn sử dụng chưa được xác nhận. Xem sản phẩm, bao bì hoặc hướng dẫn của nhà sản xuất. Đối chiếu thông số không phê duyệt thời hạn sử dụng hay an toàn công việc.',
   'reason.expiry.manualUnreadable':

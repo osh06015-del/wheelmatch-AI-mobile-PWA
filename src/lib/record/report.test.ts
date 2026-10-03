@@ -75,7 +75,7 @@ const options = {
 };
 
 describe('점검 기록 문서 — 사람이 읽는 형태', () => {
-  it('사용기한 미확인은 내보낸 문서의 판정 제목에도 남긴다', () => {
+  it('문서 제목은 적합이며 사용기한 미확인 사유는 항목에 남긴다', () => {
     const r = record();
     r.result.checks.push({
       rule: '유효기한',
@@ -87,7 +87,8 @@ describe('점검 기록 문서 — 사람이 읽는 형태', () => {
       detail: { code: 'expiry.notFound' },
     });
     const html = buildReportHtml([{ record: r, photos: [] }], options);
-    expect(html).toContain('규격 적합 — 사용기한 미확인');
+    expect(html).toContain('class="badge COMPATIBLE">적합</span>');
+    expect(html).not.toContain('규격 적합 — 사용기한 미확인');
     expect(html).toContain('작업자가 사용기한 표시를 찾지 못했습니다.');
   });
   it('판정·요약·검사 항목·시험운전·규칙 버전·면책 문구를 화면과 같은 말로 담는다', () => {

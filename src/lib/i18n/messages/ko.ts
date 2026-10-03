@@ -17,7 +17,6 @@ export const ko = {
     '이미 읽거나 입력한 날짜는 지우지 않습니다. 오독이면 위 입력칸에서 바로잡으세요. 입력된 날짜의 만료 검사는 유지됩니다.',
   'expiryReview.unconfirmed':
     '사용기한 미확인 — 제품·포장 또는 제조사 안내를 확인하세요. 규격 대조는 작업 안전 승인이 아닙니다.',
-  'verdict.compatibleExpiryUnconfirmed': '규격 적합 — 사용기한 미확인',
   'reason.expiry.notFound':
     '작업자가 사용기한 표시를 찾지 못했습니다. 사용기한은 미확인입니다. 제품·포장 또는 제조사 안내를 확인하세요. 규격 대조 결과는 사용기한이나 작업 안전을 승인하지 않습니다.',
   'reason.expiry.manualUnreadable':

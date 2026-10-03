@@ -11,7 +11,6 @@
 
 import type { Locale, MessageKey, Translate } from '@/lib/i18n';
 import { checkReasonText } from '@/lib/i18n/checkText';
-import { hasUnconfirmedExpiry } from '@/lib/i18n/expiryNotice';
 import { ruleLabelText } from '@/lib/i18n/ruleLabel';
 import { formatDateTime } from './datetime';
 import type {
@@ -195,11 +194,7 @@ function renderRecord(
       ? `<p class="warn">${escapeHtml(t('offline.limit'))}</p>`
       : '';
   return `<section class="record"><h2><span class="badge ${verdict}">${escapeHtml(
-    t(
-      verdict === 'COMPATIBLE' && hasUnconfirmedExpiry(record.result)
-        ? 'verdict.compatibleExpiryUnconfirmed'
-        : VERDICT_TEXT[verdict],
-    ),
+    t(VERDICT_TEXT[verdict]),
   )}</span> ${escapeHtml(heading)}</h2><p class="summary">${escapeHtml(
     summary(record, t),
   )}</p><p class="muted">${escapeHtml(meta)}</p>${offline}${renderPhotos(

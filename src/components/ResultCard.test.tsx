@@ -42,7 +42,7 @@ function wheel(overrides: Partial<WheelSpec> = {}): WheelSpec {
 }
 
 describe('ResultCard — 판정 표시', () => {
-  it('사용기한 미확인은 상단 판정과 직접 확인 항목에 함께 남긴다', () => {
+  it('상단은 적합으로 표시하고 사용기한 미확인은 직접 확인 항목에 남긴다', () => {
     const result = matchSpecs(
       grinder(),
       wheel({ expiry: null, expiryReview: 'not_found' }),
@@ -53,8 +53,13 @@ describe('ResultCard — 판정 표시', () => {
       },
     );
     render(<ResultCard result={result} />);
-    expect(screen.getByText('규격 적합 — 사용기한 미확인')).toBeInTheDocument();
-    expect(screen.queryByText('적합', { exact: true })).not.toBeInTheDocument();
+    expect(screen.getByText('적합', { exact: true })).toBeInTheDocument();
+    expect(
+      screen.queryByText('규격 적합 — 사용기한 미확인'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /직접 확인할 항목/ }),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/작업자가 사용기한 표시를 찾지 못했습니다/),
     ).toBeInTheDocument();

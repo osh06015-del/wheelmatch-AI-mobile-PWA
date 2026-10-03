@@ -10,7 +10,6 @@ import {
   type Translate,
 } from '@/lib/i18n';
 import { checkReasonText, checkValueText } from '@/lib/i18n/checkText';
-import { hasUnconfirmedExpiry } from '@/lib/i18n/expiryNotice';
 import { formatGrinderSummary, formatMargin } from '@/lib/i18n/format';
 import { ruleLabelText } from '@/lib/i18n/ruleLabel';
 import { RULE } from '@/lib/rules/engine';
@@ -153,11 +152,7 @@ export function ResultCard({ result, grinder, wheel }: ResultCardProps) {
           {VERDICT_ICON[result.verdict]}
         </span>
         <span className="break-keep text-3xl font-black">
-          {t(
-            result.verdict === 'COMPATIBLE' && hasUnconfirmedExpiry(result)
-              ? 'verdict.compatibleExpiryUnconfirmed'
-              : VERDICT_TEXT[result.verdict],
-          )}
+          {t(VERDICT_TEXT[result.verdict])}
         </span>
       </div>
 

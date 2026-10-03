@@ -19,8 +19,6 @@ export const id: Messages = {
     'Tanggal yang ada tetap disimpan dan diperiksa kedaluwarsanya. Koreksi salah baca pada kolom di atas.',
   'expiryReview.unconfirmed':
     'Masa berlaku belum terkonfirmasi — periksa produk, kemasan, atau petunjuk produsen. Perbandingan spesifikasi bukan persetujuan keselamatan.',
-  'verdict.compatibleExpiryUnconfirmed':
-    'SPESIFIKASI SESUAI — MASA BERLAKU BELUM TERKONFIRMASI',
   'reason.expiry.notFound':
     'Pekerja tidak menemukan tanda masa berlaku. Masa berlaku belum terkonfirmasi. Periksa produk, kemasan, atau petunjuk produsen. Perbandingan spesifikasi tidak menyetujui masa pakai atau keselamatan kerja.',
   'reason.expiry.manualUnreadable':
