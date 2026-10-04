@@ -24,6 +24,7 @@ export const vi: Messages = {
   'reason.expiry.manualUnreadable':
     'Người lao động báo không đọc được hạn sử dụng. Hạn sử dụng chưa được xác nhận. Xem sản phẩm, bao bì hoặc hướng dẫn của nhà sản xuất. Đối chiếu thông số không phê duyệt thời hạn sử dụng hay an toàn công việc.',
   'common.home': 'Trang chủ',
+  'scan.backGrinder': 'Bước trước: kiểm tra nhãn máy mài',
   'common.grinder': 'Máy mài',
   'common.wheel': 'Đá mài',
   'common.language': 'Ngôn ngữ',

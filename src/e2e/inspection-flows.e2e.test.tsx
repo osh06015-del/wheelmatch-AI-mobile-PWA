@@ -65,6 +65,43 @@ afterEach(() => {
 });
 
 describe('점검 흐름 E2E — 결과까지', () => {
+  it('2단계 뒤로가기는 명판 확인으로 복귀하고 작업 선택으로 가지 않는다', async () => {
+    const f = inspector('ko');
+    await openWheelConfirm(
+      f,
+      new FixtureExtractor().grinder(GRINDER).wheel(wheelLabel()),
+    );
+    await f.user.click(
+      screen.getByRole('link', { name: f.t('scan.backGrinder') }),
+    );
+    await f.atPath('/scan/grinder');
+    await screen.findByText(f.t('scan.confirmTitle'));
+    expect(
+      screen.getByDisplayValue(String(GRINDER.noLoadRPM)),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /그라인더 명판 크게 보기/ }),
+    ).toBeInTheDocument();
+    expect(f.button('scan.grinder.proceed')).toBeDisabled();
+    await f.answerGrinderCondition();
+    expect(f.button('scan.grinder.proceed')).toBeDisabled();
+    await f.user.click(
+      screen.getByRole('checkbox', { name: /라벨을 직접 보고/ }),
+    );
+    await f.user.click(f.button('scan.grinder.proceed'));
+    await f.atPath('/scan/wheel');
+    // 촬영 단계에서도 직전 단계로 간다. 명판 단계만 처음 화면으로 간다.
+    const back = await screen.findByRole('link', {
+      name: f.t('scan.backGrinder'),
+    });
+    expect(back).toHaveAttribute('href', '/scan/grinder');
+    await f.user.click(back);
+    await f.atPath('/scan/grinder');
+    expect(
+      await screen.findByRole('link', { name: f.t('common.home') }),
+    ).toHaveAttribute('href', '/');
+  });
+
   it('기한 미표기 — 직접 응답 후 규격 대조·저장·이력까지 미확인을 보존한다', async () => {
     const f = inspector('ko');
     await openWheelConfirm(
@@ -561,6 +598,9 @@ describe('점검 흐름 E2E — Gate와 시험운전', () => {
 
     // 그라인더를 다시 찍으면 장비 상태 답과 숫돌 쪽 값까지 모두 버린다.
     visit('/scan/grinder');
+    // 이제 이전 단계로 돌아오면 명판 확인 화면이다. 새 사진은 재촬영으로 고른다.
+    await screen.findByText(f.t('scan.confirmTitle'));
+    await f.user.click(f.button('scan.retake'));
     await f.pickPhoto();
     await screen.findByText(f.t('scan.confirmTitle'));
     expect(screen.queryAllByRole('button', { pressed: true })).toEqual([]);

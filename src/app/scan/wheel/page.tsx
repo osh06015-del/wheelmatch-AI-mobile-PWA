@@ -639,7 +639,11 @@ export default function WheelScanPage() {
   if (phase === 'capture') {
     return (
       <main className="flex flex-1 flex-col">
-        <ScanHeader step="2 / 2" title={t('scan.wheel.title')} />
+        <ScanHeader
+          step="2 / 2"
+          title={t('scan.wheel.title')}
+          backHref="/scan/grinder"
+        />
         {/* 찍기 전에 무엇을 골라야 하는지 먼저 알려준다.
             숫돌 걸이 앞에서 바로 쓰이는 정보다. */}
         {grinder && (
@@ -661,7 +665,11 @@ export default function WheelScanPage() {
   if (phase === 'review') {
     return (
       <main className="flex flex-1 flex-col">
-        <ScanHeader step="2 / 2" title={t('scan.wheel.title')} />
+        <ScanHeader
+          step="2 / 2"
+          title={t('scan.wheel.title')}
+          backHref="/scan/grinder"
+        />
         <div className="flex flex-1 flex-col justify-center gap-4 px-6 py-6">
           {photo && (
             <ZoomablePhoto
@@ -683,7 +691,11 @@ export default function WheelScanPage() {
   if (phase === 'analyzing') {
     return (
       <main className="flex flex-1 flex-col">
-        <ScanHeader step="2 / 2" title={t('scan.wheel.title')} />
+        <ScanHeader
+          step="2 / 2"
+          title={t('scan.wheel.title')}
+          backHref="/scan/grinder"
+        />
         <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6">
           <div
             aria-hidden
@@ -698,7 +710,11 @@ export default function WheelScanPage() {
   if (phase === 'error') {
     return (
       <main className="flex flex-1 flex-col">
-        <ScanHeader step="2 / 2" title={t('scan.wheel.title')} />
+        <ScanHeader
+          step="2 / 2"
+          title={t('scan.wheel.title')}
+          backHref="/scan/grinder"
+        />
         <div className="flex flex-1 flex-col justify-center gap-4 px-6">
           <p
             role="alert"
@@ -741,7 +757,12 @@ export default function WheelScanPage() {
 
   return (
     <main className="flex flex-1 flex-col gap-6 px-6 py-6">
-      <ScanHeader step="2 / 2" title={t('scan.wheel.title')} bare />
+      <ScanHeader
+        step="2 / 2"
+        title={t('scan.wheel.title')}
+        backHref="/scan/grinder"
+        bare
+      />
       {/* 판독값을 사진과 같은 화면에서 대조한다. 「읽어낸 원문」은 AI가 읽은
           글자라 오독을 잡는 근거가 되지 못한다 — 사진이 유일한 독립 근거다. */}
       {photo && (

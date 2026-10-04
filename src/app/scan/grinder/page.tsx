@@ -50,6 +50,7 @@ import {
 import { limitCauseFor, useInspection } from '@/lib/state/inspection';
 import type {
   CaptureQualityMetrics,
+  CaptureQualityCheck,
   GrinderCondition,
   GrinderSpec,
   OcrTelemetry,
@@ -70,6 +71,13 @@ export default function GrinderScanPage() {
   const {
     declaredPurpose,
     hydrating,
+    grinder,
+    grinderImage,
+    grinderOcr,
+    grinderCaptureMetrics,
+    grinderOcrTelemetry,
+    captureChecks,
+    offlineSlots,
     setGrinder,
     setGrinderCondition,
     setCaptureCheck,
@@ -101,6 +109,8 @@ export default function GrinderScanPage() {
   const [error, setError] = useState<unknown>(null);
   // 사진 상태 경고와 이 자리에서 사진을 넣은 횟수. 명판 사진 한 자리에 대한 것이다.
   const [review, setReview] = useState<CaptureReview | null>(null);
+  const [returnedCaptureCheck, setReturnedCaptureCheck] =
+    useState<CaptureQualityCheck | null>(null);
   // 서버에 닿지 못해 작업자가 값을 직접 넣는 중인가(제한 대조).
   // 이 명판 값으로 대조한 결과는 적합이 될 수 없다(engine.ts의 checkAnalysisMode).
   const [offline, setOffline] = useState(false);
@@ -131,9 +141,40 @@ export default function GrinderScanPage() {
   // 전까지는 이 저장소에만 남는다 — 진행 중 점검 복구(draft)는 proceed() 이후의
   // 확정값만 다룬다. 복원해도 userConfirmed·Gate는 다시 받는다(자동 완료 금지).
   useEffect(() => {
+    if (hydrating) return;
     let cancelled = false;
     void formDraftStore.load('grinder').then((result) => {
-      if (cancelled || actedRef.current || result.status !== 'found') return;
+      if (cancelled || actedRef.current) return;
+      // 다음 단계에서 돌아온 경우 확정값·사진을 다시 보여준다. 수정 중 draft가
+      // 있으면 그것이 우선이다. 이전 Gate 답과 직접 확인은 자동으로 채우지 않는다.
+      if (result.status !== 'found') {
+        if (!grinder || !grinderImage) return;
+        setForm({
+          model: grinder.model ?? '',
+          noLoadRPM: fromNumber(grinder.noLoadRPM),
+          maxWheelDiameter: fromNumber(grinder.maxWheelDiameter),
+        });
+        setMounting({
+          spindleThread: grinder.spindleThread ?? 'unknown',
+          guardType: grinder.guardType ?? 'unknown',
+          guardSize: fromNumber(grinder.guardSize ?? null),
+        });
+        setPhoto(grinderImage);
+        setOcr(grinderOcr);
+        setCaptureMetrics(grinderCaptureMetrics);
+        setOcrTelemetry(grinderOcrTelemetry);
+        setReturnedCaptureCheck(captureChecks.grinder ?? null);
+        setRequiresConfirmation(true);
+        // 뒤로가기가 서버 판독 없이 확정한 값의 제한을 풀어서는 안 된다.
+        const limited = offlineSlots.grinder;
+        const cause = offlineSlots.causes?.grinder;
+        setOffline(limited && cause === 'manual');
+        setLocalOnly(limited && cause !== 'manual' && cause !== 'dropped_ocr');
+        setLocalOcrConfirmed(limited && cause === 'local_ocr');
+        setDroppedOcr(limited && cause === 'dropped_ocr' ? 'dropped' : null);
+        setPhase('confirm');
+        return;
+      }
       const recovered = recoverGrinderFormDraft(result.draft);
       if (!recovered) return;
       const { spindleThread, guardType, guardSize, ...fields } =
@@ -157,7 +198,16 @@ export default function GrinderScanPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [
+    hydrating,
+    grinder,
+    grinderImage,
+    grinderOcr,
+    grinderCaptureMetrics,
+    grinderOcrTelemetry,
+    captureChecks,
+    offlineSlots,
+  ]);
 
   // 확인 화면에 있는 동안 입력을 모아 저장한다(debounce). "다음"을 누르기 전에
   // 새로고침해도 입력칸이 비지 않게 하기 위해서다. DraftRecovery의 진행 중 점검
@@ -217,6 +267,7 @@ export default function GrinderScanPage() {
     setOcr(null);
     setOcrTelemetry(null);
     setCaptureMetrics(null);
+    setReturnedCaptureCheck(null);
     setUserConfirmed(false);
     setOffline(false);
     setLocalOnly(false);
@@ -357,6 +408,7 @@ export default function GrinderScanPage() {
 
   function proceed() {
     if (!canProceed) return;
+    actedRef.current = true;
     const spec: GrinderSpec = {
       model: toTextOrNull(form.model),
       noLoadRPM: toNumberOrNull(form.noLoadRPM),
@@ -372,7 +424,10 @@ export default function GrinderScanPage() {
     // setGrinder가 이전 장비 상태·숫돌 값을 모두 지운다. 그 뒤에 이번 확인을 넣는다.
     setGrinder(spec, photo, ocr, captureMetrics, ocrTelemetry);
     setGrinderCondition(condition);
-    setCaptureCheck('grinder', toCaptureQualityCheck(review));
+    setCaptureCheck(
+      'grinder',
+      toCaptureQualityCheck(review) ?? returnedCaptureCheck,
+    );
     // setGrinder가 제한 표시를 지운다. 그 뒤에 이번 명판의 판독 경로를 넣는다.
     // 직접 입력(offline)과 로컬 OCR(localOnly) 모두 서버 대조 없이 읽은 값이다.
     // 저장된 판독을 통째로 버린 경우(ocrDropped)도 제한 대조로 남긴다. 서버 분석을

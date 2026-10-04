@@ -128,6 +128,61 @@ beforeEach(() => {
 });
 
 describe('그라인더 확인 화면 — 입력 draft 복구', () => {
+  it.each(['server', 'manual', 'local_ocr', 'dropped_ocr', 'unknown'] as const)(
+    '2단계에서 돌아오면 사진·최종값·판독 경로를 보존하고 재확인한다: %s',
+    async (cause) => {
+      const state = store();
+      const photo = new Blob(['plate']);
+      const check = {
+        checkVersion: 'test',
+        warnings: [] as [],
+        usedDespiteWarning: false,
+        retakeCount: 2,
+      };
+      act(() => {
+        state.current.setGrinder(
+          { ...OCR, noLoadRPM: 10000 },
+          photo,
+          cause === 'dropped_ocr' ? null : OCR,
+          CLEAN,
+        );
+        state.current.setCaptureCheck('grinder', check);
+        state.current.setOfflineSlot(
+          'grinder',
+          cause !== 'server',
+          cause === 'server' ? null : cause,
+        );
+      });
+      render(<GrinderScanPage />);
+      await screen.findByText('읽어낸 값을 확인하세요');
+      expect(screen.getByDisplayValue('10000')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: '그라인더 명판 크게 보기' }),
+      ).toBeInTheDocument();
+      expect(extractGrinder).not.toHaveBeenCalled();
+      const next = screen.getByRole('button', { name: '확인 후 숫돌 촬영' });
+      expect(next).toBeDisabled();
+      for (const button of screen.getAllByRole('button', { name: /확인함/ }))
+        fireEvent.click(button);
+      expect(next).toBeDisabled();
+      fireEvent.click(
+        screen.getByRole('checkbox', { name: /라벨을 직접 보고/ }),
+      );
+      fireEvent.click(next);
+      expect(push).toHaveBeenCalledWith('/scan/wheel');
+      expect(state.current.grinder?.noLoadRPM).toBe(10000);
+      expect(state.current.grinderImage).toBe(photo);
+      expect(state.current.grinderOcr).toEqual(
+        cause === 'dropped_ocr' ? null : OCR,
+      );
+      expect(state.current.grinderCaptureMetrics).toEqual(CLEAN);
+      expect(state.current.captureChecks.grinder).toEqual(check);
+      expect(state.current.offlineSlots.grinder).toBe(cause !== 'server');
+      if (cause !== 'server')
+        expect(limitCausesOf(state.current.offlineSlots).grinder).toBe(cause);
+    },
+  );
+
   it('새로고침 전 draft가 있으면 입력칸을 복원하지만 확인·Gate는 다시 받는다', async () => {
     formLoad.mockResolvedValueOnce({
       status: 'found',

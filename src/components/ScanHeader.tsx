@@ -10,11 +10,18 @@ interface ScanHeaderProps {
   step: string;
   /** 고른 언어로 이미 바꾼 화면 제목 */
   title: string;
+  /** 촬영 단계의 직전 화면. 브라우저 방문 이력에 의존하지 않는다. */
+  backHref?: '/scan/grinder';
   /** 확인 화면처럼 이미 좌우 여백이 있는 곳에서는 테두리와 패딩을 뺀다. */
   bare?: boolean;
 }
 
-export function ScanHeader({ step, title, bare = false }: ScanHeaderProps) {
+export function ScanHeader({
+  step,
+  title,
+  backHref,
+  bare = false,
+}: ScanHeaderProps) {
   const { t } = useLocale();
 
   return (
@@ -22,8 +29,8 @@ export function ScanHeader({ step, title, bare = false }: ScanHeaderProps) {
       className={`flex items-center gap-3 ${bare ? '' : 'border-b border-slate-800 px-6 py-4'}`}
     >
       <Link
-        href="/"
-        aria-label={t('common.home')}
+        href={backHref ?? '/'}
+        aria-label={t(backHref ? 'scan.backGrinder' : 'common.home')}
         className="flex h-12 w-12 items-center justify-center rounded-lg text-2xl text-slate-300 active:bg-slate-800"
       >
         ←

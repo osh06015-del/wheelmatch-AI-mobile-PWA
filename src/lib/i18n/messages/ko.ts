@@ -22,6 +22,7 @@ export const ko = {
   'reason.expiry.manualUnreadable':
     '작업자가 사용기한 표시를 읽기 어렵다고 답했습니다. 사용기한은 미확인입니다. 제품·포장 또는 제조사 안내를 확인하세요. 규격 대조 결과는 사용기한이나 작업 안전을 승인하지 않습니다.',
   'common.home': '처음으로',
+  'scan.backGrinder': '이전 단계: 그라인더 명판 확인',
   'common.grinder': '그라인더',
   'common.wheel': '숫돌',
   'common.language': '언어',

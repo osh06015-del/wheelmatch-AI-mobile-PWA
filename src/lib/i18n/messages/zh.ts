@@ -24,6 +24,7 @@ export const zh: Messages = {
   'reason.expiry.manualUnreadable':
     '作业人员报告使用期限标记无法辨认。使用期限仍未确认。请查看产品、包装或制造商说明。规格比对不批准使用期限或作业安全。',
   'common.home': '首页',
+  'scan.backGrinder': '上一步：核对角磨机铭牌',
   'common.grinder': '角磨机',
   'common.wheel': '砂轮',
   'common.language': '语言',

@@ -21,6 +21,7 @@ export const en: Messages = {
   'reason.expiry.manualUnreadable':
     'The worker reported an unreadable expiry marking. Expiry remains unconfirmed. Check the product, packaging or manufacturer instructions. Specification comparison does not approve service life or work safety.',
   'common.home': 'Home',
+  'scan.backGrinder': 'Previous step: check grinder nameplate',
   'common.grinder': 'Grinder',
   'common.wheel': 'Wheel',
   'common.language': 'Language',

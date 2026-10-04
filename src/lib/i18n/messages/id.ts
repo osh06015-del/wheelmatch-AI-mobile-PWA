@@ -24,6 +24,7 @@ export const id: Messages = {
   'reason.expiry.manualUnreadable':
     'Pekerja melaporkan tanda masa berlaku tidak terbaca. Masa berlaku belum terkonfirmasi. Periksa produk, kemasan, atau petunjuk produsen. Perbandingan spesifikasi tidak menyetujui masa pakai atau keselamatan kerja.',
   'common.home': 'Beranda',
+  'scan.backGrinder': 'Langkah sebelumnya: periksa pelat nama gerinda',
   'common.grinder': 'Gerinda',
   'common.wheel': 'Batu gerinda',
   'common.language': 'Bahasa',
