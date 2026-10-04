@@ -62,7 +62,9 @@ describe('ProfileConditionsPanel', () => {
       />,
     );
     expect(
-      screen.getByText('판정 범위: 전체 조건(작업·덮개·재료 포함)'),
+      screen.getByText(
+        '판정 범위: 결합숫돌 규격 대조. 재료·장착 등 직접 확인 항목은 판정에 포함되지 않습니다.',
+      ),
     ).toBeInTheDocument();
 
     render(

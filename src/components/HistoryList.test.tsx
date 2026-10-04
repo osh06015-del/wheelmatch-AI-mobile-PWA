@@ -53,6 +53,27 @@ function record(overrides: Partial<InspectionRecord> = {}): InspectionRecord {
 }
 
 describe('HistoryList', () => {
+  it('규격이 적합이어도 시험운전 이상 기록은 빨간 작업 중지를 먼저 표시한다', async () => {
+    const saved = record({
+      trialRun: {
+        wheelReplaced: false,
+        requiredSeconds: 60,
+        startedAt: '2026-09-01T09:00:00.000Z',
+        finishedAt: '2026-09-01T09:00:05.000Z',
+        elapsedSeconds: 5,
+        outcome: 'abnormal',
+        findings: ['noise'],
+        completed: false,
+      },
+    });
+    render(<HistoryList records={[saved]} />);
+    expect(screen.getByText('이상 있음 — 작업 중지')).toHaveClass('bg-red-500');
+    expect(screen.queryByText('적합', { exact: true })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { expanded: false }));
+    expect(screen.getByText('비정상 소음')).toBeInTheDocument();
+    expect(screen.getByText('작업하지 마십시오')).toBeInTheDocument();
+    expect(saved.result.verdict).toBe('COMPATIBLE');
+  });
   it('작업 종류와 걸린 시간을 함께 보여준다', () => {
     render(<HistoryList records={[record()]} />);
     expect(screen.getByText('절단')).toBeInTheDocument();

@@ -75,6 +75,26 @@ const options = {
 };
 
 describe('점검 기록 문서 — 사람이 읽는 형태', () => {
+  it('시험운전 이상이면 규격 적합 배지 대신 작업 중지를 먼저 표시한다', () => {
+    const r = record();
+    r.trialRun = {
+      ...r.trialRun!,
+      outcome: 'abnormal',
+      findings: ['noise'],
+      completed: false,
+    };
+    const html = buildReportHtml([{ record: r, photos: [] }], options);
+    expect(html).toContain(
+      'class="badge STOPPED">이상 있음 — 작업 중지</span>',
+    );
+    expect(html).not.toContain('class="badge COMPATIBLE">');
+    expect(html).toContain('규격 대조 결과(작업 중지와 별개): 적합');
+    expect(html).toContain('비정상 소음');
+    expect(html.indexOf('비정상 소음')).toBeLessThan(
+      html.indexOf('RPM 상한 대조'),
+    );
+    expect(r.result.verdict).toBe('COMPATIBLE');
+  });
   it('문서 제목은 적합이며 사용기한 미확인 사유는 항목에 남긴다', () => {
     const r = record();
     r.result.checks.push({

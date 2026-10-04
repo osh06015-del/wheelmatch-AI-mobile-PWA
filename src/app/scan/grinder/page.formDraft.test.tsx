@@ -399,6 +399,10 @@ describe('그라인더 확인 화면 — 로컬 OCR 제한 판정', () => {
     }
     fireEvent.click(screen.getByRole('button', { name: '확인 후 숫돌 촬영' }));
 
+    // 복원 입력은 명판 대조를 다시 받아야 확정된다.
+    expect(push).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('checkbox', { name: /라벨을 직접 보고/ }));
+    fireEvent.click(screen.getByRole('button', { name: '확인 후 숫돌 촬영' }));
     expect(result.current.analysisMode).toBe('offline_limited');
     expect(limitCausesOf(result.current.offlineSlots)).toEqual({
       grinder: 'local_ocr',
@@ -435,6 +439,9 @@ describe('그라인더 확인 화면 — 로컬 OCR 제한 판정', () => {
     }
     fireEvent.click(screen.getByRole('button', { name: '확인 후 숫돌 촬영' }));
 
+    expect(push).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('checkbox', { name: /라벨을 직접 보고/ }));
+    fireEvent.click(screen.getByRole('button', { name: '확인 후 숫돌 촬영' }));
     expect(result.current.offlineSlots.grinder).toBe(true);
     expect(result.current.analysisMode).toBe('offline_limited');
     expect(limitCausesOf(result.current.offlineSlots)).toEqual({
@@ -563,10 +570,13 @@ describe('그라인더 확인 화면 — 통째로 버린 OCR이 남은 draft', 
     }
     fireEvent.click(screen.getByRole('button', { name: '확인 후 숫돌 촬영' }));
 
+    expect(push).not.toHaveBeenCalled();
+    confirmAndProceed();
     expect(push).toHaveBeenCalledWith('/scan/wheel');
     expect(result.current.grinderOcr).toBeNull();
-    // 읽을 수 없던 판독의 신뢰도를 이어받지 않는다. 사람이 확인하기 전에는 낮음이다.
-    expect(result.current.grinder?.confidence).toBe('low');
+    // 직접 확인 후에만 상향되며, 버린 OCR의 제한 대조는 그대로 남는다.
+    expect(result.current.grinder?.confidence).toBe('high');
+    expect(result.current.analysisMode).toBe('offline_limited');
   });
 
   it('버린 판독으로 확정하면 제한 대조로 남긴다 — 직접 확인을 체크해도 온라인 대조로 나가지 않는다', async () => {
@@ -678,6 +688,7 @@ describe('그라인더 확인 화면 — 통째로 버린 OCR이 남은 draft', 
     expect(screen.queryByText(DROPPED_NOTICE)).not.toBeInTheDocument();
 
     // 판독이 온전하면 예전처럼 온라인 대조다. 버린 판독만 낮춘다.
+    fireEvent.click(screen.getByRole('checkbox', { name: /라벨을 직접 보고/ }));
     for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
       fireEvent.click(button);
     }

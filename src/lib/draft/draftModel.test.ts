@@ -233,7 +233,7 @@ describe('recoverDraft — 정상 복구', () => {
       requiredSeconds: 60,
       startedAt: '2026-09-17T02:00:00.000Z',
       finishedAt: '2026-09-17T02:01:00.000Z',
-      elapsedSeconds: 61,
+      elapsedSeconds: 60,
       outcome: 'normal' as const,
       findings: [],
       completed: true,
@@ -1244,6 +1244,17 @@ describe('recoverDraft — 규격이 아닌 값(상태 확인·체크리스트·
   // ── 마친 시험운전 기록 ──
 
   const MALFORMED_TRIAL_RUN: Malformed = [
+    ['정상인데 미완료', { ...TRIAL_RUN, completed: false }],
+    [
+      '1초만 실행한 정상 기록',
+      {
+        ...TRIAL_RUN,
+        elapsedSeconds: 1,
+        finishedAt: '2026-09-17T02:00:01.000Z',
+      },
+    ],
+    ['교체 후 60초', { ...TRIAL_RUN, wheelReplaced: true }],
+    ['정상인데 이상 항목이 있음', { ...TRIAL_RUN, findings: ['noise'] }],
     ['빈 객체', {}],
     ['결과가 없는 값', without(TRIAL_RUN, 'outcome')],
     ['결과 — 목록에 없는 값', { ...TRIAL_RUN, outcome: 'fine' }],
@@ -1300,6 +1311,26 @@ describe('recoverDraft — 규격이 아닌 값(상태 확인·체크리스트·
       );
     },
   );
+
+  it('시간 전 이상 중지는 복구해도 중지 상태이며 저장만 허용한다', () => {
+    const trialRunRecord: TrialRun = {
+      ...TRIAL_RUN,
+      outcome: 'abnormal',
+      completed: false,
+      elapsedSeconds: 1,
+      finishedAt: '2026-09-17T02:00:01.000Z',
+      findings: ['noise'],
+    };
+    const recovery = recoverDraft(
+      stored(buildDraft(finished({ trialRunRecord }), NOW)),
+    );
+    expect(recovery.warnings).toEqual([]);
+    expect(recovery.snapshot?.trialRunRecord).toEqual(trialRunRecord);
+    expect(isTrialRunStopped(recovery.snapshot?.trialRunRecord ?? null)).toBe(
+      true,
+    );
+    expect(opensSave(recovery.snapshot?.trialRunRecord)).toBe(true);
+  });
 
   // ── 체크리스트 ──
 

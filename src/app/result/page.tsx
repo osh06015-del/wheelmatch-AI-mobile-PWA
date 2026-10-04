@@ -478,7 +478,13 @@ export default function ResultPage() {
         </h1>
       </header>
 
-      <ResultCard result={result} grinder={grinder} wheel={wheel} />
+      {stopped && <TrialRunStopNotice autoFocus />}
+      <ResultCard
+        result={result}
+        grinder={grinder}
+        wheel={wheel}
+        trialStopped={stopped}
+      />
 
       <EvidencePanel
         grinder={grinder}
@@ -590,8 +596,6 @@ export default function ResultPage() {
           onResolve={resolveTrialRun}
         />
       )}
-
-      {stopped && <TrialRunStopNotice />}
 
       {/* 규격이 맞아도 시험운전 근거가 없는 종류는 앱이 시간·문구를 지어내지
           않는다. 대신 무엇을 따라야 하는지 알린다. */}

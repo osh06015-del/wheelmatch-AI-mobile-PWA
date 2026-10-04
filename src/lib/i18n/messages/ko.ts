@@ -400,7 +400,9 @@ export const ko = {
   'profile.note':
     '덮개 어긋남은 판정을 판정불가로 막습니다. 나머지 항목은 규격 판정에 들어가지 않으며, 앱이 맞다고 추정하지 않으니 직접 확인하세요.',
   'profile.version': '적용 조건표: {type} · {version}',
-  'profile.scope.full': '판정 범위: 전체 조건(작업·덮개·재료 포함)',
+  'profile.scope.full':
+    '판정 범위: 결합숫돌 규격 대조. 재료·장착 등 직접 확인 항목은 판정에 포함되지 않습니다.',
+  'trialRun.specResult': '규격 대조 결과(작업 중지와 별개): {verdict}',
   'profile.scope.limited': '판정 범위: 제한적(RPM·지름만 대조)',
   'profile.none':
     '이 종류에 적용할 조건표가 없습니다. 제조사 취급설명서를 확인하세요.',
@@ -1154,6 +1156,10 @@ export const ko = {
   'draft.dismiss': '닫기',
 
   'savedGrinder.title': '저장된 그라인더',
+  'savedGrinder.reconfirm':
+    '저장하거나 복원한 규격입니다. 현재 명판 사진과 입력값을 대조한 뒤 아래 직접 확인 항목을 체크하세요.',
+  'savedGrinder.deleteFailed':
+    '삭제하지 못했습니다. 기록은 그대로 두었습니다. 다시 시도하세요.',
   'savedGrinder.loading': '불러오는 중...',
   'savedGrinder.empty': '저장된 그라인더가 없습니다.',
   'savedGrinder.summary': '{model} · {rpm}rpm · Φ{diameter}mm',

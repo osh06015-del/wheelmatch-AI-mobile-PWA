@@ -9,7 +9,7 @@
 // 내려간 만큼 시간이 짧아진다 — 법이 정한 시간을 앱이 마음대로 줄이는 셈이다.
 // 화면 갱신용 타이머가 멈춰도 다시 그릴 때 정확한 남은 시간이 나온다.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { useLocale, type MessageKey } from '@/lib/i18n';
 import {
@@ -186,10 +186,21 @@ export function TrialRunPanel({
 }
 
 /** 이상이 확인됐을 때의 작업 중지 안내. 결과 화면이 직접 띄운다. */
-export function TrialRunStopNotice() {
+export function TrialRunStopNotice({
+  autoFocus = false,
+}: {
+  autoFocus?: boolean;
+}) {
   const { t } = useLocale();
+  const notice = useRef<HTMLDivElement>(null);
+  // 아래쪽 중지 버튼에서 최상단 안내로 이동시켜 작업 중지 사실을 놓치지 않게 한다.
+  useEffect(() => {
+    if (autoFocus) notice.current?.focus();
+  }, [autoFocus]);
   return (
     <div
+      ref={notice}
+      tabIndex={-1}
       role="alert"
       className="rounded-xl border-2 border-red-500 bg-red-500/15 px-4 py-5"
     >

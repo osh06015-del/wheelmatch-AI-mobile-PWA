@@ -23,7 +23,7 @@ import {
   type SavedGrinder,
   type SavedGrinderFields,
 } from '@/lib/db/savedGrinderModel';
-import { useLocale } from '@/lib/i18n';
+import { useLocale, type MessageKey } from '@/lib/i18n';
 import { GUARD_LABEL, SPINDLE_LABEL } from '@/lib/i18n/profileLabels';
 import type { GuardType, SpindleThread } from '@/lib/rules/types';
 
@@ -86,8 +86,12 @@ export function SavedGrinderPanel({
   const [saving, setSaving] = useState(false);
   // 상태(saving)는 다음 렌더에서야 바뀐다. 같은 틱의 두 번 저장(Enter+탭)을 ref로 막는다.
   const savingRef = useRef(false);
+  const [rowError, setRowError] = useState<MessageKey | null>(null);
+  const [mutating, setMutating] = useState(false);
+  const mutatingRef = useRef(false);
 
   function closeRowActions() {
+    setRowError(null);
     setPendingApplyId(null);
     setEditingId(null);
     setEditDraft(null);
@@ -138,25 +142,53 @@ export function SavedGrinderPanel({
   }
 
   async function confirmEdit(item: SavedGrinder) {
-    if (!editDraft) return;
+    if (!editDraft || mutatingRef.current) return;
     const alias = normalizeAlias(editDraft.alias);
-    if (!alias) return;
-    await savedGrinderStore.update({
-      ...item,
-      alias,
-      model: editDraft.model,
-      noLoadRPM: editDraft.noLoadRPM,
-      maxWheelDiameter: editDraft.maxWheelDiameter,
-      spindleThread: editDraft.spindleThread,
-      guardType: editDraft.guardType,
-      guardSize: editDraft.guardSize,
-    });
-    closeRowActions();
+    if (!alias) {
+      setRowError('savedGrinder.aliasRequired');
+      return;
+    }
+    await mutateRow(
+      () =>
+        savedGrinderStore.update({
+          ...item,
+          alias,
+          model: editDraft.model,
+          noLoadRPM: editDraft.noLoadRPM,
+          maxWheelDiameter: editDraft.maxWheelDiameter,
+          spindleThread: editDraft.spindleThread,
+          guardType: editDraft.guardType,
+          guardSize: editDraft.guardSize,
+        }),
+      'savedGrinder.saveFailed',
+    );
   }
 
   async function confirmDelete(id: number) {
-    await savedGrinderStore.remove(id);
-    closeRowActions();
+    await mutateRow(
+      () => savedGrinderStore.remove(id),
+      'savedGrinder.deleteFailed',
+    );
+  }
+
+  async function mutateRow(
+    action: () => Promise<boolean>,
+    failure: MessageKey,
+  ) {
+    if (mutatingRef.current) return;
+    mutatingRef.current = true;
+    setMutating(true);
+    setRowError(null);
+    try {
+      // falseも例外も失敗。確認欄と入力は成功した時だけ閉じる。
+      if (await action()) closeRowActions();
+      else setRowError(failure);
+    } catch {
+      setRowError(failure);
+    } finally {
+      mutatingRef.current = false;
+      setMutating(false);
+    }
   }
 
   function summarize(item: SavedGrinderFields): string {
@@ -195,248 +227,258 @@ export function SavedGrinderPanel({
                 key={item.id}
                 className="flex flex-col gap-2 rounded-lg border border-slate-700 px-3 py-3"
               >
-                {isEditing && editDraft ? (
-                  <div className="flex flex-col gap-2">
-                    <label className="flex flex-col gap-1">
-                      <span className="text-base font-semibold text-slate-200">
-                        {t('savedGrinder.aliasLabel')}
-                      </span>
-                      <input
-                        type="text"
-                        value={editDraft.alias}
-                        onChange={(event) =>
-                          setEditDraft({
-                            ...editDraft,
-                            alias: event.target.value,
-                          })
+                <fieldset
+                  disabled={mutating}
+                  className="flex min-w-0 flex-col gap-2"
+                >
+                  {isEditing && editDraft ? (
+                    <div className="flex flex-col gap-2">
+                      <label className="flex flex-col gap-1">
+                        <span className="text-base font-semibold text-slate-200">
+                          {t('savedGrinder.aliasLabel')}
+                        </span>
+                        <input
+                          type="text"
+                          value={editDraft.alias}
+                          onChange={(event) =>
+                            setEditDraft({
+                              ...editDraft,
+                              alias: event.target.value,
+                            })
+                          }
+                          className="min-h-12 rounded-lg border border-slate-600 bg-slate-900 px-3 text-lg text-slate-100"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1">
+                        <span className="text-base font-semibold text-slate-200">
+                          {t('field.model')}
+                        </span>
+                        <input
+                          type="text"
+                          value={editDraft.model}
+                          onChange={(event) =>
+                            setEditDraft({
+                              ...editDraft,
+                              model: event.target.value,
+                            })
+                          }
+                          className="min-h-12 rounded-lg border border-slate-600 bg-slate-900 px-3 text-lg text-slate-100"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1">
+                        <span className="text-base font-semibold text-slate-200">
+                          {t('field.noLoadRPM')}
+                        </span>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          value={editDraft.noLoadRPM}
+                          onChange={(event) =>
+                            setEditDraft({
+                              ...editDraft,
+                              noLoadRPM: event.target.value,
+                            })
+                          }
+                          className="min-h-12 rounded-lg border border-slate-600 bg-slate-900 px-3 text-lg text-slate-100"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1">
+                        <span className="text-base font-semibold text-slate-200">
+                          {t('field.maxWheelDiameter')}
+                        </span>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          value={editDraft.maxWheelDiameter}
+                          onChange={(event) =>
+                            setEditDraft({
+                              ...editDraft,
+                              maxWheelDiameter: event.target.value,
+                            })
+                          }
+                          className="min-h-12 rounded-lg border border-slate-600 bg-slate-900 px-3 text-lg text-slate-100"
+                        />
+                      </label>
+                      <SelectField
+                        label={t('grinderMount.spindle.label')}
+                        value={editDraft.spindleThread}
+                        options={SPINDLES.map((spindle) => ({
+                          value: spindle,
+                          label: t(SPINDLE_LABEL[spindle]),
+                        }))}
+                        onChange={(spindleThread) =>
+                          setEditDraft({ ...editDraft, spindleThread })
                         }
-                        className="min-h-12 rounded-lg border border-slate-600 bg-slate-900 px-3 text-lg text-slate-100"
                       />
-                    </label>
-                    <label className="flex flex-col gap-1">
-                      <span className="text-base font-semibold text-slate-200">
-                        {t('field.model')}
-                      </span>
-                      <input
-                        type="text"
-                        value={editDraft.model}
-                        onChange={(event) =>
-                          setEditDraft({
-                            ...editDraft,
-                            model: event.target.value,
-                          })
+                      <SelectField
+                        label={t('grinderMount.guardType.label')}
+                        value={editDraft.guardType}
+                        options={GUARDS.map((guard) => ({
+                          value: guard,
+                          label: t(GUARD_LABEL[guard]),
+                        }))}
+                        onChange={(guardType) =>
+                          setEditDraft({ ...editDraft, guardType })
                         }
-                        className="min-h-12 rounded-lg border border-slate-600 bg-slate-900 px-3 text-lg text-slate-100"
                       />
-                    </label>
-                    <label className="flex flex-col gap-1">
-                      <span className="text-base font-semibold text-slate-200">
-                        {t('field.noLoadRPM')}
-                      </span>
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        value={editDraft.noLoadRPM}
-                        onChange={(event) =>
-                          setEditDraft({
-                            ...editDraft,
-                            noLoadRPM: event.target.value,
-                          })
-                        }
-                        className="min-h-12 rounded-lg border border-slate-600 bg-slate-900 px-3 text-lg text-slate-100"
-                      />
-                    </label>
-                    <label className="flex flex-col gap-1">
-                      <span className="text-base font-semibold text-slate-200">
-                        {t('field.maxWheelDiameter')}
-                      </span>
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        value={editDraft.maxWheelDiameter}
-                        onChange={(event) =>
-                          setEditDraft({
-                            ...editDraft,
-                            maxWheelDiameter: event.target.value,
-                          })
-                        }
-                        className="min-h-12 rounded-lg border border-slate-600 bg-slate-900 px-3 text-lg text-slate-100"
-                      />
-                    </label>
-                    <SelectField
-                      label={t('grinderMount.spindle.label')}
-                      value={editDraft.spindleThread}
-                      options={SPINDLES.map((spindle) => ({
-                        value: spindle,
-                        label: t(SPINDLE_LABEL[spindle]),
-                      }))}
-                      onChange={(spindleThread) =>
-                        setEditDraft({ ...editDraft, spindleThread })
-                      }
-                    />
-                    <SelectField
-                      label={t('grinderMount.guardType.label')}
-                      value={editDraft.guardType}
-                      options={GUARDS.map((guard) => ({
-                        value: guard,
-                        label: t(GUARD_LABEL[guard]),
-                      }))}
-                      onChange={(guardType) =>
-                        setEditDraft({ ...editDraft, guardType })
-                      }
-                    />
-                    <label className="flex flex-col gap-1">
-                      <span className="text-base font-semibold text-slate-200">
-                        {t('grinderMount.guardSize.label')}
-                      </span>
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        value={editDraft.guardSize}
-                        onChange={(event) =>
-                          setEditDraft({
-                            ...editDraft,
-                            guardSize: event.target.value,
-                          })
-                        }
-                        className="min-h-12 rounded-lg border border-slate-600 bg-slate-900 px-3 text-lg text-slate-100"
-                      />
-                    </label>
+                      <label className="flex flex-col gap-1">
+                        <span className="text-base font-semibold text-slate-200">
+                          {t('grinderMount.guardSize.label')}
+                        </span>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          value={editDraft.guardSize}
+                          onChange={(event) =>
+                            setEditDraft({
+                              ...editDraft,
+                              guardSize: event.target.value,
+                            })
+                          }
+                          className="min-h-12 rounded-lg border border-slate-600 bg-slate-900 px-3 text-lg text-slate-100"
+                        />
+                      </label>
 
-                    {isConfirmingEdit ? (
-                      <div className="flex flex-col gap-2 rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-3 py-3">
-                        <p className="text-base leading-relaxed text-yellow-100">
-                          {t('savedGrinder.editConfirm')}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => void confirmEdit(item)}
-                          className="min-h-12 rounded-lg bg-yellow-500 text-base font-bold text-slate-950 active:bg-yellow-400"
-                        >
-                          {t('savedGrinder.editConfirmButton')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setConfirmingEditId(null)}
-                          className="min-h-12 rounded-lg border border-slate-600 text-base font-semibold text-slate-200 active:bg-slate-700"
-                        >
-                          {t('savedGrinder.cancel')}
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => requestEditConfirm(item.id)}
-                          className="min-h-12 flex-1 rounded-lg bg-slate-700 text-base font-semibold text-white active:bg-slate-600"
-                        >
-                          {t('savedGrinder.save')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={closeRowActions}
-                          className="min-h-12 flex-1 rounded-lg border border-slate-600 text-base font-semibold text-slate-200 active:bg-slate-700"
-                        >
-                          {t('savedGrinder.cancel')}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex flex-col">
-                      <span className="text-base font-semibold text-slate-100">
-                        {item.alias}
-                      </span>
-                      <span className="text-sm text-slate-400">
-                        {summarize(item)}
-                      </span>
+                      {isConfirmingEdit ? (
+                        <div className="flex flex-col gap-2 rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-3 py-3">
+                          <p className="text-base leading-relaxed text-yellow-100">
+                            {t('savedGrinder.editConfirm')}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => void confirmEdit(item)}
+                            className="min-h-12 rounded-lg bg-yellow-500 text-base font-bold text-slate-950 active:bg-yellow-400"
+                          >
+                            {t('savedGrinder.editConfirmButton')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmingEditId(null)}
+                            className="min-h-12 rounded-lg border border-slate-600 text-base font-semibold text-slate-200 active:bg-slate-700"
+                          >
+                            {t('savedGrinder.cancel')}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => requestEditConfirm(item.id)}
+                            className="min-h-12 flex-1 rounded-lg bg-slate-700 text-base font-semibold text-white active:bg-slate-600"
+                          >
+                            {t('savedGrinder.save')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={closeRowActions}
+                            className="min-h-12 flex-1 rounded-lg border border-slate-600 text-base font-semibold text-slate-200 active:bg-slate-700"
+                          >
+                            {t('savedGrinder.cancel')}
+                          </button>
+                        </div>
+                      )}
                     </div>
+                  ) : (
+                    <>
+                      <div className="flex flex-col">
+                        <span className="text-base font-semibold text-slate-100">
+                          {item.alias}
+                        </span>
+                        <span className="text-sm text-slate-400">
+                          {summarize(item)}
+                        </span>
+                      </div>
 
-                    {isApplying ? (
-                      <div className="flex flex-col gap-2 rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-3 py-3">
-                        <p className="text-base leading-relaxed text-yellow-100">
-                          {differs
-                            ? t('savedGrinder.applyConfirmDiffers')
-                            : t('savedGrinder.applyConfirm')}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onApply({
-                              model: item.model,
-                              noLoadRPM: item.noLoadRPM,
-                              maxWheelDiameter: item.maxWheelDiameter,
-                              spindleThread: item.spindleThread,
-                              guardType: item.guardType,
-                              guardSize: item.guardSize,
-                            });
-                            closeRowActions();
-                          }}
-                          className="min-h-12 rounded-lg bg-yellow-500 text-base font-bold text-slate-950 active:bg-yellow-400"
-                        >
-                          {t('savedGrinder.applyConfirmButton')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={closeRowActions}
-                          className="min-h-12 rounded-lg border border-slate-600 text-base font-semibold text-slate-200 active:bg-slate-700"
-                        >
-                          {t('savedGrinder.cancel')}
-                        </button>
-                      </div>
-                    ) : isConfirmingDelete ? (
-                      <div className="flex flex-col gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-3">
-                        <p className="text-base leading-relaxed text-red-100">
-                          {t('savedGrinder.deleteConfirm')}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => void confirmDelete(item.id)}
-                          className="min-h-12 rounded-lg bg-red-500 text-base font-bold text-white active:bg-red-400"
-                        >
-                          {t('savedGrinder.deleteConfirmButton')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={closeRowActions}
-                          className="min-h-12 rounded-lg border border-slate-600 text-base font-semibold text-slate-200 active:bg-slate-700"
-                        >
-                          {t('savedGrinder.cancel')}
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            closeRowActions();
-                            setPendingApplyId(item.id);
-                          }}
-                          className="min-h-12 flex-1 rounded-lg bg-slate-700 text-base font-semibold text-white active:bg-slate-600"
-                        >
-                          {t('savedGrinder.select')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => startEdit(item)}
-                          className="min-h-12 flex-1 rounded-lg border border-slate-600 text-base font-semibold text-slate-200 active:bg-slate-700"
-                        >
-                          {t('savedGrinder.edit')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            closeRowActions();
-                            setConfirmingDeleteId(item.id);
-                          }}
-                          className="min-h-12 flex-1 rounded-lg border border-slate-600 text-base font-semibold text-slate-300 active:bg-slate-700"
-                        >
-                          {t('savedGrinder.delete')}
-                        </button>
-                      </div>
-                    )}
-                  </>
+                      {isApplying ? (
+                        <div className="flex flex-col gap-2 rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-3 py-3">
+                          <p className="text-base leading-relaxed text-yellow-100">
+                            {differs
+                              ? t('savedGrinder.applyConfirmDiffers')
+                              : t('savedGrinder.applyConfirm')}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onApply({
+                                model: item.model,
+                                noLoadRPM: item.noLoadRPM,
+                                maxWheelDiameter: item.maxWheelDiameter,
+                                spindleThread: item.spindleThread,
+                                guardType: item.guardType,
+                                guardSize: item.guardSize,
+                              });
+                              closeRowActions();
+                            }}
+                            className="min-h-12 rounded-lg bg-yellow-500 text-base font-bold text-slate-950 active:bg-yellow-400"
+                          >
+                            {t('savedGrinder.applyConfirmButton')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={closeRowActions}
+                            className="min-h-12 rounded-lg border border-slate-600 text-base font-semibold text-slate-200 active:bg-slate-700"
+                          >
+                            {t('savedGrinder.cancel')}
+                          </button>
+                        </div>
+                      ) : isConfirmingDelete ? (
+                        <div className="flex flex-col gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-3">
+                          <p className="text-base leading-relaxed text-red-100">
+                            {t('savedGrinder.deleteConfirm')}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => void confirmDelete(item.id)}
+                            className="min-h-12 rounded-lg bg-red-500 text-base font-bold text-white active:bg-red-400"
+                          >
+                            {t('savedGrinder.deleteConfirmButton')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={closeRowActions}
+                            className="min-h-12 rounded-lg border border-slate-600 text-base font-semibold text-slate-200 active:bg-slate-700"
+                          >
+                            {t('savedGrinder.cancel')}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              closeRowActions();
+                              setPendingApplyId(item.id);
+                            }}
+                            className="min-h-12 flex-1 rounded-lg bg-slate-700 text-base font-semibold text-white active:bg-slate-600"
+                          >
+                            {t('savedGrinder.select')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => startEdit(item)}
+                            className="min-h-12 flex-1 rounded-lg border border-slate-600 text-base font-semibold text-slate-200 active:bg-slate-700"
+                          >
+                            {t('savedGrinder.edit')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              closeRowActions();
+                              setConfirmingDeleteId(item.id);
+                            }}
+                            className="min-h-12 flex-1 rounded-lg border border-slate-600 text-base font-semibold text-slate-300 active:bg-slate-700"
+                          >
+                            {t('savedGrinder.delete')}
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </fieldset>
+                {rowError && (isEditing || isConfirmingDelete) && (
+                  <p role="alert" className="text-base text-red-300">
+                    {t(rowError)}
+                  </p>
                 )}
               </li>
             );

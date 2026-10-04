@@ -34,12 +34,14 @@ import type {
   GrinderSpec,
   GuardType,
   SpindleThread,
+  TrialRun,
   WheelPurpose,
   WheelSpec,
   WheelType,
 } from '@/lib/rules/types';
 import { isGrinderConditionComplete } from '@/lib/safety/grinderCondition';
 import { isWheelConditionComplete } from '@/lib/safety/wheelCondition';
+import { isSettledTrialRun } from '@/lib/safety/trialRun';
 import {
   dropOrphanedSteps,
   isStartedAt,
@@ -307,7 +309,12 @@ export function recoverDraft(raw: unknown): DraftRecovery {
     // 것을 그렇게 채우지 않는다. 어긋난 판독이 하나라도 있으면 목록째 버린다.
     reanalyses: pick('reanalyses', isValidReanalyses, null),
     checklist: pick('checklist', isValidSafetyChecklist, null),
-    trialRunRecord: pick('trialRunRecord', isValidTrialRun, null),
+    trialRunRecord: pick(
+      'trialRunRecord',
+      (value): value is TrialRun =>
+        isValidTrialRun(value) && isSettledTrialRun(value),
+      null,
+    ),
   };
 
   // 진행 중이던 시험운전 — 되살리지 않는다(맨 위 설명).

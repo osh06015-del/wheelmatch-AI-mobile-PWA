@@ -182,6 +182,36 @@ async function goToConfirm() {
 }
 
 describe('그라인더 확인 화면 — 저장된 그라인더 선택', () => {
+  it.each([false, true])(
+    '저장 규격 적용 후 장비 Gate만으로 진행하지 못한다 (OCR와 같음: %s)',
+    async (same) => {
+      currentSavedItems = [
+        saved(
+          same
+            ? { model: OCR.model!, noLoadRPM: '11000', maxWheelDiameter: '125' }
+            : {},
+        ),
+      ];
+      const user = userEvent.setup();
+      const state = store();
+      await goToConfirm();
+      await user.click(screen.getByRole('button', { name: '선택' }));
+      await user.click(screen.getByRole('button', { name: '적용' }));
+      for (const button of screen.getAllByRole('button', { name: /확인함/ }))
+        fireEvent.click(button);
+      const next = screen.getByRole('button', { name: '확인 후 숫돌 촬영' });
+      expect(next).toBeDisabled();
+      fireEvent.click(next);
+      expect(push).not.toHaveBeenCalled();
+      await user.click(screen.getByRole('checkbox'));
+      expect(next).toBeEnabled();
+      await user.click(next);
+      expect(state.current.grinderOcr).toEqual(OCR);
+      expect(state.current.grinder?.confidence).toBe('high');
+      expect(push).toHaveBeenCalledWith('/scan/wheel');
+    },
+  );
+
   it('선택해도 값은 확인 뒤에만 채워지고, 채운 뒤에도 확인·Gate는 다시 받아야 한다', async () => {
     currentSavedItems = [saved()];
     const user = userEvent.setup();
@@ -256,5 +286,10 @@ describe('그라인더 확인 화면 — 저장된 그라인더 선택', () => {
     // 그라인더 목록은 완전히 다른 데이터베이스에서 온다.
     expect(savedList).toHaveBeenCalled();
     expect(formLoad).toHaveBeenCalledTimes(1);
+    for (const button of screen.getAllByRole('button', { name: /확인함/ }))
+      fireEvent.click(button);
+    expect(
+      screen.getByRole('button', { name: '확인 후 숫돌 촬영' }),
+    ).toBeDisabled();
   });
 });

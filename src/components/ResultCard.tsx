@@ -167,9 +167,16 @@ interface ResultCardProps {
   /** 여유율과 규격 요약을 함께 보여주려면 넘긴다. */
   grinder?: GrinderSpec;
   wheel?: WheelSpec;
+  /** 이상 중지 시 규격 결과를 작업 승인처럼 강조하지 않는다. 판정 값은 보존한다. */
+  trialStopped?: boolean;
 }
 
-export function ResultCard({ result, grinder, wheel }: ResultCardProps) {
+export function ResultCard({
+  result,
+  grinder,
+  wheel,
+  trialStopped = false,
+}: ResultCardProps) {
   const { t, locale } = useLocale();
   const groups = groupChecks(result.checks);
   const gap = grinder && wheel ? margins(grinder, wheel) : null;
@@ -182,20 +189,30 @@ export function ResultCard({ result, grinder, wheel }: ResultCardProps) {
 
   return (
     <section className="flex flex-col gap-4">
-      <div
-        className={`flex items-center justify-center gap-3 rounded-xl px-6 py-8 ${VERDICT_STYLE[result.verdict]}`}
-      >
-        <span aria-hidden className="text-3xl">
-          {VERDICT_ICON[result.verdict]}
-        </span>
-        <span className="break-keep text-3xl font-black">
-          {t(VERDICT_TEXT[result.verdict])}
-        </span>
-      </div>
+      {trialStopped ? (
+        <p className="rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 text-base text-slate-300">
+          {t('trialRun.specResult', {
+            verdict: t(VERDICT_TEXT[result.verdict]),
+          })}
+        </p>
+      ) : (
+        <div
+          className={`flex items-center justify-center gap-3 rounded-xl px-6 py-8 ${VERDICT_STYLE[result.verdict]}`}
+        >
+          <span aria-hidden className="text-3xl">
+            {VERDICT_ICON[result.verdict]}
+          </span>
+          <span className="break-keep text-3xl font-black">
+            {t(VERDICT_TEXT[result.verdict])}
+          </span>
+        </div>
+      )}
 
-      <p className="text-base leading-relaxed text-slate-300">
-        {t(verdictNoteKey(result))}
-      </p>
+      {!trialStopped && (
+        <p className="text-base leading-relaxed text-slate-300">
+          {t(verdictNoteKey(result))}
+        </p>
+      )}
 
       {/* 어떤 기계로 점검했는지. 이력에서 다시 볼 때도 필요하다. */}
       {grinder && (

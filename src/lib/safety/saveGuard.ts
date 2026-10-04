@@ -6,6 +6,7 @@
 // 이미 계산된 verdict·Gate 완료 여부·시험운전 기록을 조합만 한다.
 
 import type { TrialRun, Verdict } from '@/lib/rules/types';
+import { isSettledTrialRun } from './trialRun';
 
 export interface SaveGuardInput {
   grinderConditionComplete: boolean;
@@ -33,7 +34,8 @@ function trialRunSettled(
   trialRunRecord: TrialRun | null,
   policyVerified: boolean,
 ): boolean {
-  return !policyVerified || verdict !== 'COMPATIBLE' || trialRunRecord !== null;
+  if (trialRunRecord !== null) return isSettledTrialRun(trialRunRecord);
+  return !policyVerified || verdict !== 'COMPATIBLE';
 }
 
 /**

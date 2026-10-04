@@ -367,7 +367,9 @@ export const zh: Messages = {
   'profile.note':
     '护罩不一致会使判定变为无法判定。其余项目不计入规格判定，应用也不会推定为相符，请亲自确认。',
   'profile.version': '条件表：{type} · {version}',
-  'profile.scope.full': '判定范围：完整条件（含作业、护罩、材料）',
+  'profile.scope.full':
+    '判定范围：固结磨具规格对照。材料、安装等需人工确认的项目不计入判定。',
+  'trialRun.specResult': '规格对照结果（与停止作业指示分开）：{verdict}',
   'profile.scope.limited': '判定范围：有限（仅对照转速和直径）',
   'profile.none': '此类型没有可用的条件表。请查看制造商说明书。',
   'profile.status.unknown': '未知',
@@ -1049,6 +1051,9 @@ export const zh: Messages = {
   'draft.dismiss': '关闭',
 
   'savedGrinder.title': '已保存的砂轮机',
+  'savedGrinder.reconfirm':
+    '这些规格来自保存或恢复的数据。请将输入值与当前铭牌照片核对，再勾选下方的人工确认项。',
+  'savedGrinder.deleteFailed': '删除失败，条目已保留。请重试。',
   'savedGrinder.loading': '正在加载...',
   'savedGrinder.empty': '还没有保存的砂轮机。',
   'savedGrinder.summary': '{model} · {rpm}rpm · Φ{diameter}mm',

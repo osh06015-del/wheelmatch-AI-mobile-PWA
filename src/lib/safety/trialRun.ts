@@ -203,3 +203,36 @@ export function completeTrialRun(
 export function isTrialRunStopped(trialRun: TrialRun | null): boolean {
   return trialRun !== null && trialRun.outcome === 'abnormal';
 }
+
+/**
+ * 진행 중 점검의 복구·저장을 허용할 수 있는 응답 기록인가.
+ * 과거 이력의 읽기/백업 검증과 분리한다. 과거 값을 다시 판정하거나 지우지 않는다.
+ * 정상 완료는 시간과 답이 모두 맞아야 한다. 이상 중지는 0초부터 기록할 수 있다.
+ */
+export function isSettledTrialRun(value: unknown): value is TrialRun {
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    return false;
+  const r = value as Record<string, unknown>;
+  if (
+    typeof r.wheelReplaced !== 'boolean' ||
+    r.requiredSeconds !== requiredTrialRunSeconds(r.wheelReplaced) ||
+    typeof r.startedAt !== 'string' ||
+    typeof r.finishedAt !== 'string' ||
+    typeof r.elapsedSeconds !== 'number' ||
+    !Number.isInteger(r.elapsedSeconds) ||
+    r.elapsedSeconds < 0 ||
+    typeof r.completed !== 'boolean' ||
+    (r.outcome !== 'normal' && r.outcome !== 'abnormal') ||
+    !Array.isArray(r.findings) ||
+    !r.findings.every((key) => TRIAL_RUN_FINDING_KEYS.includes(key))
+  )
+    return false;
+
+  const duration = Date.parse(r.finishedAt) - Date.parse(r.startedAt);
+  if (!Number.isFinite(duration) || duration < 0) return false;
+  // 표시용으로 반올림한 초가 아니라 실제 시각 차이로 요구 시간을 판정한다.
+  if (r.elapsedSeconds !== Math.round(duration / 1000)) return false;
+  const elapsed = duration >= r.requiredSeconds * 1000;
+  if (r.completed !== elapsed) return false;
+  return r.outcome === 'abnormal' || (elapsed && r.findings.length === 0);
+}

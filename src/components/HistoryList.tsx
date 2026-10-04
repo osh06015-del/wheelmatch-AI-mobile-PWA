@@ -13,6 +13,8 @@ import { ReanalysisNote } from './ReanalysisNote';
 import { ReportExportButton } from './ReportExportButton';
 import { RuleVersionNote } from './RuleVersionNote';
 import { WheelExamEvidence } from './WheelExamEvidence';
+import { TrialRunStopNotice } from './TrialRunPanel';
+import { isTrialRunStopped } from '@/lib/safety/trialRun';
 
 import { useLocale, type MessageKey, type Translate } from '@/lib/i18n';
 import { checkReasonText, damageSourceNotes } from '@/lib/i18n/checkText';
@@ -93,6 +95,7 @@ export function HistoryList({
       <ul className="flex flex-col gap-3">
         {records.map((record) => {
           const open = openId === record.id;
+          const stopped = isTrialRunStopped(record.trialRun ?? null);
           const purpose = record.declaredPurpose
             ? t(PURPOSE_TEXT[record.declaredPurpose])
             : null;
@@ -115,19 +118,23 @@ export function HistoryList({
                 type="button"
                 onClick={() => setOpenId(open ? null : (record.id ?? null))}
                 aria-expanded={open}
-                className="flex min-h-12 w-full items-start gap-3 px-4 py-4 text-left"
+                className={`relative flex min-h-12 w-full items-start gap-3 px-4 py-4 text-left ${stopped ? 'flex-col' : ''}`}
               >
                 <span
-                  className={`shrink-0 rounded-md px-3 py-1 text-base font-bold ${BADGE_STYLE[record.result.verdict]}`}
+                  className={`shrink-0 rounded-md px-3 py-1 text-base font-bold ${stopped ? BADGE_STYLE.INCOMPATIBLE : BADGE_STYLE[record.result.verdict]}`}
                 >
-                  {t(BADGE_TEXT[record.result.verdict])}
+                  {t(
+                    stopped
+                      ? 'report.trialRunAbnormal'
+                      : BADGE_TEXT[record.result.verdict],
+                  )}
                 </span>
                 <span className="flex flex-1 flex-col gap-1">
                   {/* 한 줄에 다 넣으면 좁은 화면에서 접혀 읽기 나빠진다.
                     작업 구분·시각 / 규격 / 소요시간 순으로 줄을 나눈다. */}
                   <span className="flex items-center gap-2">
                     {purpose && (
-                      <span className="rounded border border-slate-600 px-2 py-0.5 text-sm font-semibold text-slate-200">
+                      <span className="shrink-0 rounded border border-slate-600 px-2 py-0.5 text-sm font-semibold text-slate-200">
                         {purpose}
                       </span>
                     )}
@@ -138,6 +145,13 @@ export function HistoryList({
                   <span className="text-base text-slate-100">
                     {summarize(record, t)}
                   </span>
+                  {stopped && (
+                    <span className="text-sm text-slate-300">
+                      {t('trialRun.specResult', {
+                        verdict: t(BADGE_TEXT[record.result.verdict]),
+                      })}
+                    </span>
+                  )}
                   {elapsed && (
                     <span className="text-sm text-slate-400">
                       {record.trialRun
@@ -151,13 +165,45 @@ export function HistoryList({
                     </span>
                   )}
                 </span>
-                <span aria-hidden className="pt-1 text-slate-400">
+                <span
+                  aria-hidden
+                  className={`pt-1 text-slate-400 ${stopped ? 'absolute right-4 top-4' : ''}`}
+                >
                   {open ? '▲' : '▼'}
                 </span>
               </button>
 
               {open && (
                 <div className="flex flex-col gap-4 border-t border-slate-700 px-4 py-4">
+                  {stopped && <TrialRunStopNotice />}
+                  {record.trialRun && (
+                    <section className="flex flex-col gap-2 text-base text-slate-200">
+                      <h3 className="font-bold">{t('trialRun.title')}</h3>
+                      <p>
+                        {t('report.trialRunResult', {
+                          mode: t(
+                            record.trialRun.wheelReplaced
+                              ? 'trialRun.modeReplaced'
+                              : 'trialRun.modeBeforeWork',
+                          ),
+                          elapsed: record.trialRun.elapsedSeconds,
+                          required: record.trialRun.requiredSeconds,
+                          outcome: t(
+                            stopped
+                              ? 'report.trialRunAbnormal'
+                              : 'report.trialRunNormal',
+                          ),
+                        })}
+                      </p>
+                      <ul>
+                        {record.trialRun.findings.map((finding) => (
+                          <li key={finding}>
+                            {t(`trialRun.finding.${finding}`)}
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  )}
                   {hasPhoto ? (
                     <div className="flex gap-3">
                       {record.grinderImage && (

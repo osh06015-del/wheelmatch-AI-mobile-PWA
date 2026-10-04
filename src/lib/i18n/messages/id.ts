@@ -429,7 +429,9 @@ export const id: Messages = {
     'Pertentangan pelindung memblokir hasil menjadi tidak dapat ditentukan. Butir lainnya tidak termasuk pemeriksaan spesifikasi, dan aplikasi tidak menganggapnya cocok — periksa sendiri.',
   'profile.version': 'Profil kondisi: {type} · {version}',
   'profile.scope.full':
-    'Cakupan penilaian: kondisi lengkap (termasuk pekerjaan, pelindung, material)',
+    'Cakupan: pemeriksaan spesifikasi batu abrasif terikat. Pemeriksaan manual seperti material dan pemasangan tidak termasuk dalam hasil penilaian.',
+  'trialRun.specResult':
+    'Hasil pemeriksaan spesifikasi (terpisah dari instruksi penghentian kerja): {verdict}',
   'profile.scope.limited':
     'Cakupan penilaian: terbatas (hanya kecepatan dan diameter dibandingkan)',
   'profile.none':
@@ -1201,6 +1203,10 @@ export const id: Messages = {
   'draft.dismiss': 'Tutup',
 
   'savedGrinder.title': 'Gerinda tersimpan',
+  'savedGrinder.reconfirm':
+    'Spesifikasi ini disimpan atau dipulihkan. Cocokkan nilai dengan foto pelat mesin saat ini, lalu centang konfirmasi manual di bawah.',
+  'savedGrinder.deleteFailed':
+    'Tidak dapat menghapus. Entri tetap disimpan. Coba lagi.',
   'savedGrinder.loading': 'Memuat...',
   'savedGrinder.empty': 'Belum ada gerinda tersimpan.',
   'savedGrinder.summary': '{model} · {rpm}rpm · Φ{diameter}mm',

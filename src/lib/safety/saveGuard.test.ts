@@ -8,7 +8,7 @@ const TRIAL_RUN: TrialRun = {
   requiredSeconds: 60,
   startedAt: '2026-09-16T09:00:00.000Z',
   finishedAt: '2026-09-16T09:01:00.000Z',
-  elapsedSeconds: 61,
+  elapsedSeconds: 60,
   outcome: 'normal',
   findings: [],
   completed: true,
@@ -26,6 +26,39 @@ function input(overrides: Partial<SaveGuardInput> = {}): SaveGuardInput {
 }
 
 describe('canSaveInspection', () => {
+  it.each([
+    { ...TRIAL_RUN, completed: false },
+    { ...TRIAL_RUN, elapsedSeconds: 1, finishedAt: '2026-09-16T09:00:01.000Z' },
+    { ...TRIAL_RUN, wheelReplaced: true },
+    { ...TRIAL_RUN, requiredSeconds: 1 },
+    { ...TRIAL_RUN, findings: ['noise' as const] },
+    { ...TRIAL_RUN, finishedAt: '2026-09-16T08:59:59.000Z' },
+    { ...TRIAL_RUN, elapsedSeconds: -1 },
+    { ...TRIAL_RUN, elapsedSeconds: 999 },
+  ])(
+    '모순된 정상 시험운전 기록으로 저장을 열지 않는다: %j',
+    (trialRunRecord) => {
+      expect(canSaveInspection(input({ trialRunRecord }))).toBe(false);
+    },
+  );
+
+  it('시작 직후 이상 중지는 완료되지 않았어도 저장할 수 있다', () => {
+    expect(
+      canSaveInspection(
+        input({
+          trialRunRecord: {
+            ...TRIAL_RUN,
+            outcome: 'abnormal',
+            completed: false,
+            elapsedSeconds: 0,
+            finishedAt: TRIAL_RUN.startedAt,
+            findings: ['noise'],
+          },
+        }),
+      ),
+    ).toBe(true);
+  });
+
   it('네 조건을 모두 갖추면 저장을 허용한다', () => {
     expect(canSaveInspection(input())).toBe(true);
   });

@@ -252,6 +252,7 @@ function renderRecord(
 ): string {
   const { record } = entry;
   const verdict = record.result.verdict;
+  const stopped = record.trialRun?.outcome === 'abnormal';
   const purpose = record.declaredPurpose
     ? t(PURPOSE_TEXT[record.declaredPurpose])
     : null;
@@ -259,9 +260,9 @@ function renderRecord(
     .filter((part): part is string => Boolean(part))
     .join(' · ');
   const meta = `${t('ruleVersion.label')}: ${record.ruleVersion ?? t('ruleVersion.missing')}`;
-  return `<section class="record"><h2><span class="badge ${verdict}">${escapeHtml(
-    t(VERDICT_TEXT[verdict]),
-  )}</span> ${escapeHtml(heading)}</h2><p class="summary">${escapeHtml(
+  return `<section class="record"><h2><span class="badge ${stopped ? 'STOPPED' : verdict}">${escapeHtml(
+    t(stopped ? 'report.trialRunAbnormal' : VERDICT_TEXT[verdict]),
+  )}</span> ${escapeHtml(heading)}</h2>${stopped ? `<p>${escapeHtml(t('trialRun.stopTitle'))}</p><p class="muted">${escapeHtml(t('trialRun.specResult', { verdict: t(VERDICT_TEXT[verdict]) }))}</p>${renderTrialRun(record, t)}` : ''}<p class="summary">${escapeHtml(
     summary(record, t),
   )}</p><p class="muted">${escapeHtml(meta)}</p>${renderLimit(record, t)}${renderPhotos(
     entry.photos,
@@ -270,7 +271,7 @@ function renderRecord(
     record,
     t,
     locale,
-  )}${renderTrialRun(record, t)}</section>`;
+  )}${stopped ? '' : renderTrialRun(record, t)}</section>`;
 }
 
 const STYLE = `
@@ -283,6 +284,7 @@ h3{font-size:16px;margin:16px 0 6px}
 .badge{padding:2px 10px;border-radius:6px;font-weight:700}
 .badge.COMPATIBLE{background:#22c55e;color:#052e16}
 .badge.INCOMPATIBLE{background:#ef4444;color:#fff}
+.badge.STOPPED{background:#ef4444;color:#fff}
 .badge.UNDETERMINED{background:#eab308;color:#1c1917}
 .summary{font-weight:600;margin:0 0 4px}
 .muted{color:#475569;font-size:14px;margin:4px 0}

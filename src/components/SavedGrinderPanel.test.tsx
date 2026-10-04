@@ -1,6 +1,6 @@
 // 저장된 그라인더 패널 — 선택은 확인 후에만 적용되고, 수정·삭제는 한 번 더 묻는다.
 
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -59,8 +59,8 @@ const CURRENT: SavedGrinderFields = {
 beforeEach(() => {
   list.mockReset();
   add.mockReset();
-  update.mockReset();
-  remove.mockReset();
+  update.mockReset().mockResolvedValue(true);
+  remove.mockReset().mockResolvedValue(true);
 });
 
 function setItems(items: SavedGrinder[]) {
@@ -114,6 +114,93 @@ describe('저장된 그라인더 목록 — 선택은 확인 후에만 적용된
 });
 
 describe('저장된 그라인더 목록 — 수정·삭제는 한 번 더 확인한다', () => {
+  it('빈 별칭은 이유를 알리고 수정하지 않는다', async () => {
+    const user = userEvent.setup();
+    setItems([item()]);
+    render(<SavedGrinderPanel currentFields={CURRENT} onApply={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: '수정' }));
+    await user.clear(screen.getByDisplayValue('1번 그라인더'));
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await user.click(screen.getByRole('button', { name: '덮어쓰기' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('별칭을 입력하세요');
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it.each(['edit', 'delete'])(
+    '처리 중 같은 틱 중복 클릭을 막는다: %s',
+    async (action) => {
+      const user = userEvent.setup();
+      setItems([item()]);
+      let finish!: (ok: boolean) => void;
+      const mutation = action === 'edit' ? update : remove;
+      mutation.mockImplementationOnce(
+        () =>
+          new Promise<boolean>((resolve) => {
+            finish = resolve;
+          }),
+      );
+      render(<SavedGrinderPanel currentFields={CURRENT} onApply={vi.fn()} />);
+      await user.click(
+        screen.getByRole('button', {
+          name: action === 'edit' ? '수정' : '삭제',
+        }),
+      );
+      if (action === 'edit')
+        await user.click(screen.getByRole('button', { name: '저장' }));
+      const button = screen.getByRole('button', {
+        name: action === 'edit' ? '덮어쓰기' : '삭제',
+      });
+      act(() => {
+        fireEvent.click(button);
+        fireEvent.click(button);
+      });
+      expect(mutation).toHaveBeenCalledTimes(1);
+      expect(button).toBeDisabled();
+      await act(async () => finish(false));
+      expect(button).toBeEnabled();
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    },
+  );
+
+  it.each(['false', 'reject'])(
+    '수정 실패(%s)는 입력을 유지하고 재시도할 수 있다',
+    async (failure) => {
+      const user = userEvent.setup();
+      setItems([item()]);
+      if (failure === 'false') update.mockResolvedValueOnce(false);
+      else update.mockRejectedValueOnce(new Error('storage'));
+      render(<SavedGrinderPanel currentFields={CURRENT} onApply={vi.fn()} />);
+      await user.click(screen.getByRole('button', { name: '수정' }));
+      await user.clear(screen.getByDisplayValue('GWS 750-125'));
+      await user.type(screen.getByLabelText('모델명'), 'CHANGED');
+      await user.click(screen.getByRole('button', { name: '저장' }));
+      await user.click(screen.getByRole('button', { name: '덮어쓰기' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        '저장하지 못했습니다',
+      );
+      expect(screen.getByDisplayValue('CHANGED')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: '덮어쓰기' }));
+      expect(update).toHaveBeenCalledTimes(2);
+      expect(screen.queryByDisplayValue('CHANGED')).not.toBeInTheDocument();
+    },
+  );
+
+  it('삭제 실패는 확인창을 유지하고 재시도할 수 있다', async () => {
+    const user = userEvent.setup();
+    setItems([item()]);
+    remove.mockResolvedValueOnce(false);
+    render(<SavedGrinderPanel currentFields={CURRENT} onApply={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: '삭제' }));
+    await user.click(screen.getByRole('button', { name: '삭제' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '삭제하지 못했습니다',
+    );
+    expect(screen.getByText(/되돌릴 수 없습니다/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '삭제' }));
+    expect(remove).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText(/되돌릴 수 없습니다/)).not.toBeInTheDocument();
+  });
+
   it('수정 후 저장을 눌러도 곧바로 반영되지 않고, 한 번 더 확인해야 한다', async () => {
     const user = userEvent.setup();
     setItems([item()]);

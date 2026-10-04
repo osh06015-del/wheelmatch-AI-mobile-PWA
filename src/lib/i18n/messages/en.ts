@@ -418,7 +418,9 @@ export const en: Messages = {
     'A guard conflict blocks the result as undetermined. The other items are not part of the spec check, and the app never assumes they match — check them yourself.',
   'profile.version': 'Condition profile: {type} · {version}',
   'profile.scope.full':
-    'Judgment scope: full conditions (work, guard, material included)',
+    'Scope: bonded abrasive specification checks. Manual checks such as material and mounting are not included in the verdict.',
+  'trialRun.specResult':
+    'Specification result (separate from the stop-work instruction): {verdict}',
   'profile.scope.limited':
     'Judgment scope: limited (only RPM and diameter compared)',
   'profile.none':
@@ -1182,6 +1184,10 @@ export const en: Messages = {
   'draft.dismiss': 'Close',
 
   'savedGrinder.title': 'Saved grinders',
+  'savedGrinder.reconfirm':
+    'These specifications were saved or restored. Compare the input with the current nameplate photo, then check the manual confirmation below.',
+  'savedGrinder.deleteFailed':
+    'Could not delete. The entry has been kept. Try again.',
   'savedGrinder.loading': 'Loading...',
   'savedGrinder.empty': 'No saved grinders yet.',
   'savedGrinder.summary': '{model} · {rpm}rpm · Φ{diameter}mm',

@@ -465,6 +465,21 @@ describe('결과 화면 — 시험운전 절차', () => {
           );
         fireEvent.click(screen.getByRole('button', { name: /이상 있음/ }));
         expect(screen.getByText('작업하지 마십시오')).toBeInTheDocument();
+        const stopNotice = screen.getByText('작업하지 마십시오');
+        expect(stopNotice.closest('[role="alert"]')).toHaveFocus();
+        const checks = screen.getByRole('heading', {
+          name: '검사 항목별 결과',
+        });
+        expect(
+          stopNotice.compareDocumentPosition(checks) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(
+          screen.queryByText('적합', { exact: true }),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.getByText('규격 대조 결과(작업 중지와 별개): 적합'),
+        ).toBeInTheDocument();
         expect(result.current.trialRun).toBeNull();
         expect(sessionStorage.getItem('wheelmatch.trialRun')).toBeNull();
         expect(result.current.trialRunRecord).toMatchObject({

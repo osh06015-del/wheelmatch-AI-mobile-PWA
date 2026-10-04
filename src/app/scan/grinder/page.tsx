@@ -88,6 +88,8 @@ export default function GrinderScanPage() {
     maxWheelDiameter: '',
   });
   const [userConfirmed, setUserConfirmed] = useState(false);
+  // 저장 규격은 현재 사진의 OCR 신뢰도를 물려받을 수 없다.
+  const [requiresConfirmation, setRequiresConfirmation] = useState(false);
   // 스핀들·덮개. 명판에 거의 없어 OCR이 채우지 않는다. 기본값은 모름이다.
   const [mounting, setMounting] = useState<GrinderMountingValue>(
     UNKNOWN_GRINDER_MOUNTING,
@@ -137,6 +139,8 @@ export default function GrinderScanPage() {
       const { spindleThread, guardType, guardSize, ...fields } =
         recovered.fields;
       setForm(fields);
+      // 복원한 입력은 저장 규격으로 바뀌었을 수 있다. 새로고침도 재확인을 생략하지 않는다.
+      setRequiresConfirmation(true);
       setMounting({ spindleThread, guardType, guardSize });
       setOcr(recovered.ocr);
       setDroppedOcr(recovered.droppedOcr);
@@ -209,6 +213,7 @@ export default function GrinderScanPage() {
     setError(null);
     // 새 사진이다. 이전 사진으로 읽은 값과 그 값을 보고 한 확인은 버린다.
     setPhoto(null);
+    setRequiresConfirmation(false);
     setOcr(null);
     setOcrTelemetry(null);
     setCaptureMetrics(null);
@@ -251,6 +256,7 @@ export default function GrinderScanPage() {
       const spec = await extractor.extractGrinder(blob);
       const telemetry = extractor.getLastTelemetry?.() ?? null;
       setOcr(spec);
+      setRequiresConfirmation(false);
       setOcrTelemetry(telemetry);
       setOffline(false);
       // 서버 분석이 아니라 로컬 OCR로 읽었거나(엔진이 tesseract) 기기가
@@ -325,6 +331,7 @@ export default function GrinderScanPage() {
    * 읽었을 때와 똑같이 확인(userConfirmed)과 장비 상태 Gate를 다시 받는다.
    */
   function applySavedGrinder(fields: SavedGrinderFields) {
+    setRequiresConfirmation(true);
     setForm({
       model: fields.model,
       noLoadRPM: fields.noLoadRPM,
@@ -339,8 +346,17 @@ export default function GrinderScanPage() {
     setCondition({ ...EMPTY_GRINDER_CONDITION });
   }
 
+  const canProceed =
+    isGrinderConditionComplete(condition) &&
+    (!requiresConfirmation || userConfirmed);
+  const effectiveConfidence = userConfirmed
+    ? 'high'
+    : requiresConfirmation
+      ? 'low'
+      : (ocr?.confidence ?? 'low');
+
   function proceed() {
-    if (!isGrinderConditionComplete(condition)) return;
+    if (!canProceed) return;
     const spec: GrinderSpec = {
       model: toTextOrNull(form.model),
       noLoadRPM: toNumberOrNull(form.noLoadRPM),
@@ -351,7 +367,7 @@ export default function GrinderScanPage() {
       guardSize: toNumberOrNull(mounting.guardSize),
       rawText: ocr?.rawText ?? '',
       // 사용자가 직접 확인했으면 그 확인을 신뢰한다. 아니면 OCR 신뢰도를 그대로 쓴다.
-      confidence: userConfirmed ? 'high' : (ocr?.confidence ?? 'low'),
+      confidence: effectiveConfidence,
     };
     // setGrinder가 이전 장비 상태·숫돌 값을 모두 지운다. 그 뒤에 이번 확인을 넣는다.
     setGrinder(spec, photo, ocr, captureMetrics, ocrTelemetry);
@@ -579,10 +595,18 @@ export default function GrinderScanPage() {
       <FieldConfirm
         title={t('scan.confirmTitle')}
         fields={fields}
-        confidence={ocr?.confidence ?? 'low'}
+        confidence={effectiveConfidence}
         rawText={ocr?.rawText ?? ''}
         onChange={updateField}
       />
+      {requiresConfirmation && !userConfirmed && (
+        <p
+          role="status"
+          className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-3 text-base text-yellow-100"
+        >
+          {t('savedGrinder.reconfirm')}
+        </p>
+      )}
       <ManualConfirmToggle
         checked={userConfirmed}
         onChange={setUserConfirmed}
@@ -598,7 +622,7 @@ export default function GrinderScanPage() {
         <button
           type="button"
           onClick={proceed}
-          disabled={!isGrinderConditionComplete(condition)}
+          disabled={!canProceed}
           className="min-h-14 rounded-lg bg-green-500 text-lg font-bold text-slate-950 active:bg-green-400 disabled:bg-slate-700 disabled:text-slate-400"
         >
           {t('scan.grinder.proceed')}

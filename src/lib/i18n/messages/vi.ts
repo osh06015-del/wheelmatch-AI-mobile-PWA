@@ -412,7 +412,9 @@ export const vi: Messages = {
     'Mâu thuẫn về nắp che sẽ chặn kết quả ở mức chưa xác định. Các mục còn lại không nằm trong việc đối chiếu quy cách, và ứng dụng không coi là phù hợp — hãy tự kiểm tra.',
   'profile.version': 'Bảng điều kiện: {type} · {version}',
   'profile.scope.full':
-    'Phạm vi đối chiếu: đầy đủ điều kiện (gồm công việc, nắp che, vật liệu)',
+    'Phạm vi: đối chiếu quy cách đá mài kết dính. Các mục cần tự kiểm tra như vật liệu và lắp đặt không nằm trong kết luận.',
+  'trialRun.specResult':
+    'Kết quả đối chiếu quy cách (tách biệt với yêu cầu dừng công việc): {verdict}',
   'profile.scope.limited':
     'Phạm vi đối chiếu: hạn chế (chỉ đối chiếu tốc độ quay và đường kính)',
   'profile.none':
@@ -1169,6 +1171,10 @@ export const vi: Messages = {
   'draft.dismiss': 'Đóng',
 
   'savedGrinder.title': 'Máy mài đã lưu',
+  'savedGrinder.reconfirm':
+    'Thông số này được lưu hoặc khôi phục. Đối chiếu các giá trị với ảnh nhãn máy hiện tại, rồi đánh dấu xác nhận trực tiếp bên dưới.',
+  'savedGrinder.deleteFailed':
+    'Không thể xóa. Mục vẫn được giữ lại. Hãy thử lại.',
   'savedGrinder.loading': 'Đang tải...',
   'savedGrinder.empty': 'Chưa có máy mài nào được lưu.',
   'savedGrinder.summary': '{model} · {rpm}rpm · Φ{diameter}mm',
