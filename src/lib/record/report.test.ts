@@ -374,6 +374,150 @@ describe('점검 기록 문서 — 사람이 읽는 형태', () => {
     });
   });
 
+  describe('서버 재분석을 받은 기록', () => {
+    // 엔진 사유 문장은 재분석을 받았는지를 말하지 않는다(받아들이지 않았으면 제한
+    // 대조 사유 그대로다). 문서에는 받았다는 사실, 받아들였는지, 결과에 반영한 것을
+    // 따로 적는다.
+    const reading = {
+      analyzedAt: '2026-09-30T13:37:40.000Z',
+      grinderOcr: null,
+      grinderOcrTelemetry: null,
+      wheelOcr: {
+        ...record().wheel,
+        maxRPM: 13300,
+        visibleDamage: 'suspected' as const,
+      },
+      wheelOcrTelemetry: null,
+      acceptedAt: null,
+      damageRecheck: null,
+    };
+
+    it('받았지만 전환하지 않은 재분석 — 요약과 판독 내역을 검사 항목과 따로 적는다', () => {
+      const html = buildReportHtml(
+        [
+          {
+            record: record({
+              analysisMode: 'offline_limited',
+              reanalyses: [reading],
+            }),
+            photos: [],
+          },
+        ],
+        options,
+      );
+
+      expect(html).toContain('<h3>서버 재분석 기록</h3>');
+      expect(html).toContain(
+        '서버 재분석 판독 1건 가운데 받아들인 것은 없습니다. AI가 읽은 회전속도·지름은 규격 대조에 쓰지 않았습니다.',
+      );
+      expect(html).toContain(
+        '재분석한 AI가 사진에서 손상 징후를 의심했고, 그 경고는 결과의 외관 손상 항목에 반영했습니다.',
+      );
+      expect(html).toContain(
+        '최고사용회전속도: 확정한 값 15300rpm / AI 값 13300rpm · 다름',
+      );
+      expect(html).toContain('AI 외관 판독: 손상 징후 의심');
+      expect(html).toContain('제한 대조: 풀지 않음');
+      // 제한 대조의 한계 문장은 그대로 함께 있다.
+      expect(html).toContain(escapeHtml(t('offline.limit')));
+    });
+
+    it('온라인 대조로 바꾼 기록 — 재분석으로 바꿨다는 것과 다시 받은 답을 적는다', () => {
+      const html = buildReportHtml(
+        [
+          {
+            record: record({
+              analysisMode: 'online',
+              reanalyses: [
+                {
+                  ...reading,
+                  wheelOcr: { ...reading.wheelOcr, maxRPM: 15300 },
+                  acceptedAt: '2026-09-30T13:38:10.000Z',
+                  damageRecheck: {
+                    damageFree: true,
+                    answeredAt: '2026-09-30T13:38:00.000Z',
+                  },
+                },
+              ],
+            }),
+            photos: [],
+          },
+        ],
+        options,
+      );
+
+      expect(html).toContain(
+        '서버 재분석 판독 1건 가운데 1건을 받아들였습니다. AI가 읽은 회전속도·지름이 작업자가 확정한 값과 같음을 확인하고 숫돌 라벨 단계의 제한 대조를 푼 것입니다. 작업자가 확정한 값은 AI 값으로 바꾸지 않았습니다.',
+      );
+      expect(html).toContain(
+        'AI 경고를 본 뒤 숫돌 손상 항목(깨짐·갈라짐)을 다시 물었고, 작업자가 「확인함」으로 답했습니다.',
+      );
+      expect(html).toContain('손상 항목 다시 확인: 「확인함」');
+    });
+
+    it('판독 안의 문자열(모델 이름)도 이스케이프한다', () => {
+      const html = buildReportHtml(
+        [
+          {
+            record: record({
+              reanalyses: [
+                {
+                  ...reading,
+                  wheelOcrTelemetry: {
+                    engine: 'claude',
+                    model: '<img src=x onerror=alert(1)>',
+                    inputTokens: null,
+                    outputTokens: null,
+                    cacheReadTokens: null,
+                    cacheCreationTokens: null,
+                    durationMs: null,
+                  },
+                },
+              ],
+            }),
+            photos: [],
+          },
+        ],
+        options,
+      );
+      expect(html).not.toContain('<img src=x onerror=alert(1)>');
+      expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+    });
+
+    it('OCR 원문(rawText)은 문서에 싣지 않는다', () => {
+      const html = buildReportHtml(
+        [
+          {
+            record: record({
+              reanalyses: [
+                {
+                  ...reading,
+                  wheelOcr: {
+                    ...reading.wheelOcr,
+                    rawText: '사업장-식별-원문-7741',
+                  },
+                },
+              ],
+            }),
+            photos: [],
+          },
+        ],
+        options,
+      );
+      expect(html).not.toContain('사업장-식별-원문-7741');
+    });
+
+    it('재분석 칸이 없는 기록과 재분석을 하지 않은 기록에는 그 구역을 넣지 않는다', () => {
+      for (const reanalyses of [undefined, []]) {
+        const html = buildReportHtml(
+          [{ record: record({ reanalyses }), photos: [] }],
+          options,
+        );
+        expect(html).not.toContain('서버 재분석 기록');
+      }
+    });
+  });
+
   it('파일 이름에 시각을 붙여 여러 번 저장해도 덮어쓰지 않는다', () => {
     expect(reportFilename(new Date(2026, 8, 30, 22, 39))).toBe(
       'wheelmatch-record-20260930-2239.html',

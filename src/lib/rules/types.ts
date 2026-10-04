@@ -843,6 +843,57 @@ export interface OcrTelemetry {
   durationMs: number | null;
 }
 
+/**
+ * 서버 재분석 뒤 다시 받은 손상 항목(깨짐·갈라짐)의 답.
+ *
+ * 재분석한 AI가 외관 손상을 의심한 숫돌을 온라인 대조로 바꾸려면 이 항목을 다시
+ * 받는다(docs/safety-boundaries.md). 숫돌 상태 확인의 답(WheelCondition.damageFree)과
+ * 따로 남긴다 — 그 답은 AI 경고를 보기 **전**의 것이고, 「확인함」으로 다시 답해도
+ * 값이 같아 기록에서는 다시 물었는지조차 보이지 않는다.
+ */
+export interface DamageRecheck {
+  /** WheelCondition.damageFree와 같은 뜻. true는 확인함, false는 문제 있음 */
+  damageFree: boolean;
+  /** 작업자가 답한 시각 */
+  answeredAt: string;
+}
+
+/**
+ * 결과 화면의 서버 재분석이 돌려준 판독 하나와, 그 판독에 작업자가 한 일.
+ *
+ * 서버 판독의 뒷받침 없이 확정한 단계(직접 입력·기기 안 OCR 등)를 결과 화면에서
+ * 서버로 다시 읽은 것이다. OCR 원본(InspectionRecord.grinderOcr·wheelOcr)과 따로
+ * 둔다. 그 둘은 「작업자가 고치기 전의 OCR 원본」인데, 이 판독은 작업자가 값을
+ * 확정한 **뒤**에 도착했고 작업자가 고친 적이 없다. 한 칸에 넣으면
+ *   · 기기 안 OCR로 읽은 원본이 덮여 사라지고
+ *   · 받아들이지 않은 판독은 둘 곳이 없어 버려진다 — 그 판독이 올린 외관 의심만
+ *     확정값에 남아, 의심이 어디서 왔는지 되짚을 수 없다.
+ *
+ * **판정에 쓰지 않는다.** 판정은 확정값(grinder·wheel)만 본다. 이 판독에서 확정값으로
+ * 옮겨지는 것은 외관 의심과 라벨 원본 표시의 빈 자리뿐이고, 그 규칙은
+ * lib/ocr/confirm.ts에 있다.
+ *
+ * 다시 읽지 않은 단계와 일어나지 않은 일은 null이다. 채우지 않는다.
+ */
+export interface ReanalysisRecord {
+  /** 서버 응답이 도착한 시각 */
+  analyzedAt: string;
+  /** 서버가 다시 읽은 명판. 명판을 다시 분석하지 않았으면 null */
+  grinderOcr: GrinderSpec | null;
+  /** 그 응답의 메타데이터. 받지 못했거나 명판을 다시 분석하지 않았으면 null */
+  grinderOcrTelemetry: OcrTelemetry | null;
+  /** 서버가 다시 읽은 숫돌 라벨. 라벨을 다시 분석하지 않았으면 null */
+  wheelOcr: WheelSpec | null;
+  wheelOcrTelemetry: OcrTelemetry | null;
+  /**
+   * 작업자가 이 판독의 값이 자신이 확정한 값과 같음을 확인하고 온라인 대조로 바꾼
+   * 시각. 바꾸지 않았으면(값이 달라 막혔거나, 취소했거나, 그대로 저장했으면) null이다.
+   */
+  acceptedAt: string | null;
+  /** 이 판독 뒤 다시 받은 손상 항목의 답. 묻지 않았거나 답하지 않았으면 null */
+  damageRecheck: DamageRecheck | null;
+}
+
 // IndexedDB에 저장할 점검 기록
 export interface InspectionRecord {
   id?: number;
@@ -882,9 +933,25 @@ export interface InspectionRecord {
   /**
    * 사용자가 고치기 전의 OCR 원본값. 인식률·정정률을 재는 데만 쓴다.
    * 이 기능 도입 전 기록에는 없다.
+   *
+   * 결과 화면의 서버 재분석 판독은 여기에 넣지 않는다 — 작업자가 고친 적이 없는
+   * 판독이고, 넣으면 확인 화면에서 실제로 보던 원본을 덮는다. reanalyses에 따로 둔다.
+   * reanalyses 칸이 생기기 전에 저장된 기록 가운데 재분석으로 온라인 대조로 바꾼
+   * 것은 여기에 서버 판독이 들어 있다. 그 기록은 옮기지 않고 그대로 읽는다.
    */
   grinderOcr?: GrinderSpec;
   wheelOcr?: WheelSpec;
+  /**
+   * 결과 화면에서 받은 서버 재분석 판독. 받은 순서대로 **전부** 남긴다 — 받아들이지
+   * 않은 것도, 다시 분석해 뒤의 판독으로 바뀐 것도. 앞선 판독이 올린 외관 의심은 뒤의
+   * 판독이 의심하지 않아도 확정값에 남으므로, 마지막 것만 남기면 그 의심의 출처가
+   * 사라진다.
+   *
+   * 빈 배열은 「이 점검에서 재분석을 하지 않았다」는 뜻이다. **칸이 없으면 알 수
+   * 없다** — 이 칸이 생기기 전의 기록이거나, 그 전 버전에서 시작한 점검이다. 없는
+   * 칸을 빈 배열로 읽지 않는다.
+   */
+  reanalyses?: ReanalysisRecord[];
   /**
    * 촬영 원본·업로드본의 원시 측정값(검증용). 이 기능 도입 전 기록에는 없다.
    * 판정·UI에 영향을 주지 않는다 — [[CaptureQualityMetrics]] 참고.

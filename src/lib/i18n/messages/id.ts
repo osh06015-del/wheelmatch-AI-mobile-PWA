@@ -140,6 +140,8 @@ export const id: Messages = {
     '{field}: nilai yang dipakai {used} / mentah OCR {ocr}',
   'evidence.markings.note':
     'Nilai ini berbeda dari mentah OCR yang tercatat. Tampaknya ini penandaan yang dibaca sebelum analisis ulang di server, dan tidak dikonfirmasi pekerja.',
+  'evidence.markings.noteReanalysis':
+    'Nilai ini berbeda dari mentah OCR yang tercatat. Ini penandaan yang dibaca oleh pembacaan analisis ulang server yang diterima, dan tidak dikonfirmasi pekerja.',
   'evidence.rules.title': 'Dasar hasil per aturan',
   'evidence.rules.formula': 'Rumus',
   'evidence.rules.difference': 'Selisih',
@@ -1145,6 +1147,33 @@ export const id: Messages = {
   'offline.accept':
     'Konfirmasi nilai sama dengan nilai AI dan cabut pemeriksaan terbatas',
   'offline.cancel': 'Batal dan pertahankan hasil pemeriksaan terbatas',
+  'offline.reanalysisLimit':
+    'Pemeriksaan ini sudah menerima seluruh {max} analisis ulang server yang dapat diterimanya. Pertahankan hasil pemeriksaan terbatas atau ambil foto ulang.',
+  'reanalysis.title': 'Catatan analisis ulang server',
+  'reanalysis.summary.accepted':
+    'Pembacaan analisis ulang server: {count}. Diterima: {accepted}. Untuk setiap pembacaan yang diterima, kecepatan dan diameter yang dibaca AI dikonfirmasi sama dengan nilai yang dikonfirmasi pekerja, dan pemeriksaan terbatas dicabut untuk tahap itu ({steps}). Nilai yang dikonfirmasi pekerja tidak diganti dengan nilai AI.',
+  'reanalysis.summary.notAccepted':
+    'Pembacaan analisis ulang server: {count}. Diterima: tidak ada. Kecepatan dan diameter yang dibaca AI tidak dipakai dalam perbandingan spesifikasi.',
+  'reanalysis.summary.damageSuspected':
+    'AI yang menganalisis ulang mencurigai tanda kerusakan pada foto, dan peringatan itu ditambahkan ke butir kerusakan yang terlihat pada hasil.',
+  'reanalysis.summary.recheck':
+    'Setelah peringatan AI, butir kerusakan batu gerinda (pecah, retak) ditanyakan lagi dan pekerja menjawab "{answer}".',
+  'reanalysis.steps.both': '{first} dan {second}',
+  'reanalysis.item.heading': 'Analisis ulang {index} · {time} · model {model}',
+  'reanalysis.item.damageSuspected':
+    'Pembacaan visual AI: tanda kerusakan dicurigai',
+  'reanalysis.item.damageNotSeen':
+    'Pembacaan visual AI: tidak menemukan tanda kerusakan pada foto — bukan berarti batu gerinda tidak rusak',
+  'reanalysis.item.damageUnknown':
+    'Pembacaan visual AI: tidak dapat ditentukan',
+  'reanalysis.item.accepted':
+    'Pemeriksaan terbatas: dicabut setelah pembacaan ini dikonfirmasi ({time})',
+  'reanalysis.item.notAccepted': 'Pemeriksaan terbatas: tidak dicabut',
+  'reanalysis.item.recheck':
+    'Butir kerusakan ditanyakan lagi: "{answer}" ({time})',
+  'evidence.reanalysis.title': 'Pembacaan analisis ulang server',
+  'evidence.reanalysis.note':
+    'Pembacaan yang diambil lagi di server dari layar hasil setelah nilai dikonfirmasi. Pekerja tidak pernah mengubahnya, jadi disimpan terpisah dari nilai mentah OCR di atas. Hanya dua hal yang dipindahkan dari pembacaan ini ke nilai yang dikonfirmasi: dugaan tanda kerusakan, dan — dari pembacaan batu gerinda yang diterima — penandaan label untuk tempat yang masih kosong.',
   'draft.title': 'Ada pemeriksaan yang sedang berlangsung',
   'draft.body':
     'Anda dapat melanjutkannya, atau menghapus progres tersimpan dan memulai ulang. Aplikasi tidak melanjutkan atau menghapusnya sendiri.',

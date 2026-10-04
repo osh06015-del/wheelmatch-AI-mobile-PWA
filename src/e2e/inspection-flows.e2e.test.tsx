@@ -691,6 +691,8 @@ describe('점검 흐름 E2E — 제한 대조와 서버 재분석', () => {
     // 기록에 남는 이름과 사유도 까닭을 단정하지 않는다.
     expect(limited?.rule).toBe('제한 대조');
     expect(limited?.reason).not.toMatch(/오프라인|서버 분석 없이|서버에 닿지/);
+    // 재분석을 하지 않았다는 것도 기록에 남는다(빈 목록). 칸이 없는 구기록과 다르다.
+    expect(record.reanalyses).toEqual([]);
   });
 
   it('재연결 후 작업자가 재분석을 골라 AI 값이 같음을 확인하면 온라인 대조로 바뀐다', async () => {
@@ -724,7 +726,20 @@ describe('점검 흐름 E2E — 제한 대조와 서버 재분석', () => {
     // 제한을 푼 점검의 기록에는 까닭이 남지 않는다.
     expect(record.analysisLimitCauses).toBeUndefined();
     expect(record.grinder.noLoadRPM).toBe(11000);
-    expect(record.grinderOcr).toEqual(GRINDER);
+    // 직접 넣은 명판에는 OCR 원본이 없었다. 다시 읽은 판독은 그 자리에 들어가지 않고
+    // 재분석 판독으로, 받아들인 시각과 함께 남는다.
+    expect(record.grinderOcr).toBeUndefined();
+    expect(record.reanalyses).toEqual([
+      {
+        analyzedAt: T0.toISOString(),
+        grinderOcr: GRINDER,
+        grinderOcrTelemetry: null,
+        wheelOcr: null,
+        wheelOcrTelemetry: null,
+        acceptedAt: T0.toISOString(),
+        damageRecheck: null,
+      },
+    ]);
   });
 
   /**
@@ -837,9 +852,94 @@ describe('점검 흐름 E2E — 제한 대조와 서버 재분석', () => {
       rpmSource: 'user',
       confidence: 'high',
     });
-    // 숫돌 상태의 답은 작업자가 한 그대로이고, OCR 원본 자리에는 AI가 읽은 그대로다.
+    // 숫돌 상태의 답은 작업자가 한 그대로다. 그 답은 경고를 보기 전의 것이라, 다시
+    // 받은 답은 재분석 판독에 따로 남는다. 서버 판독은 OCR 원본 자리에 넣지 않는다.
     expect(record.wheelCondition?.damageFree).toBe(true);
-    expect(record.wheelOcr).toEqual(reanalyzed);
+    expect(record.wheelOcr).toBeUndefined();
+    expect(record.reanalyses).toEqual([
+      {
+        analyzedAt: T0.toISOString(),
+        grinderOcr: null,
+        grinderOcrTelemetry: null,
+        wheelOcr: reanalyzed,
+        wheelOcrTelemetry: null,
+        acceptedAt: T0.toISOString(),
+        damageRecheck: { damageFree: true, answeredAt: T0.toISOString() },
+      },
+    ]);
+
+    // 이력은 이 「온라인」 기록이 재분석으로 바뀐 것과 다시 받은 답을 알린다.
+    await f.user.click(screen.getByRole('button', { expanded: false }));
+    expect(document.body).toHaveTextContent(
+      f.t('reanalysis.summary.accepted', {
+        count: 1,
+        accepted: 1,
+        steps: f.t('history.wheelPhoto'),
+      }),
+    );
+    expect(document.body).toHaveTextContent(
+      f.t('reanalysis.summary.recheck', {
+        answer: f.t('wheelCondition.confirmed'),
+      }),
+    );
+  });
+
+  it('직접 넣은 숫돌을 재분석한 AI 값이 달라 전환하지 못한 채 저장하면 — 그 판독이 기록에 남고 이력이 재분석을 받았다고 알린다', async () => {
+    const f = inspector('ko');
+    // 서버는 회전속도를 다르게 읽었고 손상도 의심했다. 어느 쪽이 맞는지 앱은 모른다.
+    const reanalyzed = wheelLabel({
+      maxRPM: 13300,
+      visibleDamage: 'suspected',
+    });
+    await openOfflineWheelResult(
+      f,
+      new FixtureExtractor()
+        .grinder(GRINDER)
+        .wheel(failure('network'), reanalyzed),
+    );
+
+    await f.user.click(f.button('offline.reanalyze'));
+    await screen.findByText(f.t('offline.mismatch'));
+    expect(f.button('offline.accept')).toBeDisabled();
+    expect(document.body).toHaveTextContent(DAMAGE_SUSPECTED);
+
+    await f.completeChecklist();
+    await f.user.click(f.button('result.save'));
+    await f.atPath('/history');
+
+    const [record] = savedRecords();
+    expect(record.analysisMode).toBe('offline_limited');
+    expect(record.result.verdict).toBe('UNDETERMINED');
+    // 판정에 쓴 값은 작업자가 넣은 그대로이고, AI가 올린 의심만 더해졌다.
+    expect(record.wheel.maxRPM).toBe(12200);
+    expect(record.wheel.markings).toBeUndefined();
+    expect(record.wheel.visibleDamage).toBe('suspected');
+    expect(record.wheelOcr).toBeUndefined();
+    // 그 의심을 올린 판독은 받아들이지 않았어도 기록에 남는다.
+    expect(record.reanalyses).toEqual([
+      {
+        analyzedAt: T0.toISOString(),
+        grinderOcr: null,
+        grinderOcrTelemetry: null,
+        wheelOcr: reanalyzed,
+        wheelOcrTelemetry: null,
+        acceptedAt: null,
+        damageRecheck: null,
+      },
+    ]);
+
+    // 이력: 엔진 사유는 받아들이지 않은 점검의 문장 그대로이고, 재분석을 받았다는
+    // 것과 반영한 것을 따로 알린다.
+    await f.user.click(screen.getByRole('button', { expanded: false }));
+    expect(document.body).toHaveTextContent(
+      f.t('reason.analysisMode.offlineLimited'),
+    );
+    expect(document.body).toHaveTextContent(
+      f.t('reanalysis.summary.notAccepted', { count: 1 }),
+    );
+    expect(document.body).toHaveTextContent(
+      f.t('reanalysis.summary.damageSuspected'),
+    );
   });
 
   it('직접 넣은 숫돌을 재분석한 AI가 손상을 의심하고 작업자가 문제 있음으로 답하면 — 사용 중지를 알리고 저장되지 않으며, 숫돌 확인으로 돌아간다', async () => {
@@ -978,10 +1078,16 @@ describe('점검 흐름 E2E — 제한 대조와 서버 재분석', () => {
     expect(record.analysisMode).toBe('offline_limited');
     expect(record.result.verdict).toBe('UNDETERMINED');
     expect(record.trialRun).toBeUndefined();
-    // 작업자가 넣은 값 그대로이고, 받아들이지 않은 AI 값은 기록에 넣지 않는다.
+    // 작업자가 넣은 값 그대로이고, 받아들이지 않은 AI 값은 확정값에도 OCR 원본
+    // 자리에도 넣지 않는다.
     expect(record.wheel.purpose).toBe('cutting');
     expect(record.wheelOcr).toBeUndefined();
     expect(record.wheel.markings).toBeUndefined();
+    // 그 판독은 받아들이지 않은 재분석 판독으로 남는다 — 왜 풀리지 않았는지(AI가 읽은
+    // 용도)를 기록으로 되짚을 수 있다.
+    expect(record.reanalyses).toHaveLength(1);
+    expect(record.reanalyses?.[0]?.wheelOcr?.purpose).toBe('grinding');
+    expect(record.reanalyses?.[0]?.acceptedAt).toBeNull();
   });
 
   /**
@@ -1085,6 +1191,11 @@ describe('점검 흐름 E2E — 제한 대조와 서버 재분석', () => {
     expect(record.wheel.markings).toEqual(local.markings);
     expect(record.wheelOcr).toEqual(local);
     expect(record.wheelOcrTelemetry?.engine).toBe('tesseract');
+    // 서버가 다르게 읽은 판독은 받아들이지 않은 재분석 판독으로 남는다. 두 판독이
+    // 모두 기록에 있어 어느 칸이 어긋났는지 되짚을 수 있다.
+    expect(record.reanalyses).toHaveLength(1);
+    expect(record.reanalyses?.[0]?.wheelOcr).toEqual(reanalyzed);
+    expect(record.reanalyses?.[0]?.acceptedAt).toBeNull();
   });
 
   it('로컬 OCR이 읽지 못한 표기만 서버가 더 읽었으면 — 빈 자리를 채워 온라인 대조로 바뀐다', async () => {
@@ -1134,8 +1245,13 @@ describe('점검 흐름 E2E — 제한 대조와 서버 재분석', () => {
     expect(record.analysisMode).toBe('online');
     expect(record.result.verdict).toBe('COMPATIBLE');
     expect(record.wheel.markings).toEqual(reanalyzed.markings);
-    // OCR 원본 자리에는 서버 판독이 들어간다.
-    expect(record.wheelOcr).toEqual(reanalyzed);
+    // OCR 원본 자리에는 기기 판독이 그대로 남는다. 서버 판독은 받아들인 재분석
+    // 판독으로 따로 남는다 — 채운 표기가 어디서 왔는지 둘을 견줘 되짚을 수 있다.
+    expect(record.wheelOcr).toEqual(local);
+    expect(record.wheelOcrTelemetry?.engine).toBe('tesseract');
+    expect(record.reanalyses).toHaveLength(1);
+    expect(record.reanalyses?.[0]?.wheelOcr).toEqual(reanalyzed);
+    expect(record.reanalyses?.[0]?.acceptedAt).not.toBeNull();
   });
 
   it('재연결 후 재분석한 AI가 명판을 낮은 신뢰도로 읽으면 — 값이 같아도 전환이 막히고 제한 대조 기록으로 남는다', async () => {
@@ -1176,7 +1292,11 @@ describe('점검 흐름 E2E — 제한 대조와 서버 재분석', () => {
     expect(record.analysisMode).toBe('offline_limited');
     expect(record.result.verdict).toBe('UNDETERMINED');
     expect(record.trialRun).toBeUndefined();
-    // 받아들이지 않은 AI 값은 기록에 넣지 않는다.
+    // 받아들이지 않은 AI 값은 OCR 원본 자리에 넣지 않는다.
     expect(record.grinderOcr).toBeUndefined();
+    // 그 판독은 신뢰도와 함께 받아들이지 않은 재분석 판독으로 남는다.
+    expect(record.reanalyses).toHaveLength(1);
+    expect(record.reanalyses?.[0]?.grinderOcr?.confidence).toBe('low');
+    expect(record.reanalyses?.[0]?.acceptedAt).toBeNull();
   });
 });

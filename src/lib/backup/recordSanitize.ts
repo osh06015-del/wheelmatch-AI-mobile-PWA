@@ -19,12 +19,14 @@ import type {
   CaptureSlot,
   CheckDetail,
   CheckItem,
+  DamageRecheck,
   ExpiryMonth,
   GrinderCondition,
   GrinderSpec,
   MatchResult,
   OcrTelemetry,
   ProfileCondition,
+  ReanalysisRecord,
   SafetyChecklist,
   TrialRun,
   WheelCondition,
@@ -37,6 +39,7 @@ import type {
   WorkConditions,
 } from '@/lib/rules/types';
 import type { InspectionWithoutPhotos } from '@/lib/db';
+import { MAX_REANALYSES } from '@/lib/record/reanalysis';
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -692,6 +695,47 @@ function sanitizeAnalysisLimitCauses(raw: unknown): AnalysisLimitCauses {
   return result;
 }
 
+function sanitizeDamageRecheck(raw: unknown): DamageRecheck {
+  const r = obj(raw);
+  return {
+    damageFree: bool(r.damageFree),
+    answeredAt: dateStr(r.answeredAt),
+  };
+}
+
+/**
+ * 서버 재분석 판독 하나. 일곱 칸이 **모두 있어야** 한다 — 다시 읽지 않은 단계와
+ * 일어나지 않은 일은 null로 적혀 있다(types.ts의 ReanalysisRecord).
+ *
+ * 칸이 빠진 것을 null로 읽어 주지 않는다. 받아들인 시각이 잘려 나간 판독이
+ * 「받아들이지 않음」으로, 손상 답이 잘려 나간 판독이 「묻지 않음」으로 읽히게 된다.
+ */
+function sanitizeReanalysisRecord(raw: unknown): ReanalysisRecord {
+  const r = obj(raw);
+  return {
+    analyzedAt: dateStr(r.analyzedAt),
+    grinderOcr:
+      r.grinderOcr === null ? null : sanitizeGrinderSpec(r.grinderOcr),
+    grinderOcrTelemetry:
+      r.grinderOcrTelemetry === null
+        ? null
+        : sanitizeOcrTelemetry(r.grinderOcrTelemetry),
+    wheelOcr: r.wheelOcr === null ? null : sanitizeWheelSpec(r.wheelOcr),
+    wheelOcrTelemetry:
+      r.wheelOcrTelemetry === null
+        ? null
+        : sanitizeOcrTelemetry(r.wheelOcrTelemetry),
+    acceptedAt: r.acceptedAt === null ? null : dateStr(r.acceptedAt),
+    damageRecheck:
+      r.damageRecheck === null ? null : sanitizeDamageRecheck(r.damageRecheck),
+  };
+}
+
+/** 상한은 판독을 쌓는 쪽(lib/record/reanalysis.ts)과 같은 값을 쓴다 */
+function sanitizeReanalyses(raw: unknown): ReanalysisRecord[] {
+  return arr(raw, MAX_REANALYSES).map(sanitizeReanalysisRecord);
+}
+
 // ── 규격이 아닌 값 하나가 이 파일의 기준에 맞는가 ──
 //
 // 위의 isValidGrinderSpec·isValidWheelSpec과 같은 이유로 내놓는다. draft 복구
@@ -744,6 +788,15 @@ export function isValidCaptureQualityCheck(
 /** OCR 측정값이 기준에 맞는가 */
 export function isValidOcrTelemetry(raw: unknown): raw is OcrTelemetry {
   return passes(() => sanitizeOcrTelemetry(raw));
+}
+
+/**
+ * 서버 재분석 판독 목록이 기준에 맞는가(빈 목록 포함). 판독 하나라도 어긋나면
+ * 목록 전체가 맞지 않는 것이다 — 일부만 골라 남기면 빠진 판독이 올린 외관 의심의
+ * 출처가 사라진 목록을 온전한 것으로 믿게 된다.
+ */
+export function isValidReanalyses(raw: unknown): raw is ReanalysisRecord[] {
+  return passes(() => sanitizeReanalyses(raw));
 }
 
 function sanitizeWheelExamFinding(raw: unknown): WheelExamFinding {
@@ -956,6 +1009,13 @@ export function sanitizeInspectionRecord(
       r.analysisLimitCauses === undefined
         ? undefined
         : sanitizeAnalysisLimitCauses(r.analysisLimitCauses),
+    );
+    // 빈 목록도 그대로 옮긴다. 빈 목록은 「재분석을 하지 않았다」, 칸 없음은 「알 수
+    // 없다」다 — 없는 칸에 빈 목록을 만들어 넣지도, 빈 목록을 지우지도 않는다.
+    setOpt(
+      result,
+      'reanalyses',
+      r.reanalyses === undefined ? undefined : sanitizeReanalyses(r.reanalyses),
     );
     return result;
   } catch (error) {

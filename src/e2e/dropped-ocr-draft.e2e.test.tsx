@@ -166,7 +166,7 @@ describe('점검 흐름 E2E — 저장된 AI 판독을 읽을 수 없게 된 확
     ).toEqual(['analysisMode.offlineLimited']);
   });
 
-  it('결과 화면에서 서버로 다시 분석해 AI 값이 같음을 확인하면 온라인 대조로 풀리고, 기록에 OCR 원본이 다시 남는다', async () => {
+  it('결과 화면에서 서버로 다시 분석해 AI 값이 같음을 확인하면 온라인 대조로 풀리고, 다시 읽은 판독이 재분석 판독으로 기록에 남는다', async () => {
     const f = inspector('ko');
     // 두 번째 라벨 판독은 결과 화면의 재분석이 가져간다.
     await confirmWithUnreadableOcr(
@@ -195,8 +195,13 @@ describe('점검 흐름 E2E — 저장된 AI 판독을 읽을 수 없게 된 확
     expect(record.analysisMode).toBe('online');
     expect(record.analysisLimitCauses).toBeUndefined();
     expect(record.result.verdict).toBe('COMPATIBLE');
-    // 적합으로 끝난 기록에는 모델이 읽은 원본이 있다 — 재분석이 다시 읽은 값이다.
-    expect(record.wheelOcr).toEqual(wheelLabel());
+    // 적합으로 끝난 기록에는 모델이 읽은 판독이 있다 — 재분석이 다시 읽은 값이다.
+    // OCR 원본 자리에는 넣지 않는다. 그 자리는 작업자가 확인 화면에서 고치기 전의
+    // 원본인데, 이 점검의 확인 화면에는 내놓은 판독이 없었다(버렸다).
+    expect(record.wheelOcr).toBeUndefined();
+    expect(record.reanalyses).toHaveLength(1);
+    expect(record.reanalyses?.[0]?.wheelOcr).toEqual(wheelLabel());
+    expect(record.reanalyses?.[0]?.acceptedAt).not.toBeNull();
     // 재분석은 작업자가 확정한 값을 덮어쓰지 않는다.
     expect(record.wheel.maxRPM).toBe(12200);
     expect(record.wheel.rpmSource).toBe('user');
@@ -204,7 +209,7 @@ describe('점검 흐름 E2E — 저장된 AI 판독을 읽을 수 없게 된 확
     // (confirm.ts의 withAcceptedReanalysis). 버린 판독의 표시를 건지는 것이 아니라
     // 새로 읽어 받아들인 판독의 표시다. 다시 촬영한 점검처럼 장착 규격 항목이
     // 만들어진다 — 이 라벨에는 m/s 표기가 없어 표기 일치는 대조할 상대가 없다.
-    expect(record.wheelOcr?.markings).toBeDefined();
+    expect(record.reanalyses?.[0]?.wheelOcr?.markings).toBeDefined();
     expect(record.wheel.markings).toEqual(wheelLabel().markings);
     const codes = record.result.checks.map((check) => check.detail?.code);
     expect(codes).toContain('mountingSpec.shown');

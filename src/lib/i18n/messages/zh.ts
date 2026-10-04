@@ -128,6 +128,8 @@ export const zh: Messages = {
   'evidence.markings.row': '{field}：判定所用值 {used} / OCR 原始值 {ocr}',
   'evidence.markings.note':
     '这些值与记录的 OCR 原始值不同。看起来是在服务器重新分析之前读取的标示，并非作业者确认的值。',
+  'evidence.markings.noteReanalysis':
+    '这些值与记录的 OCR 原始值不同。它们是已接受的服务器重新分析读取结果所读取的标示，并非作业者确认的值。',
   'evidence.rules.title': '各规则判定依据',
   'evidence.rules.formula': '计算公式',
   'evidence.rules.difference': '差值',
@@ -999,6 +1001,29 @@ export const zh: Messages = {
     '您之前关于砂轮损伤的回答是在看到下方AI警告之前作出的。请再次查看砂轮实物并作答，才能解除有限对照。',
   'offline.accept': '确认与AI数值相同并解除有限对照',
   'offline.cancel': '取消并保留有限对照结果',
+  'offline.reanalysisLimit':
+    '本次检查可接收的 {max} 次服务器重新分析已全部用完。请保留有限对照结果或重新拍摄。',
+  'reanalysis.title': '服务器重新分析记录',
+  'reanalysis.summary.accepted':
+    '服务器重新分析读取结果 {count} 条，其中已接受 {accepted} 条。已接受的读取结果，是在确认AI读取的转速和直径与作业人员确认的数值相同后，解除了该步骤（{steps}）的有限对照。作业人员确认的数值未被AI数值替换。',
+  'reanalysis.summary.notAccepted':
+    '服务器重新分析读取结果 {count} 条，均未接受。AI读取的转速和直径未用于规格对照。',
+  'reanalysis.summary.damageSuspected':
+    '重新分析的AI怀疑照片中有损伤迹象，该警告已加入结果的外观损伤项目。',
+  'reanalysis.summary.recheck':
+    '看到AI警告后，再次询问了砂轮损伤项目（破损、裂纹），作业人员回答“{answer}”。',
+  'reanalysis.steps.both': '{first}和{second}',
+  'reanalysis.item.heading': '重新分析 {index} · {time} · 模型 {model}',
+  'reanalysis.item.damageSuspected': 'AI外观读取：怀疑有损伤迹象',
+  'reanalysis.item.damageNotSeen':
+    'AI外观读取：照片中未发现损伤迹象——这不代表砂轮没有损伤',
+  'reanalysis.item.damageUnknown': 'AI外观读取：无法判别',
+  'reanalysis.item.accepted': '有限对照：确认此读取结果后已解除（{time}）',
+  'reanalysis.item.notAccepted': '有限对照：未解除',
+  'reanalysis.item.recheck': '再次确认损伤项目：“{answer}”（{time}）',
+  'evidence.reanalysis.title': '服务器重新分析读取结果',
+  'evidence.reanalysis.note':
+    '这是数值确认之后，在结果页面由服务器重新读取的结果。作业人员从未修改过这些数值，因此与上方的OCR原始值分开保存。从这些读取结果转入已确认数值的只有两项：对损伤迹象的怀疑，以及已接受的砂轮读取结果中用于填补空缺位置的标签标注。',
   'draft.title': '有未完成的检查',
   'draft.body':
     '可以继续，或删除已保存的进度并重新开始。应用不会自行继续或删除。',

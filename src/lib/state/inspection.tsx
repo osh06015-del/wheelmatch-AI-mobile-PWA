@@ -17,6 +17,7 @@ import {
   isValidGrinderCondition,
   isValidGrinderSpec,
   isValidOcrTelemetry,
+  isValidReanalyses,
   isValidWheelCondition,
   isValidWheelSpec,
   isValidWorkConditions,
@@ -25,6 +26,16 @@ import {
   withAcceptedReanalysis,
   withReanalysisSuspicion,
 } from '@/lib/ocr/confirm';
+import {
+  appendReanalysis,
+  canReanalyze,
+  indexOfReanalysis,
+  reanalysisRecordOf,
+  withAcceptedAt,
+  withDamageRecheck,
+  withoutWheelReanalysis,
+  type ReanalysisReading,
+} from '@/lib/record/reanalysis';
 import {
   isTrialRunProgress,
   type TrialRunProgress,
@@ -38,6 +49,7 @@ import type {
   GrinderCondition,
   GrinderSpec,
   OcrTelemetry,
+  ReanalysisRecord,
   SafetyChecklist,
   TrialRun,
   WheelCondition,
@@ -62,6 +74,7 @@ const WHEEL_OCR_TELEMETRY_KEY = 'wheelmatch.wheelOcrTelemetry';
 const CAPTURE_CHECKS_KEY = 'wheelmatch.captureChecks';
 const WORK_CONDITIONS_KEY = 'wheelmatch.workConditions';
 const OFFLINE_SLOTS_KEY = 'wheelmatch.offlineSlots';
+const REANALYSES_KEY = 'wheelmatch.reanalyses';
 
 /** 판독 단계. 명판과 숫돌 라벨 둘이다 */
 export type OfflineSlot = 'grinder' | 'wheel';
@@ -334,6 +347,18 @@ interface InspectionState {
   /** 제한 대조로 확정한 단계와 그 까닭. sessionStorage에 남는다 */
   offlineSlots: OfflineSlots;
   /**
+   * 결과 화면에서 받은 서버 재분석 판독. 받은 순서대로 전부 — 받아들이지 않은 것도
+   * 남긴다(lib/record/reanalysis.ts). 판정에는 쓰지 않는다.
+   *
+   * 빈 목록은 「이 점검에서 재분석을 하지 않았다」, null은 「알 수 없다」다. 명판을
+   * 확정하면 빈 목록에서 시작한다(setGrinder). null로 남는 것은 이 값을 남기지 않던
+   * 버전에서 시작한 점검을 되살렸거나, 저장된 목록을 읽을 수 없어 버린 경우다 —
+   * 그때 재분석을 했는지 앱은 모르고, 모르는 것을 빈 목록으로 적지 않는다.
+   * 새로고침을 넘도록 sessionStorage에도 남긴다. 판독이 올린 외관 의심이 확정값에
+   * 실려 새로고침을 넘으므로, 판독도 함께 넘어야 의심의 출처가 남는다.
+   */
+  reanalyses: ReanalysisRecord[] | null;
+  /**
    * 결과 화면의 작업 전 체크리스트. 아직 누르지 않았으면 null.
    *
    * 메모리에만 둔다 — 새로고침 뒤에는 이전처럼 다시 누르게 하고, 진행 중 점검
@@ -390,6 +415,12 @@ export function dropOrphanedSteps(
     checklist: null,
     trialRunRecord: null,
     offlineSlots: withOfflineSlot(snapshot.offlineSlots, 'wheel', false),
+    // 숫돌이 없으면 그 숫돌의 사진을 본 판독도 근거가 없다. 명판 판독은 남긴다.
+    // 명판까지 없으면 모두 버린다 — 다음에 명판을 확정할 때 빈 목록에서 시작한다.
+    reanalyses:
+      snapshot.grinder === null
+        ? null
+        : withoutWheelReanalysis(snapshot.reanalyses),
     captureChecks: grinderCheck ? { grinder: grinderCheck } : {},
   };
 }
@@ -414,6 +445,7 @@ const SERVER_SNAPSHOT: InspectionState = {
   wheelOcrTelemetry: null,
   captureChecks: {},
   offlineSlots: NO_OFFLINE_SLOTS,
+  reanalyses: null,
   checklist: null,
   trialRunRecord: null,
   hydrated: false,
@@ -453,6 +485,22 @@ function writeStored(key: string, value: unknown): void {
 }
 
 /**
+ * 재분석 판독 목록을 새로고침용 저장에 맞춘다. 알 수 없음(null)은 키를 지운다 —
+ * 저장된 적이 없는 것과 같게 읽히도록(initialClientState).
+ */
+function storeReanalyses(reanalyses: ReanalysisRecord[] | null): void {
+  if (reanalyses !== null) {
+    writeStored(REANALYSES_KEY, reanalyses);
+    return;
+  }
+  try {
+    window.sessionStorage.removeItem(REANALYSES_KEY);
+  } catch {
+    // 메모리 상태가 기준이다. 저장을 맞추지 못해도 흐름은 이어진다.
+  }
+}
+
+/**
  * 새로고침용 저장(sessionStorage)을 이 상태에 맞춘다. 없는 값(null)은 키를 지운다.
  * 사진과, 메모리에만 두는 값(체크리스트·마친 시험운전)은 쓰지 않는다.
  */
@@ -473,6 +521,7 @@ function persistSnapshot(snapshot: InspectionSnapshot): void {
     [GRINDER_OCR_TELEMETRY_KEY, snapshot.grinderOcrTelemetry],
     [WHEEL_OCR_TELEMETRY_KEY, snapshot.wheelOcrTelemetry],
     [OFFLINE_SLOTS_KEY, snapshot.offlineSlots],
+    [REANALYSES_KEY, snapshot.reanalyses],
   ];
   for (const [key, value] of stored) {
     if (value === null) {
@@ -562,6 +611,10 @@ function initialClientState(): InspectionState {
     wheelOcrTelemetry: pick(WHEEL_OCR_TELEMETRY_KEY, isValidOcrTelemetry),
     captureChecks: captureChecks.checks,
     offlineSlots: offline.slots,
+    // 저장된 적이 없으면(이 값을 남기지 않던 버전의 점검) 알 수 없음이다. 읽을 수
+    // 없는 목록도 버리고 알 수 없음으로 둔다 — 빈 목록으로 채우면 "재분석을 하지
+    // 않았다"고 적는 것이 된다.
+    reanalyses: pick(REANALYSES_KEY, isValidReanalyses),
     checklist: null,
     trialRunRecord: null,
   });
@@ -650,23 +703,42 @@ export interface InspectionStore extends InspectionState {
   /**
    * 서버 재분석 결과가 도착했다. 전환을 받아들이기 전에, 받아들이지 않더라도 부른다.
    *
-   * AI가 숫돌 사진에서 외관 손상을 의심했으면 그 의심만 숫돌 확정값에 더한다.
-   * 값이 달라 전환이 막히거나 작업자가 취소해 AI 값을 버려도, 앱이 올린 경고는
-   * 버리지 않는다. 의심하지 않았으면 아무것도 바꾸지 않는다.
+   * 두 가지를 한다.
+   *   · 그 판독을 재분석 판독(reanalyses)으로 남긴다. 값이 달라 전환이 막히거나
+   *     작업자가 취소해도 지우지 않는다 — 지우면 아래의 의심만 남아 어디서 온
+   *     의심인지 기록으로 되짚을 수 없다.
+   *   · AI가 숫돌 사진에서 외관 손상을 의심했으면 그 의심을 숫돌 확정값에 더한다.
+   *     AI 값을 받아들이지 않아도 앱이 올린 경고는 버리지 않는다. 의심하지 않았으면
+   *     확정값은 바꾸지 않는다.
    *
-   * @param analyzedWheelImage 서버로 보낸 라벨 사진. 지금 확정된 숫돌의 사진과
-   *   다르면 아무것도 하지 않는다 — 응답을 기다리는 사이 작업자가 숫돌을 다시
-   *   찍은 것이고, 이 결과는 그 숫돌을 본 것이 아니다.
+   * @param analyzed 서버로 보낸 사진. 지금 확정된 단계의 사진과 다르면 그 단계의
+   *   판독은 쓰지 않는다 — 응답을 기다리는 사이 작업자가 그 단계를 다시 찍은 것이고,
+   *   이 결과는 지금의 명판·숫돌을 본 것이 아니다.
    */
-  keepReanalysisSuspicion: (
+  recordReanalysis: (
     input: ReanalysisInput,
-    analyzedWheelImage: Blob | null,
+    analyzed: { grinderImage: Blob | null; wheelImage: Blob | null },
   ) => void;
+  /**
+   * 재분석이 손상을 의심해 다시 물은 손상 항목에 작업자가 답했다. 그 답을 그 판독의
+   * 기록에 남긴다.
+   *
+   * 숫돌 상태 확인의 답(wheelCondition)은 건드리지 않는다. 그 답은 AI 경고를 보기
+   * 전의 것이고, 「확인함」으로 다시 답해도 값이 같아 다시 물었는지조차 보이지 않는다.
+   * 「문제 있음」을 숫돌 상태에 남기는 것은 화면의 일이다(결과 화면).
+   */
+  recordDamageRecheck: (input: ReanalysisInput, damageFree: boolean) => void;
   /**
    * 사용자가 서버 재분석 결과를 확인하고 제한 대조를 푼다(판독 경로가 online이 된다).
    *
-   * 작업자가 확인 화면에서 확정한 값은 건드리지 않는다. AI 값은 OCR 원본 자리에
-   * 넣고, 넣은 단계의 제한 표시만 푼다.
+   * **도착했을 때 남겨 둔 판독만** 받아들인다(recordReanalysis). 남긴 적 없는 판독은
+   * 지금 확정된 사진을 본 것인지 알 수 없다 — 그때는 아무것도 하지 않는다.
+   *
+   * 작업자가 확인 화면에서 확정한 값은 건드리지 않는다. OCR 원본 자리
+   * (grinderOcr·wheelOcr)도 건드리지 않는다 — 그 자리는 작업자가 고치기 전의
+   * 원본이고, 기기 안 OCR로 읽은 점검이면 덮여 사라진다. AI 값은 재분석 판독에
+   * 이미 있다. 여기서는 그 판독에 받아들인 시각을 적고, 다시 읽은 단계의 제한
+   * 표시만 푼다(풀린 단계의 까닭도 함께 지운다).
    *
    * 숫돌 확정값에서 옮기는 것은 OCR이 실어 오던 두 칸뿐이다 — 외관 의심과 원본
    * 표시의 빈 자리(withAcceptedReanalysis). 확인 화면에 없어 작업자가 확정한 적이
@@ -674,8 +746,9 @@ export interface InspectionStore extends InspectionState {
    * 점검보다 느슨하게 대조하게 된다.
    *
    * 확정값에 이미 실려 있던 표기(로컬 OCR이 읽은 것)를 서버가 다르게 읽었으면
-   * 아무것도 하지 않는다 — 오프라인 표시도 OCR 원본 자리도 그대로 남는다. 빈
-   * 자리만 채우는 규칙으로는 그 충돌에서 로컬 표기가 조용히 이기기 때문이다.
+   * 아무것도 하지 않는다 — 제한 표시는 그대로 남고, 그 판독에 받아들인 시각도
+   * 적지 않는다(판독은 받아들이지 않은 판독으로 남아 있다). 빈 자리만 채우는
+   * 규칙으로는 그 충돌에서 로컬 표기가 조용히 이기기 때문이다.
    */
   applyReanalysis: (input: ReanalysisInput) => void;
   setChecklist: (checklist: SafetyChecklist | null) => void;
@@ -687,13 +760,13 @@ export interface InspectionStore extends InspectionState {
   reset: () => void;
 }
 
-/** 서버 재분석으로 받은 AI 값. 다시 분석한 단계만 채운다 */
-export interface ReanalysisInput {
-  grinderOcr?: GrinderSpec;
-  grinderOcrTelemetry?: OcrTelemetry | null;
-  wheelOcr?: WheelSpec;
-  wheelOcrTelemetry?: OcrTelemetry | null;
-}
+/**
+ * 서버 재분석으로 받은 AI 값. 다시 분석한 단계만 채운다.
+ *
+ * 화면이 응답을 받아 들고 있는 그 객체다. 저장소는 값이 아니라 이 객체가 같은지로
+ * 그 판독의 기록을 찾는다(indexOfReanalysis).
+ */
+export type ReanalysisInput = ReanalysisReading;
 
 /**
  * 저장소 상태 그대로. 값이 바뀔 때만 참조가 바뀐다 — 진행 중 점검 자동 저장이
@@ -764,8 +837,12 @@ export function useInspection(): InspectionStore {
       } catch {
         // 메모리 상태는 아래에서 반드시 지운다.
       }
+      // 재분석 판독도 처음부터다. 빈 목록으로 적는다 — 이 명판으로 시작한 점검에는
+      // 아직 재분석이 없었다는 것을 앱이 안다(지우기만 하면 "알 수 없음"이 된다).
+      storeReanalyses([]);
       setState({
         grinder: spec,
+        reanalyses: [],
         // 이번 명판이 제한 대조인지는 곧바로 이어지는 setOfflineSlot이 정한다.
         offlineSlots: NO_OFFLINE_SLOTS,
         checklist: null,
@@ -823,9 +900,14 @@ export function useInspection(): InspectionStore {
       // 숫돌 쪽 제한 표시와 까닭만 지운다. 명판을 제한으로 확정했다는 사실은 남는다.
       const offlineSlots = withOfflineSlot(state.offlineSlots, 'wheel', false);
       writeStored(OFFLINE_SLOTS_KEY, offlineSlots);
+      // 이전 숫돌 사진을 본 재분석 판독과 그때 다시 받은 손상 답은 지금 숫돌에 대한
+      // 것이 아니다. 명판 판독은 남긴다. 알 수 없음(null)은 그대로다.
+      const reanalyses = withoutWheelReanalysis(state.reanalyses);
+      storeReanalyses(reanalyses);
       setState({
         wheel: spec,
         offlineSlots,
+        reanalyses,
         checklist: null,
         trialRunRecord: null,
         wheelCondition: null,
@@ -896,62 +978,124 @@ export function useInspection(): InspectionStore {
     [],
   );
 
-  const keepReanalysisSuspicion = useCallback(
-    (input: ReanalysisInput, analyzedWheelImage: Blob | null) => {
-      if (!input.wheelOcr || !state.wheel) return;
+  const recordReanalysis = useCallback(
+    (
+      input: ReanalysisInput,
+      analyzed: { grinderImage: Blob | null; wheelImage: Blob | null },
+    ) => {
       // 서버 응답은 늦게 올 수 있다(연결이 나쁜 현장이 이 기능이 쓰이는 곳이다).
-      // 그 사이 숫돌을 다시 찍었다면 지금 확정된 숫돌은 다른 사진의 것이고, 거기에
-      // 이 결과의 의심을 얹으면 AI가 보지 않은 숫돌에 의심을 지어내는 것이 된다.
-      if (state.wheelImage !== analyzedWheelImage) return;
-      const wheel = withReanalysisSuspicion(state.wheel, input.wheelOcr);
-      // 더할 의심이 없으면 같은 객체가 돌아온다. 저장소를 건드리지 않는다.
-      if (wheel === state.wheel) return;
-      writeStored(WHEEL_KEY, wheel);
-      setState({ wheel });
+      // 그 사이 다시 찍은 단계는 지금 다른 사진의 것이다. 그 단계의 판독은 이 점검의
+      // 명판·숫돌을 본 것이 아니므로 남기지도, 확정값에 쓰지도 않는다 — 숫돌이라면
+      // AI가 보지 않은 숫돌에 의심을 지어내는 것이 된다.
+      const grinderOcr =
+        state.grinder !== null && state.grinderImage === analyzed.grinderImage
+          ? input.grinderOcr
+          : undefined;
+      const wheelOcr =
+        state.wheel !== null && state.wheelImage === analyzed.wheelImage
+          ? input.wheelOcr
+          : undefined;
+      const record = reanalysisRecordOf(
+        {
+          grinderOcr,
+          grinderOcrTelemetry: input.grinderOcrTelemetry,
+          wheelOcr,
+          wheelOcrTelemetry: input.wheelOcrTelemetry,
+        },
+        new Date().toISOString(),
+      );
+      if (record === null) return;
+
+      const next: Partial<InspectionState> = {};
+      // 받아들이기 전에 남긴다. 값이 달라 전환이 막히거나 작업자가 취소해도 이
+      // 판독은 지우지 않는다. 남길 자리가 없으면 남기지 못한다 — 화면이 그 전에
+      // 재분석을 받지 않으므로(canReanalyze) 여기까지 오지 않는다.
+      if (canReanalyze(state.reanalyses)) {
+        next.reanalyses = appendReanalysis(state.reanalyses, record);
+        storeReanalyses(next.reanalyses);
+      }
+      // AI가 올린 외관 의심은 값이 아니라 이 사진에 대해 앱이 올린 경고다. 판독을
+      // 남기지 못했더라도 경고는 버리지 않는다. 더할 의심이 없으면 같은 객체가
+      // 돌아온다 — 그때는 확정값을 건드리지 않는다.
+      if (wheelOcr && state.wheel) {
+        const wheel = withReanalysisSuspicion(state.wheel, wheelOcr);
+        if (wheel !== state.wheel) {
+          next.wheel = wheel;
+          writeStored(WHEEL_KEY, wheel);
+        }
+      }
+      // 바뀐 것이 없으면 상태를 건드리지 않는다. 상태의 참조는 값이 바뀔 때만
+      // 바뀌어야 한다 — 진행 중 점검 자동 저장이 그 참조로 저장할지 정한다.
+      if (next.reanalyses === undefined && next.wheel === undefined) return;
+      setState(next);
+    },
+    [],
+  );
+
+  const recordDamageRecheck = useCallback(
+    (input: ReanalysisInput, damageFree: boolean) => {
+      const index = indexOfReanalysis(state.reanalyses, input);
+      if (state.reanalyses === null || index < 0) return;
+      // 손상 항목은 숫돌 사진을 본 판독의 경고에 대한 답이다.
+      if (state.reanalyses[index].wheelOcr === null) return;
+      const reanalyses = withDamageRecheck(
+        state.reanalyses,
+        index,
+        damageFree,
+        new Date().toISOString(),
+      );
+      storeReanalyses(reanalyses);
+      setState({ reanalyses });
     },
     [],
   );
 
   const applyReanalysis = useCallback((input: ReanalysisInput) => {
+    // 도착했을 때 남겨 둔 판독만 받아들인다. 남긴 적 없는 판독은 지금 확정된 사진을
+    // 본 것인지 알 수 없다 — 받아들이면 출처 없는 값으로 제한 대조가 풀린다.
+    const index = indexOfReanalysis(state.reanalyses, input);
+    if (state.reanalyses === null || index < 0) return;
+    const record = state.reanalyses[index];
+    // 한 번 받아들인 판독의 시각은 다시 적지 않는다.
+    if (record.acceptedAt !== null) return;
+
     // 숫돌 확정값부터 만든다. 숫돌을 다시 분석하지 않았거나 확정한 숫돌이 없으면
     // 바꿀 것이 없다(undefined).
     const acceptedWheel =
-      input.wheelOcr && state.wheel
-        ? withAcceptedReanalysis(state.wheel, input.wheelOcr)
+      record.wheelOcr && state.wheel
+        ? withAcceptedReanalysis(state.wheel, record.wheelOcr)
         : undefined;
     // 확정값에 실린 표기와 서버가 읽은 표기가 같은 칸에서 다르면 받아들일 수 없다
-    // (null). 아무것도 쓰지 않고 그만둔다 — 함께 다시 분석한 명판도 풀지 않는다. 한
+    // (null). 아무것도 쓰지 않고 그만둔다 — 함께 다시 분석한 명판도 풀지 않고, 그
+    // 판독에 받아들인 시각도 적지 않는다(판독 자체는 도착했을 때 이미 남겼다). 한
     // 번의 재분석은 통째로 받아들이거나 받아들이지 않는다. 화면이 전환 버튼을 막지만
     // 버튼만 막으면 다른 경로로 불렸을 때 샌다.
     if (acceptedWheel === null) return;
 
-    // 다시 분석한 단계의 제한만 푼다. 풀린 단계의 까닭도 함께 지운다.
+    const reanalyses = withAcceptedAt(
+      state.reanalyses,
+      index,
+      new Date().toISOString(),
+    );
+    // 다시 읽은 단계의 제한만 푼다. 풀린 단계의 까닭도 함께 지운다. OCR 원본 자리
+    // (grinderOcr·wheelOcr)는 건드리지 않는다 — 작업자가 확인 화면에서 고치기 전의
+    // 원본이고, 기기 안 OCR로 읽은 점검이면 덮여 사라진다. AI 값은 재분석 판독
+    // (record)에 있다.
     let offlineSlots = state.offlineSlots;
-    if (input.grinderOcr)
+    if (record.grinderOcr)
       offlineSlots = withOfflineSlot(offlineSlots, 'grinder', false);
-    if (input.wheelOcr)
+    if (record.wheelOcr)
       offlineSlots = withOfflineSlot(offlineSlots, 'wheel', false);
-    const next: Partial<InspectionState> = { offlineSlots };
-    if (input.grinderOcr) {
-      next.grinderOcr = input.grinderOcr;
-      next.grinderOcrTelemetry = input.grinderOcrTelemetry ?? null;
-      writeStored(GRINDER_OCR_KEY, input.grinderOcr);
-      writeStored(GRINDER_OCR_TELEMETRY_KEY, next.grinderOcrTelemetry);
-    }
-    if (input.wheelOcr) {
-      next.wheelOcr = input.wheelOcr;
-      next.wheelOcrTelemetry = input.wheelOcrTelemetry ?? null;
-      writeStored(WHEEL_OCR_KEY, input.wheelOcr);
-      writeStored(WHEEL_OCR_TELEMETRY_KEY, next.wheelOcrTelemetry);
-      // 온라인 대조로 바뀌면 판정은 확정값만 본다. AI가 올린 외관 의심과 읽어 온
-      // 원본 표시를 여기서 옮기지 않으면 판정에서 통째로 빠진다. 작업자가 확정한
-      // 값은 그대로 둔다. 옮길 것이 없으면 같은 객체라 저장소를 건드리지 않는다.
-      if (acceptedWheel !== undefined && acceptedWheel !== state.wheel) {
-        next.wheel = acceptedWheel;
-        writeStored(WHEEL_KEY, acceptedWheel);
-      }
+    const next: Partial<InspectionState> = { offlineSlots, reanalyses };
+    // 제한이 풀리면 판정은 확정값만 본다. AI가 올린 외관 의심과 읽어 온 원본 표시를
+    // 여기서 옮기지 않으면 판정에서 통째로 빠진다. 작업자가 확정한 값은 그대로 둔다.
+    // 옮길 것이 없으면 같은 객체라 저장소를 건드리지 않는다.
+    if (acceptedWheel !== undefined && acceptedWheel !== state.wheel) {
+      next.wheel = acceptedWheel;
+      writeStored(WHEEL_KEY, acceptedWheel);
     }
     writeStored(OFFLINE_SLOTS_KEY, offlineSlots);
+    storeReanalyses(reanalyses);
     setState(next);
   }, []);
 
@@ -990,6 +1134,7 @@ export function useInspection(): InspectionStore {
       window.sessionStorage.removeItem(WHEEL_OCR_TELEMETRY_KEY);
       window.sessionStorage.removeItem(CAPTURE_CHECKS_KEY);
       window.sessionStorage.removeItem(OFFLINE_SLOTS_KEY);
+      window.sessionStorage.removeItem(REANALYSES_KEY);
     } catch {
       // 무시한다.
     }
@@ -1012,6 +1157,8 @@ export function useInspection(): InspectionStore {
       wheelOcrTelemetry: null,
       captureChecks: {},
       offlineSlots: NO_OFFLINE_SLOTS,
+      // 점검이 없다. 다음 명판을 확정할 때 빈 목록에서 시작한다.
+      reanalyses: null,
       checklist: null,
       trialRunRecord: null,
       droppedOnReload: false,
@@ -1024,7 +1171,8 @@ export function useInspection(): InspectionStore {
       hydrating: !snapshot.hydrated,
       analysisMode: analysisModeOf(snapshot.offlineSlots),
       setOfflineSlot,
-      keepReanalysisSuspicion,
+      recordReanalysis,
+      recordDamageRecheck,
       applyReanalysis,
       setChecklist,
       setTrialRunRecord,
@@ -1041,7 +1189,8 @@ export function useInspection(): InspectionStore {
     [
       snapshot,
       setOfflineSlot,
-      keepReanalysisSuspicion,
+      recordReanalysis,
+      recordDamageRecheck,
       applyReanalysis,
       setChecklist,
       setTrialRunRecord,

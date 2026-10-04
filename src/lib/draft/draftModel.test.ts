@@ -33,6 +33,7 @@ import type {
   GrinderSpec,
   GuardType,
   OcrTelemetry,
+  ReanalysisRecord,
   RpmSource,
   SafetyChecklist,
   SpindleThread,
@@ -146,11 +147,28 @@ function snapshot(
     offlineSlots: { grinder: false, wheel: false },
     checklist: null,
     trialRunRecord: null,
+    reanalyses: [],
     ...overrides,
   };
 }
 
 const NOW = new Date('2026-09-17T03:00:00.000Z');
+
+/** 결과 화면에서 숫돌 라벨만 서버로 다시 읽은 판독 한 줄(받아들이지 않음) */
+function wheelReanalysis(
+  overrides: Partial<ReanalysisRecord> = {},
+): ReanalysisRecord {
+  return {
+    analyzedAt: '2026-09-17T02:50:00.000Z',
+    grinderOcr: null,
+    grinderOcrTelemetry: null,
+    wheelOcr: { ...WHEEL, maxRPM: 13300, visibleDamage: 'suspected' },
+    wheelOcrTelemetry: null,
+    acceptedAt: null,
+    damageRecheck: null,
+    ...overrides,
+  };
+}
 
 describe('buildDraft — 저장 형태', () => {
   it('사진은 state에서 빼 photos로 옮기고, 사진이 있던 자리를 남긴다', () => {
@@ -239,6 +257,34 @@ describe('recoverDraft — 정상 복구', () => {
       wheel: false,
     });
   });
+
+  it('서버 재분석 판독을 그대로 되살린다 — 받아들이지 않은 것도, 다시 받은 손상 답도', () => {
+    // 그 판독이 올린 외관 의심은 규격(wheel)에 실려 이어진다. 판독이 함께 이어지지
+    // 않으면 이어한 점검의 기록에서 의심의 출처가 사라진다.
+    const reanalyses = [
+      wheelReanalysis(),
+      wheelReanalysis({
+        analyzedAt: '2026-09-17T02:52:00.000Z',
+        grinderOcr: GRINDER,
+        acceptedAt: '2026-09-17T02:53:00.000Z',
+        damageRecheck: {
+          damageFree: true,
+          answeredAt: '2026-09-17T02:52:40.000Z',
+        },
+      }),
+    ];
+    const recovery = recoverDraft(
+      stored(buildDraft(snapshot({ reanalyses }), NOW)),
+    );
+
+    expect(recovery.warnings).toEqual([]);
+    expect(recovery.snapshot?.reanalyses).toEqual(reanalyses);
+  });
+
+  it('재분석을 하지 않은 점검은 빈 목록 그대로 되살린다', () => {
+    const recovery = recoverDraft(stored(buildDraft(snapshot(), NOW)));
+    expect(recovery.snapshot?.reanalyses).toEqual([]);
+  });
 });
 
 describe('recoverDraft — 손상·불일치', () => {
@@ -281,6 +327,105 @@ describe('recoverDraft — 손상·불일치', () => {
     // 명판이 없으면 숫돌 단계도 근거가 없다.
     expect(recovery.snapshot?.wheel).toBeNull();
     expect(recovery.snapshot?.declaredPurpose).toBe('cutting');
+  });
+
+  it('재분석 판독을 남기지 않던 버전의 draft는 재분석 여부를 알 수 없음으로 되살린다', () => {
+    // 그 점검에서 재분석을 했는지는 draft로 알 수 없다. 빈 목록(하지 않았다)으로
+    // 채우지 않고, 없던 값이라 경고도 하지 않는다.
+    const draft = stored(buildDraft(snapshot(), NOW)) as {
+      state: Record<string, unknown>;
+    };
+    delete draft.state.reanalyses;
+    const recovery = recoverDraft(draft);
+
+    expect(recovery.snapshot?.reanalyses).toBeNull();
+    expect(recovery.warnings).toEqual([]);
+    expect(recovery.snapshot?.wheel).toEqual(WHEEL);
+  });
+
+  it.each([
+    ['배열이 아니다', { 0: 'x' }],
+    [
+      '도착 시각이 날짜가 아니다',
+      [{ ...wheelReanalysis(), analyzedAt: 'soon' }],
+    ],
+    [
+      '판독 안의 숫돌 종류가 목록에 없다',
+      [
+        {
+          ...wheelReanalysis(),
+          wheelOcr: { ...WHEEL, wheelType: 'not-a-real-type' },
+        },
+      ],
+    ],
+    [
+      '손상 답이 boolean이 아니다',
+      [
+        {
+          ...wheelReanalysis(),
+          damageRecheck: { damageFree: 'yes', answeredAt: NOW.toISOString() },
+        },
+      ],
+    ],
+  ])(
+    '재분석 판독이 어긋나면(%s) 목록을 버리고 경고한다 — 빈 목록으로 채우지 않는다',
+    (_name, broken) => {
+      const draft = stored(
+        buildDraft(snapshot({ reanalyses: [wheelReanalysis()] }), NOW),
+      ) as { state: Record<string, unknown> };
+      draft.state.reanalyses = broken;
+      const recovery = recoverDraft(draft);
+
+      // 읽을 수 없는 목록을 "재분석을 하지 않았다"로 바꿔 적지 않는다.
+      expect(recovery.snapshot?.reanalyses).toBeNull();
+      expect(recovery.warnings).toContain('schema');
+      // 확정한 규격까지 버리지는 않는다.
+      expect(recovery.snapshot?.wheel).toEqual(WHEEL);
+    },
+  );
+
+  it('숫돌 규격을 버리면 숫돌 쪽 재분석 판독도 버리고 명판 판독은 남긴다', () => {
+    const reanalyses = [
+      wheelReanalysis(),
+      wheelReanalysis({
+        grinderOcr: GRINDER,
+        damageRecheck: {
+          damageFree: true,
+          answeredAt: '2026-09-17T02:52:40.000Z',
+        },
+      }),
+    ];
+    const draft = stored(buildDraft(snapshot({ reanalyses }), NOW)) as {
+      state: Record<string, unknown>;
+    };
+    draft.state.wheel = { maxRPM: '12200' };
+    const recovery = recoverDraft(draft);
+
+    expect(recovery.snapshot?.wheel).toBeNull();
+    expect(recovery.snapshot?.reanalyses).toEqual([
+      {
+        ...reanalyses[1],
+        wheelOcr: null,
+        wheelOcrTelemetry: null,
+        damageRecheck: null,
+      },
+    ]);
+  });
+
+  it('명판 규격을 버리면 재분석 판독을 모두 버린다', () => {
+    // 명판이 없으면 그 뒤의 모든 것이 근거를 잃는다. 다음에 명판을 확정하면 빈
+    // 목록에서 다시 시작한다(setGrinder).
+    const draft = stored(
+      buildDraft(
+        snapshot({ reanalyses: [wheelReanalysis({ grinderOcr: GRINDER })] }),
+        NOW,
+      ),
+    ) as { state: Record<string, unknown> };
+    draft.state.grinder = { noLoadRPM: '11000' };
+    const recovery = recoverDraft(draft);
+
+    expect(recovery.snapshot?.grinder).toBeNull();
+    expect(recovery.snapshot?.reanalyses).toBeNull();
   });
 
   it('오프라인 표시를 읽지 못하면 더 엄격한 쪽(오프라인)으로 본다', () => {

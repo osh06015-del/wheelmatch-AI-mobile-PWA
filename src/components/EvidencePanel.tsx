@@ -4,7 +4,9 @@
 //
 // 여기서 보여주는 것: 규칙명과 결과, 그라인더·숫돌 입력값과 단위, OCR
 // 원본·정규화값·작업자 최종값, 값 출처(AI/환산/사용자), 계산식과 차이,
-// 근거 문서와 적용 한계.
+// 근거 문서와 적용 한계. 결과 화면에서 서버로 다시 읽은 판독(재분석)이 있으면
+// OCR 원본과 **따로** 보인다 — 작업자가 고친 적이 없는 판독이라, 원본 칸에 섞으면
+// 본 적 없는 값이 「작업자가 고치지 않은 AI 값」처럼 읽힌다.
 //
 // 여기서 하지 않는 것: 시스템 프롬프트·API 원문·비밀값 표시. 판정을 다시
 // 계산하거나 바꾸는 일. 이 컴포넌트는 이미 나온 result.checks를 그대로
@@ -32,14 +34,17 @@ import {
   labelOf,
 } from '@/lib/i18n/checkText';
 import { formatMargin } from '@/lib/i18n/format';
+import { reanalysisDetailText } from '@/lib/i18n/reanalysisText';
 import { ruleLabelText } from '@/lib/i18n/ruleLabel';
 import { markingsNotFromOcr, type NumericMarkingKey } from '@/lib/ocr/confirm';
+import { readByAcceptedReanalysis } from '@/lib/record/reanalysis';
 import { RULE, formatExpiry } from '@/lib/rules/engine';
 import { margins } from '@/lib/rules/requirement';
 import type {
   CheckItem,
   GrinderSpec,
   MatchResult,
+  ReanalysisRecord,
   WheelSpec,
 } from '@/lib/rules/types';
 
@@ -246,6 +251,11 @@ export interface EvidencePanelProps {
   /** 사용자가 손대기 전의 OCR 원본. 이 기능 도입 전 기록에는 없다(undefined). */
   grinderOcr?: GrinderSpec;
   wheelOcr?: WheelSpec;
+  /**
+   * 결과 화면에서 받은 서버 재분석 판독. 재분석을 하지 않았거나(빈 목록) 알 수 없는
+   * 기록(undefined)에는 그 구역을 그리지 않는다.
+   */
+  reanalyses?: readonly ReanalysisRecord[];
 }
 
 export function EvidencePanel({
@@ -254,9 +264,18 @@ export function EvidencePanel({
   result,
   grinderOcr,
   wheelOcr,
+  reanalyses,
 }: EvidencePanelProps) {
   const { t, locale } = useLocale();
   const [open, setOpen] = useState(false);
+  const reanalysisDetails = reanalysisDetailText(
+    reanalyses,
+    grinder,
+    wheel,
+    t,
+    locale,
+    wheelOcr,
+  );
 
   const grinderOcrPresent = grinderOcr !== undefined;
   const wheelOcrPresent = wheelOcr !== undefined;
@@ -313,15 +332,28 @@ export function EvidencePanel({
     },
   ];
 
-  // 판정에 쓴 표기 가운데 기록된 OCR 원본과 다른 값. 지금 코드에서는 서버 재분석을
-  // 받아들인 점검에만 생긴다 — OCR 원본 자리는 서버 판독으로 바뀌고, 확정값에는 그
-  // 전에 기기가 읽어 둔 표기가 남아 표기 일치·장착 규격 항목에 쓰인다. 여기서 알리지
-  // 않으면 판정을 막은 숫자가 어디서 왔는지 화면 어디에도 없다.
+  // 판정에 쓴 표기 가운데 기록된 OCR 원본과 다른 값. 서버 재분석을 받아들인 점검에만
+  // 생긴다. 그 표기는 표기 일치·장착 규격 항목에 쓰이므로, 여기서 알리지 않으면
+  // 판정에 쓴 숫자가 어디서 왔는지 이 표에서는 보이지 않는다. 기록의 모양이 둘이다.
   //
-  // 기록이 말해 주는 것은 "두 값이 다르다"까지다. 어디서 온 값인지는 거기서 추론한
-  // 것이라 문구도 「…로 보인다」고 적는다(evidence.markings.note). OCR 원본이 없는
-  // 기록은 견줄 원본이 없으므로 만들지 않는다 — 재분석 전 판독이라고 지어내지 않는다.
-  const deviceMarkings = wheelOcr ? markingsNotFromOcr(wheel, wheelOcr) : [];
+  //   재분석 판독 칸이 있는 기록 — OCR 원본 자리는 확정할 때의 판독 그대로이고,
+  //     받아들인 재분석 판독이 확정값 표기의 **빈 자리**를 채웠다. 다른 칸은 그 판독이
+  //     읽은 값이다. 기록으로 확인되므로 그렇게 적는다(noteReanalysis). 확정할 때의
+  //     판독이 읽어 둔 표기는 OCR 원본과 같아 여기 나오지 않는다 — 출처가 원본에
+  //     그대로 있다.
+  //   그 칸이 생기기 전의 기록 — 받아들인 서버 판독이 OCR 원본 자리를 덮었고,
+  //     확정값에는 그 전에 읽어 둔 표기가 남아 있다. 기록이 말해 주는 것은 "두 값이
+  //     다르다"까지라, 어디서 온 값인지는 추론이고 문구도 「…로 보인다」고 적는다
+  //     (note).
+  //
+  // OCR 원본이 없는 기록은 견줄 원본이 없으므로 만들지 않는다 — 출처를 지어내지 않는다.
+  const differingMarkings = wheelOcr ? markingsNotFromOcr(wheel, wheelOcr) : [];
+  const markingsNoteKey: MessageKey = readByAcceptedReanalysis(
+    reanalyses,
+    differingMarkings,
+  )
+    ? 'evidence.markings.noteReanalysis'
+    : 'evidence.markings.note';
 
   // 최고사용회전속도만 라벨 표기(rpm 또는 m/s)와 정규화된 rpm이 다를 수 있다.
   const markings = wheelOcr?.markings;
@@ -479,14 +511,14 @@ export function EvidencePanel({
               {wheelRows.map((row) => (
                 <FieldRow key={`wheel-${row.key}`} row={row} t={t} />
               ))}
-              {/* 위 줄들의 「OCR 원본」은 기록된 판독(서버)이다. 그와 다른 표기로
-                  대조했으면 섞지 않고 따로 적는다 — 작업자가 확인한 최종값도 아니다. */}
-              {deviceMarkings.length > 0 && (
+              {/* 위 줄들의 「OCR 원본」은 기록된 판독이다. 그와 다른 표기로 대조했으면
+                  섞지 않고 따로 적는다 — 작업자가 확인한 최종값도 아니다. */}
+              {differingMarkings.length > 0 && (
                 <li className="flex flex-col gap-1 rounded-lg border border-yellow-500/40 bg-slate-800 px-4 py-3">
                   <span className="text-base font-semibold text-slate-100">
                     {t('evidence.markings.title')}
                   </span>
-                  {deviceMarkings.map((marking) => (
+                  {differingMarkings.map((marking) => (
                     <span key={marking.key} className="text-sm text-slate-300">
                       {t('evidence.markings.row', {
                         field: t(MARKING_TEXT[marking.key].labelKey),
@@ -503,12 +535,46 @@ export function EvidencePanel({
                     </span>
                   ))}
                   <span className="text-sm leading-relaxed text-slate-400">
-                    {t('evidence.markings.note')}
+                    {t(markingsNoteKey)}
                   </span>
                 </li>
               )}
             </ul>
           </section>
+
+          {/* 위 표의 「OCR 원본」은 작업자가 확인 화면에서 고치기 전의 값이다.
+              재분석 판독은 값을 확정한 뒤에 받은 것이라 그 표에 넣지 않고 따로
+              보인다. 받아들이지 않은 판독도 그대로 보인다. */}
+          {reanalysisDetails.length > 0 && (
+            <section className="flex flex-col gap-2">
+              <h3 className="text-base font-bold text-slate-100">
+                {t('evidence.reanalysis.title')}
+              </h3>
+              <p className="text-sm leading-relaxed text-slate-400">
+                {t('evidence.reanalysis.note')}
+              </p>
+              <ul className="flex flex-col gap-2">
+                {reanalysisDetails.map((detail, index) => (
+                  <li
+                    key={index}
+                    className="flex flex-col gap-1 rounded-lg bg-slate-800 px-4 py-3"
+                  >
+                    <span className="text-base font-semibold text-slate-100">
+                      {detail.heading}
+                    </span>
+                    {detail.lines.map((line, lineIndex) => (
+                      <span
+                        key={lineIndex}
+                        className="text-sm leading-relaxed text-slate-400"
+                      >
+                        {line}
+                      </span>
+                    ))}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <section className="flex flex-col gap-2">
             <h3 className="text-base font-bold text-slate-100">

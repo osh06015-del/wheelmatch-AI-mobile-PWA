@@ -5,7 +5,12 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { isValidWheelSpec, sanitizeInspectionRecord } from './recordSanitize';
+import {
+  isValidReanalyses,
+  isValidWheelSpec,
+  sanitizeInspectionRecord,
+} from './recordSanitize';
+import { MAX_REANALYSES } from '@/lib/record/reanalysis';
 import type { VisibleDamageSource } from '@/lib/rules/types';
 
 /** 대부분의 optional 중첩 필드까지 채운 완전한 기록. 라운드트립 검증용 */
@@ -122,6 +127,40 @@ function fullRecordRaw(): Record<string, unknown> {
     preTrialElapsedMs: 30000,
     ruleVersion: 'v3',
     analysisMode: 'online',
+    reanalyses: [reanalysisRaw()],
+  };
+}
+
+/** 결과 화면에서 숫돌 라벨만 서버로 다시 읽고, 받아들이지 않은 판독 한 줄 */
+function reanalysisRaw(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    analyzedAt: '2026-09-18T00:00:40.000Z',
+    grinderOcr: null,
+    grinderOcrTelemetry: null,
+    wheelOcr: {
+      maxRPM: 13300,
+      diameter: 125,
+      thickness: 6,
+      purpose: 'grinding',
+      wheelType: 'bonded_abrasive',
+      visibleDamage: 'suspected',
+      rawText: '125x6x22.23 13300',
+      confidence: 'medium',
+    },
+    wheelOcrTelemetry: {
+      engine: 'claude',
+      model: 'claude-x',
+      inputTokens: 1500,
+      outputTokens: 120,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+      durationMs: 2100,
+    },
+    acceptedAt: null,
+    damageRecheck: null,
+    ...overrides,
   };
 }
 
@@ -477,5 +516,187 @@ describe('sanitizeInspectionRecord — 알려진 필드의 손상은 기록 전�
     expect(sanitizeInspectionRecord('not an object')).toBeNull();
     expect(sanitizeInspectionRecord(null)).toBeNull();
     expect(sanitizeInspectionRecord([1, 2, 3])).toBeNull();
+  });
+});
+
+describe('sanitizeInspectionRecord — 서버 재분석 판독(reanalyses)', () => {
+  // 이 칸을 옮겨 담지 않으면 백업을 거친 기록에서 재분석 판독이 조용히 사라진다.
+  // 그러면 받아들이지 않은 판독이 올린 외관 의심이 다시 출처 없는 값이 된다.
+
+  function withReanalyses(reanalyses: unknown): Record<string, unknown> {
+    return { ...fullRecordRaw(), reanalyses };
+  }
+
+  it('받아들이지 않은 판독이 OCR 원본·메타데이터째 그대로 남는다', () => {
+    const raw = withReanalyses([reanalysisRaw()]);
+    expect(sanitizeInspectionRecord(raw)?.reanalyses).toEqual([
+      reanalysisRaw(),
+    ]);
+  });
+
+  it('받아들인 시각과 다시 받은 손상 답이 그대로 남는다', () => {
+    const accepted = reanalysisRaw({
+      acceptedAt: '2026-09-18T00:01:10.000Z',
+      damageRecheck: {
+        damageFree: true,
+        answeredAt: '2026-09-18T00:01:00.000Z',
+      },
+    });
+    expect(
+      sanitizeInspectionRecord(withReanalyses([accepted]))?.reanalyses,
+    ).toEqual([accepted]);
+  });
+
+  it('명판을 함께 다시 읽은 판독도 남는다', () => {
+    const both = reanalysisRaw({
+      grinderOcr: fullRecordRaw().grinder,
+      grinderOcrTelemetry: fullRecordRaw().grinderOcrTelemetry,
+    });
+    expect(
+      sanitizeInspectionRecord(withReanalyses([both]))?.reanalyses,
+    ).toEqual([both]);
+  });
+
+  it('여러 번 받은 판독은 순서대로 모두 남는다', () => {
+    const list = [
+      reanalysisRaw(),
+      reanalysisRaw({ analyzedAt: '2026-09-18T00:02:00.000Z' }),
+    ];
+    expect(sanitizeInspectionRecord(withReanalyses(list))?.reanalyses).toEqual(
+      list,
+    );
+  });
+
+  it('빈 목록(재분석을 하지 않음)은 빈 목록으로 남는다 — 지우지 않는다', () => {
+    // 빈 목록과 칸 없음은 뜻이 다르다. 지우면 "하지 않았다"가 "알 수 없다"로 바뀐다.
+    const result = sanitizeInspectionRecord(withReanalyses([]));
+    expect(result).toHaveProperty('reanalyses');
+    expect(result?.reanalyses).toEqual([]);
+  });
+
+  it('칸이 없는 구기록에 빈 목록을 만들어 넣지 않는다', () => {
+    const raw = fullRecordRaw();
+    delete raw.reanalyses;
+    const result = sanitizeInspectionRecord(raw);
+    expect(result).not.toBeNull();
+    expect(result).not.toHaveProperty('reanalyses');
+  });
+
+  it('판독 안의 알 수 없는 속성은 버린다', () => {
+    const raw = withReanalyses([
+      reanalysisRaw({
+        rawApiResponse: { id: 'msg_1' },
+        damageRecheck: {
+          damageFree: true,
+          answeredAt: '2026-09-18T00:01:00.000Z',
+          note: 'x',
+        },
+      }),
+    ]);
+    const [entry] = sanitizeInspectionRecord(raw)?.reanalyses ?? [];
+    expect(entry).not.toHaveProperty('rawApiResponse');
+    expect(entry?.damageRecheck).toEqual({
+      damageFree: true,
+      answeredAt: '2026-09-18T00:01:00.000Z',
+    });
+  });
+
+  it.each([
+    ['목록이 배열이 아니다', { 0: reanalysisRaw() }],
+    ['도착 시각이 날짜가 아니다', [reanalysisRaw({ analyzedAt: 'soon' })]],
+    ['받아들인 시각이 날짜가 아니다', [reanalysisRaw({ acceptedAt: true })]],
+    [
+      '판독 안의 숫돌 종류가 목록에 없다',
+      [
+        reanalysisRaw({
+          wheelOcr: {
+            ...(reanalysisRaw().wheelOcr as Record<string, unknown>),
+            wheelType: 'not-a-real-type',
+          },
+        }),
+      ],
+    ],
+    [
+      '메타데이터의 엔진이 목록에 없다',
+      [
+        reanalysisRaw({
+          wheelOcrTelemetry: {
+            ...(reanalysisRaw().wheelOcrTelemetry as Record<string, unknown>),
+            engine: 'gpt',
+          },
+        }),
+      ],
+    ],
+    [
+      '손상 답이 boolean이 아니다',
+      [
+        reanalysisRaw({
+          damageRecheck: {
+            damageFree: 'yes',
+            answeredAt: '2026-09-18T00:01:00.000Z',
+          },
+        }),
+      ],
+    ],
+    [
+      '손상 답의 시각이 없다',
+      [reanalysisRaw({ damageRecheck: { damageFree: true } })],
+    ],
+  ])('%s → 기록 전체가 무효다', (_label, reanalyses) => {
+    expect(sanitizeInspectionRecord(withReanalyses(reanalyses))).toBeNull();
+  });
+
+  it('빠진 칸이 있는 판독은 무효다 — "없음"은 null로 적혀 있어야 한다', () => {
+    // 칸이 빠진 것을 null로 읽어 주면, 받아들인 시각이 잘려 나간 판독이
+    // "받아들이지 않음"으로 읽힌다.
+    for (const key of [
+      'analyzedAt',
+      'grinderOcr',
+      'grinderOcrTelemetry',
+      'wheelOcr',
+      'wheelOcrTelemetry',
+      'acceptedAt',
+      'damageRecheck',
+    ]) {
+      const entry = reanalysisRaw();
+      delete entry[key];
+      expect(sanitizeInspectionRecord(withReanalyses([entry])), key).toBeNull();
+    }
+  });
+
+  it('상한을 넘는 목록은 무효다', () => {
+    const tooMany = Array.from({ length: MAX_REANALYSES + 1 }, () =>
+      reanalysisRaw(),
+    );
+    expect(sanitizeInspectionRecord(withReanalyses(tooMany))).toBeNull();
+    expect(
+      sanitizeInspectionRecord(withReanalyses(tooMany.slice(1))),
+    ).not.toBeNull();
+  });
+});
+
+describe('isValidReanalyses — 진행 중 점검이 되살리는 재분석 판독', () => {
+  // draft 복구와 새로고침 복원이 이 함수로 저장된 목록을 검사한다. 백업과 기준이
+  // 다르면 복구는 통과시켰는데 백업에서는 기록째 빠지는 값이 생긴다.
+
+  it('온전한 목록과 빈 목록은 통과한다', () => {
+    expect(isValidReanalyses([reanalysisRaw()])).toBe(true);
+    expect(isValidReanalyses([])).toBe(true);
+  });
+
+  it('배열이 아니거나 판독 하나라도 어긋나면 통과하지 못한다', () => {
+    expect(isValidReanalyses(null)).toBe(false);
+    expect(isValidReanalyses({})).toBe(false);
+    expect(
+      isValidReanalyses([reanalysisRaw(), reanalysisRaw({ acceptedAt: 1 })]),
+    ).toBe(false);
+  });
+
+  it('상한을 넘는 목록은 통과하지 못한다', () => {
+    expect(
+      isValidReanalyses(
+        Array.from({ length: MAX_REANALYSES + 1 }, () => reanalysisRaw()),
+      ),
+    ).toBe(false);
   });
 });

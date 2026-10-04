@@ -135,6 +135,8 @@ export const ko = {
   'evidence.markings.row': '{field}: 판정에 쓴 값 {used} / OCR 원본 {ocr}',
   'evidence.markings.note':
     '기록된 OCR 원본과 다른 값입니다. 서버로 다시 분석하기 전에 읽어 둔 표기로 보이며, 작업자가 확인한 값이 아닙니다.',
+  'evidence.markings.noteReanalysis':
+    '기록된 OCR 원본과 다른 값입니다. 받아들인 서버 재분석 판독이 읽은 표기이며, 작업자가 확인한 값이 아닙니다.',
   'evidence.rules.title': '규칙별 판정 근거',
   'evidence.rules.formula': '계산식',
   'evidence.rules.difference': '차이',
@@ -1100,6 +1102,29 @@ export const ko = {
     '앞서 답한 숫돌 손상 확인은 아래 AI 경고를 보기 전의 답입니다. 숫돌 실물을 다시 보고 답해야 제한 대조를 풀 수 있습니다.',
   'offline.accept': 'AI 값과 같음을 확인하고 제한 대조 풀기',
   'offline.cancel': '취소하고 제한 대조 결과 유지',
+  'offline.reanalysisLimit':
+    '이 점검에서 받을 수 있는 서버 재분석 {max}회를 모두 받았습니다. 제한 대조 결과를 유지하거나 다시 촬영하세요.',
+  'reanalysis.title': '서버 재분석 기록',
+  'reanalysis.summary.accepted':
+    '서버 재분석 판독 {count}건 가운데 {accepted}건을 받아들였습니다. AI가 읽은 회전속도·지름이 작업자가 확정한 값과 같음을 확인하고 {steps} 단계의 제한 대조를 푼 것입니다. 작업자가 확정한 값은 AI 값으로 바꾸지 않았습니다.',
+  'reanalysis.summary.notAccepted':
+    '서버 재분석 판독 {count}건 가운데 받아들인 것은 없습니다. AI가 읽은 회전속도·지름은 규격 대조에 쓰지 않았습니다.',
+  'reanalysis.summary.damageSuspected':
+    '재분석한 AI가 사진에서 손상 징후를 의심했고, 그 경고는 결과의 외관 손상 항목에 반영했습니다.',
+  'reanalysis.summary.recheck':
+    'AI 경고를 본 뒤 숫돌 손상 항목(깨짐·갈라짐)을 다시 물었고, 작업자가 「{answer}」으로 답했습니다.',
+  'reanalysis.steps.both': '{first}·{second}',
+  'reanalysis.item.heading': '재분석 {index} · {time} · 모델 {model}',
+  'reanalysis.item.damageSuspected': 'AI 외관 판독: 손상 징후 의심',
+  'reanalysis.item.damageNotSeen':
+    'AI 외관 판독: 사진에서 손상 징후를 찾지 못함 — 손상이 없다는 뜻이 아닙니다',
+  'reanalysis.item.damageUnknown': 'AI 외관 판독: 판별하지 못함',
+  'reanalysis.item.accepted': '제한 대조: 이 판독을 확인하고 풂 ({time})',
+  'reanalysis.item.notAccepted': '제한 대조: 풀지 않음',
+  'reanalysis.item.recheck': '손상 항목 다시 확인: 「{answer}」 ({time})',
+  'evidence.reanalysis.title': '서버 재분석 판독',
+  'evidence.reanalysis.note':
+    '값을 확정한 뒤 결과 화면에서 서버로 다시 읽은 판독입니다. 작업자가 고친 적이 없는 값이라 위 OCR 원본과 따로 남깁니다. 이 판독에서 확정값으로 옮긴 것은 외관 손상 의심과, 받아들인 숫돌 판독의 라벨 표기 가운데 비어 있던 자리뿐입니다.',
   'draft.title': '진행 중이던 점검이 있습니다',
   'draft.body':
     '이어서 하거나, 저장해 둔 진행 상태를 삭제하고 새로 시작할 수 있습니다. 앱이 알아서 이어가거나 지우지 않습니다.',

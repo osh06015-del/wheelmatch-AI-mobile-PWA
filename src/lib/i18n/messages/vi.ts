@@ -140,6 +140,8 @@ export const vi: Messages = {
     '{field}: giá trị đã dùng {used} / bản gốc OCR {ocr}',
   'evidence.markings.note':
     'Các giá trị này khác với bản gốc OCR đã ghi. Có vẻ đây là giá trị đọc được trước khi phân tích lại trên máy chủ, và không phải giá trị người vận hành đã xác nhận.',
+  'evidence.markings.noteReanalysis':
+    'Các giá trị này khác với bản gốc OCR đã ghi. Đây là giá trị do kết quả đọc khi phân tích lại trên máy chủ (đã được chấp nhận) đọc được, và không phải giá trị người vận hành đã xác nhận.',
   'evidence.rules.title': 'Căn cứ kết quả theo từng quy tắc',
   'evidence.rules.formula': 'Công thức',
   'evidence.rules.difference': 'Chênh lệch',
@@ -1113,6 +1115,31 @@ export const vi: Messages = {
     'Câu trả lời trước đó của bạn về hư hỏng đá mài được đưa ra trước cảnh báo AI bên dưới. Hãy xem lại đá mài thực tế và trả lời thì mới gỡ được đối chiếu hạn chế.',
   'offline.accept': 'Xác nhận giá trị giống giá trị AI và gỡ đối chiếu hạn chế',
   'offline.cancel': 'Hủy và giữ kết quả đối chiếu hạn chế',
+  'offline.reanalysisLimit':
+    'Lần kiểm tra này đã nhận đủ {max} lần phân tích lại trên máy chủ. Hãy giữ kết quả đối chiếu hạn chế hoặc chụp lại.',
+  'reanalysis.title': 'Ghi nhận phân tích lại trên máy chủ',
+  'reanalysis.summary.accepted':
+    'Số kết quả đọc khi phân tích lại trên máy chủ: {count}. Đã chấp nhận: {accepted}. Với mỗi kết quả được chấp nhận, tốc độ quay và đường kính AI đọc được đã được xác nhận là giống với giá trị người làm việc đã xác nhận, và đối chiếu hạn chế đã được gỡ cho bước đó ({steps}). Giá trị người làm việc đã xác nhận không bị thay bằng giá trị AI.',
+  'reanalysis.summary.notAccepted':
+    'Số kết quả đọc khi phân tích lại trên máy chủ: {count}. Đã chấp nhận: không có. Tốc độ quay và đường kính AI đọc được không được dùng để đối chiếu thông số.',
+  'reanalysis.summary.damageSuspected':
+    'AI phân tích lại đã nghi ngờ có dấu hiệu hư hỏng trong ảnh, và cảnh báo đó đã được đưa vào mục hư hỏng bên ngoài của kết quả.',
+  'reanalysis.summary.recheck':
+    'Sau cảnh báo của AI, mục hư hỏng đá mài (vỡ, nứt) đã được hỏi lại và người làm việc trả lời «{answer}».',
+  'reanalysis.steps.both': '{first} và {second}',
+  'reanalysis.item.heading': 'Phân tích lại {index} · {time} · mô hình {model}',
+  'reanalysis.item.damageSuspected':
+    'AI đọc bên ngoài: nghi ngờ có dấu hiệu hư hỏng',
+  'reanalysis.item.damageNotSeen':
+    'AI đọc bên ngoài: không tìm thấy dấu hiệu hư hỏng trong ảnh — không có nghĩa là đá mài không hư hỏng',
+  'reanalysis.item.damageUnknown': 'AI đọc bên ngoài: không xác định được',
+  'reanalysis.item.accepted':
+    'Đối chiếu hạn chế: đã gỡ sau khi xác nhận kết quả đọc này ({time})',
+  'reanalysis.item.notAccepted': 'Đối chiếu hạn chế: chưa gỡ',
+  'reanalysis.item.recheck': 'Hỏi lại mục hư hỏng: «{answer}» ({time})',
+  'evidence.reanalysis.title': 'Kết quả đọc khi phân tích lại trên máy chủ',
+  'evidence.reanalysis.note':
+    'Đây là kết quả đọc lại trên máy chủ từ màn hình kết quả, sau khi các giá trị đã được xác nhận. Người làm việc chưa từng sửa các giá trị này nên chúng được lưu riêng với bản gốc OCR ở trên. Chỉ có hai thứ được chuyển từ các kết quả đọc này sang giá trị đã xác nhận: nghi ngờ có dấu hiệu hư hỏng, và — từ kết quả đọc đá mài đã được chấp nhận — các ghi nhãn cho những ô còn trống.',
   'draft.title': 'Có một lần kiểm tra đang dở',
   'draft.body':
     'Bạn có thể tiếp tục, hoặc xóa tiến trình đã lưu và bắt đầu lại. Ứng dụng không tự tiếp tục hay tự xóa.',

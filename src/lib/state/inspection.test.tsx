@@ -10,7 +10,9 @@ import {
   limitCausesOf,
   readOfflineSlots,
   useInspection,
+  type ReanalysisInput,
 } from './inspection';
+import { MAX_REANALYSES } from '@/lib/record/reanalysis';
 import type { TrialRunProgress } from '@/lib/safety/trialRun';
 import type {
   CaptureQualityMetrics,
@@ -516,24 +518,35 @@ describe('제한 대조 표시와 진행 중 점검 복구', () => {
     expect(result.current.analysisMode).toBe('online');
   });
 
-  it('서버 재분석을 받아들이면 AI 값은 원본 자리에만 들어가고 최종값은 그대로다', () => {
+  it('서버 재분석을 받아들여도 AI 값은 재분석 판독으로만 남고, 최종값과 OCR 원본 자리는 그대로다', () => {
     const { result } = renderHook(() => useInspection());
     const typed: GrinderSpec = { ...GRINDER, rawText: '', confidence: 'high' };
+    const plate = new Blob(['plate'], { type: 'image/jpeg' });
     act(() => {
-      result.current.setGrinder(typed, null, null);
+      result.current.setGrinder(typed, plate, null);
       result.current.setOfflineSlot('grinder', true);
     });
 
     const ai: GrinderSpec = { ...GRINDER, rawText: 'AI', confidence: 'medium' };
-    act(() =>
-      result.current.applyReanalysis({
-        grinderOcr: ai,
-        grinderOcrTelemetry: null,
-      }),
-    );
+    const reading = { grinderOcr: ai, grinderOcrTelemetry: null };
+    act(() => {
+      result.current.recordReanalysis(reading, {
+        grinderImage: plate,
+        wheelImage: null,
+      });
+      result.current.applyReanalysis(reading);
+    });
 
     expect(result.current.grinder).toBe(typed);
-    expect(result.current.grinderOcr).toEqual(ai);
+    // 직접 넣은 명판에는 「작업자가 고치기 전의 OCR 원본」이 없다. 작업자가 고친 적
+    // 없는 재분석 판독으로 그 자리를 채우지 않는다.
+    expect(result.current.grinderOcr).toBeNull();
+    expect(result.current.reanalyses).toHaveLength(1);
+    expect(result.current.reanalyses?.[0]).toMatchObject({
+      grinderOcr: ai,
+      wheelOcr: null,
+    });
+    expect(result.current.reanalyses?.[0]?.acceptedAt).not.toBeNull();
     expect(result.current.analysisMode).toBe('online');
   });
 
@@ -596,15 +609,30 @@ describe('제한 대조 표시와 진행 중 점검 복구', () => {
         sessionStorage.getItem('wheelmatch.wheel') ?? 'null',
       ) as WheelSpec;
 
+    /** 이 묶음의 명판은 사진 없이 온라인으로 읽은 것이다. 라벨 사진만 서버로 간다 */
+    const SENT = { grinderImage: null, wheelImage: PHOTO };
+
+    /**
+     * 재분석 결과가 도착하고(recordReanalysis) 작업자가 받아들인다(applyReanalysis).
+     * 화면의 순서 그대로다 — 도착했을 때 남기지 않은 판독은 받아들일 수 없다.
+     */
+    function reanalyzeAndAccept(
+      result: ReturnType<typeof typedOffline>,
+      reading: ReanalysisInput,
+    ) {
+      act(() => {
+        result.current.recordReanalysis(reading, SENT);
+        result.current.applyReanalysis(reading);
+      });
+    }
+
     it('AI가 외관 손상을 의심하면 최종값에 의심이 더해지고, 작업자가 넣은 값은 그대로다', () => {
       const result = typedOffline();
 
-      act(() =>
-        result.current.applyReanalysis({
-          wheelOcr: { ...AI, visibleDamage: 'suspected' },
-          wheelOcrTelemetry: null,
-        }),
-      );
+      reanalyzeAndAccept(result, {
+        wheelOcr: { ...AI, visibleDamage: 'suspected' },
+        wheelOcrTelemetry: null,
+      });
 
       expect(result.current.analysisMode).toBe('online');
       expect(result.current.wheel?.visibleDamage).toBe('suspected');
@@ -622,23 +650,24 @@ describe('제한 대조 표시와 진행 중 점검 복구', () => {
       });
       // 새로고침해도 의심이 남는다.
       expect(storedWheel().visibleDamage).toBe('suspected');
-      // OCR 원본 자리에는 AI가 읽은 그대로 들어간다.
-      expect(result.current.wheelOcr?.visibleDamage).toBe('suspected');
+      // AI가 읽은 그대로는 재분석 판독에 남는다. OCR 원본 자리는 비어 있던 그대로다.
+      expect(result.current.reanalyses?.[0]?.wheelOcr?.visibleDamage).toBe(
+        'suspected',
+      );
+      expect(result.current.wheelOcr).toBeNull();
     });
 
-    it('AI가 읽은 원본 표시가 최종값에 들어가고, OCR 원본과 객체를 공유하지 않는다', () => {
+    it('AI가 읽은 원본 표시가 최종값에 들어가고, 재분석 판독과 객체를 공유하지 않는다', () => {
       const result = typedOffline();
 
-      act(() =>
-        result.current.applyReanalysis({
-          wheelOcr: AI,
-          wheelOcrTelemetry: null,
-        }),
-      );
+      reanalyzeAndAccept(result, { wheelOcr: AI, wheelOcrTelemetry: null });
 
       expect(result.current.wheel?.markings).toEqual(AI.markings);
+      expect(result.current.reanalyses?.[0]?.wheelOcr?.markings).toEqual(
+        AI.markings,
+      );
       expect(result.current.wheel?.markings).not.toBe(
-        result.current.wheelOcr?.markings,
+        result.current.reanalyses?.[0]?.wheelOcr?.markings,
       );
       expect(storedWheel().markings).toEqual(AI.markings);
     });
@@ -647,12 +676,7 @@ describe('제한 대조 표시와 진행 중 점검 복구', () => {
       // 의심을 지어내지 않는다. 보이지 않았다는 판독으로 덮어쓰지도 않는다.
       const result = typedOffline();
 
-      act(() =>
-        result.current.applyReanalysis({
-          wheelOcr: AI,
-          wheelOcrTelemetry: null,
-        }),
-      );
+      reanalyzeAndAccept(result, { wheelOcr: AI, wheelOcrTelemetry: null });
 
       expect(result.current.wheel?.visibleDamage).toBe('unknown');
     });
@@ -660,12 +684,7 @@ describe('제한 대조 표시와 진행 중 점검 복구', () => {
     it('이미 올라와 있던 의심은 재분석이 의심하지 않아도 지워지지 않는다', () => {
       const result = typedOffline({ ...TYPED, visibleDamage: 'suspected' });
 
-      act(() =>
-        result.current.applyReanalysis({
-          wheelOcr: AI,
-          wheelOcrTelemetry: null,
-        }),
-      );
+      reanalyzeAndAccept(result, { wheelOcr: AI, wheelOcrTelemetry: null });
 
       expect(result.current.wheel?.visibleDamage).toBe('suspected');
       expect(storedWheel().visibleDamage).toBe('suspected');
@@ -676,12 +695,12 @@ describe('제한 대조 표시와 진행 중 점검 복구', () => {
       const result = typedOffline();
 
       act(() =>
-        result.current.keepReanalysisSuspicion(
+        result.current.recordReanalysis(
           {
             wheelOcr: { ...AI, visibleDamage: 'suspected' },
             wheelOcrTelemetry: null,
           },
-          PHOTO,
+          SENT,
         ),
       );
 
@@ -694,14 +713,14 @@ describe('제한 대조 표시와 진행 중 점검 복구', () => {
       expect(sessionStorage.getItem('wheelmatch.wheelOcr')).toBe('null');
     });
 
-    it('재분석이 의심하지 않았으면 결과가 도착해도 아무것도 바꾸지 않는다', () => {
+    it('재분석이 의심하지 않았으면 결과가 도착해도 확정값은 바꾸지 않는다', () => {
       const result = typedOffline();
       const before = result.current.wheel;
 
       act(() =>
-        result.current.keepReanalysisSuspicion(
+        result.current.recordReanalysis(
           { wheelOcr: AI, wheelOcrTelemetry: null },
-          PHOTO,
+          SENT,
         ),
       );
 
@@ -722,17 +741,19 @@ describe('제한 대조 표시와 진행 중 점검 복구', () => {
       });
 
       act(() =>
-        result.current.keepReanalysisSuspicion(
+        result.current.recordReanalysis(
           {
             wheelOcr: { ...AI, visibleDamage: 'suspected' },
             wheelOcrTelemetry: null,
           },
-          PHOTO,
+          SENT,
         ),
       );
 
       expect(result.current.wheel?.visibleDamage).toBe('unknown');
       expect(storedWheel().visibleDamage).toBe('unknown');
+      // 그 판독은 이 점검의 숫돌을 본 것이 아니다. 기록에도 남기지 않는다.
+      expect(result.current.reanalyses).toEqual([]);
     });
 
     /** 로컬 OCR이 rpm 표기만 읽어 둔 확정값 */
@@ -760,13 +781,12 @@ describe('제한 대조 표시와 진행 중 점검 복구', () => {
     it('로컬 OCR이 읽어 둔 표기는 그대로 두고 빈 자리만 채운다', () => {
       // 로컬 OCR은 rpm 표기만 읽었다. 서버는 rpm을 같게 읽고 m/s와 내경을 더 읽었다.
       const result = typedOffline(LOCAL_RPM_ONLY);
+      const reading: ReanalysisInput = {
+        wheelOcr: AI,
+        wheelOcrTelemetry: null,
+      };
 
-      act(() =>
-        result.current.applyReanalysis({
-          wheelOcr: AI,
-          wheelOcrTelemetry: null,
-        }),
-      );
+      reanalyzeAndAccept(result, reading);
 
       expect(result.current.analysisMode).toBe('online');
       expect(result.current.wheel?.markings).toEqual({
@@ -776,6 +796,10 @@ describe('제한 대조 표시와 진행 중 점검 복구', () => {
         expiryRaw: '12/2099',
       });
       expect(storedWheel().markings).toEqual(result.current.wheel?.markings);
+      // 서버가 읽은 그대로는 재분석 판독에 남는다. OCR 원본 자리에는 넣지 않는다.
+      expect(result.current.reanalyses?.[0]?.wheelOcr).toEqual(AI);
+      expect(result.current.reanalyses?.[0]?.acceptedAt).not.toBeNull();
+      expect(result.current.wheelOcr).toBeNull();
     });
 
     it('로컬 OCR이 읽어 둔 표기를 서버가 다르게 읽었으면 전환하지 않는다', () => {
@@ -786,13 +810,14 @@ describe('제한 대조 표시와 진행 중 점검 복구', () => {
       const result = typedOffline(LOCAL_RPM_ONLY);
       const before = result.current.wheel;
       const storedBefore = sessionStorage.getItem('wheelmatch.wheel');
+      const reading: ReanalysisInput = {
+        wheelOcr: AI_RPM_MARKING_DIFFERS,
+        wheelOcrTelemetry: null,
+      };
 
-      act(() =>
-        result.current.applyReanalysis({
-          wheelOcr: AI_RPM_MARKING_DIFFERS,
-          wheelOcrTelemetry: null,
-        }),
-      );
+      // 화면의 순서 그대로다 — 도착한 판독을 남기고 받아들이려 한다. 남기지 않고
+      // 부르면 표기 충돌이 아니라 「남긴 적 없는 판독」이라서 거절돼 이 검사가 헛돈다.
+      reanalyzeAndAccept(result, reading);
 
       expect(result.current.analysisMode).toBe('offline_limited');
       expect(result.current.wheel).toBe(before);
@@ -803,6 +828,12 @@ describe('제한 대조 표시와 진행 중 점검 복구', () => {
       expect(
         JSON.parse(sessionStorage.getItem('wheelmatch.offlineSlots') ?? 'null'),
       ).toEqual({ grinder: false, wheel: true });
+      // 판독은 남아 있다 — 서버가 읽은 그대로, 받아들이지 않은 판독으로.
+      expect(result.current.reanalyses).toHaveLength(1);
+      expect(
+        result.current.reanalyses?.[0]?.wheelOcr?.markings?.labeledRPM,
+      ).toBe(13300);
+      expect(result.current.reanalyses?.[0]?.acceptedAt).toBeNull();
     });
 
     it('숫돌 표기가 충돌하면 함께 다시 분석한 명판도 전환하지 않는다', () => {
@@ -815,15 +846,17 @@ describe('제한 대조 표시와 진행 중 점검 복구', () => {
         result.current.setWheel(LOCAL_RPM_ONLY, PHOTO, null);
         result.current.setOfflineSlot('wheel', true);
       });
+      const reading: ReanalysisInput = {
+        grinderOcr: GRINDER,
+        grinderOcrTelemetry: null,
+        wheelOcr: AI_RPM_MARKING_DIFFERS,
+        wheelOcrTelemetry: null,
+      };
 
-      act(() =>
-        result.current.applyReanalysis({
-          grinderOcr: GRINDER,
-          grinderOcrTelemetry: null,
-          wheelOcr: AI_RPM_MARKING_DIFFERS,
-          wheelOcrTelemetry: null,
-        }),
-      );
+      act(() => {
+        result.current.recordReanalysis(reading, SENT);
+        result.current.applyReanalysis(reading);
+      });
 
       expect(result.current.offlineSlots).toEqual({
         grinder: true,
@@ -832,22 +865,483 @@ describe('제한 대조 표시와 진행 중 점검 복구', () => {
       expect(result.current.grinderOcr).toBeNull();
       expect(result.current.wheelOcr).toBeNull();
       expect(result.current.wheel).toEqual(LOCAL_RPM_ONLY);
+      // 명판·숫돌을 함께 읽은 판독 하나가 남아 있고, 받아들인 시각은 적히지 않았다.
+      expect(result.current.reanalyses).toHaveLength(1);
+      expect(result.current.reanalyses?.[0]).toMatchObject({
+        grinderOcr: GRINDER,
+        wheelOcr: AI_RPM_MARKING_DIFFERS,
+        acceptedAt: null,
+      });
     });
 
     it('명판만 재분석하면 숫돌 최종값은 건드리지 않는다', () => {
       const result = typedOffline();
       const before = result.current.wheel;
 
-      act(() =>
-        result.current.applyReanalysis({
-          grinderOcr: GRINDER,
-          grinderOcrTelemetry: null,
-        }),
-      );
+      reanalyzeAndAccept(result, {
+        grinderOcr: GRINDER,
+        grinderOcrTelemetry: null,
+      });
 
       expect(result.current.wheel).toBe(before);
       // 숫돌 쪽 오프라인 표시도 그대로다.
       expect(result.current.analysisMode).toBe('offline_limited');
+    });
+  });
+
+  describe('서버 재분석 판독 기록 — 받아들이지 않은 것도 남긴다', () => {
+    // 재분석 판독을 버리면 그 판독이 올린 외관 의심만 확정값에 남아, 의심이 어디서
+    // 왔는지 기록으로 되짚을 수 없다. 받아들인 판독도 OCR 원본 자리에 넣지 않는다 —
+    // 그 자리는 작업자가 확인 화면에서 고치기 전의 원본이고, 로컬 OCR로 읽은
+    // 점검이면 덮여 사라진다.
+
+    const PLATE = new Blob(['plate'], { type: 'image/jpeg' });
+    const LABEL = new Blob(['label'], { type: 'image/jpeg' });
+    const SENT = { grinderImage: PLATE, wheelImage: LABEL };
+
+    /** 작업자가 라벨을 직접 보고 넣은 값 */
+    const TYPED: WheelSpec = {
+      ...WHEEL,
+      visibleDamage: 'unknown',
+      rpmSource: 'user',
+    };
+
+    /** 서버가 같은 라벨 사진에서 읽은 값 */
+    const AI: WheelSpec = {
+      ...WHEEL,
+      markings: {
+        labeledRPM: 12200,
+        peripheralSpeedMps: 80,
+        boreDiameter: 22.23,
+      },
+      rpmSource: 'label',
+      rawText: 'AI',
+      confidence: 'medium',
+    };
+
+    const AI_TELEMETRY: OcrTelemetry = {
+      engine: 'claude',
+      model: 'claude-x',
+      inputTokens: 1500,
+      outputTokens: 120,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+      durationMs: 2100,
+    };
+
+    /** 명판은 온라인으로 읽고 숫돌 라벨만 직접 넣은 점검 */
+    function wheelOffline(
+      wheel: WheelSpec = TYPED,
+      ocr: WheelSpec | null = null,
+      telemetry: OcrTelemetry | null = null,
+    ) {
+      const { result } = renderHook(() => useInspection());
+      act(() => {
+        result.current.setGrinder(GRINDER, PLATE, GRINDER);
+        result.current.setWheel(wheel, LABEL, ocr, null, telemetry);
+        result.current.setOfflineSlot('wheel', true);
+        result.current.setWheelCondition(WHEEL_CONDITION);
+      });
+      return result;
+    }
+
+    const storedReanalyses = () =>
+      JSON.parse(sessionStorage.getItem('wheelmatch.reanalyses') ?? 'null');
+
+    it('점검을 시작하기 전에는 알 수 없음이고, 명판을 확정하면 빈 목록에서 시작한다', () => {
+      const { result } = renderHook(() => useInspection());
+      // 빈 목록은 "재분석을 하지 않았다"는 뜻이다. 아직 시작하지 않은 점검에 쓰지 않는다.
+      expect(result.current.reanalyses).toBeNull();
+
+      act(() => result.current.setGrinder(GRINDER, PLATE, GRINDER));
+
+      // 명판이 바뀌면 그 뒤의 모든 것이 처음부터다. 이 점검에는 재분석이 없었다.
+      expect(result.current.reanalyses).toEqual([]);
+      expect(storedReanalyses()).toEqual([]);
+    });
+
+    it('결과가 도착하면 받아들이기 전에도 판독을 메타데이터·도착 시각과 함께 남긴다', () => {
+      const result = wheelOffline();
+      const reading = {
+        wheelOcr: { ...AI, maxRPM: 13300, visibleDamage: 'suspected' as const },
+        wheelOcrTelemetry: AI_TELEMETRY,
+      };
+
+      act(() => result.current.recordReanalysis(reading, SENT));
+
+      expect(result.current.reanalyses).toHaveLength(1);
+      const [record] = result.current.reanalyses ?? [];
+      expect(record).toMatchObject({
+        grinderOcr: null,
+        grinderOcrTelemetry: null,
+        wheelOcr: reading.wheelOcr,
+        wheelOcrTelemetry: AI_TELEMETRY,
+        acceptedAt: null,
+        damageRecheck: null,
+      });
+      expect(Number.isNaN(Date.parse(record.analyzedAt))).toBe(false);
+      // 전환하지 않았다. 확정값의 회전속도도, OCR 원본 자리도 그대로다.
+      expect(result.current.analysisMode).toBe('offline_limited');
+      expect(result.current.wheel?.maxRPM).toBe(12200);
+      expect(result.current.wheelOcr).toBeNull();
+      // 새로고침을 넘어간다 — 확정값에 남는 의심과 함께 남아야 한다.
+      expect(storedReanalyses()).toEqual(result.current.reanalyses);
+    });
+
+    it('의심하지 않은 판독도 남긴다', () => {
+      // 의심을 올린 판독만 남기면 인식률을 잴 때 일부 판독만 세게 된다.
+      const result = wheelOffline();
+
+      act(() =>
+        result.current.recordReanalysis(
+          { wheelOcr: AI, wheelOcrTelemetry: null },
+          SENT,
+        ),
+      );
+
+      expect(result.current.reanalyses).toHaveLength(1);
+      expect(result.current.wheel?.visibleDamage).toBe('unknown');
+    });
+
+    it('다시 분석하면 앞선 판독 뒤에 붙는다 — 앞선 판독을 지우지 않는다', () => {
+      const result = wheelOffline();
+      const first = {
+        wheelOcr: { ...AI, visibleDamage: 'suspected' as const },
+      };
+      const second = { wheelOcr: { ...AI } };
+
+      act(() => result.current.recordReanalysis(first, SENT));
+      act(() => result.current.recordReanalysis(second, SENT));
+
+      // 둘째 판독은 의심하지 않았지만 확정값의 의심은 남는다. 그 의심이 첫 판독에서
+      // 왔다는 것을 기록이 말해 준다.
+      expect(result.current.wheel?.visibleDamage).toBe('suspected');
+      expect(
+        result.current.reanalyses?.map(
+          (record) => record.wheelOcr?.visibleDamage,
+        ),
+      ).toEqual(['suspected', 'none_visible']);
+    });
+
+    it('받아들이면 그 판독에 받아들인 시각을 적는다 — 앞선 판독에는 적지 않는다', () => {
+      const result = wheelOffline();
+      const first = { wheelOcr: { ...AI, maxRPM: 13300 } };
+      const second = { wheelOcr: { ...AI } };
+      act(() => result.current.recordReanalysis(first, SENT));
+      act(() => result.current.recordReanalysis(second, SENT));
+
+      act(() => result.current.applyReanalysis(second));
+
+      expect(result.current.analysisMode).toBe('online');
+      expect(result.current.reanalyses?.[0]?.acceptedAt).toBeNull();
+      const acceptedAt = result.current.reanalyses?.[1]?.acceptedAt ?? '';
+      expect(Number.isNaN(Date.parse(acceptedAt))).toBe(false);
+      expect(storedReanalyses()).toEqual(result.current.reanalyses);
+    });
+
+    it('도착했을 때 남기지 않은 판독은 받아들이지 않는다', () => {
+      // 남긴 적 없는 판독은 이 점검의 사진을 본 것인지 알 수 없다. 받아들이면
+      // 출처 없는 값으로 온라인 대조가 열린다.
+      const result = wheelOffline();
+      const before = result.current.wheel;
+
+      act(() => result.current.applyReanalysis({ wheelOcr: AI }));
+
+      expect(result.current.analysisMode).toBe('offline_limited');
+      expect(result.current.wheel).toBe(before);
+      expect(result.current.reanalyses).toEqual([]);
+    });
+
+    /** 기기 안 OCR이 읽었다는 응답 메타데이터 */
+    const LOCAL_TELEMETRY: OcrTelemetry = {
+      engine: 'tesseract',
+      model: null,
+      inputTokens: null,
+      outputTokens: null,
+      cacheReadTokens: null,
+      cacheCreationTokens: null,
+      durationMs: 800,
+    };
+
+    it('로컬 OCR로 읽은 원본은 재분석을 받아들여도 덮이지 않는다', () => {
+      // 기기 안 OCR이 지름을 115로 잘못 읽었고 작업자가 125로 고친 점검. 작업자가
+      // 고치기 전의 원본은 로컬 판독이다 — 서버 판독으로 덮으면 무엇을 보고 고쳤는지가
+      // 사라진다. rpm 표기는 맞게 읽었고 m/s 표기는 읽지 못했다.
+      const local: WheelSpec = {
+        ...WHEEL,
+        diameter: 115,
+        markings: {
+          labeledRPM: 12200,
+          peripheralSpeedMps: null,
+          boreDiameter: null,
+        },
+        rpmSource: 'label',
+        rawText: 'local',
+        confidence: 'low',
+      };
+      const confirmed: WheelSpec = {
+        ...TYPED,
+        markings: { ...local.markings! },
+      };
+      const result = wheelOffline(confirmed, local, LOCAL_TELEMETRY);
+      const reading = { wheelOcr: AI, wheelOcrTelemetry: AI_TELEMETRY };
+
+      act(() => {
+        result.current.recordReanalysis(reading, SENT);
+        result.current.applyReanalysis(reading);
+      });
+
+      expect(result.current.analysisMode).toBe('online');
+      expect(result.current.wheelOcr).toEqual(local);
+      expect(result.current.wheelOcrTelemetry).toEqual(LOCAL_TELEMETRY);
+      expect(
+        JSON.parse(sessionStorage.getItem('wheelmatch.wheelOcr') ?? 'null'),
+      ).toEqual(local);
+      // 서버 판독은 재분석 판독에 있다. 확정값의 표기가 어디서 왔는지 둘을 견줘 알 수 있다.
+      expect(result.current.reanalyses?.[0]?.wheelOcr).toEqual(AI);
+      expect(result.current.reanalyses?.[0]?.acceptedAt).not.toBeNull();
+      // 로컬이 읽은 rpm 표기는 그대로, 읽지 못한 m/s 표기만 서버 판독으로 채웠다.
+      expect(result.current.wheel?.markings?.labeledRPM).toBe(12200);
+      expect(result.current.wheel?.markings?.peripheralSpeedMps).toBe(80);
+    });
+
+    it('로컬 OCR의 표기가 서버 판독과 충돌해 풀리지 않아도 두 판독이 모두 남는다', () => {
+      // 기기 안 OCR이 rpm 표기를 1220으로 잘못 읽었고 작업자가 회전속도를 고쳤다.
+      // 확인은 정규화 값만 바꾸고 원본 표기는 그대로 두므로 서버 판독(12200)과
+      // 충돌한다 — 제한 대조는 풀리지 않는다. 그 까닭을 기록으로 되짚으려면 로컬
+      // 원본과 서버 판독이 둘 다 남아 있어야 한다.
+      const local: WheelSpec = {
+        ...WHEEL,
+        maxRPM: 1220,
+        markings: {
+          labeledRPM: 1220,
+          peripheralSpeedMps: null,
+          boreDiameter: null,
+        },
+        rpmSource: 'label',
+        rawText: 'local',
+        confidence: 'low',
+      };
+      const confirmed: WheelSpec = {
+        ...TYPED,
+        markings: { ...local.markings! },
+      };
+      const result = wheelOffline(confirmed, local, LOCAL_TELEMETRY);
+      const reading = { wheelOcr: AI, wheelOcrTelemetry: AI_TELEMETRY };
+
+      act(() => {
+        result.current.recordReanalysis(reading, SENT);
+        result.current.applyReanalysis(reading);
+      });
+
+      expect(result.current.analysisMode).toBe('offline_limited');
+      expect(result.current.wheelOcr).toEqual(local);
+      expect(result.current.wheelOcrTelemetry).toEqual(LOCAL_TELEMETRY);
+      expect(result.current.reanalyses).toHaveLength(1);
+      expect(result.current.reanalyses?.[0]?.wheelOcr).toEqual(AI);
+      expect(result.current.reanalyses?.[0]?.acceptedAt).toBeNull();
+      // 확정값의 표기는 그대로다. 서버가 읽은 값으로 덮지도, 빈 자리를 채우지도 않는다.
+      expect(result.current.wheel?.markings).toEqual(local.markings);
+    });
+
+    it('다시 받은 손상 항목의 답을 그 판독에 적는다', () => {
+      const result = wheelOffline();
+      const reading = {
+        wheelOcr: { ...AI, visibleDamage: 'suspected' as const },
+      };
+      act(() => result.current.recordReanalysis(reading, SENT));
+
+      act(() => result.current.recordDamageRecheck(reading, true));
+
+      const recheck = result.current.reanalyses?.[0]?.damageRecheck;
+      expect(recheck?.damageFree).toBe(true);
+      expect(Number.isNaN(Date.parse(recheck?.answeredAt ?? ''))).toBe(false);
+      // 숫돌 상태 확인의 답은 건드리지 않는다. 그 답은 경고를 보기 전의 것 그대로다.
+      expect(result.current.wheelCondition).toEqual(WHEEL_CONDITION);
+      expect(storedReanalyses()).toEqual(result.current.reanalyses);
+    });
+
+    it('「문제 있음」도 그 판독에 그대로 적는다', () => {
+      const result = wheelOffline();
+      const reading = {
+        wheelOcr: { ...AI, visibleDamage: 'suspected' as const },
+      };
+      act(() => result.current.recordReanalysis(reading, SENT));
+
+      act(() => result.current.recordDamageRecheck(reading, false));
+
+      expect(result.current.reanalyses?.[0]?.damageRecheck?.damageFree).toBe(
+        false,
+      );
+    });
+
+    it('남기지 않은 판독에 대한 손상 답은 어디에도 적지 않는다', () => {
+      const result = wheelOffline();
+      act(() => result.current.recordReanalysis({ wheelOcr: AI }, SENT));
+
+      act(() =>
+        result.current.recordDamageRecheck({ wheelOcr: { ...AI } }, true),
+      );
+
+      expect(result.current.reanalyses?.[0]?.damageRecheck).toBeNull();
+    });
+
+    it('응답을 기다리는 사이 숫돌만 다시 찍었으면 함께 읽은 명판 판독만 남긴다', () => {
+      // 명판 사진은 그대로다. 그 판독은 여전히 이 점검의 명판을 본 것이다.
+      const { result } = renderHook(() => useInspection());
+      act(() => {
+        result.current.setGrinder(GRINDER, PLATE, null);
+        result.current.setOfflineSlot('grinder', true);
+        result.current.setWheel(TYPED, LABEL, null);
+        result.current.setOfflineSlot('wheel', true);
+      });
+      act(() => {
+        result.current.setWheel(
+          { ...TYPED, diameter: 115 },
+          new Blob(['other label'], { type: 'image/jpeg' }),
+          null,
+        );
+        result.current.setOfflineSlot('wheel', true);
+      });
+
+      act(() =>
+        result.current.recordReanalysis(
+          {
+            grinderOcr: GRINDER,
+            grinderOcrTelemetry: AI_TELEMETRY,
+            wheelOcr: { ...AI, visibleDamage: 'suspected' },
+            wheelOcrTelemetry: AI_TELEMETRY,
+          },
+          SENT,
+        ),
+      );
+
+      expect(result.current.reanalyses).toHaveLength(1);
+      expect(result.current.reanalyses?.[0]).toMatchObject({
+        grinderOcr: GRINDER,
+        grinderOcrTelemetry: AI_TELEMETRY,
+        wheelOcr: null,
+        wheelOcrTelemetry: null,
+      });
+      expect(result.current.wheel?.visibleDamage).toBe('unknown');
+    });
+
+    it('응답을 기다리는 사이 명판을 다시 찍었으면 아무것도 남기지 않는다', () => {
+      const { result } = renderHook(() => useInspection());
+      act(() => {
+        result.current.setGrinder(GRINDER, PLATE, null);
+        result.current.setOfflineSlot('grinder', true);
+      });
+      act(() =>
+        result.current.setGrinder(
+          GRINDER,
+          new Blob(['other plate'], { type: 'image/jpeg' }),
+          null,
+        ),
+      );
+
+      act(() => result.current.recordReanalysis({ grinderOcr: GRINDER }, SENT));
+
+      expect(result.current.reanalyses).toEqual([]);
+    });
+
+    it('숫돌을 다시 확정하면 숫돌 쪽 판독과 손상 답은 버리고 명판 판독은 남긴다', () => {
+      const { result } = renderHook(() => useInspection());
+      act(() => {
+        result.current.setGrinder(GRINDER, PLATE, null);
+        result.current.setOfflineSlot('grinder', true);
+        result.current.setWheel(TYPED, LABEL, null);
+        result.current.setOfflineSlot('wheel', true);
+      });
+      const both = {
+        grinderOcr: { ...GRINDER, noLoadRPM: 13000 },
+        wheelOcr: { ...AI, visibleDamage: 'suspected' as const },
+      };
+      const wheelOnly = { wheelOcr: { ...AI } };
+      act(() => {
+        result.current.recordReanalysis(both, SENT);
+        result.current.recordDamageRecheck(both, true);
+        result.current.recordReanalysis(wheelOnly, {
+          grinderImage: null,
+          wheelImage: LABEL,
+        });
+      });
+      expect(result.current.reanalyses).toHaveLength(2);
+
+      act(() => result.current.setWheel({ ...TYPED, diameter: 115 }, LABEL));
+
+      // 새 사진은 새 숫돌일 수 있다. 이전 숫돌의 판독과 그때 한 답은 이어지지 않는다.
+      expect(result.current.reanalyses).toHaveLength(1);
+      expect(result.current.reanalyses?.[0]).toMatchObject({
+        grinderOcr: both.grinderOcr,
+        wheelOcr: null,
+        wheelOcrTelemetry: null,
+        damageRecheck: null,
+      });
+      expect(storedReanalyses()).toEqual(result.current.reanalyses);
+    });
+
+    it('명판을 다시 확정하면 재분석 판독을 모두 버리고 빈 목록에서 다시 시작한다', () => {
+      const result = wheelOffline();
+      act(() => result.current.recordReanalysis({ wheelOcr: AI }, SENT));
+
+      act(() => result.current.setGrinder(GRINDER, PLATE, GRINDER));
+
+      expect(result.current.reanalyses).toEqual([]);
+      expect(storedReanalyses()).toEqual([]);
+    });
+
+    it('reset은 재분석 판독도 지운다', () => {
+      const result = wheelOffline();
+      act(() => result.current.recordReanalysis({ wheelOcr: AI }, SENT));
+
+      act(() => result.current.reset());
+
+      expect(result.current.reanalyses).toBeNull();
+      expect(sessionStorage.getItem('wheelmatch.reanalyses')).toBeNull();
+    });
+
+    it('남길 자리가 없으면 판독은 남기지 못해도 AI가 올린 의심은 남긴다', () => {
+      // 화면은 상한에 닿으면 재분석을 받지 않는다(OfflineReanalysisPanel). 그래도
+      // 판독이 들어왔다면 경고는 버리지 않는다 — 판독은 남기지 못하고, 남기지 못한
+      // 판독은 받아들일 수도 없다.
+      const result = wheelOffline();
+      act(() => {
+        for (let count = 0; count < MAX_REANALYSES; count += 1) {
+          result.current.recordReanalysis({ wheelOcr: { ...AI } }, SENT);
+        }
+      });
+      expect(result.current.reanalyses).toHaveLength(MAX_REANALYSES);
+      const overflow = {
+        wheelOcr: { ...AI, visibleDamage: 'suspected' as const },
+      };
+
+      act(() => {
+        result.current.recordReanalysis(overflow, SENT);
+        result.current.applyReanalysis(overflow);
+      });
+
+      expect(result.current.reanalyses).toHaveLength(MAX_REANALYSES);
+      expect(result.current.wheel?.visibleDamage).toBe('suspected');
+      expect(result.current.analysisMode).toBe('offline_limited');
+    });
+
+    it('남길 자리가 없고 더할 의심도 없으면 상태를 건드리지 않는다', () => {
+      // 상태의 참조는 값이 바뀔 때만 바뀐다. 진행 중 점검 자동 저장이 그 참조로
+      // 저장할지 정하므로, 바뀐 것 없이 참조만 바뀌면 헛저장이 된다.
+      const result = wheelOffline();
+      act(() => {
+        for (let count = 0; count < MAX_REANALYSES; count += 1) {
+          result.current.recordReanalysis({ wheelOcr: { ...AI } }, SENT);
+        }
+      });
+      const before = result.current.reanalyses;
+      const wheelBefore = result.current.wheel;
+
+      act(() => result.current.recordReanalysis({ wheelOcr: { ...AI } }, SENT));
+
+      expect(result.current.reanalyses).toBe(before);
+      expect(result.current.wheel).toBe(wheelBefore);
     });
   });
 
@@ -1060,12 +1554,19 @@ describe('제한된 까닭', () => {
       result.current.setOfflineSlot('wheel', true, 'local_ocr');
     });
 
-    act(() =>
-      result.current.applyReanalysis({
-        grinderOcr: { ...GRINDER, rawText: 'AI' },
-        grinderOcrTelemetry: null,
-      }),
-    );
+    // 화면의 순서 그대로다 — 도착한 판독을 남기고(recordReanalysis) 받아들인다.
+    // 남긴 적 없는 판독은 받아들일 수 없다. 이 묶음에는 사진이 없다.
+    const reading: ReanalysisInput = {
+      grinderOcr: { ...GRINDER, rawText: 'AI' },
+      grinderOcrTelemetry: null,
+    };
+    act(() => {
+      result.current.recordReanalysis(reading, {
+        grinderImage: null,
+        wheelImage: null,
+      });
+      result.current.applyReanalysis(reading);
+    });
 
     // 숫돌 단계가 남아 있어 점검은 여전히 제한 대조다.
     expect(result.current.analysisMode).toBe('offline_limited');

@@ -1571,11 +1571,41 @@ describe('서버 재분석 뒤의 확정값', () => {
   });
 
   describe('판정에 쓴 표기 중 기록된 OCR 원본과 다른 값', () => {
-    // 전환하면 OCR 원본 자리에는 서버 판독이 들어간다(applyReanalysis). 확정값에
-    // 남은 로컬 OCR의 표기는 계속 판정에 쓰이는데, 그 값이 어디서 왔는지는 원본
-    // 자리에서 사라진다. 판정 근거 화면이 이 함수로 그런 칸을 찾아 따로 보인다.
+    // 판정 근거 화면이 이 함수로 「판정에 쓴 표기 가운데 기록된 OCR 원본과 다른
+    // 칸」을 찾아 따로 보인다. 견주는 OCR 원본이 무엇인지는 기록의 모양에 달렸다.
+    //
+    //   재분석 판독 칸이 있는 기록 — OCR 원본 자리는 확정할 때의 판독(로컬 OCR)
+    //     그대로다. 받아들인 재분석 판독이 채운 빈 자리가 원본과 다른 칸이 된다.
+    //   그 칸이 생기기 전의 기록 — 전환하면 OCR 원본 자리에 서버 판독이 들어갔다.
+    //     확정값에 남은 로컬 표기가 원본과 다른 칸이 된다.
+
+    it('받아들인 재분석 판독이 채운 칸은 확정할 때의 OCR 원본과 다르다', () => {
+      // 지금 저장되는 기록. 로컬 OCR은 rpm 표기만 읽었고 서버가 m/s와 내경을 더 읽었다.
+      const local = localOcrWheel({
+        peripheralSpeedMps: null,
+        boreDiameter: null,
+      });
+      const next = accepted(local, ocrWheel());
+
+      // OCR 원본은 로컬 판독이다 — 그 표기는 확정할 때 확정값으로 그대로 넘어왔다.
+      expect(markingsNotFromOcr(next, local)).toEqual([
+        { key: 'peripheralSpeedMps', used: 80, ocr: null },
+        { key: 'boreDiameter', used: 22.23, ocr: null },
+      ]);
+    });
+
+    it('확정할 때의 판독이 읽어 둔 표기는 그 OCR 원본에 그대로 있다', () => {
+      // 지금 저장되는 기록. 로컬 OCR이 80m/s를 60으로 잘못 읽었고 서버는 그 칸을
+      // 읽지 못했다. 판정을 막는 60은 OCR 원본(로컬 판독)에 있어 다른 칸이 없다.
+      const local = localOcrWheel({ peripheralSpeedMps: 60 });
+      const next = accepted(local, ocrWheel({}, { peripheralSpeedMps: null }));
+
+      expect(judge(next).verdict).toBe('UNDETERMINED');
+      expect(markingsNotFromOcr(next, local)).toEqual([]);
+    });
 
     it('서버가 읽지 못한 칸에 남은 로컬 표기를 찾는다', () => {
+      // 재분석 판독 칸이 생기기 전의 기록 — OCR 원본 자리가 서버 판독이다.
       // 로컬 OCR이 80m/s를 60으로 잘못 읽었고, 서버는 m/s 표기를 읽지 못했다.
       const reanalyzed = ocrWheel({}, { peripheralSpeedMps: null });
       const next = accepted(

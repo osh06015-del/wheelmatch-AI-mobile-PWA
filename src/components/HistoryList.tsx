@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { ZoomablePhoto } from './BlobPhoto';
 import { EvidencePanel } from './EvidencePanel';
 import { ProfileConditionsPanel } from './ProfileConditionsPanel';
+import { ReanalysisNote } from './ReanalysisNote';
 import { ReportExportButton } from './ReportExportButton';
 import { RuleVersionNote } from './RuleVersionNote';
 import { WheelExamEvidence } from './WheelExamEvidence';
@@ -227,6 +228,13 @@ export function HistoryList({
                     }}
                   />
 
+                  {/* 결과 화면에서 서버로 다시 읽은 적이 있는 기록. 위 검사 항목의
+                      사유는 재분석을 받았는지를 말하지 않으므로(받아들이지 않았으면
+                      제한 대조 사유 그대로다), 받았다는 사실과 결과에 반영한 것을
+                      따로 적는다. 이 칸이 없는 기록과 재분석을 하지 않은 기록에는
+                      아무것도 그리지 않는다. */}
+                  <ReanalysisNote reanalyses={record.reanalyses} />
+
                   {/* 저장 당시의 조건 표. 기능 도입 전 기록에는 그리지 않는다 —
                       없는 입력을 "모름" 목록으로 채우면 그때 물어본 것처럼 보인다. */}
                   {record.profileConditions && (
@@ -242,6 +250,7 @@ export function HistoryList({
                     result={record.result}
                     grinderOcr={record.grinderOcr}
                     wheelOcr={record.wheelOcr}
+                    reanalyses={record.reanalyses}
                   />
 
                   {/* 저장 당시의 버전을 보여준다. 지금 버전으로 채우면

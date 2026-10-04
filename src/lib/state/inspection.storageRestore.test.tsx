@@ -205,6 +205,7 @@ describe('새로고침 복원 — 앱이 쓴 값', () => {
       expiry: { year: 2099, month: 12 },
     };
     const reanalyzed: WheelSpec = { ...WHEEL, visibleDamage: 'suspected' };
+    const reading = { wheelOcr: reanalyzed, wheelOcrTelemetry: TELEMETRY };
     const result = await load();
     act(() => {
       result.current.setPurpose('cutting', WORK);
@@ -213,10 +214,13 @@ describe('새로고침 복원 — 앱이 쓴 값', () => {
       result.current.setWheel(typed, null, null);
       result.current.setOfflineSlot('wheel', true);
       result.current.setWheelCondition(WHEEL_OK);
-      result.current.applyReanalysis({
-        wheelOcr: reanalyzed,
-        wheelOcrTelemetry: TELEMETRY,
+      // 화면의 순서 그대로 — 결과가 도착하고, 손상 항목을 다시 답하고, 받아들인다.
+      result.current.recordReanalysis(reading, {
+        grinderImage: null,
+        wheelImage: null,
       });
+      result.current.recordDamageRecheck(reading, true);
+      result.current.applyReanalysis(reading);
     });
     cleanup();
 
@@ -230,9 +234,80 @@ describe('새로고침 복원 — 앱이 쓴 값', () => {
       visibleDamageSources: ['reanalysis'],
       markings: WHEEL.markings,
     });
-    expect(state.wheelOcr).toEqual(reanalyzed);
+    // 직접 넣은 숫돌에는 OCR 원본이 없었다. 재분석 판독은 그 자리에 들어가지 않고
+    // 재분석 판독으로 되살아난다 — 받아들인 시각과 다시 받은 손상 답까지.
+    expect(state.wheelOcr).toBeNull();
+    expect(state.reanalyses).toHaveLength(1);
+    expect(state.reanalyses?.[0]).toMatchObject({
+      grinderOcr: null,
+      wheelOcr: reanalyzed,
+      wheelOcrTelemetry: TELEMETRY,
+    });
+    expect(state.reanalyses?.[0]?.acceptedAt).not.toBeNull();
+    expect(state.reanalyses?.[0]?.damageRecheck?.damageFree).toBe(true);
     expect(state.wheelCondition).toEqual(WHEEL_OK);
     expect(state.analysisMode).toBe('online');
+    expect(state.droppedOnReload).toBe(false);
+  });
+
+  it('받아들이지 않은 재분석 판독도 새로고침 뒤에 그대로 되살아난다', async () => {
+    // 그 판독이 올린 의심은 확정값에 실려 새로고침을 넘는다. 판독이 함께 넘지
+    // 못하면 새로고침 한 번에 의심의 출처가 사라진다.
+    const typed: WheelSpec = { ...WHEEL_OCR, visibleDamage: 'unknown' };
+    const reading = {
+      wheelOcr: {
+        ...WHEEL,
+        maxRPM: 13300,
+        visibleDamage: 'suspected' as const,
+      },
+      wheelOcrTelemetry: TELEMETRY,
+    };
+    const result = await load();
+    act(() => {
+      result.current.setPurpose('cutting', WORK);
+      result.current.setGrinder(GRINDER, null, GRINDER);
+      result.current.setGrinderCondition(GRINDER_OK);
+      result.current.setWheel(typed, null, null);
+      result.current.setOfflineSlot('wheel', true);
+      result.current.setWheelCondition(WHEEL_OK);
+      result.current.recordReanalysis(reading, {
+        grinderImage: null,
+        wheelImage: null,
+      });
+    });
+    const before = result.current.reanalyses;
+    cleanup();
+
+    const state = await reload();
+
+    expect(state.wheel?.visibleDamage).toBe('suspected');
+    expect(state.analysisMode).toBe('offline_limited');
+    expect(state.reanalyses).toEqual(before);
+    expect(state.reanalyses?.[0]?.acceptedAt).toBeNull();
+    expect(state.droppedOnReload).toBe(false);
+  });
+
+  it('재분석을 하지 않은 점검은 빈 목록 그대로 되살아난다', async () => {
+    await seed();
+
+    const state = await reload();
+
+    expect(state.reanalyses).toEqual([]);
+    expect(state.droppedOnReload).toBe(false);
+  });
+
+  it('이 기록이 생기기 전 버전이 남긴 점검은 재분석 여부를 알 수 없음으로 되살린다', async () => {
+    // 탭을 연 채 앱이 업데이트된 경우다. 이전 버전은 재분석 판독을 남기지 않았다 —
+    // 그 점검에서 재분석을 했는지는 저장값으로 알 수 없다. 빈 목록(하지 않았다)으로
+    // 채우지 않는다.
+    await seed();
+    sessionStorage.removeItem(key('reanalyses'));
+
+    const state = await reload();
+
+    expect(state.reanalyses).toBeNull();
+    expect(state.wheel).toEqual(WHEEL);
+    // 없던 값은 어긋난 값이 아니다. 버렸다고 알리지 않는다.
     expect(state.droppedOnReload).toBe(false);
   });
 
@@ -623,6 +698,80 @@ describe('새로고침 복원 — 규격이 아닌 값', () => {
     },
   );
 
+  it.each([
+    ['배열이 아닌 값', '{}'],
+    ['JSON으로 읽히지 않는 값', '[{"analyzedAt":'],
+    ['도착 시각이 날짜가 아닌 판독', null],
+    ['칸이 빠진 판독', undefined],
+  ])(
+    '재분석 판독이 어긋나면(%s) 목록을 버리고 알린다 — 빈 목록으로 채우지 않는다',
+    async (name, raw) => {
+      await seed();
+      if (typeof raw === 'string') {
+        sessionStorage.setItem(key('reanalyses'), raw);
+      } else {
+        const entry: Record<string, unknown> = {
+          analyzedAt: '2026-10-04T05:12:03.000Z',
+          grinderOcr: null,
+          grinderOcrTelemetry: null,
+          wheelOcr: WHEEL_OCR,
+          wheelOcrTelemetry: TELEMETRY,
+          acceptedAt: null,
+          damageRecheck: null,
+        };
+        if (raw === null) entry.analyzedAt = 'soon';
+        else delete entry.acceptedAt;
+        put('reanalyses', [entry]);
+      }
+
+      const state = await reload();
+
+      // 읽을 수 없는 목록을 "재분석을 하지 않았다"로 바꿔 적지 않는다. 알 수 없음이다.
+      expect(state.reanalyses, name).toBeNull();
+      // 확정한 규격과 작업자의 확인은 그대로다.
+      expect(state.wheel).toEqual(WHEEL);
+      expect(state.wheelCondition).toEqual(WHEEL_OK);
+      expect(state.droppedOnReload).toBe(true);
+      // 버린 값은 저장소에서도 지운다 — 다시 새로고침해도 또 알리지 않는다.
+      expect(stored('reanalyses')).toBeUndefined();
+    },
+  );
+
+  it('숫돌 규격을 버리면 숫돌 쪽 재분석 판독도 함께 버리고 명판 판독은 남긴다', async () => {
+    // 숫돌이 없으면 그 숫돌의 사진을 본 판독은 근거가 없다(dropOrphanedSteps).
+    const grinderReading = {
+      analyzedAt: '2026-10-04T05:12:03.000Z',
+      grinderOcr: GRINDER,
+      grinderOcrTelemetry: TELEMETRY,
+      wheelOcr: WHEEL_OCR,
+      wheelOcrTelemetry: TELEMETRY,
+      acceptedAt: null,
+      damageRecheck: {
+        damageFree: true,
+        answeredAt: '2026-10-04T05:12:31.000Z',
+      },
+    };
+    const wheelReading = { ...grinderReading, grinderOcr: null };
+    await seed();
+    put('reanalyses', [
+      grinderReading,
+      { ...wheelReading, grinderOcrTelemetry: null },
+    ]);
+    patch('wheel', { wheelType: 'not-a-real-type' });
+
+    const state = await reload();
+
+    expect(state.wheel).toBeNull();
+    expect(state.reanalyses).toEqual([
+      {
+        ...grinderReading,
+        wheelOcr: null,
+        wheelOcrTelemetry: null,
+        damageRecheck: null,
+      },
+    ]);
+  });
+
   it('사진 상태 기록은 어긋난 자리만 버린다', async () => {
     await seed();
     patch('captureChecks', { wheel: { ...CHECK, warnings: ['smudge'] } });
@@ -772,6 +921,7 @@ describe('새로고침 복원 — 버린 값 알림', () => {
         wheelOcrTelemetry: null,
         captureChecks: {},
         offlineSlots: { grinder: false, wheel: false },
+        reanalyses: [],
         checklist: null,
         trialRunRecord: null,
       }),

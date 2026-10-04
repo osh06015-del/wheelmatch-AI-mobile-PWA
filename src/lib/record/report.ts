@@ -1,9 +1,9 @@
 // 사람이 읽는 점검 기록 문서(HTML 한 파일).
 //
 // 백업 파일(JSON)은 앱에 다시 넣는 복원용이라 사람이 읽을 수 없다. 이 문서는
-// 이력 화면에 보이는 것 — 판정, 검사 항목과 사유, AI 외관 확인 기록, 시험운전,
-// 규칙 버전 — 과 사진을 한 파일에 담아, 휴대폰 브라우저로 열거나 카카오톡으로
-// 보낼 수 있게 한다.
+// 이력 화면에 보이는 것 — 판정, 검사 항목과 사유, AI 외관 확인 기록, 서버 재분석
+// 기록, 시험운전, 규칙 버전 — 과 사진을 한 파일에 담아, 휴대폰 브라우저로 열거나
+// 카카오톡으로 보낼 수 있게 한다.
 //
 // 문장은 모두 화면과 같은 문구 키로 만든다. 판정을 다시 계산하지 않는다 —
 // 저장 당시 엔진이 낸 결과를 그대로 옮긴다. 이 파일은 순수 함수다(사진 변환은
@@ -12,6 +12,10 @@
 import type { Locale, MessageKey, Translate } from '@/lib/i18n';
 import { checkReasonText, damageSourceNotes } from '@/lib/i18n/checkText';
 import { limitCauseLines } from '@/lib/i18n/limitCause';
+import {
+  reanalysisDetailText,
+  reanalysisSummaryText,
+} from '@/lib/i18n/reanalysisText';
 import { ruleLabelText } from '@/lib/i18n/ruleLabel';
 import { formatDateTime } from './datetime';
 import type {
@@ -156,6 +160,47 @@ function renderExam(record: InspectionRecord, t: Translate): string {
   return `<h3>${escapeHtml(t('exam.evidence.title'))}</h3>${lines.join('')}`;
 }
 
+/**
+ * 결과 화면에서 받은 서버 재분석. 검사 항목과 따로 둔다.
+ *
+ * 받아들이지 않은 기록의 검사 사유는 제한 대조 사유 그대로다(엔진이 낸 문장이고,
+ * 대조는 실제로 작업자가 확인한 값으로만 했다). 그 문장은 서버가 이 사진을 다시
+ * 읽었는지를 말하지 않는다. 문서를 받아 읽는 사람이 알 수 있도록, 받았다는 사실과
+ * 받아들였는지·결과에 반영한 것을 요약으로 적고 판독마다의 내역을 그 아래에 둔다.
+ * 화면과 같은 문장이다(reanalysisText.ts).
+ *
+ * 재분석을 하지 않은 기록과 이 칸이 없는 기록에는 구역을 만들지 않는다. OCR 원문은
+ * 싣지 않는다.
+ */
+function renderReanalyses(
+  record: InspectionRecord,
+  t: Translate,
+  locale: Locale,
+): string {
+  const summaryLines = reanalysisSummaryText(record.reanalyses, t);
+  if (summaryLines.length === 0) return '';
+  const details = reanalysisDetailText(
+    record.reanalyses,
+    record.grinder,
+    record.wheel,
+    t,
+    locale,
+    record.wheelOcr,
+  );
+  const summaryHtml = summaryLines
+    .map((line) => `<p>${escapeHtml(line)}</p>`)
+    .join('');
+  const items = details
+    .map(
+      (detail) =>
+        `<li><strong>${escapeHtml(detail.heading)}</strong>${detail.lines
+          .map((line) => `<br>${escapeHtml(line)}`)
+          .join('')}</li>`,
+    )
+    .join('');
+  return `<h3>${escapeHtml(t('reanalysis.title'))}</h3>${summaryHtml}<ul>${items}</ul>`;
+}
+
 function renderTrialRun(record: InspectionRecord, t: Translate): string {
   const run = record.trialRun;
   if (!run) return '';
@@ -221,10 +266,11 @@ function renderRecord(
   )}</p><p class="muted">${escapeHtml(meta)}</p>${renderLimit(record, t)}${renderPhotos(
     entry.photos,
     t,
-  )}${renderChecks(record, t, locale)}${renderExam(record, t)}${renderTrialRun(
+  )}${renderChecks(record, t, locale)}${renderExam(record, t)}${renderReanalyses(
     record,
     t,
-  )}</section>`;
+    locale,
+  )}${renderTrialRun(record, t)}</section>`;
 }
 
 const STYLE = `

@@ -24,6 +24,7 @@ import { LanguagePicker } from '@/components/LanguagePicker';
 import { NotVerifiablePanel } from '@/components/NotVerifiablePanel';
 import { OfflineReanalysisPanel } from '@/components/OfflineReanalysisPanel';
 import { ProfileConditionsPanel } from '@/components/ProfileConditionsPanel';
+import { ReanalysisNote } from '@/components/ReanalysisNote';
 import { ResultCard } from '@/components/ResultCard';
 import { RuleVersionNote } from '@/components/RuleVersionNote';
 import { TrialRunPanel, TrialRunStopNotice } from '@/components/TrialRunPanel';
@@ -48,7 +49,11 @@ import {
   startTrialRun,
 } from '@/lib/safety/trialRun';
 import { isWheelConditionComplete } from '@/lib/safety/wheelCondition';
-import { limitCausesOf, useInspection } from '@/lib/state/inspection';
+import {
+  limitCausesOf,
+  useInspection,
+  type ReanalysisInput,
+} from '@/lib/state/inspection';
 import type {
   SafetyChecklist,
   TrialRunFinding,
@@ -99,7 +104,9 @@ export default function ResultPage() {
     captureChecks,
     analysisMode,
     offlineSlots,
-    keepReanalysisSuspicion,
+    reanalyses,
+    recordReanalysis,
+    recordDamageRecheck,
     applyReanalysis,
     checklist: storedChecklist,
     setChecklist: storeChecklist,
@@ -331,6 +338,19 @@ export default function ResultPage() {
   }
 
   /**
+   * 재분석이 손상을 의심해 다시 물은 항목에 작업자가 답했다.
+   *
+   * 답은 어느 쪽이든 그 재분석 판독의 기록에 남긴다. 숫돌 상태 확인의 답은 AI 경고를
+   * 보기 전의 것이라, 「확인함」을 따로 남기지 않으면 다시 물었다는 사실이 기록에서
+   * 보이지 않는다 — 나중에 이 재확인이 빠지거나 조건이 느슨해져도 기록으로 알 수 없다.
+   * 「문제 있음」은 거기에 더해 숫돌 상태에도 남기고 결과 화면을 닫는다.
+   */
+  function answerDamageRecheck(input: ReanalysisInput, damageFree: boolean) {
+    recordDamageRecheck(input, damageFree);
+    if (!damageFree) reportWheelDamage();
+  }
+
+  /**
    * 기록을 저장한다.
    *
    * @param withPhotos 사진을 함께 저장할지. 저장 공간이 모자라 실패했을 때
@@ -403,6 +423,11 @@ export default function ResultPage() {
         wheelCaptureMetrics: wheelCaptureMetrics ?? undefined,
         grinderOcrTelemetry: grinderOcrTelemetry ?? undefined,
         wheelOcrTelemetry: wheelOcrTelemetry ?? undefined,
+        // 결과 화면에서 받은 서버 재분석 판독. 받아들이지 않은 것도 그대로 남긴다.
+        // 재분석을 하지 않았으면 빈 목록이다 — 빼지 않는다. 빈 목록은 「하지
+        // 않았다」, 칸 없음은 「알 수 없다」(이 값을 남기지 않던 버전에서 시작한
+        // 점검)라서, 모르는 경우에만 칸을 남기지 않는다.
+        reanalyses: reanalyses ?? undefined,
         // 사진 상태 경고와 재촬영 여부. 사진을 빼고 저장해도 이 기록은 남긴다 —
         // 사진이 아니라 촬영 과정에 대한 측정값이다. 한 번도 찍지 않은 자리는
         // 없는 채로 둔다.
@@ -461,6 +486,7 @@ export default function ResultPage() {
         result={result}
         grinderOcr={grinderOcr ?? undefined}
         wheelOcr={wheelOcr ?? undefined}
+        reanalyses={reanalyses ?? undefined}
       />
 
       {offlineLimited && (
@@ -470,10 +496,18 @@ export default function ResultPage() {
           offlineSlots={offlineSlots}
           grinderImage={grinderImage}
           wheelImage={wheelImage}
-          onAnalyzed={keepReanalysisSuspicion}
+          reanalyses={reanalyses}
+          onAnalyzed={recordReanalysis}
           onAccept={applyReanalysis}
-          onDamageIssue={reportWheelDamage}
+          onDamageRecheck={answerDamageRecheck}
         />
+      )}
+
+      {/* 재분석으로 온라인 대조가 된 점검. 위 패널은 사라졌지만, 이 결과가 재분석으로
+          온라인이 됐다는 것과 그때 다시 받은 답은 남긴다. 제한 대조인 동안에는 위
+          패널이 같은 기록을 보인다(값을 견주는 중에는 숨긴다). */}
+      {!offlineLimited && (
+        <ReanalysisNote reanalyses={reanalyses} heading="h2" />
       )}
 
       <ProfileConditionsPanel

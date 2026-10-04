@@ -9,7 +9,11 @@
 //
 // 사진은 넣지 않는다. CSV에 base64를 밀어 넣으면 열리지 않는 파일이 된다.
 
-import type { CaptureSlot, InspectionRecord } from '@/lib/rules/types';
+import type {
+  CaptureSlot,
+  InspectionRecord,
+  ReanalysisRecord,
+} from '@/lib/rules/types';
 
 /** CSV에 적는 촬영 자리 순서. 열 순서와 같다. */
 const CAPTURE_SLOTS: readonly CaptureSlot[] = [
@@ -210,7 +214,48 @@ export const CSV_COLUMNS = [
   // 단계다. 앞선 열의 자리를 지키기 위해 맨 뒤에 붙인다.
   'grinderLimitCause',
   'wheelLimitCause',
+  // 결과 화면의 서버 재분석 판독(InspectionRecord.reanalyses). 앞선 열의 자리를
+  // 지키기 위해 맨 뒤에 붙인다.
+  //
+  // 받아들이지 않은 판독도 적는다. 받아들인 것만 남기면 "작업자 값과 일치한 판독"만
+  // 세어져 인식률이 실제보다 좋게 나온다. 기존 *_ocr·*Edited·OCR telemetry 열은
+  // 확인 화면에서 작업자가 고치기 전의 원본을 말하므로 재분석 판독을 섞지 않는다.
+  //
+  // reanalysisCount는 기록에 남은 판독 수다. 재분석을 하지 않은 기록은 0, 이 칸이
+  // 생기기 전 기록(그때 재분석을 했는지 알 수 없다)은 빈 칸이다 — 0으로 채우지
+  // 않는다. 서버를 부른 횟수와 다를 수 있다: 숫돌을 다시 확정하면 그 숫돌 사진을 본
+  // 판독은 빠지고, 실패한 호출은 판독이 없어 남지 않는다.
+  // 나머지 열은 **판독마다 한 토큰**이고 받은 순서대로 띄어 적는다.
+  //   -     이 판독에 그 단계의 값이 없다 — 그 단계를 다시 읽지 않았거나, 읽었지만
+  //         숫돌을 다시 확정해 그 숫돌 사진의 판독을 뺐다. 손상 답 열에서는 답이
+  //         없다(묻지 않았거나, 물었지만 답하지 않았다)
+  //   null  다시 읽었지만 값을 얻지 못했다(토큰 수 열에서는 그 합을 모른다)
+  'reanalysisCount',
+  'reanalysisAccepted',
+  'reanalysisGrinderRPM_ocr',
+  'reanalysisGrinderMaxDiameter_ocr',
+  'reanalysisWheelMaxRPM_ocr',
+  'reanalysisWheelDiameter_ocr',
+  // suspected / none_visible / unknown. none_visible은 「사진에서 보이지 않는다」이지
+  // 손상이 없다는 뜻이 아니다(types.ts의 VisibleDamage).
+  'reanalysisVisibleDamage',
+  // 재분석한 AI의 경고를 본 뒤 다시 받은 손상 항목의 답. 기존 conditionDamageFree
+  // 열은 그 경고를 보기 전의 답이다.
+  'reanalysisDamageRecheck',
+  // 그 판독에서 다시 읽은 단계의 토큰 수 합. 비용은 넣지 않는다(OcrTelemetry 참고).
+  'reanalysisInputTokens',
+  'reanalysisOutputTokens',
+  'reanalysisCacheReadTokens',
+  'reanalysisCacheCreationTokens',
 ] as const;
+
+/** 재분석 열 — 이 판독에 그 단계의 값이 없다(손상 답 열에서는 답이 없다) */
+const NOT_IN_READING = '-';
+/**
+ * 재분석 열 — 다시 읽었지만 값을 얻지 못했다. 빈 토큰으로 두면 띄어 적은 순서가
+ * 무너져 어느 판독의 값인지 알 수 없게 된다.
+ */
+const NO_VALUE = 'null';
 
 /**
  * 한 칸을 CSV 규칙(RFC 4180)에 맞게 감싼다.
@@ -265,6 +310,56 @@ function telemetry<K extends keyof InspectionRecord>(
   const value = record[key] as
     Record<string, string | number | null> | undefined;
   return value ? value[field] : undefined;
+}
+
+/**
+ * 재분석 판독마다 한 토큰을 내어 받은 순서대로 띄어 적는다.
+ *
+ * 칸이 없는 기록(undefined)과 재분석을 하지 않은 기록(빈 목록)은 둘 다 빈 칸이 된다.
+ * 둘은 reanalysisCount 열에서 갈린다(빈 칸 / 0).
+ */
+function perReanalysis(
+  record: InspectionRecord,
+  token: (reading: ReanalysisRecord) => string | number,
+): string | undefined {
+  return record.reanalyses?.map(token).join(' ');
+}
+
+/** 다시 읽은 단계의 값 하나. 읽지 않은 단계와 얻지 못한 값을 가른다 */
+function readingValue<T extends object>(
+  ocr: T | null,
+  key: keyof T,
+): string | number {
+  if (ocr === null) return NOT_IN_READING;
+  const value = ocr[key];
+  return typeof value === 'number' || typeof value === 'string'
+    ? value
+    : NO_VALUE;
+}
+
+/**
+ * 한 판독에서 다시 읽은 단계의 토큰 수 합.
+ *
+ * 다시 읽은 단계 가운데 하나라도 그 수를 모르면(메타데이터를 받지 못했거나 값이
+ * 비었으면) 합도 모른다. 아는 것만 더해 적으면 실제보다 적은 수가 합으로 읽힌다.
+ */
+function readingTokens(
+  reading: ReanalysisRecord,
+  field:
+    'inputTokens' | 'outputTokens' | 'cacheReadTokens' | 'cacheCreationTokens',
+): string | number {
+  let sum = 0;
+  const steps = [
+    [reading.grinderOcr, reading.grinderOcrTelemetry],
+    [reading.wheelOcr, reading.wheelOcrTelemetry],
+  ] as const;
+  for (const [ocr, telemetryOfStep] of steps) {
+    if (ocr === null) continue;
+    const value = telemetryOfStep?.[field] ?? null;
+    if (value === null) return NO_VALUE;
+    sum += value;
+  }
+  return sum;
 }
 
 function row(record: InspectionRecord): string {
@@ -431,6 +526,40 @@ function row(record: InspectionRecord): string {
       : undefined,
     record.analysisLimitCauses?.grinder,
     record.analysisLimitCauses?.wheel,
+    record.reanalyses?.length,
+    perReanalysis(record, (reading) =>
+      reading.acceptedAt === null ? 'N' : 'Y',
+    ),
+    perReanalysis(record, (reading) =>
+      readingValue(reading.grinderOcr, 'noLoadRPM'),
+    ),
+    perReanalysis(record, (reading) =>
+      readingValue(reading.grinderOcr, 'maxWheelDiameter'),
+    ),
+    perReanalysis(record, (reading) =>
+      readingValue(reading.wheelOcr, 'maxRPM'),
+    ),
+    perReanalysis(record, (reading) =>
+      readingValue(reading.wheelOcr, 'diameter'),
+    ),
+    perReanalysis(record, (reading) =>
+      readingValue(reading.wheelOcr, 'visibleDamage'),
+    ),
+    perReanalysis(record, (reading) =>
+      reading.damageRecheck === null
+        ? NOT_IN_READING
+        : reading.damageRecheck.damageFree
+          ? 'Y'
+          : 'N',
+    ),
+    perReanalysis(record, (reading) => readingTokens(reading, 'inputTokens')),
+    perReanalysis(record, (reading) => readingTokens(reading, 'outputTokens')),
+    perReanalysis(record, (reading) =>
+      readingTokens(reading, 'cacheReadTokens'),
+    ),
+    perReanalysis(record, (reading) =>
+      readingTokens(reading, 'cacheCreationTokens'),
+    ),
   ];
 
   return values.map(cell).join(',');

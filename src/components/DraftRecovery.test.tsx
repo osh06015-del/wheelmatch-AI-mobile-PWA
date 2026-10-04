@@ -77,6 +77,7 @@ function savedDraft(overrides: Partial<InspectionSnapshot> = {}) {
     wheelOcrTelemetry: null,
     captureChecks: {},
     offlineSlots: { grinder: true, wheel: false },
+    reanalyses: [],
     checklist: null,
     trialRunRecord: null,
     ...overrides,

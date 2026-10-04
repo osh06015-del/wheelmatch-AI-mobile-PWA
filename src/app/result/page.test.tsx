@@ -75,6 +75,7 @@ import { WHEEL_TYPE_OPTIONS } from '@/components/WheelTypeConfirm';
 import { saveInspection } from '@/lib/db';
 import { confirmedWheelSpec } from '@/lib/ocr/confirm';
 import { CSV_COLUMNS, toCsv } from '@/lib/record/csv';
+import { MAX_REANALYSES } from '@/lib/record/reanalysis';
 import {
   BONDED_ABRASIVE_PROFILE,
   conditionItemsFor,
@@ -1715,7 +1716,12 @@ describe('결과 화면 — 제한 대조와 서버 재분석', () => {
 
     expect(result.current.analysisMode).toBe('online');
     expect(result.current.grinder).toEqual(GRINDER);
-    expect(result.current.grinderOcr?.rawText).toBe('AI');
+    // AI 값은 재분석 판독으로만 남는다. 직접 넣은 명판에는 「작업자가 고치기 전의
+    // OCR 원본」이 없었고, 재분석 판독으로 그 자리를 채우지 않는다.
+    expect(result.current.grinderOcr).toBeNull();
+    expect(result.current.reanalyses).toHaveLength(1);
+    expect(result.current.reanalyses?.[0]?.grinderOcr?.rawText).toBe('AI');
+    expect(result.current.reanalyses?.[0]?.acceptedAt).not.toBeNull();
     expect(screen.getByText('적합')).toBeInTheDocument();
   });
 
@@ -1918,6 +1924,13 @@ describe('결과 화면 — 숫돌 라벨 재분석이 낸 외관 의심과 원�
     // AI 값은 아직 받아들이지 않았다. OCR 원본 자리도 원본 표시도 비어 있다.
     expect(result.current.wheelOcr).toBeNull();
     expect(result.current.wheel?.markings).toBeUndefined();
+    // 그 의심을 올린 판독은 받아들이기 전에도 남아 있다.
+    expect(result.current.reanalyses).toHaveLength(1);
+    expect(result.current.reanalyses?.[0]).toMatchObject({
+      wheelOcr: { visibleDamage: 'suspected', rawText: 'AI' },
+      acceptedAt: null,
+      damageRecheck: null,
+    });
     // 의심의 출처는 재분석이다. 이 사진을 읽은 판독이라 출처 줄은 붙지 않는다.
     expect(result.current.wheel?.visibleDamageSources).toEqual(['reanalysis']);
   });
@@ -1998,6 +2011,13 @@ describe('결과 화면 — 숫돌 라벨 재분석이 낸 외관 의심과 원�
     expect(screen.getByText('적합')).toBeInTheDocument();
     // 숫돌 상태 기록은 작업자가 답한 그대로다.
     expect(result.current.wheelCondition).toEqual(CONFIRMED);
+    // 그 답은 경고를 보기 전의 것이라, 다시 받은 답은 재분석 판독에 따로 남는다.
+    expect(result.current.reanalyses?.[0]?.damageRecheck?.damageFree).toBe(
+      true,
+    );
+    expect(result.current.reanalyses?.[0]?.acceptedAt).not.toBeNull();
+    // 서버 판독은 OCR 원본 자리에 들어가지 않는다.
+    expect(result.current.wheelOcr).toBeNull();
   });
 
   it('다시 물은 손상 항목에 문제 있음으로 답하면 결과를 닫고 사용 중지를 알린다', async () => {
@@ -2057,7 +2077,7 @@ describe('결과 화면 — 숫돌 라벨 재분석이 낸 외관 의심과 원�
     }
   });
 
-  it('취소하면 AI 값은 버리지만 AI가 올린 의심은 남는다', async () => {
+  it('취소하면 AI 값은 판정에 쓰지 않지만 AI가 올린 의심은 남는다', async () => {
     const result = readyOfflineWheel();
     extractWheel.mockResolvedValue(aiWheel({ visibleDamage: 'suspected' }));
     render(<ResultPage />);
@@ -2098,14 +2118,13 @@ describe('결과 화면 — 숫돌 라벨 재분석이 낸 외관 의심과 원�
     expect(screen.getByText(DAMAGE_SUSPECTED)).toBeInTheDocument();
   });
 
-  it('전환하지 않고 저장한 기록에도 AI가 올린 의심이 남는다', async () => {
+  it('전환하지 않고 저장한 기록에 AI가 올린 의심과 함께 그 판독이 남는다', async () => {
     readyOfflineWheel();
-    extractWheel.mockResolvedValue(
-      aiWheel(
-        { maxRPM: 13300, visibleDamage: 'suspected' },
-        { labeledRPM: 13300 },
-      ),
+    const reading = aiWheel(
+      { maxRPM: 13300, visibleDamage: 'suspected' },
+      { labeledRPM: 13300 },
     );
+    extractWheel.mockResolvedValue(reading);
     vi.mocked(saveInspection).mockResolvedValueOnce(1);
     render(<ResultPage />);
 
@@ -2122,10 +2141,23 @@ describe('결과 화면 — 숫돌 라벨 재분석이 낸 외관 의심과 원�
       saved.result.checks.find((check) => check.rule === '외관 손상')?.detail
         ?.code,
     ).toBe('visibleDamage.suspected');
-    // 받아들이지 않은 AI 값은 기록에 넣지 않는다.
+    // 받아들이지 않은 AI 값은 판정에 쓰는 값에도, OCR 원본 자리에도 넣지 않는다.
     expect(saved.wheelOcr).toBeUndefined();
     expect(saved.wheel.markings).toBeUndefined();
     expect(saved.wheel.maxRPM).toBe(12200);
+    // 그러나 버리지도 않는다. 기록의 의심이 어느 판독에서 왔는지 되짚을 수 있어야
+    // 한다 — 판독 없이 의심만 남으면 이전 draft에서 이어진 의심과 구분할 수 없다.
+    expect(saved.reanalyses).toHaveLength(1);
+    expect(saved.reanalyses?.[0]).toMatchObject({
+      grinderOcr: null,
+      grinderOcrTelemetry: null,
+      wheelOcr: reading,
+      acceptedAt: null,
+      damageRecheck: null,
+    });
+    expect(
+      Number.isNaN(Date.parse(saved.reanalyses?.[0]?.analyzedAt ?? '')),
+    ).toBe(false);
   });
 
   it('취소하고 다시 분석했을 때 AI가 이번에는 의심하지 않아도 손상 항목을 다시 받는다', async () => {
@@ -2206,6 +2238,8 @@ describe('결과 화면 — 숫돌 라벨 재분석이 낸 외관 의심과 원�
       // AI가 본 것은 이전 숫돌의 사진이다. 새 숫돌에 의심을 지어내지 않는다.
       expect(result.current.wheel?.diameter).toBe(115);
       expect(result.current.wheel?.visibleDamage).toBe('unknown');
+      // 이 점검의 숫돌을 본 판독이 아니다. 기록에도 남기지 않는다.
+      expect(result.current.reanalyses).toEqual([]);
     });
 
     it('화면만 떠났고 숫돌이 그대로면, 늦게 온 의심을 버리지 않는다', async () => {
@@ -2221,6 +2255,9 @@ describe('결과 화면 — 숫돌 라벨 재분석이 낸 외관 의심과 원�
       // 전환한 것은 아니다.
       expect(result.current.analysisMode).toBe('offline_limited');
       expect(result.current.wheelOcr).toBeNull();
+      // 의심과 함께 그 판독도 남는다.
+      expect(result.current.reanalyses).toHaveLength(1);
+      expect(result.current.reanalyses?.[0]?.acceptedAt).toBeNull();
     });
   });
 
@@ -2524,6 +2561,27 @@ describe('결과 화면 — 숫돌 라벨 재분석이 낸 외관 의심과 원�
         expiryRaw: '12/2099',
       });
       expect(screen.getByText('적합')).toBeInTheDocument();
+
+      // 기기 판독은 OCR 원본 자리에 그대로 있고, 채운 칸은 그 원본과 다르다. 판정
+      // 근거는 그 값이 받아들인 재분석 판독이 읽은 것이라고 적는다 — 기록으로 확인되는
+      // 사실이라 「…로 보이며」라고 하지 않는다.
+      expect(result.current.wheelOcr?.rawText).toBe('LOCAL');
+      fireEvent.click(screen.getByRole('button', { name: '근거 보기' }));
+      const row = screen
+        .getByText('판정에 쓴 라벨 표기 중 OCR 원본과 다른 값')
+        .closest('li');
+      expect(row).toHaveTextContent(
+        '원주속도 표기: 판정에 쓴 값 80m/s / OCR 원본 —',
+      );
+      expect(row).toHaveTextContent(
+        '내경 표기: 판정에 쓴 값 Φ22.23mm / OCR 원본 —',
+      );
+      expect(row).toHaveTextContent(
+        '기록된 OCR 원본과 다른 값입니다. 받아들인 서버 재분석 판독이 읽은 표기이며, 작업자가 확인한 값이 아닙니다.',
+      );
+      expect(row).not.toHaveTextContent('읽어 둔 표기로 보이며');
+      // 기기가 읽어 둔 칸은 OCR 원본과 같아 여기 나오지 않는다.
+      expect(row).not.toHaveTextContent('회전속도 표기');
     });
 
     it('표기가 충돌하면 AI가 올린 의심은 남기되, 전환할 수 없으므로 손상 항목은 다시 묻지 않는다', async () => {
@@ -2568,10 +2626,14 @@ describe('결과 화면 — 숫돌 라벨 재분석이 낸 외관 의심과 원�
       expect(saved.wheelOcr).toEqual(local);
     });
 
-    it('전환 뒤 판정에 쓴 표기가 서버 판독에 없는 값이면 판정 근거가 그 출처를 알린다', async () => {
+    it('전환 뒤에도 판정을 막은 표기의 출처가 남는다 — 기기 판독은 OCR 원본 자리에 그대로다', async () => {
       // 로컬 OCR이 80m/s를 60으로 잘못 읽었고 서버는 m/s 표기를 읽지 못했다. 충돌이
-      // 아니라 전환되고, 로컬이 올린 표기 불일치는 그대로 판정불가로 남는다. 그런데
-      // OCR 원본 자리는 서버 판독으로 바뀌어, 판정을 막은 60이 어디서 왔는지 사라진다.
+      // 아니라 전환되고, 로컬이 올린 표기 불일치는 그대로 판정불가로 남는다.
+      //
+      // 서버 판독은 재분석 판독으로 따로 남고 OCR 원본 자리는 덮지 않는다. 그래서
+      // 판정을 막은 60이 어디서 왔는지는 OCR 원본에 그대로 있다. (서버 판독이 그
+      // 자리를 덮던 때에는 출처가 사라져, 판정 근거가 따로 추론해 알려야 했다 —
+      // EvidencePanel.test.tsx의 「판정에 쓴 표기의 출처」.)
       const result = readyLocalOcrWheel(localRead({ peripheralSpeedMps: 60 }));
       extractWheel.mockResolvedValue(aiWheel({}, { peripheralSpeedMps: null }));
       render(<ResultPage />);
@@ -2582,20 +2644,21 @@ describe('결과 화면 — 숫돌 라벨 재분석이 낸 외관 의심과 원�
       expect(result.current.analysisMode).toBe('online');
       expect(screen.getByText('판정불가')).toBeInTheDocument();
       expect(screen.getByText(MARKINGS_MISMATCH)).toBeInTheDocument();
+      // 기기 판독은 OCR 원본 자리에, 서버 판독은 받아들인 재분석 판독에 있다.
+      expect(result.current.wheelOcr?.rawText).toBe('LOCAL');
+      expect(result.current.wheelOcr?.markings?.peripheralSpeedMps).toBe(60);
+      expect(result.current.reanalyses).toHaveLength(1);
+      expect(
+        result.current.reanalyses?.[0]?.wheelOcr?.markings?.peripheralSpeedMps,
+      ).toBeNull();
+      expect(result.current.reanalyses?.[0]?.acceptedAt).not.toBeNull();
 
       fireEvent.click(screen.getByRole('button', { name: '근거 보기' }));
 
-      const row = screen
-        .getByText('판정에 쓴 라벨 표기 중 OCR 원본과 다른 값')
-        .closest('li');
-      expect(row).toHaveTextContent(
-        '원주속도 표기: 판정에 쓴 값 60m/s / OCR 원본 —',
-      );
-      expect(row).toHaveTextContent(
-        '기록된 OCR 원본과 다른 값입니다. 서버로 다시 분석하기 전에 읽어 둔 표기로 보이며, 작업자가 확인한 값이 아닙니다.',
-      );
-      // 서버가 같게 읽은 칸은 여기 나오지 않는다.
-      expect(row).not.toHaveTextContent('회전속도 표기');
+      // 판정에 쓴 표기는 모두 OCR 원본과 같다. 「원본과 다른 값」이라고 알릴 것이 없다.
+      expect(
+        screen.queryByText('판정에 쓴 라벨 표기 중 OCR 원본과 다른 값'),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -2933,6 +2996,324 @@ describe('결과 화면 — 숫돌 라벨 재분석이 낸 외관 의심과 원�
         screen.queryByRole('button', { name: /확인함/ }),
       ).not.toBeInTheDocument();
       expect(result.current.wheel?.visibleDamage).toBe('suspected');
+    });
+  });
+
+  describe('재분석 판독을 기록에 남긴다', () => {
+    // 기록으로 되짚을 수 있어야 하는 것 셋.
+    //   1. 받아들이지 않은 판독 — 위 「전환하지 않고 저장한 기록에 …」
+    //   2. 다시 받은 손상 항목의 답
+    //   3. 로컬 OCR로 읽은 원본(재분석 판독에 덮이지 않는다)
+
+    const REANALYSIS_TITLE = '서버 재분석 기록';
+    const NOT_ACCEPTED_ONCE =
+      '서버 재분석 판독 1건 가운데 받아들인 것은 없습니다. AI가 읽은 회전속도·지름은 규격 대조에 쓰지 않았습니다.';
+    const ACCEPTED_ONCE =
+      '서버 재분석 판독 1건 가운데 1건을 받아들였습니다. AI가 읽은 회전속도·지름이 작업자가 확정한 값과 같음을 확인하고 숫돌 라벨 단계의 제한 대조를 푼 것입니다. 작업자가 확정한 값은 AI 값으로 바꾸지 않았습니다.';
+    const ACCEPTED_GRINDER_ONLY =
+      '서버 재분석 판독 1건 가운데 1건을 받아들였습니다. AI가 읽은 회전속도·지름이 작업자가 확정한 값과 같음을 확인하고 그라인더 명판 단계의 제한 대조를 푼 것입니다. 작업자가 확정한 값은 AI 값으로 바꾸지 않았습니다.';
+    const REANALYSIS_DAMAGE =
+      '재분석한 AI가 사진에서 손상 징후를 의심했고, 그 경고는 결과의 외관 손상 항목에 반영했습니다.';
+    const RECHECK_CONFIRMED =
+      'AI 경고를 본 뒤 숫돌 손상 항목(깨짐·갈라짐)을 다시 물었고, 작업자가 「확인함」으로 답했습니다.';
+    const REANALYSIS_LIMIT =
+      '이 점검에서 받을 수 있는 서버 재분석 20회를 모두 받았습니다. 제한 대조 결과를 유지하거나 다시 촬영하세요.';
+
+    /**
+     * 회전속도가 그라인더보다 낮은 숫돌. 온라인 대조로 바꿔도 부적합이라 시험운전
+     * 없이 저장된다 — 전환한 기록의 모양을 시험운전 절차 없이 볼 수 있다.
+     */
+    const LOW_RPM_TYPED = confirmedWheelSpec(null, {
+      maxRPM: 8500,
+      diameter: 125,
+      thickness: 1.6,
+      purpose: 'cutting',
+      wheelType: 'bonded_abrasive',
+      expiryText: '12/2099',
+      expiryReview: 'marked',
+      userConfirmed: true,
+    });
+
+    function lowRpmAi(overrides: Partial<WheelSpec> = {}): WheelSpec {
+      return aiWheel(
+        { maxRPM: 8500, ...overrides },
+        { labeledRPM: 8500, peripheralSpeedMps: null },
+      );
+    }
+
+    async function saveRecord() {
+      vi.mocked(saveInspection).mockResolvedValueOnce(1);
+      checkAll();
+      fireEvent.click(
+        screen.getByRole('button', { name: /점검 완료 및 저장/ }),
+      );
+      await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
+      return vi.mocked(saveInspection).mock.calls[0][0];
+    }
+
+    it('다시 받은 「확인함」과 받아들인 시각이 저장 기록에 남는다', async () => {
+      readyOfflineWheel(LOW_RPM_TYPED);
+      const reading = lowRpmAi({ visibleDamage: 'suspected' });
+      extractWheel.mockResolvedValue(reading);
+      render(<ResultPage />);
+
+      await reanalyze();
+      fireEvent.click(screen.getByRole('button', { name: /확인함/ }));
+      await accept();
+      const saved = await saveRecord();
+
+      expect(saved.analysisMode).toBe('online');
+      expect(saved.result.verdict).toBe('INCOMPATIBLE');
+      // 숫돌 상태 확인의 답은 그대로 true다. 그것만으로는 다시 물었는지 알 수 없다.
+      expect(saved.wheelCondition?.damageFree).toBe(true);
+      const [record] = saved.reanalyses ?? [];
+      expect(saved.reanalyses).toHaveLength(1);
+      expect(record.wheelOcr).toEqual(reading);
+      expect(record.damageRecheck?.damageFree).toBe(true);
+      const answeredAt = Date.parse(record.damageRecheck?.answeredAt ?? '');
+      const acceptedAt = Date.parse(record.acceptedAt ?? '');
+      expect(Number.isNaN(answeredAt)).toBe(false);
+      expect(Number.isNaN(acceptedAt)).toBe(false);
+      // 답한 뒤에 받아들였다.
+      expect(acceptedAt).toBeGreaterThanOrEqual(answeredAt);
+      // 서버 판독은 OCR 원본 자리에 넣지 않는다.
+      expect(saved.wheelOcr).toBeUndefined();
+    });
+
+    it('의심이 없어 다시 묻지 않은 전환에는 손상 답이 없다 — 지어내지 않는다', async () => {
+      readyOfflineWheel(LOW_RPM_TYPED);
+      extractWheel.mockResolvedValue(lowRpmAi());
+      render(<ResultPage />);
+
+      await reanalyze();
+      await accept();
+      const saved = await saveRecord();
+
+      expect(saved.analysisMode).toBe('online');
+      expect(saved.reanalyses?.[0]?.acceptedAt).not.toBeNull();
+      expect(saved.reanalyses?.[0]?.damageRecheck).toBeNull();
+    });
+
+    it('로컬 OCR로 읽은 숫돌을 재분석으로 전환해 저장하면 로컬 원본과 서버 판독이 따로 남는다', async () => {
+      // 기기 안 OCR이 rpm 표기만 읽었고, 작업자가 그 값을 확인해 확정했다.
+      const local: WheelSpec = {
+        ...LOW_RPM_TYPED,
+        visibleDamage: 'unknown',
+        markings: {
+          labeledRPM: 8500,
+          peripheralSpeedMps: null,
+          boreDiameter: null,
+        },
+        rpmSource: 'label',
+        rawText: 'local ocr',
+        confidence: 'low',
+      };
+      const localTelemetry = {
+        engine: 'tesseract' as const,
+        model: null,
+        inputTokens: null,
+        outputTokens: null,
+        cacheReadTokens: null,
+        cacheCreationTokens: null,
+        durationMs: 800,
+      };
+      const confirmed: WheelSpec = {
+        ...LOW_RPM_TYPED,
+        markings: { ...local.markings! },
+        rpmSource: 'label',
+      };
+      const result = store();
+      act(() => {
+        result.current.setGrinder(GRINDER, null, GRINDER);
+        result.current.setGrinderCondition(GRINDER_OK);
+        result.current.setWheel(
+          confirmed,
+          new Blob(['label'], { type: 'image/jpeg' }),
+          local,
+          null,
+          localTelemetry,
+        );
+        result.current.setOfflineSlot('wheel', true);
+        result.current.setWheelCondition(CONFIRMED);
+      });
+      const reading = aiWheel(
+        { maxRPM: 8500 },
+        { labeledRPM: 8500, peripheralSpeedMps: null, boreDiameter: 22.23 },
+      );
+      extractWheel.mockResolvedValue(reading);
+      render(<ResultPage />);
+
+      await reanalyze();
+      await accept();
+      const saved = await saveRecord();
+
+      expect(saved.analysisMode).toBe('online');
+      // 작업자가 확인 화면에서 보고 고친 원본은 로컬 판독이다. 덮이지 않는다.
+      expect(saved.wheelOcr).toEqual(local);
+      expect(saved.wheelOcrTelemetry).toEqual(localTelemetry);
+      // 서버 판독은 재분석 판독에 있다.
+      expect(saved.reanalyses?.[0]?.wheelOcr).toEqual(reading);
+      // 확정값의 표기 — 로컬이 읽은 rpm 표기는 그대로이고, 비어 있던 내경은 서버
+      // 판독에서 왔다. 둘을 견주면 어느 값이 어디서 왔는지 기록으로 알 수 있다.
+      expect(saved.wheel.markings?.labeledRPM).toBe(8500);
+      expect(saved.wheel.markings?.boreDiameter).toBe(22.23);
+    });
+
+    it('재분석을 하지 않은 기록은 빈 목록을 남긴다 — 칸이 없는 구기록과 구분된다', async () => {
+      readyOfflineWheel();
+      render(<ResultPage />);
+
+      const saved = await saveRecord();
+
+      expect(saved.reanalyses).toEqual([]);
+      expect(extractWheel).not.toHaveBeenCalled();
+    });
+
+    it('이 기록이 생기기 전 버전에서 시작한 점검은 재분석 칸을 남기지 않는다', async () => {
+      // 그 점검에서 재분석을 했는지 앱은 모른다. 빈 목록(하지 않았다)으로 적지 않는다.
+      const result = readyOfflineWheel();
+      act(() =>
+        result.current.restore({ ...result.current, reanalyses: null }),
+      );
+      render(<ResultPage />);
+
+      const saved = await saveRecord();
+
+      // 이 파일의 다른 선택 칸과 같은 방식으로 본다 — 값이 없으면(undefined) 저장소도
+      // 백업도 없는 칸으로 읽는다.
+      expect(saved.reanalyses).toBeUndefined();
+    });
+
+    it('재분석을 받지 않았으면 재분석 기록을 보이지 않는다', () => {
+      readyOfflineWheel();
+      render(<ResultPage />);
+
+      expect(
+        screen.queryByRole('heading', { name: REANALYSIS_TITLE }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('취소한 뒤에도 재분석을 받았다는 것과 결과에 반영한 것을 알린다', async () => {
+      // 엔진의 사유 문장은 제한 대조 사유 그대로다(대조는 작업자가 확인한 값으로만
+      // 했다). 그 문장은 서버가 이 사진을 다시 읽었는지를 말하지 않는다.
+      readyOfflineWheel();
+      extractWheel.mockResolvedValue(
+        aiWheel(
+          { maxRPM: 13300, visibleDamage: 'suspected' },
+          { labeledRPM: 13300 },
+        ),
+      );
+      render(<ResultPage />);
+
+      await reanalyze();
+      // 값을 견주는 동안에는 요약을 겹쳐 보이지 않는다. 전환을 고르는 중에 "바꾸지
+      // 않았다"가 보이면 이미 끝난 일처럼 읽힌다.
+      expect(
+        screen.queryByRole('heading', { name: REANALYSIS_TITLE }),
+      ).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: CANCEL }));
+
+      expect(
+        screen.getByRole('heading', { name: REANALYSIS_TITLE }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(NOT_ACCEPTED_ONCE)).toBeInTheDocument();
+      expect(screen.getByText(REANALYSIS_DAMAGE)).toBeInTheDocument();
+      expect(screen.queryByText(ACCEPTED_ONCE)).not.toBeInTheDocument();
+      expect(screen.queryByText(RECHECK_CONFIRMED)).not.toBeInTheDocument();
+    });
+
+    it('온라인 대조로 바꾼 뒤에도 재분석으로 바꿨다는 것과 다시 받은 답을 알린다', async () => {
+      readyOfflineWheel();
+      extractWheel.mockResolvedValue(aiWheel({ visibleDamage: 'suspected' }));
+      render(<ResultPage />);
+
+      await reanalyze();
+      fireEvent.click(screen.getByRole('button', { name: /확인함/ }));
+      await accept();
+
+      // 오프라인 패널은 사라졌다. 그래도 이 「온라인」 결과가 어떻게 온라인이 됐는지 남는다.
+      expect(
+        screen.queryByRole('heading', { name: '⚠ 제한 대조' }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: REANALYSIS_TITLE }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(ACCEPTED_ONCE)).toBeInTheDocument();
+      expect(screen.getByText(REANALYSIS_DAMAGE)).toBeInTheDocument();
+      expect(screen.getByText(RECHECK_CONFIRMED)).toBeInTheDocument();
+      expect(screen.queryByText(NOT_ACCEPTED_ONCE)).not.toBeInTheDocument();
+    });
+
+    it('전환한 뒤 숫돌만 서버 판독 없이 다시 확정하면 — 다시 제한 대조이고, 요약은 명판 단계만 바꿨다고 말한다', async () => {
+      // 명판과 숫돌을 함께 재분석해 온라인 대조로 바꾼 뒤, 숫돌을 다시 찍어 직접
+      // 넣었다. 점검은 다시 제한 대조다. 요약이 "온라인 대조로 바꿨다"로 남으면
+      // 제한 대조 안내 바로 아래에서 반대되는 말을 하게 된다.
+      const result = store();
+      act(() => {
+        result.current.setGrinder(
+          GRINDER,
+          new Blob(['plate'], { type: 'image/jpeg' }),
+          null,
+        );
+        result.current.setOfflineSlot('grinder', true);
+        result.current.setGrinderCondition(GRINDER_OK);
+        result.current.setWheel(
+          TYPED_WHEEL,
+          new Blob(['label'], { type: 'image/jpeg' }),
+          null,
+        );
+        result.current.setOfflineSlot('wheel', true);
+        result.current.setWheelCondition(CONFIRMED);
+      });
+      extractGrinder.mockResolvedValue({ ...GRINDER, rawText: 'AI' });
+      extractWheel.mockResolvedValue(aiWheel());
+      const view = render(<ResultPage />);
+      await reanalyze();
+      await accept();
+      expect(result.current.analysisMode).toBe('online');
+
+      view.unmount();
+      act(() => {
+        result.current.setWheel(
+          { ...TYPED_WHEEL, diameter: 115 },
+          new Blob(['other label'], { type: 'image/jpeg' }),
+          null,
+        );
+        result.current.setOfflineSlot('wheel', true);
+        result.current.setWheelCondition(CONFIRMED);
+      });
+      render(<ResultPage />);
+
+      expect(result.current.analysisMode).toBe('offline_limited');
+      expect(
+        screen.getByRole('heading', { name: '⚠ 제한 대조' }),
+      ).toBeInTheDocument();
+      expect(screen.getByText('판정불가')).toBeInTheDocument();
+      // 이전 숫돌 사진의 판독은 남지 않는다. 받아들인 명판 판독만 남는다.
+      expect(result.current.reanalyses).toHaveLength(1);
+      expect(result.current.reanalyses?.[0]?.wheelOcr).toBeNull();
+      expect(screen.getByText(ACCEPTED_GRINDER_ONLY)).toBeInTheDocument();
+      expect(document.body).not.toHaveTextContent('숫돌 라벨 단계');
+    });
+
+    it('남길 자리가 없으면 서버 재분석을 더 받지 않는다', () => {
+      // 판독은 지우지 않고 쌓는다. 남기지 못할 판독은 받지 않는다.
+      const result = readyOfflineWheel();
+      act(() => {
+        for (let count = 0; count < MAX_REANALYSES; count += 1) {
+          result.current.recordReanalysis(
+            { wheelOcr: aiWheel() },
+            { grinderImage: null, wheelImage: result.current.wheelImage },
+          );
+        }
+      });
+      render(<ResultPage />);
+
+      expect(
+        screen.queryByRole('button', { name: '서버로 다시 분석하기' }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText(REANALYSIS_LIMIT)).toBeInTheDocument();
+      expect(extractWheel).not.toHaveBeenCalled();
     });
   });
 });

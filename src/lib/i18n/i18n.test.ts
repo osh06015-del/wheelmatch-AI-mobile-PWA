@@ -211,6 +211,13 @@ describe('비통과 문구', () => {
       'offline.mismatch',
       'offline.markingConflict',
       'offline.lowConfidence',
+      // 재분석을 받고도 온라인 대조로 바꾸지 않은 기록은 여전히 제한 대조다.
+      // 재분석을 "받았다"는 말이 대조가 맞았다는 말로 읽히면 안 된다.
+      'reanalysis.summary.notAccepted',
+      'offline.reanalysisLimit',
+      // 받아들인 판독이 있어도 점검은 제한 대조일 수 있다(그 뒤 숫돌만 다시 확정한
+      // 경우). 이 문장이 대조가 맞았다는 말로 읽히면 안 된다.
+      'reanalysis.summary.accepted',
     ] as const;
 
     for (const { code } of LOCALES) {
@@ -258,6 +265,27 @@ describe('제한 대조 문구', () => {
     'offline.accept',
     'offline.cancel',
     'offline.cause.unknown',
+    // 서버 재분석 기록. 어느 까닭으로 제한된 점검이든 같은 문구가 뜬다 — 결과 화면,
+    // 이력, 내보낸 문서에. 받아들였다는 말도 「제한 대조를 풀었다」로만 적는다.
+    'offline.reanalysisLimit',
+    'reanalysis.title',
+    'reanalysis.summary.accepted',
+    'reanalysis.summary.notAccepted',
+    'reanalysis.summary.damageSuspected',
+    'reanalysis.summary.recheck',
+    'reanalysis.item.heading',
+    'reanalysis.item.damageSuspected',
+    'reanalysis.item.damageNotSeen',
+    'reanalysis.item.damageUnknown',
+    'reanalysis.item.accepted',
+    'reanalysis.item.notAccepted',
+    'reanalysis.item.recheck',
+    'evidence.reanalysis.title',
+    'evidence.reanalysis.note',
+    // 판정에 쓴 표기가 받아들인 재분석 판독에서 왔다는 문장. 옛 기록의 문장
+    // (evidence.markings.note)과 같은 자리에 뜬다.
+    'evidence.markings.note',
+    'evidence.markings.noteReanalysis',
   ] as const;
 
   /** 오프라인이었다·서버에 닿지 못했다·서버 분석이 없었다고 단정하는 말 */

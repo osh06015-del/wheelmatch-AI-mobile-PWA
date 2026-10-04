@@ -136,6 +136,8 @@ export const en: Messages = {
   'evidence.markings.row': '{field}: used {used} / OCR raw {ocr}',
   'evidence.markings.note':
     'These values differ from the recorded OCR raw reading. They appear to be markings read before the server re-analysis, and they were not confirmed by the worker.',
+  'evidence.markings.noteReanalysis':
+    'These values differ from the recorded OCR raw reading. They are markings read by the accepted server reanalysis reading, and they were not confirmed by the worker.',
   'evidence.rules.title': 'Per-rule verdict evidence',
   'evidence.rules.formula': 'Formula',
   'evidence.rules.difference': 'Difference',
@@ -1126,6 +1128,31 @@ export const en: Messages = {
   'offline.accept':
     'Confirm the values equal the AI values and lift the limited check',
   'offline.cancel': 'Cancel and keep the limited-check result',
+  'offline.reanalysisLimit':
+    'This inspection has received all {max} server reanalyses it can take. Keep the limited-check result or take the photos again.',
+  'reanalysis.title': 'Server reanalysis record',
+  'reanalysis.summary.accepted':
+    'Server reanalysis readings: {count}. Accepted: {accepted}. For each accepted reading, the speed and diameter read by the AI were confirmed to equal the values the worker confirmed, and the limited check was lifted for that step ({steps}). The values the worker confirmed were not replaced with AI values.',
+  'reanalysis.summary.notAccepted':
+    'Server reanalysis readings: {count}. Accepted: none. The speed and diameter read by the AI were not used in the spec comparison.',
+  'reanalysis.summary.damageSuspected':
+    'The reanalyzing AI suspected a sign of damage in the photo, and that warning was added to the visible damage item of the result.',
+  'reanalysis.summary.recheck':
+    'After the AI warning, the wheel damage item (chips and cracks) was asked again and the worker answered "{answer}".',
+  'reanalysis.steps.both': '{first} and {second}',
+  'reanalysis.item.heading': 'Reanalysis {index} · {time} · model {model}',
+  'reanalysis.item.damageSuspected':
+    'AI visual reading: sign of damage suspected',
+  'reanalysis.item.damageNotSeen':
+    'AI visual reading: no sign of damage found in the photo — this does not mean the wheel is undamaged',
+  'reanalysis.item.damageUnknown': 'AI visual reading: could not tell',
+  'reanalysis.item.accepted':
+    'Limited check: lifted after confirming this reading ({time})',
+  'reanalysis.item.notAccepted': 'Limited check: not lifted',
+  'reanalysis.item.recheck': 'Damage item asked again: "{answer}" ({time})',
+  'evidence.reanalysis.title': 'Server reanalysis readings',
+  'evidence.reanalysis.note':
+    'Readings taken again on the server from the result screen after the values were confirmed. The worker never edited them, so they are kept apart from the OCR raw values above. Only two things move from these readings into the confirmed values: a suspected sign of damage, and — from an accepted wheel reading — label markings for slots that were empty.',
   'draft.title': 'There is an inspection in progress',
   'draft.body':
     'You can continue it, or delete the saved progress and start over. The app does not continue or delete it on its own.',

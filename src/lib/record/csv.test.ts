@@ -6,6 +6,7 @@ import type {
   GrinderSpec,
   InspectionRecord,
   OcrTelemetry,
+  ReanalysisRecord,
   WheelSpec,
 } from '@/lib/rules/types';
 
@@ -493,6 +494,18 @@ describe('toCsv', () => {
       'visibleDamageSources',
       'grinderLimitCause',
       'wheelLimitCause',
+      'reanalysisCount',
+      'reanalysisAccepted',
+      'reanalysisGrinderRPM_ocr',
+      'reanalysisGrinderMaxDiameter_ocr',
+      'reanalysisWheelMaxRPM_ocr',
+      'reanalysisWheelDiameter_ocr',
+      'reanalysisVisibleDamage',
+      'reanalysisDamageRecheck',
+      'reanalysisInputTokens',
+      'reanalysisOutputTokens',
+      'reanalysisCacheReadTokens',
+      'reanalysisCacheCreationTokens',
     ]);
   });
 
@@ -950,11 +963,12 @@ describe('다각도 외관 확인 열', () => {
     const start = CSV_COLUMNS.indexOf('workMaterial');
     expect(start).toBe(108);
     // Profile 열 8개, 종류별 상태 항목 열 9개, 판정 범위·부속품 이름·판독 경로·
-    // 사용기한 응답·외관 의심 출처 열 1개씩, 제한 까닭 열 2개. 뒤에 붙을 뿐 앞선
-    // 자리는 그대로다.
+    // 사용기한 응답·외관 의심 출처 열 1개씩, 제한 까닭 열 2개, 서버 재분석 열 12개.
+    // 뒤에 붙을 뿐 앞선 자리는 그대로다.
     expect(CSV_COLUMNS.indexOf('conditionDiamondRimIntact')).toBe(116);
     expect(CSV_COLUMNS.indexOf('accessoryProfileScope')).toBe(125);
-    expect(CSV_COLUMNS.slice(start)).toHaveLength(24);
+    expect(CSV_COLUMNS.indexOf('reanalysisCount')).toBe(132);
+    expect(CSV_COLUMNS.slice(start)).toHaveLength(36);
     for (const column of CSV_COLUMNS.slice(start)) {
       expect(row[CSV_COLUMNS.indexOf(column)]).toBe('');
     }
@@ -1057,5 +1071,224 @@ describe('다각도 외관 확인 열', () => {
 
     const [, emptyRow] = parse(toCsv([record()]));
     expect(emptyRow[CSV_COLUMNS.indexOf('wheelAccessoryName')]).toBe('');
+  });
+});
+
+describe('서버 재분석 열', () => {
+  // 결과 화면에서 서버로 다시 읽은 판독(InspectionRecord.reanalyses). 받아들이지 않은
+  // 판독도 적는다 — 받아들인 것만 적으면 "작업자 값과 일치한 판독"만 남아 인식률이
+  // 실제보다 좋게 나온다.
+  //
+  // 횟수를 뺀 나머지 열은 판독마다 한 토큰이고, 받은 순서대로 띄어 적는다.
+  const REANALYSIS_COLUMNS = [
+    'reanalysisCount',
+    'reanalysisAccepted',
+    'reanalysisGrinderRPM_ocr',
+    'reanalysisGrinderMaxDiameter_ocr',
+    'reanalysisWheelMaxRPM_ocr',
+    'reanalysisWheelDiameter_ocr',
+    'reanalysisVisibleDamage',
+    'reanalysisDamageRecheck',
+    'reanalysisInputTokens',
+    'reanalysisOutputTokens',
+    'reanalysisCacheReadTokens',
+    'reanalysisCacheCreationTokens',
+  ] as const;
+
+  const TELEMETRY: OcrTelemetry = {
+    engine: 'claude',
+    model: 'claude-x',
+    inputTokens: 1500,
+    outputTokens: 120,
+    cacheReadTokens: 900,
+    cacheCreationTokens: 0,
+    durationMs: 2100,
+  };
+
+  /** 숫돌 라벨만 다시 읽은 판독 한 줄 */
+  function wheelReading(
+    overrides: Partial<ReanalysisRecord> = {},
+  ): ReanalysisRecord {
+    return {
+      analyzedAt: '2026-10-04T05:12:03.000Z',
+      grinderOcr: null,
+      grinderOcrTelemetry: null,
+      wheelOcr: WHEEL,
+      wheelOcrTelemetry: TELEMETRY,
+      acceptedAt: null,
+      damageRecheck: null,
+      ...overrides,
+    };
+  }
+
+  function cells(overrides: Partial<InspectionRecord>) {
+    const [, row] = parse(toCsv([record(overrides)]));
+    return Object.fromEntries(
+      REANALYSIS_COLUMNS.map((name) => [name, row[CSV_COLUMNS.indexOf(name)]]),
+    ) as Record<(typeof REANALYSIS_COLUMNS)[number], string>;
+  }
+
+  it('맨 뒤에 붙인다 — 앞선 열의 자리를 밀지 않는다', () => {
+    expect(CSV_COLUMNS.slice(-REANALYSIS_COLUMNS.length)).toEqual(
+      REANALYSIS_COLUMNS,
+    );
+    // 외관 의심 출처 열(129)과 제한 까닭 열(130·131)이 먼저 들어갔다. 재분석 열은
+    // 그 뒤부터다.
+    expect(CSV_COLUMNS[129]).toBe('visibleDamageSources');
+    expect(CSV_COLUMNS[131]).toBe('wheelLimitCause');
+    expect(CSV_COLUMNS.indexOf('reanalysisCount')).toBe(132);
+    expect(CSV_COLUMNS).toHaveLength(144);
+  });
+
+  it('이 칸이 생기기 전 기록은 모두 빈 칸이다 — 횟수를 0으로 채우지 않는다', () => {
+    // 그때 재분석을 했는지는 기록에서 알 수 없다. 0으로 적으면 "하지 않았다"가 된다.
+    for (const value of Object.values(cells({}))) expect(value).toBe('');
+  });
+
+  it('재분석을 하지 않은 기록은 횟수가 0이다 — 구기록의 빈 칸과 다르다', () => {
+    const row = cells({ reanalyses: [] });
+    expect(row.reanalysisCount).toBe('0');
+    expect(row.reanalysisAccepted).toBe('');
+    expect(row.reanalysisWheelMaxRPM_ocr).toBe('');
+  });
+
+  it('받아들이지 않은 판독도 값과 외관 판독까지 남는다', () => {
+    const row = cells({
+      analysisMode: 'offline_limited',
+      wheel: { ...WHEEL, visibleDamage: 'suspected' },
+      reanalyses: [
+        wheelReading({
+          wheelOcr: { ...WHEEL, maxRPM: 13300, visibleDamage: 'suspected' },
+        }),
+      ],
+    });
+    expect(row.reanalysisCount).toBe('1');
+    expect(row.reanalysisAccepted).toBe('N');
+    expect(row.reanalysisWheelMaxRPM_ocr).toBe('13300');
+    expect(row.reanalysisWheelDiameter_ocr).toBe('125');
+    expect(row.reanalysisVisibleDamage).toBe('suspected');
+  });
+
+  it('여러 번 받았으면 받은 순서대로 한 칸에 띄어 적는다', () => {
+    const row = cells({
+      reanalyses: [
+        wheelReading({
+          wheelOcr: { ...WHEEL, maxRPM: 13300, visibleDamage: 'suspected' },
+        }),
+        wheelReading({
+          analyzedAt: '2026-10-04T05:14:00.000Z',
+          acceptedAt: '2026-10-04T05:14:30.000Z',
+        }),
+      ],
+    });
+    expect(row.reanalysisCount).toBe('2');
+    expect(row.reanalysisAccepted).toBe('N Y');
+    expect(row.reanalysisWheelMaxRPM_ocr).toBe('13300 12200');
+    expect(row.reanalysisVisibleDamage).toBe('suspected none_visible');
+  });
+
+  it('다시 읽지 않은 단계는 -로, 읽었지만 값을 얻지 못한 것은 null로 적는다', () => {
+    // 둘을 같은 표시로 적으면 "읽지 못했다"(미인식)와 "읽게 하지 않았다"를 가를 수 없다.
+    const row = cells({
+      reanalyses: [
+        wheelReading({ wheelOcr: { ...WHEEL, maxRPM: null } }),
+        wheelReading({
+          grinderOcr: { ...GRINDER, noLoadRPM: null },
+          grinderOcrTelemetry: TELEMETRY,
+          wheelOcr: null,
+          wheelOcrTelemetry: null,
+        }),
+      ],
+    });
+    expect(row.reanalysisWheelMaxRPM_ocr).toBe('null -');
+    expect(row.reanalysisWheelDiameter_ocr).toBe('125 -');
+    expect(row.reanalysisGrinderRPM_ocr).toBe('- null');
+    expect(row.reanalysisGrinderMaxDiameter_ocr).toBe('- 125');
+    expect(row.reanalysisVisibleDamage).toBe('none_visible -');
+  });
+
+  it('다시 받은 손상 항목의 답을 Y/N으로, 받지 않았으면 -로 적는다', () => {
+    const row = cells({
+      reanalyses: [
+        wheelReading(),
+        wheelReading({
+          damageRecheck: {
+            damageFree: true,
+            answeredAt: '2026-10-04T05:12:31.000Z',
+          },
+          acceptedAt: '2026-10-04T05:12:40.000Z',
+        }),
+        wheelReading({
+          damageRecheck: {
+            damageFree: false,
+            answeredAt: '2026-10-04T05:13:00.000Z',
+          },
+        }),
+      ],
+    });
+    expect(row.reanalysisDamageRecheck).toBe('- Y N');
+    expect(row.reanalysisAccepted).toBe('N Y N');
+  });
+
+  it('토큰 수는 그 판독에서 다시 읽은 단계의 합이다', () => {
+    const row = cells({
+      reanalyses: [
+        wheelReading(),
+        wheelReading({
+          grinderOcr: GRINDER,
+          grinderOcrTelemetry: { ...TELEMETRY, inputTokens: 1000 },
+        }),
+      ],
+    });
+    expect(row.reanalysisInputTokens).toBe('1500 2500');
+    expect(row.reanalysisOutputTokens).toBe('120 240');
+    expect(row.reanalysisCacheReadTokens).toBe('900 1800');
+    expect(row.reanalysisCacheCreationTokens).toBe('0 0');
+  });
+
+  it('토큰 수를 하나라도 모르면 그 판독의 합은 null이다 — 아는 것만 더해 적지 않는다', () => {
+    const row = cells({
+      reanalyses: [
+        wheelReading({ wheelOcrTelemetry: null }),
+        wheelReading({
+          grinderOcr: GRINDER,
+          grinderOcrTelemetry: { ...TELEMETRY, outputTokens: null },
+        }),
+      ],
+    });
+    expect(row.reanalysisInputTokens).toBe('null 3000');
+    expect(row.reanalysisOutputTokens).toBe('null null');
+  });
+
+  it('재분석 판독은 기존 OCR 원본 열과 정정 여부 열에 섞이지 않는다', () => {
+    // 그 열들은 확인 화면에서 작업자가 고치기 전의 원본을 말한다. 직접 입력한
+    // 숫돌에는 그런 원본이 없다 — 재분석 판독으로 채우면 고친 적 없는 값이
+    // "고치지 않음"으로 세어진다.
+    const [, row] = parse(
+      toCsv([
+        record({
+          reanalyses: [
+            wheelReading({ acceptedAt: '2026-10-04T05:12:40.000Z' }),
+          ],
+        }),
+      ]),
+    );
+    expect(row[CSV_COLUMNS.indexOf('wheelMaxRPM_ocr')]).toBe('');
+    expect(row[CSV_COLUMNS.indexOf('wheelEdited')]).toBe('');
+    expect(row[CSV_COLUMNS.indexOf('wheelOcrEngine')]).toBe('');
+  });
+
+  it('모든 줄의 칸 수가 열 이름 수와 같다', () => {
+    const rows = parse(
+      toCsv([
+        record(),
+        record({ id: 2, reanalyses: [] }),
+        record({
+          id: 3,
+          reanalyses: [wheelReading(), wheelReading({ wheelOcr: null })],
+        }),
+      ]),
+    );
+    for (const row of rows) expect(row).toHaveLength(CSV_COLUMNS.length);
   });
 });

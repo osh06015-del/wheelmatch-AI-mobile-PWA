@@ -21,6 +21,7 @@ import {
   isValidGrinderCondition,
   isValidGrinderSpec,
   isValidOcrTelemetry,
+  isValidReanalyses,
   isValidSafetyChecklist,
   isValidTrialRun,
   isValidWheelCondition,
@@ -301,6 +302,10 @@ export function recoverDraft(raw: unknown): DraftRecovery {
     wheelOcrTelemetry: pick('wheelOcrTelemetry', isValidOcrTelemetry, null),
     captureChecks: captureChecks.checks,
     offlineSlots: offline.slots,
+    // 서버 재분석 판독. 없던 값(이 값을 남기지 않던 버전의 draft)과 읽을 수 없는 값은
+    // 알 수 없음(null)으로 둔다 — 빈 목록은 "재분석을 하지 않았다"는 뜻이라, 모르는
+    // 것을 그렇게 채우지 않는다. 어긋난 판독이 하나라도 있으면 목록째 버린다.
+    reanalyses: pick('reanalyses', isValidReanalyses, null),
     checklist: pick('checklist', isValidSafetyChecklist, null),
     trialRunRecord: pick('trialRunRecord', isValidTrialRun, null),
   };

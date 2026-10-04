@@ -576,3 +576,107 @@ describe('이력 상세 — 외관 손상 의심의 출처', () => {
     expect(screen.getAllByText(note)).toHaveLength(2);
   });
 });
+
+describe('이력 상세 — 서버 재분석 기록', () => {
+  // 엔진 사유 문장은 재분석을 받았는지를 말하지 않는다(받아들이지 않았으면 제한 대조
+  // 사유 그대로다). 받았다는 사실과 결과에 반영한 것을 검사 항목과 따로 알린다.
+  const reading = {
+    analyzedAt: '2026-10-04T05:12:03.000Z',
+    grinderOcr: null,
+    grinderOcrTelemetry: null,
+    wheelOcr: {
+      ...record().wheel,
+      maxRPM: 13300,
+      visibleDamage: 'suspected' as const,
+    },
+    wheelOcrTelemetry: null,
+    acceptedAt: null,
+    damageRecheck: null,
+  };
+
+  async function open(overrides: Partial<InspectionRecord>) {
+    const user = userEvent.setup();
+    render(<HistoryList records={[record(overrides)]} />);
+    await user.click(screen.getByRole('button', { expanded: false }));
+  }
+
+  it('받았지만 전환하지 않은 재분석과, 그 판독이 올린 의심을 반영했다는 것을 알린다', async () => {
+    await open({
+      analysisMode: 'offline_limited',
+      wheel: { ...record().wheel, visibleDamage: 'suspected' },
+      reanalyses: [reading],
+    });
+
+    expect(
+      screen.getByRole('heading', { name: '서버 재분석 기록' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '서버 재분석 판독 1건 가운데 받아들인 것은 없습니다. AI가 읽은 회전속도·지름은 규격 대조에 쓰지 않았습니다.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '재분석한 AI가 사진에서 손상 징후를 의심했고, 그 경고는 결과의 외관 손상 항목에 반영했습니다.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('온라인 대조로 바꾼 기록은 재분석으로 바꿨다는 것과 다시 받은 답을 알린다', async () => {
+    await open({
+      analysisMode: 'online',
+      wheel: { ...record().wheel, visibleDamage: 'suspected' },
+      reanalyses: [
+        {
+          ...reading,
+          wheelOcr: { ...reading.wheelOcr, maxRPM: 12200 },
+          acceptedAt: '2026-10-04T05:12:40.000Z',
+          damageRecheck: {
+            damageFree: true,
+            answeredAt: '2026-10-04T05:12:31.000Z',
+          },
+        },
+      ],
+    });
+
+    expect(
+      screen.getByText(
+        '서버 재분석 판독 1건 가운데 1건을 받아들였습니다. AI가 읽은 회전속도·지름이 작업자가 확정한 값과 같음을 확인하고 숫돌 라벨 단계의 제한 대조를 푼 것입니다. 작업자가 확정한 값은 AI 값으로 바꾸지 않았습니다.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'AI 경고를 본 뒤 숫돌 손상 항목(깨짐·갈라짐)을 다시 물었고, 작업자가 「확인함」으로 답했습니다.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('판정 근거를 펼치면 판독마다의 내역이 보인다', async () => {
+    const user = userEvent.setup();
+    await open({ analysisMode: 'offline_limited', reanalyses: [reading] });
+    await user.click(screen.getByRole('button', { name: '근거 보기' }));
+
+    expect(
+      screen.getByRole('heading', { name: '서버 재분석 판독' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '최고사용회전속도: 확정한 값 12200rpm / AI 값 13300rpm · 다름',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('이 칸이 없는 기록과 재분석을 하지 않은 기록에는 카드를 그리지 않는다', async () => {
+    await open({});
+    expect(
+      screen.queryByRole('heading', { name: '서버 재분석 기록' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('재분석을 하지 않은 기록(빈 목록)에도 카드를 그리지 않는다', async () => {
+    await open({ reanalyses: [] });
+    expect(
+      screen.queryByRole('heading', { name: '서버 재분석 기록' }),
+    ).not.toBeInTheDocument();
+  });
+});
