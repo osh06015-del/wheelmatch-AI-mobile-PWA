@@ -93,7 +93,7 @@ describe('TrialRunPanel — 시작 전', () => {
 });
 
 describe('TrialRunPanel — 진행 중', () => {
-  it('남은 시간이 끝나기 전에는 어느 답도 누를 수 없다', () => {
+  it('남은 시간이 끝나기 전에는 이상 없음만 잠그고 중지는 허용한다', () => {
     vi.useFakeTimers({ now: NOW });
     render(
       <TrialRunPanel
@@ -109,11 +109,13 @@ describe('TrialRunPanel — 진행 중', () => {
     expect(
       screen.getByRole('button', { name: /이상 없음 확인/ }),
     ).toBeDisabled();
-    expect(screen.getByRole('button', { name: /이상 있음/ })).toBeDisabled();
-    expect(screen.getByText(/요구 시간을 채운 뒤에/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /이상 있음/ })).toBeEnabled();
+    expect(
+      screen.getByText(/이상이 있으면 시간을 기다리지 말고/),
+    ).toBeInTheDocument();
   });
 
-  it('이상 항목 체크박스도 시간이 끝나기 전에는 잠겨 있다', () => {
+  it('이상 항목 체크박스는 시간이 끝나기 전에도 사용할 수 있다', () => {
     vi.useFakeTimers({ now: NOW });
     render(
       <TrialRunPanel
@@ -126,9 +128,34 @@ describe('TrialRunPanel — 진행 중', () => {
     );
 
     for (const box of screen.getAllByRole('checkbox')) {
-      expect(box).toBeDisabled();
+      expect(box).toBeEnabled();
     }
   });
+
+  it.each([false, true])(
+    '시작 즉시 증상 선택과 중지 콜백이 동작한다 — 교체 %s',
+    async (replaced) => {
+      vi.useFakeTimers({ now: NOW, toFake: ['Date'] });
+      const user = userEvent.setup();
+      const onResolve = vi.fn();
+      const onToggleFinding = vi.fn();
+      render(
+        <TrialRunPanel
+          progress={progress(replaced ? 180 : 60, replaced)}
+          findings={[]}
+          onStart={noop}
+          onToggleFinding={onToggleFinding}
+          onResolve={onResolve}
+        />,
+      );
+      await user.click(screen.getByRole('button', { name: /이상 없음 확인/ }));
+      expect(onResolve).not.toHaveBeenCalled();
+      await user.click(screen.getByRole('checkbox', { name: '비정상 소음' }));
+      expect(onToggleFinding).toHaveBeenCalledWith('noise');
+      await user.click(screen.getByRole('button', { name: /이상 있음/ }));
+      expect(onResolve).toHaveBeenCalledExactlyOnceWith('abnormal');
+    },
+  );
 
   it('어느 시험운전인지 화면에 남는다', () => {
     vi.useFakeTimers({ now: NOW });

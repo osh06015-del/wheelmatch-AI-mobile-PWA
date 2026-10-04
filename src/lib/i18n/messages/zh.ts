@@ -201,7 +201,8 @@ export const zh: Messages = {
   'trialRun.modeBeforeWork': '开始作业前试运转',
   'trialRun.running': '正在运转，至少 {seconds} 秒。剩余时间',
   'trialRun.elapsed': '已达到要求时间。请在下方确认有无异常。',
-  'trialRun.waitNotice': '达到要求时间后才能作答。',
+  'trialRun.waitNotice':
+    '如有异常，不要等待计时结束。请立即停机，再点击「有问题 — 中止试运转」。应用不会自动停止设备。只有达到要求时间后，才能确认无异常。',
   'trialRun.findingsTitle': '试运转期间有异常吗？',
   'trialRun.findingsHint':
     '请勾选所有符合的项目。只要勾选任意一项，就只能选择「有问题」继续。',
@@ -211,7 +212,7 @@ export const zh: Messages = {
   'trialRun.finding.wheelDamage': '砂轮破损或松脱迹象',
   'trialRun.finding.equipment': '设备异常',
   'trialRun.confirmNormal': '确认无异常',
-  'trialRun.reportAbnormal': '有问题',
+  'trialRun.reportAbnormal': '有问题 — 中止试运转',
   'trialRun.stopTitle': '请勿开始作业',
   'trialRun.stopBody':
     '试运转期间发现异常。请停机并切断电源，然后检查砂轮安装状态和设备。',

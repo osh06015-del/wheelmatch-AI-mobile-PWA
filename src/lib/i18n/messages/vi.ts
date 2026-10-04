@@ -224,7 +224,8 @@ export const vi: Messages = {
   'trialRun.running': 'Đang chạy tối thiểu {seconds} giây. Còn lại',
   'trialRun.elapsed':
     'Đã đủ thời gian yêu cầu. Hãy báo bất thường ở phía dưới.',
-  'trialRun.waitNotice': 'Bạn chỉ trả lời được sau khi đủ thời gian yêu cầu.',
+  'trialRun.waitNotice':
+    'Nếu có bất thường, đừng chờ hết giờ. Hãy dừng máy ngay, rồi nhấn “Có vấn đề — dừng chạy thử”. Ứng dụng không tự dừng máy. Chỉ xác nhận không có bất thường sau khi đủ thời gian yêu cầu.',
   'trialRun.findingsTitle': 'Có gì bất thường khi chạy thử không?',
   'trialRun.findingsHint':
     'Hãy chọn tất cả mục phù hợp. Nếu chọn bất kỳ mục nào, bạn chỉ có thể tiếp tục với Có vấn đề.',
@@ -234,7 +235,7 @@ export const vi: Messages = {
   'trialRun.finding.wheelDamage': 'Dấu hiệu đá mài nứt vỡ hoặc bị lỏng',
   'trialRun.finding.equipment': 'Máy có dấu hiệu bất thường',
   'trialRun.confirmNormal': 'Xác nhận không có bất thường',
-  'trialRun.reportAbnormal': 'Có vấn đề',
+  'trialRun.reportAbnormal': 'Có vấn đề — dừng chạy thử',
   'trialRun.stopTitle': 'Không được bắt đầu làm việc',
   'trialRun.stopBody':
     'Đã phát hiện bất thường khi chạy thử. Hãy dừng máy, ngắt nguồn điện, rồi kiểm tra cách lắp đá mài và tình trạng máy.',

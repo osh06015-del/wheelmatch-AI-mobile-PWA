@@ -120,10 +120,48 @@ describe('시작 조건', () => {
 });
 
 describe('완료 처리', () => {
-  it('타이머가 남아 있으면 완료할 수 없다', () => {
-    const p = startTrialRun(true, T0);
-    expect(completeTrialRun(p, at(179), 'normal', [])).toBeNull();
-    expect(completeTrialRun(p, at(1), 'abnormal', ['noise'])).toBeNull();
+  it.each([false, true])(
+    '이상 없음은 요구 시간 직전까지 막는다 — 교체 %s',
+    (replaced) => {
+      const p = startTrialRun(replaced, T0);
+      expect(
+        completeTrialRun(p, at(p.requiredSeconds - 0.001), 'normal', []),
+      ).toBeNull();
+      expect(
+        completeTrialRun(p, at(p.requiredSeconds), 'normal', [])?.completed,
+      ).toBe(true);
+    },
+  );
+
+  it.each([false, true])(
+    '이상 있음은 시작 즉시부터 중지 기록을 남긴다 — 교체 %s',
+    (replaced) => {
+      const p = startTrialRun(replaced, T0);
+      for (const seconds of [0, 1, p.requiredSeconds - 1]) {
+        const run = completeTrialRun(p, at(seconds), 'abnormal', ['noise']);
+        expect(run).toMatchObject({
+          outcome: 'abnormal',
+          findings: ['noise'],
+          completed: false,
+          elapsedSeconds: seconds,
+          requiredSeconds: p.requiredSeconds,
+          finishedAt: at(seconds).toISOString(),
+        });
+        expect(isTrialRunStopped(run)).toBe(true);
+      }
+    },
+  );
+
+  it('증상 선택 없이도 즉시 이상을 보고할 수 있다', () => {
+    expect(
+      completeTrialRun(startTrialRun(false, T0), T0, 'abnormal', []),
+    ).toMatchObject({
+      outcome: 'abnormal',
+      findings: [],
+      elapsedSeconds: 0,
+      completed: false,
+    });
+    expect(completeTrialRun(null, T0, 'abnormal', [])).toBeNull();
   });
 
   it('진행 중인 시험운전이 없으면 완료할 수 없다', () => {

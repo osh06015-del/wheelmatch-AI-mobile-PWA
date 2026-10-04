@@ -127,6 +127,12 @@ export function TrialRunPanel({
             </span>
           </div>
 
+          {!elapsed && (
+            <p className="text-base font-semibold leading-relaxed text-red-200">
+              {t('trialRun.waitNotice')}
+            </p>
+          )}
+
           <fieldset className="rounded-xl bg-slate-800 px-4 py-4">
             <legend className="sr-only">{t('trialRun.findingsTitle')}</legend>
             <p className="text-lg font-semibold text-slate-100">
@@ -144,7 +150,6 @@ export function TrialRunPanel({
                   <input
                     type="checkbox"
                     checked={findings.includes(key)}
-                    disabled={!elapsed}
                     onChange={() => onToggleFinding(key)}
                     className="h-6 w-6 accent-red-500"
                   />
@@ -168,17 +173,11 @@ export function TrialRunPanel({
             </button>
             <button
               type="button"
-              disabled={!elapsed}
               onClick={() => onResolve('abnormal')}
-              className="min-h-14 rounded-lg border-2 border-red-500 text-lg font-bold text-red-200 active:bg-red-500/20 disabled:border-slate-600 disabled:text-slate-400"
+              className="min-h-14 rounded-lg border-2 border-red-500 text-lg font-bold text-red-200 active:bg-red-500/20"
             >
               {t('trialRun.reportAbnormal')}
             </button>
-            {!elapsed && (
-              <p className="text-base text-slate-400">
-                {t('trialRun.waitNotice')}
-              </p>
-            )}
           </div>
         </div>
       )}

@@ -227,7 +227,7 @@ export const id: Messages = {
   'trialRun.elapsed':
     'Waktu yang diwajibkan sudah terpenuhi. Laporkan hal tidak wajar di bawah.',
   'trialRun.waitNotice':
-    'Anda baru dapat menjawab setelah waktu yang diwajibkan terpenuhi.',
+    'Jika ada hal tidak wajar, jangan menunggu waktu habis. Segera hentikan mesin, lalu tekan “Ada masalah — hentikan uji putar”. Aplikasi tidak menghentikan mesin. Konfirmasi tidak ada hal tidak wajar hanya setelah waktu yang diwajibkan terpenuhi.',
   'trialRun.findingsTitle': 'Apakah ada yang tidak wajar saat uji putar?',
   'trialRun.findingsHint':
     'Centang semua yang sesuai. Jika ada yang dicentang, Anda hanya bisa lanjut sebagai Ada masalah.',
@@ -237,7 +237,7 @@ export const id: Messages = {
   'trialRun.finding.wheelDamage': 'Tanda batu gerinda rusak atau longgar',
   'trialRun.finding.equipment': 'Ada yang tidak beres pada mesin',
   'trialRun.confirmNormal': 'Tidak ada yang tidak wajar — dikonfirmasi',
-  'trialRun.reportAbnormal': 'Ada masalah',
+  'trialRun.reportAbnormal': 'Ada masalah — hentikan uji putar',
   'trialRun.stopTitle': 'Jangan mulai bekerja',
   'trialRun.stopBody':
     'Ditemukan hal tidak wajar saat uji putar. Hentikan mesin, putuskan sumber listrik, lalu periksa pemasangan batu gerinda dan kondisi mesin.',

@@ -221,7 +221,8 @@ export const en: Messages = {
   'trialRun.running': 'Running for at least {seconds}s. Time left',
   'trialRun.elapsed':
     'The required time has passed. Report anything abnormal below.',
-  'trialRun.waitNotice': 'You can answer once the required time has passed.',
+  'trialRun.waitNotice':
+    'If anything is abnormal, do not wait for the timer. Stop the machine immediately, then tap “Problem found — stop trial run”. The app does not stop the machine. Confirm “Nothing abnormal” only after the required time has passed.',
   'trialRun.findingsTitle': 'Was anything abnormal during the trial run?',
   'trialRun.findingsHint':
     'Tick everything that applies. If you tick any, you can only continue as Problem found.',
@@ -231,7 +232,7 @@ export const en: Messages = {
   'trialRun.finding.wheelDamage': 'Signs of wheel damage or coming loose',
   'trialRun.finding.equipment': 'Something wrong with the machine',
   'trialRun.confirmNormal': 'Nothing abnormal — confirmed',
-  'trialRun.reportAbnormal': 'Problem found',
+  'trialRun.reportAbnormal': 'Problem found — stop trial run',
   'trialRun.stopTitle': 'Do not start work',
   'trialRun.stopBody':
     'Something abnormal was found during the trial run. Stop the machine, disconnect the power, then inspect how the wheel is mounted and check the machine.',

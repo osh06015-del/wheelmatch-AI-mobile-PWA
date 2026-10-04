@@ -50,7 +50,7 @@ export interface TrialRunProgress {
   wheelReplaced: boolean;
   requiredSeconds: number;
   startedAt: string;
-  /** 이 시각이 지나야 완료할 수 있다 */
+  /** 이 시각이 지나야 이상 없음으로 완료할 수 있다. 이상 보고는 즉시 받는다. */
   endsAt: string;
 }
 
@@ -164,9 +164,9 @@ export function canStartTrialRun(input: TrialRunPreconditions): boolean {
 }
 
 /**
- * 타이머가 끝난 뒤 작업자의 답을 받아 기록을 만든다.
+ * 작업자의 답을 받아 정상 완료 또는 이상 중지 기록을 만든다.
  *
- * 시간이 남았으면 null이다 — 화면 버튼과 별개로 여기서 한 번 더 막는다.
+ * 시간이 남았으면 "이상 없음"은 null이다. 이상 보고는 기다리게 하지 않는다.
  * "이상 없음"인데 이상 항목이 골라져 있으면 그것도 null이다. 서로 어긋나는
  * 기록을 만들 바에는 만들지 않는다.
  */
@@ -177,7 +177,8 @@ export function completeTrialRun(
   findings: readonly TrialRunFinding[],
 ): TrialRun | null {
   if (!progress) return null;
-  if (!isTrialRunElapsed(progress, now)) return null;
+  const elapsed = isTrialRunElapsed(progress, now);
+  if (outcome === 'normal' && !elapsed) return null;
   if (outcome === 'normal' && findings.length > 0) return null;
 
   const started = Date.parse(progress.startedAt);
@@ -193,7 +194,8 @@ export function completeTrialRun(
     elapsedSeconds,
     outcome,
     findings: outcome === 'abnormal' ? [...findings] : [],
-    completed: true,
+    // 중간 중지를 요구 시간을 채운 완료 기록으로 남기지 않는다.
+    completed: elapsed,
   };
 }
 

@@ -437,12 +437,69 @@ describe('결과 화면 — 시험운전 절차', () => {
     expect(
       screen.getByRole('button', { name: /이상 없음 확인/ }),
     ).toBeDisabled();
-    expect(screen.getByRole('button', { name: /이상 있음/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /이상 있음/ })).toBeEnabled();
     // 저장도 여전히 막혀 있다.
     expect(
       screen.getByRole('button', { name: /점검 완료 및 저장/ }),
     ).toBeDisabled();
   });
+
+  it.each([60, 180])(
+    '%s초 시험운전 시작 직후 중지하면 정상 완료나 즉시 재시작 없이 중지 결과만 저장한다',
+    async (seconds) => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      const now = new Date('2026-10-04T09:00:00.000Z');
+      vi.setSystemTime(now);
+      try {
+        vi.mocked(saveInspection).mockClear();
+        const result = ready();
+        render(<ResultPage />);
+        checkAll();
+        fireEvent.click(
+          screen.getByRole('button', { name: new RegExp(`${seconds}초 시작`) }),
+        );
+        // 증상 선택은 선택 사항이다. 고르느라 중지 보고가 늦어져서는 안 된다.
+        if (seconds === 180)
+          fireEvent.click(
+            screen.getByRole('checkbox', { name: '비정상 소음' }),
+          );
+        fireEvent.click(screen.getByRole('button', { name: /이상 있음/ }));
+        expect(screen.getByText('작업하지 마십시오')).toBeInTheDocument();
+        expect(result.current.trialRun).toBeNull();
+        expect(sessionStorage.getItem('wheelmatch.trialRun')).toBeNull();
+        expect(result.current.trialRunRecord).toMatchObject({
+          outcome: 'abnormal',
+          completed: false,
+          elapsedSeconds: 0,
+          requiredSeconds: seconds,
+        });
+        expect(
+          screen.queryByRole('button', { name: /이상 없음 확인/ }),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole('button', { name: /점검 완료 및 저장/ }),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole('button', { name: /초 시작/ }),
+        ).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: /중지 결과 저장/ }));
+        await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
+        expect(
+          vi.mocked(saveInspection).mock.calls[0][0].trialRun,
+        ).toMatchObject({
+          outcome: 'abnormal',
+          completed: false,
+          requiredSeconds: seconds,
+          elapsedSeconds: 0,
+          findings: seconds === 180 ? ['noise'] : [],
+          startedAt: now.toISOString(),
+          finishedAt: now.toISOString(),
+        });
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
 
   it('세션에 남은 시험운전은 새로고침 후에도 이어진다', () => {
     // 절대 종료시각을 들고 있으므로 화면을 다시 그려도 남은 시간이 정확하다.

@@ -214,7 +214,8 @@ export const ko = {
   'trialRun.running': '{seconds}초 이상 돌리는 중입니다. 남은 시간',
   'trialRun.elapsed':
     '요구 시간을 채웠습니다. 아래에서 이상 여부를 확인하세요.',
-  'trialRun.waitNotice': '요구 시간을 채운 뒤에 답할 수 있습니다.',
+  'trialRun.waitNotice':
+    '이상이 있으면 시간을 기다리지 말고 장비를 즉시 정지한 뒤 「이상 있음 — 시험운전 중단」을 누르세요. 앱이 장비를 정지시키지는 않습니다. 「이상 없음」은 요구 시간을 채운 뒤에만 확인할 수 있습니다.',
   'trialRun.findingsTitle': '시험운전 중 이상이 있었습니까?',
   'trialRun.findingsHint':
     '해당하는 것을 모두 고르세요. 하나라도 고르면 이상 있음으로만 넘어갈 수 있습니다.',
@@ -224,7 +225,7 @@ export const ko = {
   'trialRun.finding.wheelDamage': '숫돌 파손·이탈 징후',
   'trialRun.finding.equipment': '장비 이상',
   'trialRun.confirmNormal': '이상 없음 확인',
-  'trialRun.reportAbnormal': '이상 있음',
+  'trialRun.reportAbnormal': '이상 있음 — 시험운전 중단',
   'trialRun.stopTitle': '작업하지 마십시오',
   'trialRun.stopBody':
     '시험운전 중 이상이 확인되었습니다. 장비를 정지하고 전원을 차단한 뒤 숫돌 장착 상태와 장비를 점검하십시오.',

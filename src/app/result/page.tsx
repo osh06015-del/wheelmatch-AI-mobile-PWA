@@ -315,7 +315,7 @@ export default function ResultPage() {
 
   function resolveTrialRun(outcome: TrialRunOutcome) {
     const record = completeTrialRun(trialRun, new Date(), outcome, findings);
-    // 시간이 남았거나 답이 서로 어긋나면 null이다. 화면 버튼과 별개로 여기서도 막는다.
+    // 시간 미충족의 정상 완료나 모순된 답은 막고, 이상 보고는 즉시 받는다.
     if (!record) return;
     setTrialRunRecord(record);
     setTrialRun(null);
