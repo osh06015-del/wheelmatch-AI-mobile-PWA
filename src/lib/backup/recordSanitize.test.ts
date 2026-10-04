@@ -5,7 +5,8 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { sanitizeInspectionRecord } from './recordSanitize';
+import { isValidWheelSpec, sanitizeInspectionRecord } from './recordSanitize';
+import type { VisibleDamageSource } from '@/lib/rules/types';
 
 /** 대부분의 optional 중첩 필드까지 채운 완전한 기록. 라운드트립 검증용 */
 function fullRecordRaw(): Record<string, unknown> {
@@ -137,6 +138,78 @@ describe('sanitizeInspectionRecord — 정상 라운드트립', () => {
   it('허용된 필드는 깊은 곳까지 그대로 남는다', () => {
     const raw = fullRecordRaw();
     expect(sanitizeInspectionRecord(raw)).toEqual(raw);
+  });
+
+  it('외관 의심의 출처는 보존하고, 목록에 없는 출처는 기록 전체를 무효로 만든다', () => {
+    // 재구성하면서 이 칸을 빠뜨리면 백업을 거친 기록에서 출처가 조용히 사라지고,
+    // 이어받은 의심이 다시 "이 사진에서 보인 것"으로만 읽힌다.
+    const raw = fullRecordRaw();
+    const wheel = raw.wheel as Record<string, unknown>;
+    wheel.visibleDamage = 'suspected';
+    wheel.visibleDamageSources = ['legacy_exam', 'carried'];
+    expect(sanitizeInspectionRecord(raw)?.wheel.visibleDamageSources).toEqual([
+      'legacy_exam',
+      'carried',
+    ]);
+
+    wheel.visibleDamageSources = ['carried', 'trusted'];
+    expect(sanitizeInspectionRecord(raw)).toBeNull();
+    // 목록이 아닌 값도 받지 않는다.
+    wheel.visibleDamageSources = 'carried';
+    expect(sanitizeInspectionRecord(raw)).toBeNull();
+  });
+
+  it('같은 출처가 두 번 적혔거나 목록이 빈 기록은 버리지 않고 그대로 옮긴다 — 고쳐 담지 않는다', () => {
+    // 앱이 쓰는 모양은 아니다(손으로 고친 백업 등). 그렇다고 기록을 통째로 버리면
+    // 의심이 적힌 기록이 출처 표기 때문에 사라진다. 값을 다듬어 담지도 않는다 —
+    // 화면과 CSV가 읽을 때 한 번만 보고(checkText.ts), 빈 목록은 출처 미기록과
+    // 같게 읽는다.
+    const raw = fullRecordRaw();
+    const wheel = raw.wheel as Record<string, unknown>;
+    wheel.visibleDamage = 'suspected';
+
+    wheel.visibleDamageSources = ['carried', 'carried'];
+    expect(sanitizeInspectionRecord(raw)?.wheel.visibleDamageSources).toEqual([
+      'carried',
+      'carried',
+    ]);
+
+    wheel.visibleDamageSources = [];
+    const emptied = sanitizeInspectionRecord(raw);
+    expect(emptied?.wheel.visibleDamage).toBe('suspected');
+    expect(emptied?.wheel.visibleDamageSources).toEqual([]);
+  });
+
+  it('출처 타입의 값은 하나도 빠짐없이 통과한다', () => {
+    // 허용 목록에서 빠진 값은 타입 검사가 잡지 못한다. 타입 전체를 표로 잠가
+    // 돌린다 — 빠지면 그 출처가 붙은 기록이 백업·새로고침 복원에서 통째로 버려진다.
+    const all: Record<VisibleDamageSource, true> = {
+      label_photo: true,
+      reanalysis: true,
+      legacy_exam: true,
+      dropped_ocr: true,
+      carried: true,
+    };
+    for (const source of Object.keys(all)) {
+      const raw = fullRecordRaw();
+      const wheel = raw.wheel as Record<string, unknown>;
+      wheel.visibleDamage = 'suspected';
+      wheel.visibleDamageSources = [source];
+
+      expect(sanitizeInspectionRecord(raw)?.wheel.visibleDamageSources).toEqual(
+        [source],
+      );
+      expect(isValidWheelSpec(wheel)).toBe(true);
+    }
+  });
+
+  it('출처가 없는 기록에 출처 칸을 만들지 않는다 — 구기록을 라벨 사진 판독으로 채우지 않는다', () => {
+    const raw = fullRecordRaw();
+    (raw.wheel as Record<string, unknown>).visibleDamage = 'suspected';
+    const sanitized = sanitizeInspectionRecord(raw);
+
+    expect(sanitized?.wheel.visibleDamage).toBe('suspected');
+    expect(sanitized && 'visibleDamageSources' in sanitized.wheel).toBe(false);
   });
 
   it('사진 없는 구기록(옵션 필드 전부 없음)도 통과한다', () => {

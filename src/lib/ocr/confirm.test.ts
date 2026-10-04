@@ -185,21 +185,38 @@ describe('confirmedWheelSpec — 원본 표시 보존', () => {
       const ocr = ocrWheel({ visibleDamage: fromLabel });
       const spec = confirmedWheelSpec(ocr, {
         ...untouched(ocr),
-        priorDamageSuspected: true,
+        priorDamageSources: ['legacy_exam'],
       });
       expect(spec.visibleDamage).toBe('suspected');
     }
   });
 
-  it('이전 의심이 없다는 값은 라벨 사진의 의심을 지우지 못한다', () => {
-    // 이 방향이 깨지면 "새 버전으로 넘어왔더니 경고가 사라지는" 앱이 된다.
-    const ocr = ocrWheel({ visibleDamage: 'suspected' });
-    const spec = confirmedWheelSpec(ocr, {
-      ...untouched(ocr),
-      priorDamageSuspected: false,
-    });
-    expect(spec.visibleDamage).toBe('suspected');
-  });
+  it.each(['legacy_exam', 'dropped_ocr', 'carried'] as const)(
+    '이어받은 의심(%s)은 어느 흔적에서 왔든 의심으로 남긴다',
+    (source) => {
+      // 출처로 받게 바꾸면서 어느 하나가 의심을 만들지 못하게 되면, 그 흔적이
+      // 이어 오던 경고가 확정하는 순간 사라진다.
+      const ocr = ocrWheel({ visibleDamage: 'none_visible' });
+      const spec = confirmedWheelSpec(ocr, {
+        ...untouched(ocr),
+        priorDamageSources: [source],
+      });
+      expect(spec.visibleDamage).toBe('suspected');
+    },
+  );
+
+  it.each([[[]], [undefined]] as const)(
+    '이전 의심이 없다는 값(%j)은 라벨 사진의 의심을 지우지 못한다',
+    (priorDamageSources) => {
+      // 이 방향이 깨지면 "새 버전으로 넘어왔더니 경고가 사라지는" 앱이 된다.
+      const ocr = ocrWheel({ visibleDamage: 'suspected' });
+      const spec = confirmedWheelSpec(ocr, {
+        ...untouched(ocr),
+        priorDamageSources,
+      });
+      expect(spec.visibleDamage).toBe('suspected');
+    },
+  );
 
   it('사진 판독이 없으면(직접 입력) 외관은 unknown이다 — 보이지 않았다고 적지 않는다', () => {
     const spec = confirmedWheelSpec(null, {
@@ -293,6 +310,146 @@ describe('confirmedWheelSpec — 원본 표시 보존', () => {
       confirmedWheelSpec(ocr, untouched(ocr, { userConfirmed: true }))
         .confidence,
     ).toBe('high');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// 외관 의심의 출처
+//
+// 이어받은 의심도 확정값을 'suspected'로 만든다. 그런데 엔진의 사유 문장은 어느
+// 경우든 "사진에서 … 보이는 부분이 있습니다"이고, 기록에 남는 사진과 OCR 원본은 그
+// 의심을 담고 있지 않을 수 있다. 출처가 확정값에 함께 남아야 결과 화면과 기록이
+// 어디서 온 의심인지 말할 수 있다.
+// ─────────────────────────────────────────────────────────────
+
+describe('confirmedWheelSpec — 외관 의심의 출처', () => {
+  it('라벨 사진의 판독이 의심했으면 출처는 라벨 사진이다', () => {
+    const ocr = ocrWheel({ visibleDamage: 'suspected' });
+    const spec = confirmedWheelSpec(ocr, untouched(ocr));
+
+    expect(spec.visibleDamageSources).toEqual(['label_photo']);
+  });
+
+  it.each(['none_visible', 'unknown'] as const)(
+    '의심이 없으면(%s) 출처 칸을 만들지 않는다',
+    (fromLabel) => {
+      // 빈 목록도 남기지 않는다. 칸이 있으면 의심이라는 뜻으로 읽는다.
+      const ocr = ocrWheel({ visibleDamage: fromLabel });
+      const spec = confirmedWheelSpec(ocr, untouched(ocr));
+
+      expect(spec.visibleDamage).toBe(fromLabel);
+      expect('visibleDamageSources' in spec).toBe(false);
+    },
+  );
+
+  it.each(['legacy_exam', 'dropped_ocr', 'carried'] as const)(
+    '이어받은 의심(%s)만 있으면 출처에 라벨 사진을 적지 않는다',
+    (source) => {
+      // 이 사진의 판독은 의심하지 않았다. 여기에 label_photo가 섞이면 결과 화면이
+      // 출처 문장을 붙이지 않아, 이어받은 의심이 "이 사진에서 보인 것"으로 읽힌다.
+      for (const fromLabel of ['none_visible', 'unknown'] as const) {
+        const ocr = ocrWheel({ visibleDamage: fromLabel });
+        const spec = confirmedWheelSpec(ocr, {
+          ...untouched(ocr),
+          priorDamageSources: [source],
+        });
+
+        expect(spec.visibleDamage).toBe('suspected');
+        expect(spec.visibleDamageSources).toEqual([source]);
+      }
+    },
+  );
+
+  it('라벨 사진의 판독도 의심했으면 둘 다 적는다 — 라벨 사진이 먼저다', () => {
+    const ocr = ocrWheel({ visibleDamage: 'suspected' });
+    const spec = confirmedWheelSpec(ocr, {
+      ...untouched(ocr),
+      priorDamageSources: ['carried'],
+    });
+
+    expect(spec.visibleDamageSources).toEqual(['label_photo', 'carried']);
+  });
+
+  it('여러 흔적에서 이어받았으면 넘겨받은 순서대로 모두 적고, 같은 출처는 한 번만 적는다', () => {
+    const ocr = ocrWheel({ visibleDamage: 'none_visible' });
+    const spec = confirmedWheelSpec(ocr, {
+      ...untouched(ocr),
+      priorDamageSources: ['legacy_exam', 'dropped_ocr', 'legacy_exam'],
+    });
+
+    expect(spec.visibleDamageSources).toEqual(['legacy_exam', 'dropped_ocr']);
+  });
+
+  it('사진 판독 없이(직접 입력) 확정해도 이어받은 의심과 출처는 남는다', () => {
+    // 라벨을 다시 찍으려다 서버에 닿지 못해 직접 입력으로 넘어간 경우다.
+    const spec = confirmedWheelSpec(null, {
+      maxRPM: 13300,
+      diameter: 100,
+      thickness: 1,
+      purpose: 'cutting',
+      wheelType: 'bonded_abrasive',
+      expiryText: '',
+      userConfirmed: true,
+      priorDamageSources: ['carried'],
+    });
+
+    expect(spec.visibleDamage).toBe('suspected');
+    expect(spec.visibleDamageSources).toEqual(['carried']);
+  });
+
+  it('출처는 판정을 바꾸지 않는다 — 같은 의심이면 어디서 왔든 같은 결과다', () => {
+    const judge = (spec: WheelSpec) => {
+      const result = matchSpecs(grinder(), spec, {
+        declaredPurpose: 'cutting',
+        profile: BONDED_ABRASIVE_PROFILE,
+        today: TODAY,
+      });
+      return {
+        verdict: result.verdict,
+        checks: result.checks.map(({ rule, passed, reason, detail }) => ({
+          rule,
+          passed,
+          reason,
+          detail,
+        })),
+      };
+    };
+    const suspectedByLabel = ocrWheel({ visibleDamage: 'suspected' });
+    const fromLabel = confirmedWheelSpec(
+      suspectedByLabel,
+      untouched(suspectedByLabel, { userConfirmed: true }),
+    );
+    const clean = ocrWheel({ visibleDamage: 'none_visible' });
+    const inherited = confirmedWheelSpec(clean, {
+      ...untouched(clean, { userConfirmed: true }),
+      priorDamageSources: ['carried'],
+    });
+
+    expect(fromLabel.visibleDamageSources).not.toEqual(
+      inherited.visibleDamageSources,
+    );
+    expect(judge(inherited)).toEqual(judge(fromLabel));
+    // 외관 손상은 경고일 뿐이라 적합을 막지 않는다. 출처를 적어도 그대로다.
+    expect(judge(inherited).verdict).toBe('COMPATIBLE');
+  });
+
+  it('출처가 붙은 확정값은 새로고침·복구·백업의 규격 검사를 통과한다', () => {
+    // 검사(isValidWheelSpec)에 걸리면 새로고침 한 번에 숫돌 단계가 통째로 버려지고
+    // 이어받은 의심이 숫돌과 함께 사라진다.
+    const ocr = ocrWheel({ visibleDamage: 'suspected' });
+    const spec = confirmedWheelSpec(ocr, {
+      ...untouched(ocr),
+      priorDamageSources: ['legacy_exam', 'dropped_ocr', 'carried'],
+    });
+    const stored: unknown = JSON.parse(JSON.stringify(spec));
+
+    expect(isValidWheelSpec(stored)).toBe(true);
+    expect((stored as WheelSpec).visibleDamageSources).toEqual([
+      'label_photo',
+      'legacy_exam',
+      'dropped_ocr',
+      'carried',
+    ]);
   });
 });
 
@@ -607,7 +764,11 @@ describe('서버 재분석 뒤의 확정값', () => {
         ocrWheel({ visibleDamage: 'suspected' }),
       );
 
-      expect(next).toEqual({ ...wheel, visibleDamage: 'suspected' });
+      expect(next).toEqual({
+        ...wheel,
+        visibleDamage: 'suspected',
+        visibleDamageSources: ['reanalysis'],
+      });
       // 전환하지 않았으면 AI가 읽은 표시는 가져오지 않는다.
       expect(next.markings).toBeUndefined();
       expect(
@@ -636,7 +797,7 @@ describe('서버 재분석 뒤의 확정값', () => {
       (fromReanalysis) => {
         const wheel = confirmedWheelSpec(null, {
           ...TYPED,
-          priorDamageSuspected: true,
+          priorDamageSources: ['dropped_ocr'],
         });
         const reanalyzed = ocrWheel({ visibleDamage: fromReanalysis });
 
@@ -648,6 +809,75 @@ describe('서버 재분석 뒤의 확정값', () => {
         );
       },
     );
+
+    it.each(['none_visible', 'unknown'] as const)(
+      '재분석의 판독이 %s 이면 이어받은 의심의 출처도 그대로다',
+      (fromReanalysis) => {
+        const wheel = confirmedWheelSpec(null, {
+          ...TYPED,
+          priorDamageSources: ['dropped_ocr'],
+        });
+
+        // 의심하지 않은 재분석은 출처에 끼지 않는다. 같은 객체가 돌아온다.
+        expect(
+          withReanalysisSuspicion(
+            wheel,
+            ocrWheel({ visibleDamage: fromReanalysis }),
+          ),
+        ).toBe(wheel);
+      },
+    );
+
+    it('이어받은 의심만 있던 숫돌을 재분석도 의심하면 출처에 재분석을 더한다', () => {
+      // 재분석은 이 점검의 라벨 사진을 본 판독이다. "이 사진의 판독도 의심했다"가
+      // 새로 생긴 사실이라, 이어받은 출처를 지우지 않고 뒤에 잇는다.
+      const wheel = confirmedWheelSpec(null, {
+        ...TYPED,
+        priorDamageSources: ['carried'],
+      });
+      const reanalyzed = ocrWheel({ visibleDamage: 'suspected' });
+      const next = withReanalysisSuspicion(wheel, reanalyzed);
+
+      expect(next).toEqual({
+        ...wheel,
+        visibleDamageSources: ['carried', 'reanalysis'],
+      });
+      // 넘겨받은 확정값은 고치지 않는다.
+      expect(wheel.visibleDamageSources).toEqual(['carried']);
+      // 이미 적혀 있으면 다시 적지 않는다. 같은 객체가 돌아온다 — 저장소가 같은
+      // 값을 되풀이해 쓰지 않는다.
+      expect(withReanalysisSuspicion(next, reanalyzed)).toBe(next);
+    });
+
+    it('의심이 아닌데 출처가 남아 있던 확정값은 재분석 하나로 새로 적는다 — 남은 출처를 의심의 근거로 되살리지 않는다', () => {
+      // 앱이 쓰는 모양이 아니다(의심이 아니면 출처 칸이 없다). 저장된 값이 의심이
+      // 아니었던 출처를 이으면, 의심이 아니던 것을 의심으로 만든 셈이 된다.
+      const wheel: WheelSpec = {
+        ...typedWheel(),
+        visibleDamage: 'none_visible',
+        visibleDamageSources: ['carried'],
+      };
+      const next = withReanalysisSuspicion(
+        wheel,
+        ocrWheel({ visibleDamage: 'suspected' }),
+      );
+
+      expect(next.visibleDamage).toBe('suspected');
+      expect(next.visibleDamageSources).toEqual(['reanalysis']);
+    });
+
+    it('출처 없이 의심인 확정값은 재분석이 의심해도 그대로 둔다', () => {
+      // 출처 표시가 생기기 전에 확정된 값이다(앱이 갱신된 뒤 이어진 점검). 재분석만
+      // 적으면 그것이 유일한 출처인 것처럼 읽힌다. 출처 미기록으로 남긴다.
+      const wheel: WheelSpec = { ...typedWheel(), visibleDamage: 'suspected' };
+
+      expect(
+        withReanalysisSuspicion(
+          wheel,
+          ocrWheel({ visibleDamage: 'suspected' }),
+        ),
+      ).toBe(wheel);
+    });
   });
 
   describe('전환을 받아들일 때 — 작업자가 확정한 값은 그대로다', () => {
@@ -668,6 +898,7 @@ describe('서버 재분석 뒤의 확정값', () => {
       expect(next).toEqual({
         ...wheel,
         visibleDamage: 'suspected',
+        visibleDamageSources: ['reanalysis'],
         markings: reanalyzed.markings,
       });
       expect(next.rpmSource).toBe('user');

@@ -1744,6 +1744,49 @@ describe('결과 화면 — 숫돌 라벨 재분석이 낸 외관 의심과 원�
     // AI 값은 아직 받아들이지 않았다. OCR 원본 자리도 원본 표시도 비어 있다.
     expect(result.current.wheelOcr).toBeNull();
     expect(result.current.wheel?.markings).toBeUndefined();
+    // 의심의 출처는 재분석이다. 이 사진을 읽은 판독이라 출처 줄은 붙지 않는다.
+    expect(result.current.wheel?.visibleDamageSources).toEqual(['reanalysis']);
+  });
+
+  it('이어받은 의심이 있던 숫돌을 재분석도 의심하면 출처 줄이 사라지지 않고 「…에서도」로 바뀐다', async () => {
+    // 확인 화면을 되살리지 못해 라벨을 다시 찍었고(다른 숫돌일 수 있다), 서버에 닿지
+    // 못해 직접 입력으로 확정한 점검이다. 재분석이 의심을 더했다고 「다른 숫돌을
+    // 촬영했더라도 실물을 직접 확인하세요」가 화면에서 사라지면, 앱이 보여 주던
+    // 경고를 앱이 줄인 것이 된다.
+    const CARRIED_ONLY =
+      '이 의심은 라벨을 다시 찍기 전에 저장돼 있던 숫돌 확인에서 이어받은 것입니다. 이 점검에 쓴 라벨 사진의 판독에서 나온 것이 아닙니다. 다른 숫돌을 촬영했더라도 실물을 직접 확인하세요.';
+    const CARRIED_ALSO =
+      '라벨을 다시 찍기 전에 저장돼 있던 숫돌 확인에서도 AI의 손상 의심이 있었습니다. 그 의심도 지우지 않고 이어갑니다. 다른 숫돌을 촬영했더라도 실물을 직접 확인하세요.';
+    const result = readyOfflineWheel(
+      confirmedWheelSpec(null, {
+        maxRPM: 12200,
+        diameter: 125,
+        thickness: 1.6,
+        purpose: 'cutting',
+        wheelType: 'bonded_abrasive',
+        expiryText: '12/2099',
+        expiryReview: 'marked',
+        userConfirmed: true,
+        priorDamageSources: ['carried'],
+      }),
+    );
+    extractWheel.mockResolvedValue(aiWheel({ visibleDamage: 'suspected' }));
+    render(<ResultPage />);
+
+    expect(screen.getByText(DAMAGE_SUSPECTED)).toBeInTheDocument();
+    expect(screen.getByText(CARRIED_ONLY)).toBeInTheDocument();
+
+    await reanalyze();
+
+    expect(result.current.wheel?.visibleDamageSources).toEqual([
+      'carried',
+      'reanalysis',
+    ]);
+    expect(screen.getByText(DAMAGE_SUSPECTED)).toBeInTheDocument();
+    expect(screen.getByText(CARRIED_ALSO)).toBeInTheDocument();
+    // 이 사진의 판독(재분석)도 의심했다. 「이 사진의 판독에서 나온 것이 아닙니다」는
+    // 더 이상 사실이 아니라 내려간다.
+    expect(screen.queryByText(CARRIED_ONLY)).not.toBeInTheDocument();
   });
 
   it('의심이 올라온 숫돌은 손상 항목을 다시 확인하기 전에는 온라인 대조로 바꿀 수 없다', async () => {

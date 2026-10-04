@@ -14,7 +14,7 @@ import { RuleVersionNote } from './RuleVersionNote';
 import { WheelExamEvidence } from './WheelExamEvidence';
 
 import { useLocale, type MessageKey, type Translate } from '@/lib/i18n';
-import { checkReasonText } from '@/lib/i18n/checkText';
+import { checkReasonText, damageSourceNotes } from '@/lib/i18n/checkText';
 import { ruleLabelText } from '@/lib/i18n/ruleLabel';
 import { formatDateTime } from '@/lib/record/datetime';
 import { formatElapsed } from '@/lib/record/elapsed';
@@ -196,6 +196,18 @@ export function HistoryList({
                         <span className="text-base leading-relaxed text-slate-400">
                           {checkReasonText(check, locale)}
                         </span>
+                        {/* 저장된 출처 그대로다. 출처가 없는 옛 기록에는 아무것도
+                          붙이지 않는다 — 추정해서 말하지 않는다. */}
+                        {damageSourceNotes(check, record.wheel, locale).map(
+                          (note) => (
+                            <span
+                              key={note}
+                              className="border-l-2 border-yellow-500/70 pl-3 text-base leading-relaxed text-yellow-100"
+                            >
+                              {note}
+                            </span>
+                          ),
+                        )}
                       </li>
                     ))}
                   </ul>

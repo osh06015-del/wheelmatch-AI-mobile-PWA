@@ -124,6 +124,14 @@ export interface WheelSpec {
   purpose: WheelPurpose; // 라벨이 말하는 용도
   wheelType: WheelType; // 숫돌 자체의 생김새로 판별한 종류
   visibleDamage: VisibleDamage; // 눈에 띄는 큰 손상만
+  /**
+   * visibleDamage가 'suspected'인 까닭. 의심일 때만 있고 비어 있지 않다. 여러 곳에서
+   * 왔으면 모두 적는다. 확정값에만 붙는다 — OCR 원본(wheelOcr)에는 없다.
+   *
+   * 이 기능 도입 전 기록에는 없다. 없다고 라벨 사진 판독으로 채우지 않는다 —
+   * 그때의 의심은 출처가 기록되지 않은 것이다. 판정에 쓰지 않는다.
+   */
+  visibleDamageSources?: VisibleDamageSource[];
   /** 정규화 전 원본 표시. 이 기능 도입 전 기록에는 없다. */
   markings?: WheelMarkings;
   /** maxRPM의 출처. maxRPM이 null이면 없다. */
@@ -342,6 +350,36 @@ export type ProfileConditionCode =
  * 'suspected'일 때만 경고를 올린다. 판정을 완화하는 방향으로는 쓰지 않는다.
  */
 export type VisibleDamage = 'suspected' | 'none_visible' | 'unknown';
+
+/**
+ * 외관 손상 의심(visibleDamage: 'suspected')이 어디서 왔는지.
+ *
+ * 의심은 이 점검의 라벨 사진을 읽은 판독에서만 오지 않는다. 확인 화면 draft가 남긴
+ * 흔적(lib/draft/formDraftModel.ts)과 결과 화면의 서버 재분석도 확정값을 의심으로
+ * 만든다 — 앱이 올린 경고를 덜어내지 않기 위해서다. 그런데 엔진의 사유 문장은 어느
+ * 경우든 "사진에서 깨짐·균열로 보이는 부분이 있습니다"이고, 기록에 남는 사진과 OCR
+ * 원본은 그 의심을 담고 있지 않을 수 있다. 출처를 함께 남기지 않으면 누가 의심으로
+ * 만들었는지 기록만으로 되짚을 수 없다(.claude/rules/safety-critical.md 2번).
+ *
+ *   label_photo — 이 점검의 라벨 사진을 읽은 판독(확인 화면에서 작업자가 보던 판독).
+ *                 일부 값만 모름으로 바꿔 읽은 판독도 여기 든다 — 그 판독은 기록의
+ *                 OCR 원본으로 남지 않으므로, 남았는지는 wheelOcr가 있는지로 본다
+ *   reanalysis  — 결과 화면의 서버 재분석. 같은 라벨 사진을 다시 읽은 판독이다
+ *   legacy_exam — 이전 버전의 다각도 외관 확인. 그 사진과 결과는 기록에 없다
+ *   dropped_ocr — 읽을 수 없어 통째로 버린 판독. 이 점검의 라벨 사진을 읽은
+ *                 판독이었지만 기록에 없다
+ *   carried     — 확인 화면을 되살리지 못해 라벨을 다시 찍기 전의 draft.
+ *                 다시 찍은 사진은 다른 숫돌의 것일 수 있다(앱은 구분하지 못한다)
+ *
+ * **판정에 쓰지 않는다.** 규칙엔진은 visibleDamage만 본다. 이 값으로 의심을 지우거나
+ * 약하게 만들지 않는다 — 어디서 왔는지만 말한다.
+ *
+ * 값을 더할 때: 허용 목록(lib/backup/recordSanitize.ts)에 없는 값이 든 규격은 다른
+ * 목록형 값과 같이 통째로 무효다. 새 값을 쓴 기록·진행 중 점검을 옛 버전이 읽으면
+ * 그 규격이 버려진다.
+ */
+export type VisibleDamageSource =
+  'label_photo' | 'reanalysis' | 'legacy_exam' | 'dropped_ocr' | 'carried';
 
 // ─────────────────────────────────────────────────────────────
 // 다각도 외관 이상 징후 확인 (WheelExam) — **이전 기록을 읽기 위한 타입**

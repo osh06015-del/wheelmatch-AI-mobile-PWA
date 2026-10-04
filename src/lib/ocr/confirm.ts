@@ -22,11 +22,23 @@ import { normalizeExpiry } from './parser';
 import { refinesSuggestion } from '@/lib/rules/profiles';
 import type {
   RpmSource,
+  VisibleDamageSource,
   WheelMarkings,
   WheelPurpose,
   WheelSpec,
   WheelType,
 } from '@/lib/rules/types';
+
+/**
+ * 확인 화면에 들어오기 전부터 이 숫돌에 올라와 있던 외관 의심의 출처.
+ *
+ * 라벨 사진 판독(label_photo)과 서버 재분석(reanalysis)은 여기 없다 — 앞엣것은
+ * confirmedWheelSpec이 OCR에서 직접 읽고, 뒤엣것은 확정한 뒤에 온다.
+ */
+export type PriorDamageSource = Exclude<
+  VisibleDamageSource,
+  'label_photo' | 'reanalysis'
+>;
 
 /** 확인 화면에서 사람이 확정한 값. 확인 화면이 노출하는 필드가 전부다. */
 export interface ConfirmedWheelFields {
@@ -53,18 +65,21 @@ export interface ConfirmedWheelFields {
   /** ManualConfirmToggle 상태. 사람이 직접 확인해야만 신뢰도가 올라간다. */
   userConfirmed: boolean;
   /**
-   * 이 숫돌에 이미 올라와 있던 외관 의심.
+   * 이 숫돌에 이미 올라와 있던 외관 의심의 출처. 없으면 비우거나 넘기지 않는다.
    *
    * 확인 화면 draft가 남긴 흔적에서 온다(formDraftModel). 다각도 외관 확인이 있던
-   * 이전 버전의 draft가 "의심"이었던 경우(LegacyExamTrace), draft의 OCR을 읽을 수
-   * 없어 통째로 버렸는데 그 OCR이 "의심"이었던 경우(DroppedOcrTrace), 그리고 확인
-   * 화면을 되살리지 못해 라벨을 다시 찍었는데 그 draft에 "의심"이 남아 있던
-   * 경우(CarriedDamageTrace — 다시 찍기 전 draft의 의심은 어디서 왔든 이 흔적으로
-   * 남는다)다. **의심을 더하는 방향으로만** 쓴다: true면 라벨 사진의 판독이 무엇이든
-   * 'suspected'이고, 아니면 라벨 사진의 판독을 그대로 둔다. 의심을 지우는 값은 받지
-   * 않는다.
+   * 이전 버전의 draft가 "의심"이었던 경우(LegacyExamTrace → legacy_exam), draft의
+   * OCR을 읽을 수 없어 통째로 버렸는데 그 OCR이 "의심"이었던 경우(DroppedOcrTrace →
+   * dropped_ocr), 그리고 확인 화면을 되살리지 못해 라벨을 다시 찍었는데 그 draft에
+   * "의심"이 남아 있던 경우(CarriedDamageTrace → carried. 다시 찍기 전 draft의
+   * 의심은 어디서 왔든 이 흔적으로 남는다)다. **의심을 더하는 방향으로만** 쓴다:
+   * 하나라도 있으면 라벨 사진의 판독이 무엇이든 'suspected'이고, 없으면 라벨 사진의
+   * 판독을 그대로 둔다. 의심을 지우는 값은 받지 않는다.
+   *
+   * 예/아니오가 아니라 출처로 받는다. 확정값에 의심만 남기면 기록에는 "사진에서
+   * 보인다"는 엔진 문장과, 그 의심을 담지 않은 사진·OCR 원본만 남는다.
    */
-  priorDamageSuspected?: boolean;
+  priorDamageSources?: readonly PriorDamageSource[];
   /**
    * 부속품 이름(선택). 종류를 특정하지 못한 경우(other·unknown)에 작업자가
    * 적는 식별용 문구다. 판정에 쓰지 않는다.
@@ -106,6 +121,26 @@ function rpmSourceAfterConfirm(
 }
 
 /**
+ * 확정값의 외관 의심이 어디서 왔는지. 의심이 없으면 빈 목록이다.
+ *
+ * 라벨 사진의 판독이 스스로 의심했으면 그것을 먼저 적고, 이어받은 의심을 넘겨받은
+ * 순서대로 잇는다. 넘겨받은 출처는 걸러내지 않는다 — 여기서 빠지면 그 의심이
+ * 확정값에서 사라진다(아래에서 이 목록이 비었는지로 의심 여부를 정한다).
+ */
+function damageSourcesAfterConfirm(
+  ocr: WheelSpec | null,
+  prior: readonly PriorDamageSource[],
+): VisibleDamageSource[] {
+  const sources: VisibleDamageSource[] = [];
+  if (ocr?.visibleDamage === 'suspected') sources.push('label_photo');
+  for (const source of prior) {
+    // 같은 출처를 두 번 적지 않는다.
+    if (!sources.includes(source)) sources.push(source);
+  }
+  return sources;
+}
+
+/**
  * OCR 결과와 사용자가 확정한 값을 합쳐 규칙엔진에 넘길 WheelSpec을 만든다.
  *
  * @param ocr 사용자가 손대기 전의 OCR 결과. 수동 입력만 한 경우 null이다.
@@ -115,6 +150,10 @@ export function confirmedWheelSpec(
   fields: ConfirmedWheelFields,
 ): WheelSpec {
   const rpmSource = rpmSourceAfterConfirm(ocr, fields.maxRPM);
+  const damageSources = damageSourcesAfterConfirm(
+    ocr,
+    fields.priorDamageSources ?? [],
+  );
 
   return {
     maxRPM: fields.maxRPM,
@@ -130,9 +169,15 @@ export function confirmedWheelSpec(
     // 외관 손상은 라벨 사진에서 판별한 값이고 확인 화면에 없다. 사용자가 숫자를
     // 고쳐도 그대로 이어간다. 값이 없으면 'unknown'으로 둔다 — 'none_visible'로
     // 채우면 보지 않은 것을 본 것처럼 남긴다. 이미 올라와 있던 의심은 지우지 않는다.
-    visibleDamage: fields.priorDamageSuspected
-      ? 'suspected'
-      : (ocr?.visibleDamage ?? 'unknown'),
+    visibleDamage:
+      damageSources.length > 0
+        ? 'suspected'
+        : (ocr?.visibleDamage ?? 'unknown'),
+    // 의심일 때만 출처를 적는다. 이어받은 의심은 이 사진의 판독에서 나온 것이
+    // 아니다 — 출처가 없으면 결과 화면과 기록이 그것을 "사진에서 보인다"고만 말한다.
+    ...(damageSources.length > 0
+      ? { visibleDamageSources: damageSources }
+      : {}),
     // 라벨 원본 표시. 사용자 수정으로 덮지 않는다 — 이 파일 맨 위 참고.
     //
     // 사본으로 넘긴다. 참조를 공유하면 최종값과 OCR 원본이 사실상 한 객체가
@@ -182,14 +227,32 @@ export function confirmedWheelSpec(
  *
  * 재분석이 의심하지 않았으면 아무것도 바꾸지 않는다(같은 객체를 돌려준다) —
  * 'none_visible'로 덮어쓰지도 않는다. 의심을 지어내지 않고, 지우지도 않는다.
+ *
+ * 의심의 출처에 재분석을 적는다(visibleDamageSources). 이미 의심이던 숫돌에도
+ * 덧붙인다 — 재분석은 이 점검의 라벨 사진을 본 판독이라, 이어받은 의심만 있던
+ * 숫돌이면 "이 사진의 판독도 의심했다"는 사실이 새로 생긴 것이다. 이미 적혀 있으면
+ * 같은 객체를 돌려준다.
  */
 export function withReanalysisSuspicion(
   wheel: WheelSpec,
   reanalyzed: WheelSpec,
 ): WheelSpec {
   if (reanalyzed.visibleDamage !== 'suspected') return wheel;
-  if (wheel.visibleDamage === 'suspected') return wheel;
-  return { ...wheel, visibleDamage: 'suspected' };
+  if (wheel.visibleDamage !== 'suspected') {
+    // 의심이 아니던 확정값이다. 출처는 재분석 하나로 새로 적는다 — 의심이 아닌데
+    // 남아 있던 출처(앱이 쓰는 모양이 아니다)는 잇지 않는다. 이으면 저장된 값이
+    // 의심이 아니었던 출처를 의심의 근거로 되살리게 된다.
+    return {
+      ...wheel,
+      visibleDamage: 'suspected',
+      visibleDamageSources: ['reanalysis'],
+    };
+  }
+  const sources = wheel.visibleDamageSources;
+  // 의심인데 출처가 없는 확정값은 이 표시가 생기기 전에 확정된 것이다(앱이 갱신된
+  // 뒤 이어진 점검). 그대로 둔다 — 재분석만 적으면 그것이 전부인 것처럼 읽힌다.
+  if (!sources || sources.includes('reanalysis')) return wheel;
+  return { ...wheel, visibleDamageSources: [...sources, 'reanalysis'] };
 }
 
 /**

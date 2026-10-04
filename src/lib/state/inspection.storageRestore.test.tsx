@@ -225,6 +225,9 @@ describe('새로고침 복원 — 앱이 쓴 값', () => {
     expect(state.wheel).toEqual({
       ...typed,
       visibleDamage: 'suspected',
+      // 의심의 출처도 함께 되살아난다. 출처가 복원 검사에 걸려도 숫돌 단계가
+      // 통째로 버려진다.
+      visibleDamageSources: ['reanalysis'],
       markings: WHEEL.markings,
     });
     expect(state.wheelOcr).toEqual(reanalyzed);

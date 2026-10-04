@@ -332,6 +332,8 @@ describe('점검 흐름 E2E — 결과까지', () => {
     expect(document.body).toHaveTextContent(
       '사진에서 깨짐·균열로 보이는 부분이 있습니다. 이 숫돌을 사용하지 말고 직접 확인하세요.',
     );
+    // 이 사진을 읽은 판독이 의심했다. 위 문장이 그대로 사실이라 출처를 덧붙이지 않는다.
+    expect(document.body).not.toHaveTextContent('이어받은 것입니다');
 
     await f.completeChecklist();
     await f.user.click(f.button('trialRun.startBeforeWork', { seconds: 60 }));
@@ -341,6 +343,7 @@ describe('점검 흐름 E2E — 결과까지', () => {
 
     const saved = savedRecords()[0];
     expect(saved.wheel.visibleDamage).toBe('suspected');
+    expect(saved.wheel.visibleDamageSources).toEqual(['label_photo']);
     // 다각도 외관 확인은 점검 흐름에 없다. 하지 않은 확인을 기록에 남기지 않는다.
     expect(saved).not.toHaveProperty('wheelExam');
     expect(saved).not.toHaveProperty('wheelExamNotRun');

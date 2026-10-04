@@ -778,6 +778,18 @@ export const id: Messages = {
     'Ada bagian di foto yang tampak pecah atau retak. Jangan gunakan batu gerinda ini; periksa sendiri.',
   'reason.visibleDamage.notVerifiable':
     'Retak rambut tidak terlihat pada foto. Sebelum dipasang, lakukan uji ketuk (ketuk pelan dan dengarkan suaranya).',
+  'damageSource.legacyExam':
+    'Kecurigaan ini dilanjutkan dari pemeriksaan tampilan oleh AI pada foto tambahan (sisi belakang, tepi luar, lubang tengah) di versi sebelumnya. Foto dan hasil itu tidak ada dalam catatan pemeriksaan ini, tetapi kecurigaannya tetap dilanjutkan, tidak dihapus. Periksa sendiri batu gerinda yang sebenarnya.',
+  'damageSource.legacyExamAlso':
+    'Pemeriksaan tampilan oleh AI pada foto tambahan (sisi belakang, tepi luar, lubang tengah) di versi sebelumnya juga memuat kecurigaan kerusakan. Foto dan hasil itu tidak ada dalam catatan pemeriksaan ini, tetapi kecurigaannya tetap dilanjutkan, tidak dihapus. Periksa sendiri batu gerinda yang sebenarnya.',
+  'damageSource.droppedOcr':
+    'Kecurigaan ini berasal dari hasil AI yang membaca foto label pemeriksaan ini. Hasil tersimpan itu tidak dapat dibaca sehingga tidak dipulihkan dan tidak ada dalam catatan pemeriksaan ini, tetapi kecurigaannya tetap dilanjutkan, tidak dihapus. Periksa sendiri batu gerinda yang sebenarnya.',
+  'damageSource.droppedOcrAlso':
+    'Hasil AI tersimpan yang tidak dapat dibaca sehingga tidak dipulihkan juga memuat kecurigaan kerusakan. Hasil itu tidak ada dalam catatan pemeriksaan ini, tetapi kecurigaannya tetap dilanjutkan, tidak dihapus. Periksa sendiri batu gerinda yang sebenarnya.',
+  'damageSource.carried':
+    'Kecurigaan ini dilanjutkan dari pemeriksaan batu gerinda yang tersimpan sebelum label difoto ulang. Kecurigaan ini bukan berasal dari hasil baca foto label yang dipakai dalam pemeriksaan ini. Meskipun yang difoto batu gerinda lain, periksa sendiri batu gerinda yang sebenarnya.',
+  'damageSource.carriedAlso':
+    'Pemeriksaan batu gerinda yang tersimpan sebelum label difoto ulang juga memuat kecurigaan kerusakan dari AI. Kecurigaan itu juga tetap dilanjutkan, tidak dihapus. Meskipun yang difoto batu gerinda lain, periksa sendiri batu gerinda yang sebenarnya.',
   'reason.confidence.low':
     'Keyakinan pembacaan label rendah. Foto ulang atau isi nilainya sendiri.',
   'reason.confidence.ok': 'Keyakinan pembacaan label cukup.',

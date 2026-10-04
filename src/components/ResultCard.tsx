@@ -9,7 +9,11 @@ import {
   type MessageKey,
   type Translate,
 } from '@/lib/i18n';
-import { checkReasonText, checkValueText } from '@/lib/i18n/checkText';
+import {
+  checkReasonText,
+  checkValueText,
+  damageSourceNotes,
+} from '@/lib/i18n/checkText';
 import { formatGrinderSummary, formatMargin } from '@/lib/i18n/format';
 import { ruleLabelText } from '@/lib/i18n/ruleLabel';
 import { RULE } from '@/lib/rules/engine';
@@ -73,16 +77,19 @@ function checkIcon(passed: boolean | null): string {
 function CheckRow({
   check,
   margin,
+  wheel,
   t,
   locale,
 }: {
   check: CheckItem;
   margin: number | null;
+  wheel: WheelSpec | undefined;
   t: Translate;
   locale: Locale;
 }) {
   // 사유와 값은 엔진이 함께 낸 사유 코드로 고른 언어의 문장을 만든다.
   const values = checkValueText(check, locale);
+  const sourceNotes = damageSourceNotes(check, wheel, locale);
   const comparison =
     values.grinder || values.wheel
       ? `${t('common.grinder')} ${values.grinder ?? '—'} / ${t('common.wheel')} ${values.wheel ?? '—'}`
@@ -120,6 +127,17 @@ function CheckRow({
         >
           {checkReasonText(check, locale)}
         </span>
+        {/* 외관 의심이 이 점검의 라벨 사진 판독 밖에서 왔으면 출처를 밝힌다. 위
+            사유 문장만으로는 "이 사진에서 보인 것"으로 읽힌다. 색에만 기대지
+            않도록 왼쪽 줄로도 구분한다. */}
+        {sourceNotes.map((note) => (
+          <span
+            key={note}
+            className="border-l-2 border-yellow-500/70 pl-3 text-base leading-relaxed text-yellow-100"
+          >
+            {note}
+          </span>
+        ))}
       </div>
     </li>
   );
@@ -186,6 +204,7 @@ export function ResultCard({ result, grinder, wheel }: ResultCardProps) {
                   key={check.rule}
                   check={check}
                   margin={marginFor(check.rule)}
+                  wheel={wheel}
                   t={t}
                   locale={locale}
                 />

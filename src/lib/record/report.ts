@@ -10,7 +10,7 @@
 // reportPhoto.ts, 파일 저장은 fileExport.ts).
 
 import type { Locale, MessageKey, Translate } from '@/lib/i18n';
-import { checkReasonText } from '@/lib/i18n/checkText';
+import { checkReasonText, damageSourceNotes } from '@/lib/i18n/checkText';
 import { ruleLabelText } from '@/lib/i18n/ruleLabel';
 import { formatDateTime } from './datetime';
 import type {
@@ -108,10 +108,15 @@ function renderChecks(
   locale: Locale,
 ): string {
   const items = record.result.checks
-    .map(
-      (check) =>
-        `<li><strong>${checkIcon(check.passed)} ${escapeHtml(ruleLabelText(check.rule, t))}</strong><br>${escapeHtml(checkReasonText(check, locale))}</li>`,
-    )
+    .map((check) => {
+      // 외관 의심이 이 점검의 라벨 사진 판독 밖에서 왔으면 출처를 사유 아래에 적는다.
+      // 문서는 사진과 함께 다른 사람에게 건너간다 — 출처가 없으면 읽는 사람은 그
+      // 사진에서 손상이 보였다고만 안다.
+      const notes = damageSourceNotes(check, record.wheel, locale)
+        .map((note) => `<span class="note">${escapeHtml(note)}</span>`)
+        .join('');
+      return `<li><strong>${checkIcon(check.passed)} ${escapeHtml(ruleLabelText(check.rule, t))}</strong><br>${escapeHtml(checkReasonText(check, locale))}${notes}</li>`;
+    })
     .join('');
   return `<h3>${escapeHtml(t('report.checks'))}</h3><ul class="checks">${items}</ul>`;
 }
@@ -220,6 +225,7 @@ h3{font-size:16px;margin:16px 0 6px}
 .summary{font-weight:600;margin:0 0 4px}
 .muted{color:#475569;font-size:14px;margin:4px 0}
 .warn{background:#fef9c3;padding:8px 10px;border-radius:6px}
+.note{display:block;margin-top:4px;padding-left:8px;border-left:3px solid #eab308}
 .photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-top:10px}
 figure{margin:0}
 img{width:100%;height:auto;border-radius:6px;border:1px solid #cbd5e1}

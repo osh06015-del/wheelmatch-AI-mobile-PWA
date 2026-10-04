@@ -764,6 +764,18 @@ export const en: Messages = {
     'Part of the photo looks broken or cracked. Do not use this wheel; inspect it yourself.',
   'reason.visibleDamage.notVerifiable':
     'Hairline cracks cannot be seen in a photo. Do a ring test (tap it lightly and listen) before mounting.',
+  'damageSource.legacyExam':
+    'This suspicion was carried over from the AI appearance check of the extra photos (back face, edge, bore) in the earlier version. Those photos and that result are not in this inspection record, but the suspicion is kept, not cleared. Inspect the actual wheel yourself.',
+  'damageSource.legacyExamAlso':
+    'The AI appearance check of the extra photos (back face, edge, bore) in the earlier version also raised a damage suspicion. Those photos and that result are not in this inspection record, but the suspicion is kept, not cleared. Inspect the actual wheel yourself.',
+  'damageSource.droppedOcr':
+    'This suspicion was raised by an AI result that read the label photo of this inspection. That saved result could not be read, so it was not recovered and is not in this inspection record, but the suspicion is kept, not cleared. Inspect the actual wheel yourself.',
+  'damageSource.droppedOcrAlso':
+    'A saved AI result that could not be read and was not recovered also raised a damage suspicion. That result is not in this inspection record, but the suspicion is kept, not cleared. Inspect the actual wheel yourself.',
+  'damageSource.carried':
+    'This suspicion was carried over from the wheel check saved before the label was photographed again. It did not come from the reading of the label photo used in this inspection. Even if you photographed a different wheel, inspect the actual wheel yourself.',
+  'damageSource.carriedAlso':
+    'The wheel check saved before the label was photographed again also carried a damage suspicion raised by the AI. That suspicion is kept as well, not cleared. Even if you photographed a different wheel, inspect the actual wheel yourself.',
   'reason.confidence.low':
     'The label was read with low confidence. Retake the photo or enter the values yourself.',
   'reason.confidence.ok': 'The label was read with enough confidence.',

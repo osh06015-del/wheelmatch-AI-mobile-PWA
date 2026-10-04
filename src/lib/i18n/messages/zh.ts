@@ -668,6 +668,18 @@ export const zh: Messages = {
     '照片中有看似破损或裂纹的部位。请勿使用这片砂轮，并亲自检查。',
   'reason.visibleDamage.notVerifiable':
     '照片无法看出细微裂纹。安装前请做敲击检查（轻敲并听声音）。',
+  'damageSource.legacyExam':
+    '这项怀疑沿自旧版本中对附加照片（背面、边缘、中心孔）的 AI 外观确认。那些照片和确认结果不在本次检查记录中，但该怀疑不会清除，继续保留。请亲自检查实物。',
+  'damageSource.legacyExamAlso':
+    '旧版本中对附加照片（背面、边缘、中心孔）的 AI 外观确认也提出了损伤怀疑。那些照片和确认结果不在本次检查记录中，但该怀疑不会清除，继续保留。请亲自检查实物。',
+  'damageSource.droppedOcr':
+    '这项怀疑由读取本次检查标签照片的AI识别结果提出。该已保存的识别结果无法读取、未能恢复，也不在本次检查记录中，但该怀疑不会清除，继续保留。请亲自检查实物。',
+  'damageSource.droppedOcrAlso':
+    '一份无法读取、未能恢复的AI识别结果也提出了损伤怀疑。该识别结果不在本次检查记录中，但该怀疑不会清除，继续保留。请亲自检查实物。',
+  'damageSource.carried':
+    '这项怀疑沿自重新拍摄标签之前保存的砂轮确认内容，并非来自本次检查所用标签照片的识别结果。即使拍摄的是另一片砂轮，也请亲自检查实物。',
+  'damageSource.carriedAlso':
+    '重新拍摄标签之前保存的砂轮确认内容中，也有AI提出的损伤怀疑。该怀疑同样不会清除，继续保留。即使拍摄的是另一片砂轮，也请亲自检查实物。',
   'reason.confidence.low': '标签识别可信度低。请重新拍摄或手动输入。',
   'reason.confidence.ok': '标签识别可信度足够。',
   'reason.unitConsistency.mismatch':

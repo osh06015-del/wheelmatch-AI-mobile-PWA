@@ -15,7 +15,9 @@ import type {
   CheckItem,
   Confidence,
   ReasonCode,
+  VisibleDamageSource,
   WheelPurpose,
+  WheelSpec,
   WheelType,
   WorkPurpose,
 } from '@/lib/rules/types';
@@ -229,4 +231,94 @@ export function checkValueText(check: CheckItem, locale: Locale): CheckValues {
     default:
       return raw;
   }
+}
+
+/**
+ * 이어받은 의심 하나의 출처 문구.
+ *
+ *   only — 그 출처가 의심의 전부일 때. "이 의심은 …에서 왔다"고 말한다
+ *   also — 다른 출처도 있을 때. "…에서도 의심이 있었다"고만 말한다
+ */
+interface DamageSourceNote {
+  only: MessageKey;
+  also: MessageKey;
+}
+
+/**
+ * 외관 손상 의심의 출처 → 사유 문장 아래에 붙이는 문구.
+ *
+ * 이 점검의 라벨 사진을 읽은 판독(label_photo·reanalysis)은 null이다 — 엔진의 사유
+ * 문장("사진에서 … 보이는 부분이 있습니다")이 그 판독을 그대로 말하고 있어 덧붙일
+ * 문장이 없다. 출처 전체를 요구하므로, 출처를 더하고 여기서 정하지 않으면 타입
+ * 검사가 막는다.
+ */
+const DAMAGE_SOURCE_NOTE: Readonly<
+  Record<VisibleDamageSource, DamageSourceNote | null>
+> = {
+  label_photo: null,
+  reanalysis: null,
+  legacy_exam: {
+    only: 'damageSource.legacyExam',
+    also: 'damageSource.legacyExamAlso',
+  },
+  dropped_ocr: {
+    only: 'damageSource.droppedOcr',
+    also: 'damageSource.droppedOcrAlso',
+  },
+  carried: {
+    only: 'damageSource.carried',
+    also: 'damageSource.carriedAlso',
+  },
+};
+
+/**
+ * 「외관 손상」 항목의 사유 문장 아래에 붙이는 출처 문장들. 붙일 것이 없으면 빈 목록.
+ *
+ * 엔진의 사유 문장은 의심이 어디서 왔든 "사진에서 깨짐·균열로 보이는 부분이
+ * 있습니다"다. 그런데 의심이 이어받은 것이면 — 이전 버전의 추가 사진 확인, 읽을 수
+ * 없어 버린 판독, 라벨을 다시 찍기 전의 draft — 이 점검에 남는 사진과 OCR 원본은 그
+ * 의심을 담고 있지 않다. 다시 찍은 사진은 다른 숫돌의 것일 수도 있다. 출처를 밝히지
+ * 않으면 작업자는 이 사진에서 무엇이 의심됐는지 찾게 되고, 기록을 읽는 사람은 누가
+ * 의심으로 만들었는지 되짚을 수 없다.
+ *
+ * 이어받은 출처의 문장은 **다른 출처가 더 있어도 빼지 않는다.** 이 사진의 판독도
+ * 의심했다고 빼면, 결과 화면에서 서버 재분석이 의심을 더하는 순간 보이던 문장
+ * (「다른 숫돌을 촬영했더라도 실물을 직접 확인하세요」)이 사라진다 — 앱이 보여 주던
+ * 경고를 앱이 줄이게 된다. 대신 문장을 바꾼다: 출처가 하나뿐일 때만 "이 의심은
+ * …에서 왔다"·"이 사진의 판독에서 나온 것이 아니다"라고 말하고, 둘 이상이거나 지금
+ * 목록에 없는 값(다른 버전이 쓴 기록)이 섞였으면 "…에서도 의심이 있었다"고만 말한다.
+ * 모르는 출처가 이 사진의 판독이었을 수도 있으므로 단정하지 않는다.
+ *
+ * 붙이지 않는 경우.
+ *   · 출처가 이 점검의 라벨 사진을 읽은 판독뿐이다 — 엔진 문장이 그대로 말한다
+ *   · 출처가 기록되지 않았다(이 표시가 생기기 전의 기록) — 추정해서 말하지 않는다
+ *
+ * 의심을 덜어내지 않는다. 판정도 visibleDamage도 건드리지 않고 문장만 더한다.
+ */
+export function damageSourceNotes(
+  check: CheckItem,
+  wheel: WheelSpec | undefined,
+  locale: Locale,
+): string[] {
+  if (check.rule !== RULE.VISIBLE_DAMAGE) return [];
+  if (wheel?.visibleDamage !== 'suspected') return [];
+  const stored = wheel.visibleDamageSources;
+  if (!stored) return [];
+
+  // 같은 출처가 두 번 적힌 값(손으로 고친 백업 등)은 한 번만 본다. 같은 문장을 두 번
+  // 보이지 않는다.
+  const sources = stored.filter(
+    (source, index) => stored.indexOf(source) === index,
+  );
+  const sole = sources.length === 1;
+  return sources.flatMap((source) => {
+    // 저장된 기록의 값이다. 지금 목록에 없는 출처에는 문장이 없다.
+    const note = Object.prototype.hasOwnProperty.call(
+      DAMAGE_SOURCE_NOTE,
+      source,
+    )
+      ? DAMAGE_SOURCE_NOTE[source]
+      : null;
+    return note ? [translate(locale, sole ? note.only : note.also)] : [];
+  });
 }

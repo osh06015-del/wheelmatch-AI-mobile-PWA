@@ -390,6 +390,10 @@ describe('숫돌 확인 화면 — 입력 draft 복구', () => {
       expect(push).toHaveBeenCalledWith('/result');
       expect(result.current.wheel?.wheelType).toBe('unknown');
       expect(result.current.wheel?.visibleDamage).toBe('suspected');
+      // 이 사진을 읽은 판독이 올린 의심이다. 모름으로 바꿔 읽은 것은 종류뿐이다.
+      expect(result.current.wheel?.visibleDamageSources).toEqual([
+        'label_photo',
+      ]);
       // 표기 일치 검사의 근거(원본 표시)도 규격으로 넘어간다.
       expect(result.current.wheel?.markings).toEqual(MARKINGS);
       // unknown으로 바꿔 읽은 값을 "모델이 unknown이라고 읽었다"로 남기지 않는다.
@@ -710,8 +714,12 @@ describe('숫돌 확인 화면 — 이전 버전이 남긴 다각도 확인 draf
 
     expect(push).toHaveBeenCalledWith('/result');
     expect(result.current.wheel?.visibleDamage).toBe('suspected');
+    // 출처는 이전 버전의 확인이다. 이 사진의 판독(보이지 않음)은 출처에 끼지 않는다
+    // — 결과 화면이 이 값으로 "이 사진에서 보인 것이 아니다"를 밝힌다.
+    expect(result.current.wheel?.visibleDamageSources).toEqual(['legacy_exam']);
     // 라벨 사진의 OCR 원본은 건드리지 않는다.
     expect(result.current.wheelOcr?.visibleDamage).toBe('none_visible');
+    expect(result.current.wheelOcr).not.toHaveProperty('visibleDamageSources');
   });
 
   it('이어받은 의심을 다시 저장한다 — 한 번 더 새로고침해도 사라지지 않는다', async () => {
@@ -756,6 +764,8 @@ describe('숫돌 확인 화면 — 이전 버전이 남긴 다각도 확인 draf
     answerWheelCondition();
     fireEvent.click(proceedButton());
     expect(result.current.wheel?.visibleDamage).toBe('none_visible');
+    // 의심이 아니면 출처 칸도 없다.
+    expect(result.current.wheel).not.toHaveProperty('visibleDamageSources');
   });
 
   it('새로 저장하는 확인 화면 draft에는 다각도 확인 자리도, 이어받은 흔적도 없다', async () => {
@@ -847,6 +857,7 @@ describe('숫돌 확인 화면 — 통째로 버린 OCR이 남은 draft', () => 
     expect(push).toHaveBeenCalledWith('/result');
     // 버린 판독의 「보이지 않음」도 되살리지 않는다 — 본 근거가 남아 있지 않다.
     expect(result.current.wheel?.visibleDamage).toBe('unknown');
+    expect(result.current.wheel).not.toHaveProperty('visibleDamageSources');
     expect(result.current.wheelOcr).toBeNull();
   });
 
@@ -863,6 +874,8 @@ describe('숫돌 확인 화면 — 통째로 버린 OCR이 남은 draft', () => 
 
     expect(push).toHaveBeenCalledWith('/result');
     expect(result.current.wheel?.visibleDamage).toBe('suspected');
+    // 그 판독은 기록에 남지 않는다. 의심이 거기서 왔다는 것만 규격에 적는다.
+    expect(result.current.wheel?.visibleDamageSources).toEqual(['dropped_ocr']);
     // 읽을 수 없던 판독은 기록의 OCR 원본으로 남기지 않는다.
     expect(result.current.wheelOcr).toBeNull();
   });
@@ -1021,6 +1034,8 @@ describe('숫돌 확인 화면 — 통째로 버린 OCR이 남은 draft', () => 
 
     expect(push).toHaveBeenCalledWith('/result');
     expect(result.current.wheel?.visibleDamage).toBe('suspected');
+    // 화면에 남은 판독(보이지 않음)이 아니라 버린 판독이 올린 의심이다.
+    expect(result.current.wheel?.visibleDamageSources).toEqual(['dropped_ocr']);
     expect(result.current.wheelOcr).toEqual(OCR_BONDED);
     expect(result.current.offlineSlots.wheel).toBe(false);
     expect(result.current.analysisMode).toBe('online');
@@ -1238,6 +1253,10 @@ describe('숫돌 확인 화면 — 확인 화면을 되살리지 못한 draft', 
 
       expect(push).toHaveBeenCalledWith('/result');
       expect(result.current.wheel?.visibleDamage).toBe('suspected');
+      // 다시 찍기 전의 의심이 어디서 왔든 출처는 「이어받음」 하나다. 다시 찍은 사진의
+      // 판독(보이지 않음)은 출처에 끼지 않는다 — 결과 화면이 이 값으로 그 의심이 이
+      // 사진에서 나온 것이 아니고 다른 숫돌일 수 있음을 밝힌다.
+      expect(result.current.wheel?.visibleDamageSources).toEqual(['carried']);
       // 다시 찍은 사진의 판독은 모델이 읽은 그대로 기록한다. 이어받은 의심을 그
       // 판독에 섞어 넣지 않는다.
       expect(result.current.wheelOcr).toEqual(OCR_BONDED);
@@ -1308,6 +1327,7 @@ describe('숫돌 확인 화면 — 확인 화면을 되살리지 못한 draft', 
     answerWheelCondition();
     fireEvent.click(proceedButton());
     expect(result.current.wheel?.visibleDamage).toBe('none_visible');
+    expect(result.current.wheel).not.toHaveProperty('visibleDamageSources');
   });
 
   it('판독에 실패해 다시 찍어도 이어간다 — 그 의심은 아직 한 번도 보이지 않았다', async () => {

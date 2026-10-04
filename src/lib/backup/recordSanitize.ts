@@ -201,6 +201,13 @@ export const WHEEL_TYPES = [
   'unknown',
 ] as const;
 const VISIBLE_DAMAGE = ['suspected', 'none_visible', 'unknown'] as const;
+const VISIBLE_DAMAGE_SOURCES = [
+  'label_photo',
+  'reanalysis',
+  'legacy_exam',
+  'dropped_ocr',
+  'carried',
+] as const;
 const RPM_SOURCES = ['label', 'converted', 'user'] as const;
 const VERDICTS = ['COMPATIBLE', 'INCOMPATIBLE', 'UNDETERMINED'] as const;
 const WORK_PURPOSES = ['cutting', 'grinding'] as const;
@@ -411,6 +418,22 @@ function sanitizeWheelSpec(raw: unknown): WheelSpec {
     rawText: str(r.rawText, MAX_LONG_STRING),
     confidence: oneOf(r.confidence, CONFIDENCE),
   };
+  // 외관 의심의 출처. 빠뜨리면 백업을 거친 기록에서 출처가 조용히 사라지고, 이어받은
+  // 의심이 다시 "이 사진에서 보인 것"으로만 읽힌다.
+  //
+  // 값이 목록에 있는지만 본다. 같은 출처가 두 번 적혔거나, 목록이 비었거나, 의심이
+  // 아닌데 출처가 남은 값은 무효로 하지 않는다 — 이 검사는 새로고침 복원도 함께
+  // 쓰는데, 출처 표기가 어색하다고 규격을 버리면 의심이 적힌 숫돌 단계가 통째로
+  // 사라진다. 그런 값은 읽는 쪽이 견딘다(i18n/checkText.ts, record/csv.ts).
+  setOpt(
+    result,
+    'visibleDamageSources',
+    r.visibleDamageSources === undefined
+      ? undefined
+      : arr(r.visibleDamageSources).map((source) =>
+          oneOf(source, VISIBLE_DAMAGE_SOURCES),
+        ),
+  );
   setOpt(
     result,
     'markings',

@@ -12,6 +12,7 @@ import type {
   CheckItem,
   GrinderSpec,
   ReasonCode,
+  VisibleDamageSource,
   WheelSpec,
   WheelType,
   WorkPurpose,
@@ -19,6 +20,7 @@ import type {
 import {
   checkReasonText,
   checkValueText,
+  damageSourceNotes,
   REASON_MESSAGE_KEY,
 } from './checkText';
 import { LOCALES } from './index';
@@ -289,4 +291,224 @@ describe('옛 기록', () => {
     } as unknown as CheckItem;
     expect(checkReasonText(future, 'zh')).toBe('새 규칙의 사유');
   });
+});
+
+// ─────────────────────────────────────────────────────────────
+// 외관 손상 의심의 출처 문장
+//
+// 엔진의 사유 문장은 의심이 어디서 왔든 "사진에서 깨짐·균열로 보이는 부분이
+// 있습니다"다. 이어받은 의심이면 이 점검의 사진과 OCR 원본은 그 의심을 담고 있지
+// 않다 — 사유 아래에 출처를 붙여 밝힌다. 의심을 덜어내는 말은 넣지 않는다.
+// ─────────────────────────────────────────────────────────────
+
+describe('외관 손상 의심의 출처 문장', () => {
+  /** 의심으로 확정된 숫돌과, 그 숫돌로 엔진이 낸 외관 손상 항목 */
+  function suspected(sources: WheelSpec['visibleDamageSources']) {
+    const spec = wheel({
+      visibleDamage: 'suspected',
+      ...(sources ? { visibleDamageSources: sources } : {}),
+    });
+    return { spec, check: checkOf(grinder(), spec, RULE.VISIBLE_DAMAGE) };
+  }
+
+  const notesFor = (
+    sources: WheelSpec['visibleDamageSources'],
+    locale: Parameters<typeof damageSourceNotes>[2] = 'ko',
+  ) => {
+    const { spec, check } = suspected(sources);
+    return damageSourceNotes(check, spec, locale);
+  };
+
+  const CARRIED_ONLY =
+    '이 의심은 라벨을 다시 찍기 전에 저장돼 있던 숫돌 확인에서 이어받은 것입니다. 이 점검에 쓴 라벨 사진의 판독에서 나온 것이 아닙니다. 다른 숫돌을 촬영했더라도 실물을 직접 확인하세요.';
+  const CARRIED_ALSO =
+    '라벨을 다시 찍기 전에 저장돼 있던 숫돌 확인에서도 AI의 손상 의심이 있었습니다. 그 의심도 지우지 않고 이어갑니다. 다른 숫돌을 촬영했더라도 실물을 직접 확인하세요.';
+  const LEGACY_ALSO =
+    '이전 버전에서 넣은 추가 사진(뒷면·가장자리·중심구멍)의 AI 외관 확인에서도 손상 의심이 있었습니다. 그 사진과 확인 결과는 이 점검 기록에 없지만, 의심은 지우지 않고 이어갑니다. 실물을 직접 확인하세요.';
+  const DROPPED_ALSO =
+    '읽을 수 없어 복구하지 못한 AI 판독에서도 손상 의심이 있었습니다. 그 판독은 이 점검 기록에 없지만, 의심은 지우지 않고 이어갑니다. 실물을 직접 확인하세요.';
+
+  /** 이어받은 출처. 문장이 있는 출처 전부다 */
+  const INHERITED = ['legacy_exam', 'dropped_ocr', 'carried'] as const;
+  /** 이 점검의 라벨 사진을 읽은 판독. 엔진 문장이 그대로 말하므로 문장이 없다 */
+  const PHOTO_READINGS = ['label_photo', 'reanalysis'] as const;
+
+  it('엔진의 사유 문장은 출처와 무관하게 그대로다', () => {
+    // 출처는 문장을 더할 뿐이다. 엔진이 낸 사유를 바꾸거나 가리지 않는다.
+    const { check } = suspected(['carried']);
+    expect(checkReasonText(check, 'ko')).toBe(
+      '사진에서 깨짐·균열로 보이는 부분이 있습니다. 이 숫돌을 사용하지 말고 직접 확인하세요.',
+    );
+  });
+
+  describe('출처가 하나뿐일 때 — 그 출처가 의심의 전부다', () => {
+    it('다시 찍기 전의 확인에서 이어받은 의심 — 이 사진의 판독이 아니라는 것과 다른 숫돌일 수 있음을 알린다', () => {
+      expect(notesFor(['carried'])).toEqual([CARRIED_ONLY]);
+    });
+
+    it('이전 버전의 추가 사진 확인에서 이어받은 의심 — 그 사진이 기록에 없어도 의심은 그대로임을 알린다', () => {
+      expect(notesFor(['legacy_exam'])).toEqual([
+        '이 의심은 이전 버전에서 넣은 추가 사진(뒷면·가장자리·중심구멍)의 AI 외관 확인에서 이어받은 것입니다. 그 사진과 확인 결과는 이 점검 기록에 없지만, 의심은 지우지 않고 이어갑니다. 실물을 직접 확인하세요.',
+      ]);
+    });
+
+    it('읽을 수 없어 버린 판독의 의심 — 이 사진을 읽은 판독이었고, 기록에 없어도 의심은 그대로임을 알린다', () => {
+      expect(notesFor(['dropped_ocr'])).toEqual([
+        '이 의심은 이 점검의 라벨 사진을 읽었던 AI 판독이 올린 것입니다. 저장된 그 판독을 읽을 수 없어 복구하지 못했고 이 점검 기록에도 없지만, 의심은 지우지 않고 이어갑니다. 실물을 직접 확인하세요.',
+      ]);
+    });
+
+    it.each(PHOTO_READINGS)(
+      '이 점검의 라벨 사진을 읽은 판독(%s)뿐이면 붙이지 않는다 — 엔진 문장이 그대로 말한다',
+      (source) => {
+        expect(notesFor([source])).toEqual([]);
+      },
+    );
+
+    it('같은 출처가 두 번 적힌 값은 하나로 본다 — 같은 문장을 두 번 보이지 않는다', () => {
+      // 손으로 고친 백업처럼 앱이 쓰지 않는 모양이다. 화면이 문장을 key로 쓰므로
+      // 겹치면 React가 같은 key 둘을 받는다.
+      expect(notesFor(['carried', 'carried'])).toEqual([CARRIED_ONLY]);
+    });
+  });
+
+  describe('다른 출처도 있을 때 — 이어받은 출처의 문장을 빼지 않는다', () => {
+    it.each(PHOTO_READINGS)(
+      '이 사진의 판독(%s)도 의심했으면 「…에서도」로 바꿔 말한다 — 다른 숫돌일 수 있다는 안내는 남는다',
+      (photoReading) => {
+        // 빼면 결과 화면에서 서버 재분석이 의심을 더하는 순간, 보이던 출처 문장이
+        // 사라진다. 앱이 보여 주던 경고를 앱이 줄이는 방향이다.
+        expect(notesFor(['carried', photoReading])).toEqual([CARRIED_ALSO]);
+        expect(notesFor([photoReading, 'carried'])).toEqual([CARRIED_ALSO]);
+      },
+    );
+
+    it('이 사진의 판독도 의심했으면 「이 사진의 판독에서 나온 것이 아닙니다」를 말하지 않는다', () => {
+      // 그 문장은 이제 거짓이다.
+      for (const photoReading of PHOTO_READINGS) {
+        for (const note of notesFor(['carried', photoReading])) {
+          expect(note).not.toContain('나온 것이 아닙니다');
+        }
+      }
+    });
+
+    it('여러 곳에서 이어받았으면 적힌 순서대로 모두 알린다 — 어느 하나가 전부라고 말하지 않는다', () => {
+      expect(notesFor(['legacy_exam', 'dropped_ocr'])).toEqual([
+        LEGACY_ALSO,
+        DROPPED_ALSO,
+      ]);
+      expect(notesFor(['label_photo', 'legacy_exam', 'dropped_ocr'])).toEqual([
+        LEGACY_ALSO,
+        DROPPED_ALSO,
+      ]);
+    });
+
+    it('지금 목록에 없는 출처가 섞여 있으면 단정하지 않는다 — 아는 출처는 「…에서도」로 보인다', () => {
+      // 다른 버전의 앱이 저장한 기록이다(이력은 저장소에서 바로 읽는다). 모르는
+      // 출처가 이 사진의 판독이었을 수도 있어, "이 사진의 판독에서 나온 것이
+      // 아닙니다"를 말할 수 없다. 객체가 원래 가진 이름(toString 등)이 문구 키로
+      // 쓰이지도 않아야 한다.
+      const stored = [
+        'future_source',
+        'toString',
+        '__proto__',
+        'carried',
+      ] as unknown as WheelSpec['visibleDamageSources'];
+
+      expect(notesFor(stored)).toEqual([CARRIED_ALSO]);
+    });
+
+    it('지금 목록에 없는 출처뿐이면 붙이지 않는다', () => {
+      const stored = ['future_source'] as unknown as NonNullable<
+        WheelSpec['visibleDamageSources']
+      >;
+      expect(notesFor(stored)).toEqual([]);
+    });
+  });
+
+  it('이어받은 출처의 문장은 어느 것이든 실물 확인으로 끝난다 — 근거가 사라진 경고처럼 읽히지 않게', () => {
+    // 출처가 기록에 없다는 말로 끝나면 위 사유 문장의 "사용하지 말고"를 무르는
+    // 것으로 읽힌다. 다시 찍어야만 지워지는 흔적(이전 버전 확인·버린 판독)은 이
+    // 숫돌에 대한 의심이라 더 그렇다.
+    for (const source of INHERITED) {
+      const [only] = notesFor([source]);
+      const [also] = notesFor(['label_photo', source]);
+
+      expect(only.endsWith('실물을 직접 확인하세요.')).toBe(true);
+      expect(also.endsWith('실물을 직접 확인하세요.')).toBe(true);
+      expect(only).not.toBe(also);
+    }
+  });
+
+  it('출처가 기록되지 않은 의심(이 표시가 생기기 전의 기록)에는 붙이지 않는다 — 추정하지 않는다', () => {
+    expect(notesFor(undefined)).toEqual([]);
+    // 빈 목록도 같다. 출처에 대해 아는 것이 없다.
+    expect(notesFor([])).toEqual([]);
+  });
+
+  it('의심이 아닌 숫돌에는 출처가 적혀 있어도 붙이지 않는다', () => {
+    const spec = wheel({
+      visibleDamage: 'none_visible',
+      visibleDamageSources: ['carried'],
+    });
+    const check = checkOf(grinder(), spec, RULE.VISIBLE_DAMAGE);
+    expect(damageSourceNotes(check, spec, 'ko')).toEqual([]);
+  });
+
+  it('외관 손상이 아닌 항목에는 붙이지 않는다', () => {
+    const { spec } = suspected(['carried']);
+    const others = matchSpecs(grinder(), spec, {
+      profile: BONDED_ABRASIVE_PROFILE,
+      declaredPurpose: 'cutting',
+      today: '2026-09-08',
+    }).checks.filter((check) => check.rule !== RULE.VISIBLE_DAMAGE);
+
+    expect(others.length).toBeGreaterThan(0);
+    expect(
+      others.flatMap((check) => damageSourceNotes(check, spec, 'ko')),
+    ).toEqual([]);
+  });
+
+  it('숫돌 규격을 넘기지 않으면 붙이지 않는다', () => {
+    const { check } = suspected(['carried']);
+    expect(damageSourceNotes(check, undefined, 'ko')).toEqual([]);
+  });
+
+  it('출처 타입의 값마다 문장을 붙일지가 정해져 있다', () => {
+    // 출처를 더하면 타입 검사가 문구 표(DAMAGE_SOURCE_NOTE)를 채우게 막는다. 여기서는
+    // 이 점검의 사진을 읽은 판독 둘만 문장이 없다는 것을 고정한다.
+    const withNote: Record<VisibleDamageSource, boolean> = {
+      label_photo: false,
+      reanalysis: false,
+      legacy_exam: true,
+      dropped_ocr: true,
+      carried: true,
+    };
+    for (const [source, expected] of Object.entries(withNote)) {
+      expect(notesFor([source as VisibleDamageSource]).length > 0).toBe(
+        expected,
+      );
+    }
+  });
+
+  describe.each(LOCALES.filter(({ code }) => code !== 'ko'))(
+    '$label',
+    ({ code }) => {
+      it('출처마다 두 문장이 모두 있고, 한글과 자리표시자가 남지 않는다', () => {
+        const notes = INHERITED.flatMap((source) => [
+          ...notesFor([source], code),
+          ...notesFor(['label_photo', source], code),
+        ]);
+
+        expect(notes).toHaveLength(6);
+        expect(new Set(notes).size).toBe(6);
+        for (const note of notes) {
+          expect(note).not.toMatch(HANGUL);
+          expect(note).not.toMatch(/\{\w+\}/);
+          // 문구 키가 그대로 새어 나오지 않는다(번역이 빠지면 키가 보인다).
+          expect(note).not.toContain('damageSource.');
+        }
+      });
+    },
+  );
 });

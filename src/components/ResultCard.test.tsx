@@ -211,3 +211,115 @@ describe('ResultCard — 검사 항목', () => {
     expect(screen.getByText('덮개 조건')).toBeInTheDocument();
   });
 });
+
+// ─────────────────────────────────────────────────────────────
+// 외관 손상 의심의 출처
+//
+// 이어받은 의심도 엔진 문장은 "사진에서 … 보이는 부분이 있습니다"다. 이 점검의 사진
+// 판독에서 나온 의심이 아니면 그 아래에 출처를 밝힌다. 의심은 덜어내지 않는다.
+// ─────────────────────────────────────────────────────────────
+
+describe('ResultCard — 외관 손상 의심의 출처', () => {
+  const ENGINE_SENTENCE =
+    '사진에서 깨짐·균열로 보이는 부분이 있습니다. 이 숫돌을 사용하지 말고 직접 확인하세요.';
+  const CARRIED_NOTE =
+    '이 의심은 라벨을 다시 찍기 전에 저장돼 있던 숫돌 확인에서 이어받은 것입니다. 이 점검에 쓴 라벨 사진의 판독에서 나온 것이 아닙니다. 다른 숫돌을 촬영했더라도 실물을 직접 확인하세요.';
+
+  function renderCard(spec: WheelSpec) {
+    const g = grinder();
+    const result = matchSpecs(g, spec, {
+      declaredPurpose: 'cutting',
+      profile: BONDED_ABRASIVE_PROFILE,
+      today: TODAY,
+    });
+    render(<ResultCard result={result} grinder={g} wheel={spec} />);
+    return result;
+  }
+
+  it('이어받은 의심이면 엔진 문장 아래에 출처를 함께 보여준다', () => {
+    renderCard(
+      wheel({ visibleDamage: 'suspected', visibleDamageSources: ['carried'] }),
+    );
+
+    // 엔진 문장은 그대로 남는다 — 출처가 그 경고를 대신하지 않는다.
+    const reason = screen.getByText(ENGINE_SENTENCE);
+    const note = screen.getByText(CARRIED_NOTE);
+    // 같은 항목(외관 손상) 안에, 사유 다음에 온다.
+    const row = reason.closest('li');
+    expect(row).not.toBeNull();
+    expect(row).toContainElement(note);
+    expect(row).toHaveTextContent('외관 손상');
+    expect(
+      reason.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('출처를 밝혀도 판정과 항목 구성은 그대로다', () => {
+    const inherited = renderCard(
+      wheel({ visibleDamage: 'suspected', visibleDamageSources: ['carried'] }),
+    );
+
+    // 외관 손상은 경고라 판정을 움직이지 않는다. 출처 문장도 마찬가지다.
+    expect(inherited.verdict).toBe('COMPATIBLE');
+    expect(screen.getByText('적합', { exact: true })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /직접 확인할 항목/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('이 사진의 판독도 의심했으면 이어받은 출처는 「…에서도」로 남긴다 — 다른 숫돌일 수 있다는 안내를 빼지 않는다', () => {
+    // 결과 화면의 서버 재분석이 의심을 더하면 출처가 이렇게 바뀐다. 문장을 통째로
+    // 빼면 방금까지 보이던 안내가 재분석 한 번에 사라진다.
+    renderCard(
+      wheel({
+        visibleDamage: 'suspected',
+        visibleDamageSources: ['carried', 'reanalysis'],
+      }),
+    );
+
+    expect(screen.getByText(ENGINE_SENTENCE)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '라벨을 다시 찍기 전에 저장돼 있던 숫돌 확인에서도 AI의 손상 의심이 있었습니다. 그 의심도 지우지 않고 이어갑니다. 다른 숫돌을 촬영했더라도 실물을 직접 확인하세요.',
+      ),
+    ).toBeInTheDocument();
+    // 이 사진의 판독도 의심했으므로 이 말은 더 이상 사실이 아니다.
+    expect(screen.queryByText(/나온 것이 아닙니다/)).not.toBeInTheDocument();
+  });
+
+  it('이 사진의 판독만 의심했으면 출처 문장을 붙이지 않는다', () => {
+    renderCard(
+      wheel({
+        visibleDamage: 'suspected',
+        visibleDamageSources: ['label_photo'],
+      }),
+    );
+
+    expect(screen.getByText(ENGINE_SENTENCE)).toBeInTheDocument();
+    expect(screen.queryByText(/이어받/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/에서도/)).not.toBeInTheDocument();
+  });
+
+  it('출처가 기록되지 않은 의심에는 아무것도 붙이지 않는다', () => {
+    renderCard(wheel({ visibleDamage: 'suspected' }));
+
+    expect(screen.getByText(ENGINE_SENTENCE)).toBeInTheDocument();
+    expect(screen.queryByText(/이어받은 것입니다/)).not.toBeInTheDocument();
+  });
+
+  it('숫돌 규격을 넘겨받지 못한 화면에서도 엔진 문장은 그대로 보인다', () => {
+    const result = matchSpecs(
+      grinder(),
+      wheel({ visibleDamage: 'suspected', visibleDamageSources: ['carried'] }),
+      {
+        declaredPurpose: 'cutting',
+        profile: BONDED_ABRASIVE_PROFILE,
+        today: TODAY,
+      },
+    );
+    render(<ResultCard result={result} />);
+
+    expect(screen.getByText(ENGINE_SENTENCE)).toBeInTheDocument();
+    expect(screen.queryByText(/이어받은 것입니다/)).not.toBeInTheDocument();
+  });
+});

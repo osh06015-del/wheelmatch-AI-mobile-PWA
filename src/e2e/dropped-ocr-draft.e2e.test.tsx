@@ -263,3 +263,124 @@ describe('점검 흐름 E2E — 저장된 AI 판독을 읽을 수 없게 된 확
     ).toEqual(['analysisMode.offlineLimited']);
   });
 });
+
+// ─────────────────────────────────────────────────────────────
+// 이어받은 손상 의심의 출처
+//
+// 확인 화면 draft가 남긴 의심은 확정한 규격을 의심으로 만든다. 그런데 결과 화면의
+// 외관 손상 항목은 규칙엔진 문장 그대로("사진에서 … 보이는 부분이 있습니다")이고,
+// 기록에 남는 사진과 OCR 원본은 그 의심을 담고 있지 않다. 출처가 확인 화면에서
+// 결과 화면·기록·이력까지 따라가는지를 이어 본다.
+// ─────────────────────────────────────────────────────────────
+
+describe('점검 흐름 E2E — 이어받은 손상 의심의 출처', () => {
+  const ENGINE_SENTENCE =
+    '사진에서 깨짐·균열로 보이는 부분이 있습니다. 이 숫돌을 사용하지 말고 직접 확인하세요.';
+
+  it('사진 없는 draft의 의심을 이어받아 라벨을 다시 찍으면, 결과·기록·이력이 그 의심이 이 사진의 판독이 아님을 밝힌다', async () => {
+    const f = inspector('ko');
+    // 처음 판독은 손상을 의심한다. 다시 찍은 사진의 판독은 의심하지 않는다 — 다른
+    // 숫돌을 찍었을 수도 있다(앱은 구분하지 못한다).
+    const extractor = new FixtureExtractor()
+      .grinder(GRINDER)
+      .wheel(wheelLabel({ visibleDamage: 'suspected' }), wheelLabel());
+    const view = await openWheelConfirm(f, extractor);
+    await waitFor(() => expect(formDrafts.has('wheel')).toBe(true), {
+      timeout: 3000,
+    });
+    // 저장 공간이 모자라 사진만 빼고 저장된 draft와 같은 모양이다. 대조할 사진이
+    // 없어 확인 화면을 되살리지 못한다.
+    formDrafts.set('wheel', {
+      ...(formDrafts.get('wheel') as Record<string, unknown>),
+      photo: null,
+    });
+
+    const retaking = await reloadApp(view, extractor);
+    await f.pickPhoto();
+    await screen.findByText(f.t('draft.warn.carriedDamage'), { exact: false });
+    await f.answerWheelCondition();
+    await f.user.click(f.button('scan.wheel.proceed'));
+    await f.atPath('/result');
+    await screen.findByText(f.t('result.title'));
+
+    // 결과 화면: 엔진 문장은 그대로이고, 같은 항목 안에서 출처가 뒤따른다.
+    const note = f.t('damageSource.carried');
+    expect(screen.getByText(ENGINE_SENTENCE).closest('li')).toContainElement(
+      screen.getByText(note),
+    );
+    // 외관 손상은 경고라 판정을 움직이지 않는다. 출처를 밝혀도 그대로다.
+    expect(screen.getByText(f.t('verdict.compatible'))).toBeInTheDocument();
+
+    // 결과 화면에서 새로고침해도 출처는 규격과 함께 남는다.
+    await reloadApp(retaking, extractor);
+    await screen.findByText(f.t('result.title'));
+    expect(screen.getByText(note)).toBeInTheDocument();
+
+    await f.completeChecklist();
+    await f.user.click(f.button('trialRun.startBeforeWork', { seconds: 60 }));
+    await finishTrialRun(f);
+    await f.user.click(f.button('result.save'));
+    await f.atPath('/history');
+
+    const [record] = savedRecords();
+    expect(record.result.verdict).toBe('COMPATIBLE');
+    expect(record.wheel.visibleDamage).toBe('suspected');
+    expect(record.wheel.visibleDamageSources).toEqual(['carried']);
+    // 다시 찍은 사진의 판독은 모델이 읽은 그대로 남는다. 의심도 출처도 섞지 않는다.
+    expect(record.wheelOcr).toEqual(wheelLabel());
+    // 판정 근거의 사유 문장과 코드는 엔진이 낸 그대로다.
+    const damage = record.result.checks.find(
+      (check) => check.detail?.code === 'visibleDamage.suspected',
+    );
+    expect(damage?.reason).toBe(ENGINE_SENTENCE);
+
+    // 이력: 저장된 출처 그대로 다시 보인다.
+    await f.user.click(await screen.findByRole('button', { expanded: false }));
+    expect(screen.getByText(ENGINE_SENTENCE).closest('li')).toContainElement(
+      screen.getByText(note),
+    );
+  });
+
+  it('읽을 수 없어 버린 판독이 의심했던 숫돌 — 결과 화면이 그 판독이 기록에 없음을 밝힌다', async () => {
+    const f = inspector('ko');
+    const view = await openWheelConfirm(
+      f,
+      new FixtureExtractor()
+        .grinder(GRINDER)
+        .wheel(wheelLabel({ visibleDamage: 'suspected' })),
+    );
+    await waitFor(() => expect(formDrafts.has('wheel')).toBe(true), {
+      timeout: 3000,
+    });
+    const saved = formDrafts.get('wheel') as Record<string, unknown>;
+    formDrafts.set('wheel', {
+      ...saved,
+      // 원문이 문자열이 아니다 — 통째로 버려진다. 외관 값은 의심 그대로다.
+      ocr: { ...(saved.ocr as Record<string, unknown>), rawText: null },
+    });
+
+    await reloadApp(view, null);
+    await screen.findByText(f.t('draft.warn.ocr'), { exact: false });
+    await f.user.click(
+      screen.getByRole('checkbox', {
+        name: new RegExp(f.t('manualConfirm.label')),
+      }),
+    );
+    await f.answerWheelCondition();
+    await f.user.click(f.button('scan.wheel.proceed'));
+    await f.atPath('/result');
+    await screen.findByText(f.t('result.title'));
+
+    expect(screen.getByText(ENGINE_SENTENCE).closest('li')).toContainElement(
+      screen.getByText(f.t('damageSource.droppedOcr')),
+    );
+
+    await f.completeChecklist();
+    await f.user.click(f.button('result.save'));
+    await f.atPath('/history');
+    const [record] = savedRecords();
+    expect(record.wheel.visibleDamageSources).toEqual(['dropped_ocr']);
+    // 그 판독은 기록에 없다 — 출처 문장이 말하는 그대로다.
+    expect(record.wheelOcr).toBeUndefined();
+  });
+});

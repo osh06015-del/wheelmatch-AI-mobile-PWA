@@ -316,6 +316,11 @@ const RESTORABLE_OCR_FIELDS: Record<
   purpose: true,
   wheelType: true,
   visibleDamage: true,
+  // 확정한 규격에만 붙는 표시라 앱이 저장하는 판독에는 들어 있지 않다. 표를 타입에
+  // 맞추려고 둔다 — 의심 자체는 바로 위 visibleDamage가 실어 온다. 손으로 고친
+  // draft의 판독에 이 값이 들어 있으면 다른 필드처럼 되살아나지만, 판독에 붙은 이
+  // 값은 어디서도 읽지 않는다(출처는 확정할 때 confirmedWheelSpec이 새로 적는다).
+  visibleDamageSources: true,
   markings: true,
   rpmSource: true,
   expiry: true,

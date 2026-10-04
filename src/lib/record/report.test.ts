@@ -189,6 +189,82 @@ describe('점검 기록 문서 — 사람이 읽는 형태', () => {
     expect(html).toContain(escapeHtml(t('offline.limit')));
   });
 
+  describe('외관 손상 의심의 출처', () => {
+    const ENGINE_SENTENCE =
+      '사진에서 깨짐·균열로 보이는 부분이 있습니다. 이 숫돌을 사용하지 말고 직접 확인하세요.';
+
+    /** 의심으로 저장된 기록. 출처는 저장 당시 확정값에 붙어 있던 그대로다 */
+    function suspectedRecord(
+      sources: InspectionRecord['wheel']['visibleDamageSources'],
+    ): InspectionRecord {
+      const r = record();
+      r.wheel = {
+        ...r.wheel,
+        visibleDamage: 'suspected',
+        ...(sources ? { visibleDamageSources: sources } : {}),
+      };
+      r.result.checks.push({
+        rule: '외관 손상',
+        passed: null,
+        advisory: true,
+        grinderValue: null,
+        wheelValue: null,
+        reason: ENGINE_SENTENCE,
+        detail: { code: 'visibleDamage.suspected' },
+      });
+      return r;
+    }
+
+    it('이어받은 의심이면 사유 바로 아래에 출처를 적는다', () => {
+      // 문서는 사진과 함께 다른 사람에게 건너간다. 출처가 없으면 읽는 사람은 그
+      // 사진에서 손상이 보였다고만 안다.
+      const html = buildReportHtml(
+        [{ record: suspectedRecord(['carried']), photos: [] }],
+        options,
+      );
+      const note = escapeHtml(t('damageSource.carried'));
+
+      // 엔진 문장은 그대로 남고, 출처가 그 뒤에 같은 항목 안에 온다.
+      expect(html).toContain(
+        `${escapeHtml(ENGINE_SENTENCE)}<span class="note">${note}</span></li>`,
+      );
+    });
+
+    it('이 사진의 판독도 의심했으면 이어받은 출처를 「…에서도」로 적는다 — 빼지 않는다', () => {
+      const html = buildReportHtml(
+        [
+          {
+            record: suspectedRecord(['label_photo', 'carried']),
+            photos: [],
+          },
+        ],
+        options,
+      );
+
+      expect(html).toContain(
+        `${escapeHtml(ENGINE_SENTENCE)}<span class="note">${escapeHtml(t('damageSource.carriedAlso'))}</span></li>`,
+      );
+      expect(html).not.toContain(escapeHtml(t('damageSource.carried')));
+    });
+
+    it('이 사진의 판독만 의심했거나 출처가 기록되지 않았으면 적지 않는다', () => {
+      for (const sources of [['label_photo'], undefined] as const) {
+        const html = buildReportHtml(
+          [
+            {
+              record: suspectedRecord(sources ? [...sources] : undefined),
+              photos: [],
+            },
+          ],
+          options,
+        );
+
+        expect(html).toContain(`${escapeHtml(ENGINE_SENTENCE)}</li>`);
+        expect(html).not.toContain('class="note"');
+      }
+    });
+  });
+
   it('파일 이름에 시각을 붙여 여러 번 저장해도 덮어쓰지 않는다', () => {
     expect(reportFilename(new Date(2026, 8, 30, 22, 39))).toBe(
       'wheelmatch-record-20260930-2239.html',

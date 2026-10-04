@@ -188,6 +188,15 @@ export const CSV_COLUMNS = [
   // online으로 채우지 않는다. 앞선 열의 자리를 지키기 위해 맨 뒤에 붙인다.
   'analysisMode',
   'wheelExpiryReview',
+  // 외관 의심(visibleDamage: suspected)의 출처. 공백으로 이은 목록이다 —
+  // label_photo / reanalysis / legacy_exam / dropped_ocr / carried.
+  // visibleDamage 열만으로는 "이 사진을 읽은 판독이 의심했다"와 "다른 데서 이어받은
+  // 의심이다"가 같은 suspected로 적혀, 사진 판독의 의심률을 재면 섞인다.
+  // 의심이 아닌 기록과 이 표시 도입 전 기록은 빈 칸이다 — 빈 칸을 label_photo로
+  // 읽지 않는다. label_photo여도 그 판독이 기록의 OCR 원본으로 남지 않은 경우가
+  // 있다(일부 값만 모름으로 읽은 판독) — 그때는 *_ocr 열이 비어 있다.
+  // 앞선 열의 자리를 지키기 위해 맨 뒤에 붙인다.
+  'visibleDamageSources',
 ] as const;
 
 /**
@@ -402,6 +411,11 @@ function row(record: InspectionRecord): string {
     wheel.accessoryName,
     record.analysisMode,
     wheel.expiryReview,
+    // 의심일 때만 적는다. 의심이 아닌데 출처가 남은 값(손으로 고친 백업 등)을
+    // 그대로 적으면 visibleDamage 열과 어긋나 의심 건수를 세는 쪽이 틀어진다.
+    wheel.visibleDamage === 'suspected'
+      ? wheel.visibleDamageSources?.join(' ')
+      : undefined,
   ];
 
   return values.map(cell).join(',');

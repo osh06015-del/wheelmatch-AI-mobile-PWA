@@ -312,3 +312,50 @@ describe('EvidencePanel — 계산식과 차이', () => {
     expect(rpmRule).toHaveTextContent('적용 한계');
   });
 });
+
+describe('EvidencePanel — 외관 손상 의심의 출처', () => {
+  async function open(w: WheelSpec, wheelOcr: WheelSpec) {
+    const user = userEvent.setup();
+    const g = grinder();
+    render(
+      <EvidencePanel
+        grinder={g}
+        wheel={w}
+        result={matchSpecs(g, w, {
+          declaredPurpose: 'cutting',
+          profile: BONDED_ABRASIVE_PROFILE,
+          today: TODAY,
+        })}
+        grinderOcr={g}
+        wheelOcr={wheelOcr}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: '근거 보기' }));
+  }
+
+  it('이어받은 의심이면 사유 아래에 출처를 함께 적는다', async () => {
+    // OCR 원본은 의심하지 않았는데 확정값은 의심이다. 근거 화면이 그 까닭을 말한다.
+    await open(
+      wheel({ visibleDamage: 'suspected', visibleDamageSources: ['carried'] }),
+      wheel(),
+    );
+
+    const reason = screen.getByText(
+      '사진에서 깨짐·균열로 보이는 부분이 있습니다. 이 숫돌을 사용하지 말고 직접 확인하세요.',
+    );
+    const note = screen.getByText(
+      /라벨을 다시 찍기 전에 저장돼 있던 숫돌 확인/,
+    );
+    expect(reason.closest('li')).toContainElement(note);
+  });
+
+  it('이 사진의 판독이 스스로 의심했으면 붙이지 않는다', async () => {
+    const suspected = wheel({
+      visibleDamage: 'suspected',
+      visibleDamageSources: ['label_photo'],
+    });
+    await open(suspected, wheel({ visibleDamage: 'suspected' }));
+
+    expect(screen.queryByText(/이어받은 것입니다/)).not.toBeInTheDocument();
+  });
+});

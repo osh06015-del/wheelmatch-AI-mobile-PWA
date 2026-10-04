@@ -98,14 +98,75 @@ function parse(csv: string): string[][] {
 }
 
 describe('toCsv', () => {
-  it('사용기한 직접 응답은 새 마지막 열에만 쓰고 구기록은 비워 둔다', () => {
+  it('사용기한 직접 응답은 그 열에만 쓰고 구기록은 비워 둔다', () => {
     const [, row] = parse(
       toCsv([record({ wheel: { ...WHEEL, expiryReview: 'not_found' } })]),
     );
-    expect(CSV_COLUMNS.at(-1)).toBe('wheelExpiryReview');
-    expect(row.at(-1)).toBe('not_found');
+    // 뒤에 열이 더 붙어도 이 열의 자리는 그대로다. 자리를 번호로 고정한다.
+    expect(CSV_COLUMNS[128]).toBe('wheelExpiryReview');
+    expect(row[128]).toBe('not_found');
     const [, legacy] = parse(toCsv([record()]));
-    expect(legacy.at(-1)).toBe('');
+    expect(legacy[128]).toBe('');
+  });
+
+  it('외관 의심의 출처를 맨 뒤 열에 적는다 — 의심이 아니거나 출처가 없는 기록은 빈 칸이다', () => {
+    const [, inherited] = parse(
+      toCsv([
+        record({
+          wheel: {
+            ...WHEEL,
+            visibleDamage: 'suspected',
+            visibleDamageSources: ['label_photo', 'carried'],
+          },
+        }),
+      ]),
+    );
+    expect(CSV_COLUMNS[129]).toBe('visibleDamageSources');
+    expect(inherited[129]).toBe('label_photo carried');
+    // 기존 열은 그대로 확정값을 적는다.
+    expect(inherited[CSV_COLUMNS.indexOf('visibleDamage')]).toBe('suspected');
+
+    // 출처 표시가 생기기 전의 의심 기록. 라벨 사진 판독으로 채우지 않는다 —
+    // 채우면 이어받은 의심이 사진 판독의 의심으로 세어진다.
+    const [, legacy] = parse(
+      toCsv([record({ wheel: { ...WHEEL, visibleDamage: 'suspected' } })]),
+    );
+    expect(legacy[129]).toBe('');
+
+    const [, clean] = parse(toCsv([record()]));
+    expect(clean[129]).toBe('');
+
+    // 의심이 아닌데 출처가 남은 값(앱이 쓰는 모양이 아니다 — 손으로 고친 백업 등).
+    // 그대로 적으면 visibleDamage 열과 어긋나 의심 건수를 세는 쪽이 틀어진다.
+    const [, inconsistent] = parse(
+      toCsv([
+        record({
+          wheel: {
+            ...WHEEL,
+            visibleDamage: 'none_visible',
+            visibleDamageSources: ['carried'],
+          },
+        }),
+      ]),
+    );
+    expect(inconsistent[CSV_COLUMNS.indexOf('visibleDamage')]).toBe(
+      'none_visible',
+    );
+    expect(inconsistent[129]).toBe('');
+
+    // 빈 목록도 빈 칸이다. 출처에 대해 아는 것이 없다 — 출처가 없는 기록과 같다.
+    const [, empty] = parse(
+      toCsv([
+        record({
+          wheel: {
+            ...WHEEL,
+            visibleDamage: 'suspected',
+            visibleDamageSources: [],
+          },
+        }),
+      ]),
+    );
+    expect(empty[129]).toBe('');
   });
   it('첫 줄은 열 이름이다', () => {
     const [header] = parse(toCsv([]));
@@ -360,6 +421,7 @@ describe('toCsv', () => {
       'wheelAccessoryName',
       'analysisMode',
       'wheelExpiryReview',
+      'visibleDamageSources',
     ]);
   });
 
@@ -816,10 +878,11 @@ describe('다각도 외관 확인 열', () => {
     const [, row] = parse(toCsv([record()]));
     const start = CSV_COLUMNS.indexOf('workMaterial');
     expect(start).toBe(108);
-    // Profile 열 8개, 종류별 상태 항목 열 9개, 판정 범위·부속품 이름·판독 경로 열 1개씩.
+    // Profile 열 8개, 종류별 상태 항목 열 9개, 판정 범위·부속품 이름·판독 경로·
+    // 사용기한 응답·외관 의심 출처 열 1개씩.
     expect(CSV_COLUMNS.indexOf('conditionDiamondRimIntact')).toBe(116);
     expect(CSV_COLUMNS.indexOf('accessoryProfileScope')).toBe(125);
-    expect(CSV_COLUMNS.slice(start)).toHaveLength(21);
+    expect(CSV_COLUMNS.slice(start)).toHaveLength(22);
     for (const column of CSV_COLUMNS.slice(start)) {
       expect(row[CSV_COLUMNS.indexOf(column)]).toBe('');
     }
@@ -894,7 +957,7 @@ describe('다각도 외관 확인 열', () => {
     expect(offline[CSV_COLUMNS.indexOf('analysisMode')]).toBe(
       'offline_limited',
     );
-    expect(CSV_COLUMNS[CSV_COLUMNS.length - 2]).toBe('analysisMode');
+    expect(CSV_COLUMNS[127]).toBe('analysisMode');
 
     const [, online] = parse(toCsv([record({ analysisMode: 'online' })]));
     expect(online[CSV_COLUMNS.indexOf('analysisMode')]).toBe('online');

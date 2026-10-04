@@ -23,6 +23,7 @@ import {
   WHEEL_TYPE_LABEL,
   checkReasonText,
   checkValueText,
+  damageSourceNotes,
   labelOf,
 } from '@/lib/i18n/checkText';
 import { formatMargin } from '@/lib/i18n/format';
@@ -162,17 +163,20 @@ function differenceText(
 function RuleEvidenceRow({
   check,
   gap,
+  wheel,
   t,
   locale,
 }: {
   check: CheckItem;
   gap: { rpm: number | null; diameter: number | null } | null;
+  wheel: WheelSpec;
   t: Translate;
   locale: Locale;
 }) {
   const source = EVIDENCE_SOURCE[check.rule];
   const values = checkValueText(check, locale);
   const difference = differenceText(check, gap, t);
+  const sourceNotes = damageSourceNotes(check, wheel, locale);
 
   return (
     <li className="flex flex-col gap-1 rounded-lg bg-slate-800 px-4 py-3">
@@ -188,6 +192,16 @@ function RuleEvidenceRow({
       <span className="text-sm leading-relaxed text-slate-400">
         {checkReasonText(check, locale)}
       </span>
+      {/* 판정 근거에서도 의심의 출처를 사유 바로 아래에 둔다. 결과 카드와 같은
+          문장이다. */}
+      {sourceNotes.map((note) => (
+        <span
+          key={note}
+          className="border-l-2 border-yellow-500/70 pl-3 text-sm leading-relaxed text-yellow-100"
+        >
+          {note}
+        </span>
+      ))}
       {source?.formulaKey && (
         <span className="text-sm text-slate-500">
           {t('evidence.rules.formula')} {t(source.formulaKey)}
@@ -452,6 +466,7 @@ export function EvidencePanel({
                   key={check.rule}
                   check={check}
                   gap={gap}
+                  wheel={wheel}
                   t={t}
                   locale={locale}
                 />

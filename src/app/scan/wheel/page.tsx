@@ -45,6 +45,7 @@ import { conditionItemsFor } from '@/lib/rules/profiles';
 import {
   confirmedWheelSpec,
   wheelTypeDiffersFromSuggestion,
+  type PriorDamageSource,
 } from '@/lib/ocr/confirm';
 import { isNetworkFailure } from '@/lib/ocr/errors';
 import { getExtractor } from '@/lib/ocr/extractor';
@@ -484,7 +485,7 @@ export default function WheelScanPage() {
       expiryReview: form.expiryReview,
       accessoryName: form.accessoryName,
       userConfirmed,
-      priorDamageSuspected,
+      priorDamageSources,
     });
     // 손댄 OCR은 원본 자리에 넣지 않는다. 모름으로 바꿔 읽은 값을 "모델이 그렇게
     // 읽었다"로 기록하면 원본을 고쳐 쓴 것이 된다. 그 OCR이 올린 외관 의심과 원본
@@ -515,8 +516,16 @@ export default function WheelScanPage() {
   // 숫돌이거나, 확인 화면을 되살리지 못한 draft에서 의심을 이어받았으면 화면에 남은
   // 판독과 무관하게 의심으로 둔다. Gate의 경고와 규칙엔진에 넘기는 값이 같은 것을
   // 보게 한다.
-  const priorDamageSuspected =
-    legacyExam === 'suspected' || droppedOcr === 'suspected' || carriedDamage;
+  //
+  // 예/아니오가 아니라 출처로 모은다. 확정한 규격에 출처가 함께 남아야, 결과 화면과
+  // 기록이 이어받은 의심을 "이 사진에서 보인 것"으로만 말하지 않는다
+  // (confirmedWheelSpec).
+  const priorDamageSources: PriorDamageSource[] = [
+    ...(legacyExam === 'suspected' ? (['legacy_exam'] as const) : []),
+    ...(droppedOcr === 'suspected' ? (['dropped_ocr'] as const) : []),
+    ...(carriedDamage ? (['carried'] as const) : []),
+  ];
+  const priorDamageSuspected = priorDamageSources.length > 0;
   // 이 확인 화면이 작업자에게 보여 주는 외관 값. Gate가 이 값으로 손상 경고를 띄운다.
   const shownDamage = priorDamageSuspected
     ? 'suspected'

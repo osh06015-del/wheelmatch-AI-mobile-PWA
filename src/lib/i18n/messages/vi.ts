@@ -752,6 +752,18 @@ export const vi: Messages = {
     'Trong ảnh có chỗ trông như vỡ hoặc nứt. Không dùng đá mài này; hãy tự kiểm tra.',
   'reason.visibleDamage.notVerifiable':
     'Ảnh không cho thấy được vết nứt nhỏ. Trước khi lắp, hãy gõ thử (gõ nhẹ và nghe tiếng).',
+  'damageSource.legacyExam':
+    'Nghi ngờ này được giữ lại từ lần AI kiểm tra bề ngoài bằng ảnh bổ sung (mặt sau, cạnh ngoài, lỗ tâm) của phiên bản trước. Các ảnh và kết quả đó không có trong bản ghi kiểm tra này, nhưng nghi ngờ vẫn được giữ, không bị xóa. Hãy tự kiểm tra đá mài thực tế.',
+  'damageSource.legacyExamAlso':
+    'Lần AI kiểm tra bề ngoài bằng ảnh bổ sung (mặt sau, cạnh ngoài, lỗ tâm) của phiên bản trước cũng đã nêu nghi ngờ hư hỏng. Các ảnh và kết quả đó không có trong bản ghi kiểm tra này, nhưng nghi ngờ vẫn được giữ, không bị xóa. Hãy tự kiểm tra đá mài thực tế.',
+  'damageSource.droppedOcr':
+    'Nghi ngờ này do kết quả AI đã đọc ảnh nhãn của lần kiểm tra này nêu ra. Kết quả đã lưu đó không đọc được nên không khôi phục được và không có trong bản ghi kiểm tra này, nhưng nghi ngờ vẫn được giữ, không bị xóa. Hãy tự kiểm tra đá mài thực tế.',
+  'damageSource.droppedOcrAlso':
+    'Kết quả AI đã lưu nhưng không đọc được nên không khôi phục được cũng đã nêu nghi ngờ hư hỏng. Kết quả đó không có trong bản ghi kiểm tra này, nhưng nghi ngờ vẫn được giữ, không bị xóa. Hãy tự kiểm tra đá mài thực tế.',
+  'damageSource.carried':
+    'Nghi ngờ này được giữ lại từ phần kiểm tra đá mài đã lưu trước khi chụp lại nhãn. Nó không đến từ kết quả đọc ảnh nhãn dùng trong lần kiểm tra này. Dù bạn đã chụp một viên đá mài khác, hãy tự kiểm tra đá mài thực tế.',
+  'damageSource.carriedAlso':
+    'Phần kiểm tra đá mài đã lưu trước khi chụp lại nhãn cũng có nghi ngờ hư hỏng do AI nêu ra. Nghi ngờ đó cũng được giữ, không bị xóa. Dù bạn đã chụp một viên đá mài khác, hãy tự kiểm tra đá mài thực tế.',
   'reason.confidence.low':
     'Độ tin cậy khi đọc nhãn thấp. Hãy chụp lại hoặc tự nhập giá trị.',
   'reason.confidence.ok': 'Độ tin cậy khi đọc nhãn đủ cao.',

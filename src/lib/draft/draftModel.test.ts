@@ -40,6 +40,7 @@ import type {
   TrialRunFinding,
   TrialRunOutcome,
   VisibleDamage,
+  VisibleDamageSource,
   WheelCondition,
   WheelConditionKey,
   WheelPurpose,
@@ -67,6 +68,13 @@ const EVERY_RPM_SOURCE = Object.keys({
   converted: true,
   user: true,
 } satisfies Record<RpmSource, true>) as RpmSource[];
+const EVERY_VISIBLE_DAMAGE_SOURCE = Object.keys({
+  label_photo: true,
+  reanalysis: true,
+  legacy_exam: true,
+  dropped_ocr: true,
+  carried: true,
+} satisfies Record<VisibleDamageSource, true>) as VisibleDamageSource[];
 type ExpiryReview = NonNullable<WheelSpec['expiryReview']>;
 const EVERY_EXPIRY_REVIEW = Object.keys({
   marked: true,
@@ -652,6 +660,8 @@ describe('recoverDraft — 규격의 없어도 되는 필드(유효기한·원�
     ['유효기한 — 정수가 아닌 연도', { expiry: { year: 2020.5, month: 1 } }],
     ['유효기한 직접 확인 — 목록에 없는 값', { expiryReview: 'checked_ok' }],
     ['회전속도 출처 — 목록에 없는 값', { rpmSource: 'guess' }],
+    ['외관 의심 출처 — 목록에 없는 값', { visibleDamageSources: ['guess'] }],
+    ['외관 의심 출처 — 목록이 아님', { visibleDamageSources: 'carried' }],
     ['원본 표시 — 객체가 아님', { markings: 'x' }],
     [
       '원본 표시 — 숫자 자리에 객체',
@@ -784,6 +794,31 @@ describe('recoverDraft — 규격의 없어도 되는 필드(유효기한·원�
       expectRestored({ wheel: { ...WHEEL, rpmSource } });
     },
   );
+
+  it.each(EVERY_VISIBLE_DAMAGE_SOURCE)(
+    '목록에 있는 외관 의심 출처는 그대로 되살린다 — %s',
+    (source) => {
+      // 여기서 걸리면 「이어하기」 한 번에 숫돌 단계가 통째로 버려지고, 이어받은
+      // 의심이 숫돌과 함께 사라진다.
+      expectRestored({
+        wheel: {
+          ...WHEEL,
+          visibleDamage: 'suspected',
+          visibleDamageSources: [source],
+        },
+      });
+    },
+  );
+
+  it('여러 곳에서 온 외관 의심의 출처도 순서까지 그대로 되살린다', () => {
+    expectRestored({
+      wheel: {
+        ...WHEEL,
+        visibleDamage: 'suspected',
+        visibleDamageSources: EVERY_VISIBLE_DAMAGE_SOURCE,
+      },
+    });
+  });
 
   it.each(EVERY_EXPIRY_REVIEW)(
     '목록에 있는 유효기한 직접 확인 응답은 그대로 되살린다 — %s',

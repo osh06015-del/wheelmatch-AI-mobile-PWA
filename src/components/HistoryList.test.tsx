@@ -500,3 +500,79 @@ describe('이력 상세 — 판정 범위가 제한적인 기록', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe('이력 상세 — 외관 손상 의심의 출처', () => {
+  const ENGINE_SENTENCE =
+    '사진에서 깨짐·균열로 보이는 부분이 있습니다. 이 숫돌을 사용하지 말고 직접 확인하세요.';
+
+  /** 의심으로 저장된 기록. 출처는 저장 당시 확정값에 붙어 있던 그대로다 */
+  function suspectedRecord(
+    sources: InspectionRecord['wheel']['visibleDamageSources'],
+  ): InspectionRecord {
+    const base = record();
+    return {
+      ...base,
+      wheel: {
+        ...base.wheel,
+        visibleDamage: 'suspected',
+        ...(sources ? { visibleDamageSources: sources } : {}),
+      },
+      // 라벨 사진의 판독은 손상을 의심하지 않았다(base.wheel 그대로).
+      wheelOcr: base.wheel,
+      result: {
+        ...base.result,
+        checks: [
+          ...base.result.checks,
+          {
+            rule: '외관 손상',
+            passed: null,
+            reason: ENGINE_SENTENCE,
+            grinderValue: null,
+            wheelValue: null,
+            advisory: true,
+            detail: { code: 'visibleDamage.suspected' },
+          },
+        ],
+      },
+    };
+  }
+
+  it('이어받은 의심으로 저장된 기록은 사유 아래에 출처를 보여준다', async () => {
+    // 이 기록의 사진과 OCR 원본은 손상을 의심하지 않았다. 출처가 없으면 기록을 읽는
+    // 사람은 누가 의심으로 만들었는지 되짚을 수 없다.
+    const user = userEvent.setup();
+    render(<HistoryList records={[suspectedRecord(['carried'])]} />);
+
+    await user.click(screen.getByRole('button', { expanded: false }));
+
+    const reason = screen.getByText(ENGINE_SENTENCE);
+    const note = screen.getByText(
+      '이 의심은 라벨을 다시 찍기 전에 저장돼 있던 숫돌 확인에서 이어받은 것입니다. 이 점검에 쓴 라벨 사진의 판독에서 나온 것이 아닙니다. 다른 숫돌을 촬영했더라도 실물을 직접 확인하세요.',
+    );
+    expect(reason.closest('li')).toContainElement(note);
+  });
+
+  it('출처 표시가 생기기 전의 기록에는 아무것도 붙이지 않는다 — 추정하지 않는다', async () => {
+    const user = userEvent.setup();
+    render(<HistoryList records={[suspectedRecord(undefined)]} />);
+
+    await user.click(screen.getByRole('button', { expanded: false }));
+
+    expect(screen.getByText(ENGINE_SENTENCE)).toBeInTheDocument();
+    expect(screen.queryByText(/이어받은 것입니다/)).not.toBeInTheDocument();
+  });
+
+  it('판정 근거를 펼쳐도 같은 출처가 사유 아래에 붙는다', async () => {
+    const user = userEvent.setup();
+    render(<HistoryList records={[suspectedRecord(['dropped_ocr'])]} />);
+
+    await user.click(screen.getByRole('button', { expanded: false }));
+    const note =
+      '이 의심은 이 점검의 라벨 사진을 읽었던 AI 판독이 올린 것입니다. 저장된 그 판독을 읽을 수 없어 복구하지 못했고 이 점검 기록에도 없지만, 의심은 지우지 않고 이어갑니다. 실물을 직접 확인하세요.';
+    expect(screen.getAllByText(note)).toHaveLength(1);
+
+    await user.click(screen.getByRole('button', { name: /근거 보기/ }));
+    // 검사 항목 목록과 판정 근거, 두 곳 모두에 붙는다.
+    expect(screen.getAllByText(note)).toHaveLength(2);
+  });
+});
