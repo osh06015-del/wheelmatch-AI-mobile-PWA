@@ -506,6 +506,8 @@ describe('toCsv', () => {
       'reanalysisOutputTokens',
       'reanalysisCacheReadTokens',
       'reanalysisCacheCreationTokens',
+      'reanalysisGrinderConfidence',
+      'reanalysisWheelConfidence',
     ]);
   });
 
@@ -963,12 +965,12 @@ describe('다각도 외관 확인 열', () => {
     const start = CSV_COLUMNS.indexOf('workMaterial');
     expect(start).toBe(108);
     // Profile 열 8개, 종류별 상태 항목 열 9개, 판정 범위·부속품 이름·판독 경로·
-    // 사용기한 응답·외관 의심 출처 열 1개씩, 제한 까닭 열 2개, 서버 재분석 열 12개.
+    // 사용기한 응답·외관 의심 출처 열 1개씩, 제한 까닭 열 2개, 서버 재분석 열 14개.
     // 뒤에 붙을 뿐 앞선 자리는 그대로다.
     expect(CSV_COLUMNS.indexOf('conditionDiamondRimIntact')).toBe(116);
     expect(CSV_COLUMNS.indexOf('accessoryProfileScope')).toBe(125);
     expect(CSV_COLUMNS.indexOf('reanalysisCount')).toBe(132);
-    expect(CSV_COLUMNS.slice(start)).toHaveLength(36);
+    expect(CSV_COLUMNS.slice(start)).toHaveLength(38);
     for (const column of CSV_COLUMNS.slice(start)) {
       expect(row[CSV_COLUMNS.indexOf(column)]).toBe('');
     }
@@ -1093,6 +1095,8 @@ describe('서버 재분석 열', () => {
     'reanalysisOutputTokens',
     'reanalysisCacheReadTokens',
     'reanalysisCacheCreationTokens',
+    'reanalysisGrinderConfidence',
+    'reanalysisWheelConfidence',
   ] as const;
 
   const TELEMETRY: OcrTelemetry = {
@@ -1137,7 +1141,12 @@ describe('서버 재분석 열', () => {
     expect(CSV_COLUMNS[129]).toBe('visibleDamageSources');
     expect(CSV_COLUMNS[131]).toBe('wheelLimitCause');
     expect(CSV_COLUMNS.indexOf('reanalysisCount')).toBe(132);
-    expect(CSV_COLUMNS).toHaveLength(144);
+    // 신뢰도 열 둘은 나중에 더했다. 값 열 옆에 끼워 넣지 않고 맨 뒤에 붙였다 —
+    // 끼워 넣으면 앞서 내보낸 CSV와 열 번호가 어긋난다.
+    expect(CSV_COLUMNS[143]).toBe('reanalysisCacheCreationTokens');
+    expect(CSV_COLUMNS.indexOf('reanalysisGrinderConfidence')).toBe(144);
+    expect(CSV_COLUMNS.indexOf('reanalysisWheelConfidence')).toBe(145);
+    expect(CSV_COLUMNS).toHaveLength(146);
   });
 
   it('이 칸이 생기기 전 기록은 모두 빈 칸이다 — 횟수를 0으로 채우지 않는다', () => {
@@ -1150,6 +1159,8 @@ describe('서버 재분석 열', () => {
     expect(row.reanalysisCount).toBe('0');
     expect(row.reanalysisAccepted).toBe('');
     expect(row.reanalysisWheelMaxRPM_ocr).toBe('');
+    expect(row.reanalysisGrinderConfidence).toBe('');
+    expect(row.reanalysisWheelConfidence).toBe('');
   });
 
   it('받아들이지 않은 판독도 값과 외관 판독까지 남는다', () => {
@@ -1228,6 +1239,62 @@ describe('서버 재분석 열', () => {
     });
     expect(row.reanalysisDamageRecheck).toBe('- Y N');
     expect(row.reanalysisAccepted).toBe('N Y N');
+  });
+
+  it('서버가 그 판독에서 낸 신뢰도를 단계별로 적는다 — 낮음도 그대로', () => {
+    // 낮은 신뢰도로 읽은 판독은 값이 모두 같아도 제한 대조를 풀지 않는다. 숫자는
+    // 맞게 읽으면서 신뢰도만 낮음으로 내는 빈도를 재려면, 받아들이지 않은 판독의
+    // 신뢰도가 값 열과 같은 순서로 남아 있어야 한다.
+    const row = cells({
+      reanalyses: [
+        wheelReading({ wheelOcr: { ...WHEEL, confidence: 'low' } }),
+        wheelReading({
+          grinderOcr: { ...GRINDER, confidence: 'medium' },
+          grinderOcrTelemetry: TELEMETRY,
+          wheelOcr: { ...WHEEL, confidence: 'high' },
+          acceptedAt: '2026-10-04T05:14:30.000Z',
+        }),
+      ],
+    });
+    expect(row.reanalysisGrinderConfidence).toBe('- medium');
+    expect(row.reanalysisWheelConfidence).toBe('low high');
+    // 값 열과 순서가 같다 — 첫 판독은 값이 같은데 신뢰도만 낮다.
+    expect(row.reanalysisWheelMaxRPM_ocr).toBe('12200 12200');
+    expect(row.reanalysisAccepted).toBe('N Y');
+  });
+
+  it('다시 읽지 않은 단계의 신뢰도는 -다 — 빈 토큰으로 두지 않는다', () => {
+    // 빈 토큰이면 띄어 적은 순서가 무너져 어느 판독의 신뢰도인지 알 수 없다.
+    const row = cells({
+      reanalyses: [
+        wheelReading({
+          grinderOcr: { ...GRINDER, confidence: 'low' },
+          grinderOcrTelemetry: TELEMETRY,
+          wheelOcr: null,
+          wheelOcrTelemetry: null,
+        }),
+        wheelReading(),
+      ],
+    });
+    expect(row.reanalysisGrinderConfidence).toBe('low -');
+    expect(row.reanalysisWheelConfidence).toBe(`- ${WHEEL.confidence}`);
+  });
+
+  it('재분석 신뢰도는 확정값의 신뢰도 열과 따로다', () => {
+    // grinderConfidence·wheelConfidence는 확정한 값의 신뢰도다(작업자가 직접 확인하면
+    // high). 서버가 재분석에서 낮음으로 읽었어도 그 열은 바뀌지 않는다.
+    const [, row] = parse(
+      toCsv([
+        record({
+          wheel: { ...WHEEL, confidence: 'high' },
+          reanalyses: [
+            wheelReading({ wheelOcr: { ...WHEEL, confidence: 'low' } }),
+          ],
+        }),
+      ]),
+    );
+    expect(row[CSV_COLUMNS.indexOf('wheelConfidence')]).toBe('high');
+    expect(row[CSV_COLUMNS.indexOf('reanalysisWheelConfidence')]).toBe('low');
   });
 
   it('토큰 수는 그 판독에서 다시 읽은 단계의 합이다', () => {

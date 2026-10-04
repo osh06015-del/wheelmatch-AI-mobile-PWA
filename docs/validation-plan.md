@@ -61,6 +61,12 @@ False-Safe로 합치지 않고 별도로 보고한다. 재현율과 False-Safe R
   숫돌을 다시 확정해 그 숫돌 사진의 판독이 빠졌다. `null`은 읽었지만 값을 얻지
   못했다는 뜻이다(미인식으로 센다). 손상 답 열(`reanalysisDamageRecheck`)의 `-`는
   답이 없다는 뜻이고, 묻지 않은 것과 물었지만 답하지 않은 것을 가르지 않는다.
+- `reanalysisGrinderConfidence`·`reanalysisWheelConfidence`는 서버가 그 판독에서
+  스스로 낸 신뢰도(`high`·`medium`·`low`)다. 낮음으로 읽은 판독은 값이 모두 같아도
+  제한 대조를 풀지 않으므로, **숫자는 맞게 읽으면서 신뢰도만 낮음으로 낸 판독**이
+  얼마나 되는지는 이 열과 `reanalysis*_ocr` 열을 확정값 열과 견줘 센다. 기존
+  `grinderConfidence`·`wheelConfidence`는 확정한 값의 신뢰도(작업자가 직접 확인하면
+  `high`)라 다른 열이다. 재분석이 낮음으로 읽어도 그 열은 바뀌지 않는다.
 - `reanalysisCount`는 기록에 남은 판독 수이고 서버를 부른 횟수가 아니다. 숫돌을
   다시 확정하면 그 숫돌 사진을 본 판독은 빠지고, 실패한 호출은 남지 않는다.
 - `reanalysisCount`가 빈 칸인 기록은 이 열이 생기기 전의 기록이다. 그때 재분석을

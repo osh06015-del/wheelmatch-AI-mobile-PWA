@@ -247,6 +247,19 @@ export const CSV_COLUMNS = [
   'reanalysisOutputTokens',
   'reanalysisCacheReadTokens',
   'reanalysisCacheCreationTokens',
+  // 서버가 그 판독에서 스스로 낸 신뢰도(high / medium / low). 단계별로 적는다 — 한
+  // 판독이 명판과 숫돌을 함께 읽을 수 있고, 어느 한쪽이라도 낮으면 그 판독으로는
+  // 제한 대조를 풀지 않는다(OfflineReanalysisPanel). 숫자는 맞게 읽으면서 신뢰도만
+  // 낮음으로 낸 판독을 세려면, 받아들이지 않은 판독의 신뢰도가 위의 값 열과 같은
+  // 순서로 남아 있어야 한다. 다시 읽지 않은 단계는 -다.
+  //
+  // 기존 grinderConfidence·wheelConfidence와 다른 것이다. 그 열은 확정한 값의
+  // 신뢰도이고(작업자가 직접 확인하면 high), 재분석이 낮음으로 읽어도 바뀌지 않는다.
+  //
+  // 값 열 옆이 아니라 맨 뒤에 붙였다. 끼워 넣으면 앞서 내보낸 CSV와 열 번호가
+  // 어긋난다.
+  'reanalysisGrinderConfidence',
+  'reanalysisWheelConfidence',
 ] as const;
 
 /** 재분석 열 — 이 판독에 그 단계의 값이 없다(손상 답 열에서는 답이 없다) */
@@ -559,6 +572,12 @@ function row(record: InspectionRecord): string {
     ),
     perReanalysis(record, (reading) =>
       readingTokens(reading, 'cacheCreationTokens'),
+    ),
+    perReanalysis(record, (reading) =>
+      readingValue(reading.grinderOcr, 'confidence'),
+    ),
+    perReanalysis(record, (reading) =>
+      readingValue(reading.wheelOcr, 'confidence'),
     ),
   ];
 
