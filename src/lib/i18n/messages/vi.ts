@@ -471,7 +471,7 @@ export const vi: Messages = {
   'reason.profileScope.limited':
     'Chỉ đối chiếu tốc độ quay và đường kính. Chưa xác nhận được sự phù hợp về công việc, nắp che và cách lắp nên không đưa ra kết quả phù hợp.',
   'evidence.doc.guard':
-    'Điều 122 khoản 1, Quy định về tiêu chuẩn an toàn vệ sinh lao động — lắp nắp che cho đá mài',
+    'Điều 122 khoản 1, Quy định về tiêu chuẩn an toàn vệ sinh lao động — khi đá mài đang quay (đường kính từ 5 cm trở lên) có nguy cơ gây nguy hiểm cho người lao động thì lắp nắp che ở bộ phận đó',
   'evidence.limit.guard':
     'Chỉ chặn khi người thợ nhập không có nắp che hoặc nắp che nhỏ hơn đá. Chưa xác minh được căn cứ cho tiêu chí kích cỡ nắp che, nên đây là chưa xác định chứ không phải không phù hợp. Có nắp che không có nghĩa là nắp che phù hợp.',
   'evidence.doc.profileScope':

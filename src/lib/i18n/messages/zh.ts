@@ -418,7 +418,8 @@ export const zh: Messages = {
     '应用不核对护罩类型和尺寸是否适合此砂轮。请亲自确认安装状态。',
   'reason.profileScope.limited':
     '仅对照了转速和直径。作业、护罩和安装的适用性尚未确认，因此不提供相符判定。',
-  'evidence.doc.guard': '《产业安全保健基准规则》第122条第1项 — 砂轮须设护罩',
+  'evidence.doc.guard':
+    '《产业安全保健基准规则》第122条第1项 — 旋转中的砂轮（直径5厘米以上）可能对劳动者造成危险时，须在该部位设置护罩',
   'evidence.limit.guard':
     '仅在作业者输入没有护罩或护罩小于砂轮时阻止。护罩尺寸标准的依据尚未核实，因此判为无法判定，而非不相符。有护罩并不代表护罩合适。',
   'evidence.doc.profileScope':

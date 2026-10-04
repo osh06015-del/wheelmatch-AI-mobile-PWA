@@ -49,7 +49,8 @@ export const DEFAULT_CONDITION_ITEMS: readonly WheelConditionKey[] = [
  *
  * 근거는 docs/regulatory-sources.md에 있다.
  *   · RPM   — 산업안전보건기준에 관한 규칙 제122조 ④ (최고사용회전속도 초과 사용 금지)
- *   · 덮개  — 같은 규칙 제122조 ① (지름 5cm 이상 연삭숫돌에 덮개 설치)
+ *   · 덮개  — 같은 규칙 제122조 ① (회전 중인 연삭숫돌(지름 5cm 이상)이 근로자에게
+ *             위험을 미칠 우려가 있으면 그 부위에 덮개 설치)
  *   · 작업  — 같은 규칙 제122조 ⑤ (측면 사용 목적이 아닌 숫돌의 측면 사용 금지)
  *   · 시험운전 — 같은 규칙 제122조 ②
  *   · 유효기한 — oSa 「Product marking requirements for bonded abrasives」(2020-04)

@@ -489,7 +489,7 @@ export const id: Messages = {
   'reason.profileScope.limited':
     'Hanya kecepatan dan diameter yang dibandingkan. Kesesuaian untuk pekerjaan, pelindung, dan pemasangan belum dikonfirmasi, sehingga hasil cocok tidak diberikan.',
   'evidence.doc.guard':
-    'Peraturan Standar Keselamatan dan Kesehatan Kerja Pasal 122(1) — pemasangan pelindung batu gerinda',
+    'Peraturan Standar Keselamatan dan Kesehatan Kerja Pasal 122(1) — pemasangan pelindung pada bagian tersebut bila batu gerinda yang sedang berputar (diameter 5 cm atau lebih) dapat membahayakan pekerja',
   'evidence.limit.guard':
     'Hanya memblokir isian pekerja berupa tanpa pelindung atau pelindung lebih kecil dari batu. Dasar kriteria ukuran pelindung belum diverifikasi, jadi hasilnya tidak dapat ditentukan, bukan tidak cocok. Adanya pelindung tidak berarti pelindungnya tepat.',
   'evidence.doc.profileScope':

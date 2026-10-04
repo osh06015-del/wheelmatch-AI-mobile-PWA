@@ -477,7 +477,7 @@ export const en: Messages = {
   'reason.profileScope.limited':
     'Only RPM and diameter were compared. Suitability for the work, guard, and mounting was not confirmed, so no compatible result is given.',
   'evidence.doc.guard':
-    'Rules on Occupational Safety and Health Standards, Article 122(1) — install a guard on grinding wheels',
+    'Rules on Occupational Safety and Health Standards, Article 122(1) — where a rotating grinding wheel (5 cm or more in diameter) may endanger workers, install a guard on that part',
   'evidence.limit.guard':
     'Only blocks a worker entry of no guard or a guard smaller than the wheel. The basis for a guard size criterion was not verified, so this is undetermined, not a mismatch. Having a guard does not mean it is the right guard.',
   'evidence.doc.profileScope':
