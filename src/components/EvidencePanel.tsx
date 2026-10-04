@@ -16,7 +16,7 @@
 
 import { useState } from 'react';
 
-import { EVIDENCE_SOURCE } from '@/lib/guide/evidenceSources';
+import { evidenceSourceFor } from '@/lib/guide/evidenceSources';
 import { useLocale, type Locale, type Translate } from '@/lib/i18n';
 import {
   WHEEL_PURPOSE_LABEL,
@@ -173,7 +173,7 @@ function RuleEvidenceRow({
   t: Translate;
   locale: Locale;
 }) {
-  const source = EVIDENCE_SOURCE[check.rule];
+  const source = evidenceSourceFor(check.rule);
   const values = checkValueText(check, locale);
   const difference = differenceText(check, gap, t);
   const sourceNotes = damageSourceNotes(check, wheel, locale);

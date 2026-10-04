@@ -186,6 +186,8 @@ export const CSV_COLUMNS = [
   'wheelAccessoryName',
   // 판독 경로(online/offline_limited). 이 기능 도입 전 기록은 빈 칸이다 —
   // online으로 채우지 않는다. 앞선 열의 자리를 지키기 위해 맨 뒤에 붙인다.
+  // offline_limited는 제한 대조다. 기기가 오프라인이었다는 뜻이 아니다 — 까닭은
+  // 맨 뒤의 grinderLimitCause·wheelLimitCause 열에 있다.
   'analysisMode',
   'wheelExpiryReview',
   // 외관 의심(visibleDamage: suspected)의 출처. 공백으로 이은 목록이다 —
@@ -197,6 +199,17 @@ export const CSV_COLUMNS = [
   // 있다(일부 값만 모름으로 읽은 판독) — 그때는 *_ocr 열이 비어 있다.
   // 앞선 열의 자리를 지키기 위해 맨 뒤에 붙인다.
   'visibleDamageSources',
+  // 제한 대조가 된 까닭(manual / local_ocr / dropped_ocr / unknown). 단계별로 적는다.
+  // analysisMode는 까닭이 달라도 offline_limited 한 값이라, 이 두 열이 없으면
+  // 판정불가의 원인을 기록으로 가려낼 수 없다 — 직접 입력과 버린 판독은 다른 열로도
+  // 구분되지 않는다(둘 다 OCR 원본이 없다).
+  //
+  // 빈 칸의 뜻: 그 단계가 제한되지 않았거나, 까닭을 남기기 전(2026-10-04 이전)의
+  // 기록이다. 뒤쪽은 analysisMode가 offline_limited인데 두 열이 모두 비어 있는
+  // 줄로 알아본다 — 추정해 채우지 않는다. unknown은 제한됐지만 까닭이 남지 않은
+  // 단계다. 앞선 열의 자리를 지키기 위해 맨 뒤에 붙인다.
+  'grinderLimitCause',
+  'wheelLimitCause',
 ] as const;
 
 /**
@@ -416,6 +429,8 @@ function row(record: InspectionRecord): string {
     wheel.visibleDamage === 'suspected'
       ? wheel.visibleDamageSources?.join(' ')
       : undefined,
+    record.analysisLimitCauses?.grinder,
+    record.analysisLimitCauses?.wheel,
   ];
 
   return values.map(cell).join(',');

@@ -1046,46 +1046,55 @@ export const vi: Messages = {
   'translation.notice':
     'Bản dịch này chưa được hiệu đính. Nếu nghĩa chưa rõ, hãy theo bản tiếng Hàn và hỏi người quản lý.',
 
-  // 오프라인 제한 대조·진행 중 점검 복구
-  'rule.offlineLimited': 'Đối chiếu hạn chế ngoại tuyến',
+  // 제한 대조·진행 중 점검 복구. 까닭을 가리지 않고 뜨는 문구는 오프라인이었다거나
+  // 서버에 닿지 못했다고 단정하지 않는다 — 이유는 ko.ts의 같은 자리에 적었다.
+  'rule.offlineLimited': 'Đối chiếu hạn chế',
   'reason.analysisMode.offlineLimited':
-    'Chỉ đối chiếu các giá trị do người làm việc nhập và kiểm tra, không có phân tích máy chủ. Chỉ vi phạm tốc độ quay và đường kính được kết luận là không khớp; không đưa ra kết luận khớp quy cách.',
+    'Chưa xác nhận được kết quả đọc của máy chủ làm căn cứ cho các giá trị đã xác nhận, nên chỉ đối chiếu các giá trị do người làm việc xác nhận. Chỉ vi phạm tốc độ quay và đường kính được kết luận là không khớp; không đưa ra kết luận khớp quy cách.',
   'evidence.doc.offlineLimited':
-    'Thiết kế ứng dụng — khi không kết nối được máy chủ, chỉ đối chiếu giá trị người làm việc nhập, không phân tích ảnh',
+    'Thiết kế ứng dụng — khi chưa xác nhận được kết quả đọc của máy chủ làm căn cứ cho giá trị đã xác nhận, chỉ đối chiếu giá trị người làm việc xác nhận',
   'evidence.limit.offlineLimited':
-    'Giá trị đã nhập chưa được đối chiếu với nhãn bằng AI. Vi phạm tốc độ quay và đường kính bị chặn là không khớp, nhưng dù không vi phạm cũng không kết luận khớp và không mở chạy thử.',
+    'Chưa xác nhận bằng kết quả đọc của máy chủ rằng giá trị đã xác nhận giống với nhãn. Vi phạm tốc độ quay và đường kính bị chặn là không khớp, nhưng dù không vi phạm cũng không kết luận khớp và không mở chạy thử.',
   'result.undetermined.offlineLimited':
-    'Đây là đối chiếu hạn chế ngoại tuyến. Chỉ đối chiếu giá trị người làm việc nhập nên không đưa ra kết luận khớp. Khi có kết nối, bạn có thể chọn phân tích lại trên máy chủ.',
-  'scan.offline.continue': 'Nhập thủ công (đối chiếu hạn chế ngoại tuyến)',
+    'Đây là đối chiếu hạn chế. Chưa xác nhận được kết quả đọc của máy chủ làm căn cứ cho giá trị đã xác nhận nên không đưa ra kết luận khớp. Muốn gỡ hạn chế cần phân tích lại trên máy chủ hoặc chụp lại.',
+  'verdict.note.limited':
+    'Đây là đối chiếu hạn chế nên không đưa ra kết luận khớp. Hãy xem các mục và hướng dẫn bên dưới.',
+  'scan.offline.continue': 'Nhập thủ công (đối chiếu hạn chế)',
   'scan.offline.continueHint':
     'Không kết nối được máy chủ. Bạn có thể tự nhập giá trị để tiếp tục, nhưng lần kiểm tra này không thể nhận kết luận khớp.',
   'scan.offline.notice':
-    'Đối chiếu hạn chế ngoại tuyến — không phân tích được ảnh trên máy chủ. Hãy nhìn nhãn và tự nhập giá trị.',
+    'Đối chiếu hạn chế — không phân tích được ảnh trên máy chủ. Hãy nhìn nhãn và tự nhập giá trị.',
   'scan.localOcr.notice':
-    'Đối chiếu hạn chế ngoại tuyến — đã đọc trên chính thiết bị này, không phải trên máy chủ. Khi có kết nối, bạn có thể chọn phân tích lại trên máy chủ ở màn hình kết quả.',
+    'Đối chiếu hạn chế — đã đọc trên chính thiết bị này, không phải trên máy chủ. Nếu thiết bị đang trực tuyến, bạn có thể chọn phân tích lại trên máy chủ ở màn hình kết quả.',
   'offline.limit':
-    'Kết quả này chỉ đối chiếu giá trị người làm việc nhập. Vi phạm tốc độ quay và đường kính được kết luận không khớp, nhưng không kết luận khớp và không mở chạy thử.',
+    'Với kết quả này, chưa xác nhận được kết quả đọc của máy chủ làm căn cứ cho giá trị đã xác nhận nên chỉ đối chiếu giá trị người làm việc xác nhận. Vi phạm tốc độ quay và đường kính được kết luận không khớp, nhưng không kết luận khớp và không mở chạy thử.',
+  'offline.cause.line': '{step}: {cause}',
+  'offline.cause.manual': 'Giá trị tự nhập vì không kết nối được máy chủ.',
+  'offline.cause.localOcr':
+    'Giá trị đọc trên chính thiết bị này, không phải trên máy chủ.',
+  'offline.cause.ocrDropped':
+    'Giá trị được xác nhận sau khi kết quả đọc AI đã lưu không đọc được và bị bỏ.',
+  'offline.cause.unknown': 'Lý do bị hạn chế không được ghi lại.',
   'offline.reanalyze': 'Phân tích lại trên máy chủ',
   'offline.reanalyzeHint':
-    'Có thể phân tích lại trên máy chủ. Phân tích lại không thay đổi giá trị bạn đã nhập, chỉ đặt cạnh giá trị AI để so sánh. Nếu AI nghi ngờ có hư hỏng trong ảnh, cảnh báo đó sẽ được thêm vào kết quả.',
+    'Có thể phân tích lại trên máy chủ. Phân tích lại không thay đổi giá trị đã xác nhận, chỉ đặt cạnh giá trị AI để so sánh. Nếu AI nghi ngờ có hư hỏng trong ảnh, cảnh báo đó sẽ được thêm vào kết quả.',
   'offline.stillOffline':
-    'Vẫn đang ngoại tuyến. Khi có kết nối, bạn có thể chọn phân tích lại trên máy chủ.',
+    'Thiết bị hiện đang ngoại tuyến. Khi có kết nối, bạn có thể chọn phân tích lại trên máy chủ.',
   'offline.noPhotos':
     'Không có ảnh đã lưu nên không thể phân tích lại trên máy chủ.',
   'offline.analyzing': 'Đang phân tích trên máy chủ...',
   'offline.failed':
-    'Phân tích lại trên máy chủ thất bại. Kết quả ngoại tuyến được giữ nguyên.',
-  'offline.compareTitle': 'So sánh giá trị đã nhập và giá trị AI',
-  'offline.compareRow': '{field}: đã nhập {worker} / AI {ai}',
+    'Phân tích lại trên máy chủ thất bại. Kết quả đối chiếu hạn chế được giữ nguyên.',
+  'offline.compareTitle': 'So sánh giá trị đã xác nhận và giá trị AI',
+  'offline.compareRow': '{field}: đã xác nhận {worker} / AI {ai}',
   'offline.compareSame': 'giống nhau',
   'offline.compareDiffers': 'khác nhau',
   'offline.mismatch':
-    'Có giá trị đã nhập khác giá trị AI hoặc AI không đọc được, nên không thể chuyển sang đối chiếu trực tuyến. Hãy giữ kết quả ngoại tuyến hoặc chụp lại.',
+    'Có giá trị đã xác nhận khác giá trị AI hoặc AI không đọc được, nên không thể gỡ đối chiếu hạn chế. Hãy giữ kết quả đối chiếu hạn chế hoặc chụp lại.',
   'offline.damageRecheck':
-    'Câu trả lời trước đó của bạn về hư hỏng đá mài được đưa ra trước cảnh báo AI bên dưới. Hãy xem lại đá mài thực tế và trả lời thì mới chuyển sang đối chiếu trực tuyến được.',
-  'offline.accept':
-    'Xác nhận giá trị giống giá trị AI và chuyển sang đối chiếu trực tuyến',
-  'offline.cancel': 'Hủy và giữ kết quả ngoại tuyến',
+    'Câu trả lời trước đó của bạn về hư hỏng đá mài được đưa ra trước cảnh báo AI bên dưới. Hãy xem lại đá mài thực tế và trả lời thì mới gỡ được đối chiếu hạn chế.',
+  'offline.accept': 'Xác nhận giá trị giống giá trị AI và gỡ đối chiếu hạn chế',
+  'offline.cancel': 'Hủy và giữ kết quả đối chiếu hạn chế',
   'draft.title': 'Có một lần kiểm tra đang dở',
   'draft.body':
     'Bạn có thể tiếp tục, hoặc xóa tiến trình đã lưu và bắt đầu lại. Ứng dụng không tự tiếp tục hay tự xóa.',

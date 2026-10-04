@@ -35,8 +35,33 @@ export const RULE = {
   CONFIDENCE: '신뢰도 검증',
   GUARD: '덮개 조건',
   PROFILE_SCOPE: '제한적 규격 대조',
-  OFFLINE_LIMITED: '오프라인 제한 대조',
+  // 2026-10-04까지는 '오프라인 제한 대조'였다. 기기가 오프라인이 아니어도 생기는
+  // 항목이라 이름에서 까닭을 뺐다(checkAnalysisMode). 상수 이름과 사유 코드
+  // (analysisMode.offlineLimited)·판독 경로 값(offline_limited)은 기록에 저장돼
+  // 있어 그대로 둔다 — 「offline」은 처음 만들 때의 이름일 뿐이다.
+  OFFLINE_LIMITED: '제한 대조',
 } as const;
+
+/**
+ * 이름을 바꾸기 전에 저장된 기록의 규칙 이름 → 지금 이름.
+ *
+ * 규칙 이름은 기록(result.checks[].rule)에 그대로 저장되고, 화면은 그 이름으로
+ * 라벨과 근거를 찾는다. 이름을 바꾸면 그 전 기록은 짝을 잃어, 고른 언어와 상관없이
+ * 옛 한국어 이름이 그대로 나오고 근거도 빠진다. 그래서 옛 이름을 여기 남긴다.
+ */
+const RENAMED_RULES: ReadonlyMap<string, string> = new Map([
+  ['오프라인 제한 대조', RULE.OFFLINE_LIMITED],
+]);
+
+/**
+ * 기록에 저장된 규칙 이름을 지금 이름으로 읽는다. 바뀐 적 없는 이름과 모르는
+ * 이름은 그대로 돌려준다.
+ *
+ * 판정에는 쓰지 않는다. 저장된 기록을 보여주는 쪽(라벨·근거)만 쓴다.
+ */
+export function currentRuleName(rule: string): string {
+  return RENAMED_RULES.get(rule) ?? rule;
+}
 
 const PURPOSE_LABEL: Record<WheelPurpose, string> = {
   cutting: '절단용',
@@ -641,12 +666,21 @@ export function checkProfileScope(
 }
 
 /**
- * Rule 15 — 오프라인 제한 대조
+ * Rule 15 — 제한 대조
  *
- * 서버에 닿지 못해 사진 분석 없이 작업자가 직접 넣은 값으로만 대조한 경우다.
- * 값을 사진과 대조해 줄 두 번째 눈(AI 판독)이 없었으므로 **적합으로 끝내지
- * 않는다.** 확정된 RPM·지름 위반은 decideVerdict가 false를 먼저 보므로 그대로
- * 부적합이다 — 이 항목은 "위반이 없어도 적합은 아니다"만 만든다.
+ * 확정한 값을 뒷받침하는 서버 판독이 확인되지 않은 점검이다. 값을 사진과 대조해
+ * 줄 두 번째 눈(서버 판독)이 없으므로 **적합으로 끝내지 않는다.** 확정된 RPM·지름
+ * 위반은 decideVerdict가 false를 먼저 보므로 그대로 부적합이다 — 이 항목은
+ * "위반이 없어도 적합은 아니다"만 만든다.
+ *
+ * 이렇게 되는 까닭은 하나가 아니다. 서버에 닿지 못해 작업자가 직접 입력했거나,
+ * 기기 안 OCR로만 읽었거나, 저장된 서버 판독을 읽을 수 없어 버린 채 확정했거나,
+ * 판독 경로 표시를 읽지 못해 엄격한 쪽으로 봤다. 엔진은 어느 경우인지 모른다 —
+ * 판독 경로(mode) 하나만 받는다. 그래서 이름과 사유는 까닭을 단정하지 않는다.
+ * 2026-10-04까지는 「오프라인 제한 대조 · 서버 분석 없이…」였는데, 기기가
+ * 오프라인이 아니었거나 서버 분석을 거친 점검에는 사실이 아니었다. 문구만 바꿨고
+ * 판정은 그대로라 RULESET_VERSION은 올리지 않았다. 까닭은 엔진 밖에서 따로 남긴다
+ * (types.ts의 AnalysisLimitCause).
  *
  * online이면 항목을 만들지 않는다 — 기존 판정을 흔들지 않기 위해서다.
  */
@@ -658,7 +692,7 @@ export function checkAnalysisMode(mode: AnalysisMode): CheckItem | null {
     wheelValue: null,
     passed: null,
     reason:
-      '서버 분석 없이 작업자가 입력·확인한 값으로만 대조했습니다. RPM·지름 위반만 부적합으로 판정하며 적합 판정은 제공하지 않습니다.',
+      '확정한 값을 뒷받침하는 서버 판독이 확인되지 않아 작업자가 확인한 값으로만 대조했습니다. RPM·지름 위반만 부적합으로 판정하며 적합 판정은 제공하지 않습니다.',
     detail: { code: 'analysisMode.offlineLimited' },
   };
 }

@@ -323,3 +323,96 @@ describe('ResultCard — 외관 손상 의심의 출처', () => {
     expect(screen.queryByText(/이어받은 것입니다/)).not.toBeInTheDocument();
   });
 });
+
+describe('ResultCard — 제한 대조', () => {
+  // 제한 대조는 값이 모자라서 판정불가인 것이 아니다. 확정한 값을 뒷받침하는 서버
+  // 판독이 확인되지 않은 것이다. 까닭은 여럿이라(직접 입력·기기 안 OCR·버린 판독·
+  // 읽지 못한 표시) 카드는 까닭을 단정하지 않는다.
+  const LIMITED_NOTE =
+    '제한 대조라 적합 판정을 제공하지 않습니다. 아래 항목과 안내를 확인하세요.';
+  const MISSING_NOTE =
+    '값이 부족해 판정할 수 없습니다. 재촬영하거나 값을 직접 입력하세요.';
+
+  function limited(g: GrinderSpec = grinder(), w: WheelSpec = wheel()) {
+    return matchSpecs(g, w, {
+      declaredPurpose: 'cutting',
+      profile: BONDED_ABRASIVE_PROFILE,
+      today: TODAY,
+      analysisMode: 'offline_limited',
+    });
+  }
+
+  it('규격이 맞아도 판정불가이고, 값이 부족하다거나 직접 입력하라고 적지 않는다', () => {
+    render(<ResultCard result={limited()} />);
+
+    expect(screen.getByText('판정불가')).toBeInTheDocument();
+    expect(screen.queryByText('적합')).not.toBeInTheDocument();
+    expect(screen.getByText(LIMITED_NOTE)).toBeInTheDocument();
+    // 직접 입력해서 제한 대조가 된 작업자에게 다시 직접 입력하라고 하지 않는다.
+    expect(screen.queryByText(MISSING_NOTE)).not.toBeInTheDocument();
+  });
+
+  it('검사 항목의 이름은 「제한 대조」이고 까닭을 단정하지 않는다', () => {
+    render(<ResultCard result={limited()} />);
+
+    expect(screen.getByText('제한 대조')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '확정한 값을 뒷받침하는 서버 판독이 확인되지 않아 작업자가 확인한 값으로만 대조했습니다. RPM·지름 위반만 부적합으로 판정하며 적합 판정은 제공하지 않습니다.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/오프라인/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/서버 분석 없이/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/서버에 닿지/)).not.toBeInTheDocument();
+  });
+
+  it('제한 대조여도 확정된 위반은 부적합이고 부적합 문구를 쓴다', () => {
+    render(<ResultCard result={limited(grinder(), wheel({ maxRPM: 8500 }))} />);
+
+    expect(screen.getByText('부적합')).toBeInTheDocument();
+    expect(
+      screen.getByText('이 조합은 사용하면 안 됩니다. 아래 원인을 확인하세요.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(LIMITED_NOTE)).not.toBeInTheDocument();
+  });
+
+  it('제한 대조가 아닌 판정불가는 기존 문구 그대로다', () => {
+    render(
+      <ResultCard
+        result={matchSpecs(grinder({ noLoadRPM: null }), wheel(), {
+          declaredPurpose: 'cutting',
+          profile: BONDED_ABRASIVE_PROFILE,
+          today: TODAY,
+        })}
+      />,
+    );
+
+    expect(screen.getByText(MISSING_NOTE)).toBeInTheDocument();
+    expect(screen.queryByText(LIMITED_NOTE)).not.toBeInTheDocument();
+  });
+
+  it('이름을 바꾸기 전에 저장된 기록도 지금 이름과 문장으로 보인다', () => {
+    // 2026-10-04까지 저장된 기록의 모양이다 — 규칙 이름과 사유가 옛 문구다.
+    const current = limited();
+    const stored = {
+      ...current,
+      checks: current.checks.map((check) =>
+        check.detail?.code === 'analysisMode.offlineLimited'
+          ? {
+              ...check,
+              rule: '오프라인 제한 대조',
+              reason:
+                '서버 분석 없이 작업자가 입력·확인한 값으로만 대조했습니다. RPM·지름 위반만 부적합으로 판정하며 적합 판정은 제공하지 않습니다.',
+            }
+          : check,
+      ),
+    };
+    render(<ResultCard result={stored} />);
+
+    expect(screen.getByText('제한 대조')).toBeInTheDocument();
+    expect(screen.queryByText('오프라인 제한 대조')).not.toBeInTheDocument();
+    // 사유는 저장된 사유 코드로 지금 문장을 다시 만든다.
+    expect(screen.queryByText(/서버 분석 없이/)).not.toBeInTheDocument();
+    expect(screen.getByText(LIMITED_NOTE)).toBeInTheDocument();
+  });
+});

@@ -43,6 +43,11 @@ export type ScanFormSlot = 'grinder' | 'wheel';
  *
  * server여도 저장된 OCR을 통째로 버린 draft는 제한 판정으로 나간다. 그것은 출처가
  * 아니라 버렸다는 흔적(DroppedOcrTrace)이 정한다 — 출처는 바꿔 적지 않는다.
+ *
+ * 확정하면 이 draft는 지워진다. 왜 제한됐는지는 확정할 때 점검 상태에 까닭으로
+ * 남긴다(state/inspection.tsx의 limitCauseFor) — manual은 같은 이름으로, local_ocr은
+ * 기기 안 OCR 엔진이 확인된 경우에만 같은 이름으로(pickLocalOcrConfirmed), 서버로
+ * 읽은 판독을 버린 경우는 dropped_ocr로. 그 밖에는 까닭을 적지 않는다.
  */
 export type AnalysisSource = 'server' | 'local_ocr' | 'manual';
 
@@ -69,6 +74,22 @@ const isAnalysisSource = (value: unknown): value is AnalysisSource =>
 function pickAnalysisSource(raw: Record<string, unknown>): AnalysisSource {
   if (isAnalysisSource(raw.analysisSource)) return raw.analysisSource;
   return raw.offline === true ? 'manual' : 'local_ocr';
+}
+
+/**
+ * 이 draft의 판독이 기기 안 OCR 엔진이 읽은 것으로 확인됐는가.
+ *
+ * local_ocr은 제한을 지키려고 넓게 잡은 묶음이다. 기기 안 OCR로 읽은 값뿐 아니라
+ * 읽을 때 기기가 오프라인으로 보고된 값, 그리고 출처를 읽지 못해 보수적으로 둔
+ * 값(pickAnalysisSource)도 여기 들어 있다. 뒤의 둘은 서버가 읽은 값일 수 있다.
+ * 제한 여부는 그 묶음 그대로 정하지만, 기록에 「이 기기에서 읽었다」고 적는 것은
+ * 엔진이 확인된 경우뿐이어야 한다 — 그 표시만 따로 저장하고 되살린다.
+ *
+ * 출처가 local_ocr로 **적혀 있을 때만** 믿는다. 출처를 읽지 못해 local_ocr로 둔
+ * draft에 이 표시가 남아 있어도, 그것이 어느 출처에 대한 표시인지 알 수 없다.
+ */
+function pickLocalOcrConfirmed(raw: Record<string, unknown>): boolean {
+  return raw.analysisSource === 'local_ocr' && raw.localOcrConfirmed === true;
 }
 
 export interface GrinderFormFields {
@@ -165,6 +186,11 @@ export interface GrinderFormDraft {
    */
   droppedOcr?: 'dropped';
   analysisSource: AnalysisSource;
+  /**
+   * 기기 안 OCR 엔진이 읽은 것이 확인된 판독인가(pickLocalOcrConfirmed). 그런
+   * 경우에만 있다 — 다시 저장할 때 빠뜨리면 새로고침 한 번에 까닭을 잃는다.
+   */
+  localOcrConfirmed?: true;
 }
 
 /**
@@ -238,6 +264,11 @@ export interface WheelFormDraft {
   droppedOcr?: DroppedOcrTrace;
   analysisSource: AnalysisSource;
   /**
+   * 기기 안 OCR 엔진이 읽은 것이 확인된 판독인가(pickLocalOcrConfirmed). 그런
+   * 경우에만 있다 — 다시 저장할 때 빠뜨리면 새로고침 한 번에 까닭을 잃는다.
+   */
+  localOcrConfirmed?: true;
+  /**
    * 이전 버전 draft에서 이어받은 흔적. 그런 draft에서 이어진 경우에만 있다 —
    * 다시 저장할 때 빠뜨리면 한 번 더 새로고침하는 것만으로 의심이 사라진다.
    */
@@ -276,6 +307,8 @@ export interface GrinderFormRecovery {
   /** 저장된 OCR을 버렸다는 흔적. 버린 것이 없으면 null */
   droppedOcr: 'dropped' | null;
   analysisSource: AnalysisSource;
+  /** 기기 안 OCR 엔진이 읽은 것이 확인된 판독인가(pickLocalOcrConfirmed) */
+  localOcrConfirmed: boolean;
 }
 
 export interface WheelFormRecovery {
@@ -290,6 +323,8 @@ export interface WheelFormRecovery {
   /** 저장된 OCR을 통째로 버렸다는 흔적. 버린 것이 없으면 null */
   droppedOcr: DroppedOcrTrace | null;
   analysisSource: AnalysisSource;
+  /** 기기 안 OCR 엔진이 읽은 것이 확인된 판독인가(pickLocalOcrConfirmed) */
+  localOcrConfirmed: boolean;
   /** 이전 버전의 다각도 외관 확인이 남긴 흔적. 없으면 null */
   legacyExam: LegacyExamTrace | null;
   /** 확인 화면을 되살리지 못한 draft에서 이어받은 손상 의심. 없으면 null */
@@ -491,6 +526,7 @@ export function recoverGrinderFormDraft(
     ocr,
     droppedOcr: dropped ? 'dropped' : null,
     analysisSource: pickAnalysisSource(raw),
+    localOcrConfirmed: pickLocalOcrConfirmed(raw),
   };
 }
 
@@ -521,6 +557,7 @@ export function recoverWheelFormDraft(raw: unknown): WheelFormRecovery | null {
     ocrAltered: ocr !== null && (altered || raw.ocrAltered === true),
     droppedOcr: mergeDroppedOcr(raw.droppedOcr, dropped, ocr),
     analysisSource: pickAnalysisSource(raw),
+    localOcrConfirmed: pickLocalOcrConfirmed(raw),
     legacyExam: recoverLegacyExam(raw),
     carriedDamage: recoverCarriedDamage(raw),
   };

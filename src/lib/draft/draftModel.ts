@@ -262,7 +262,8 @@ export function recoverDraft(raw: unknown): DraftRecovery {
   const captureChecks = pickCaptureChecks(rawCaptureChecks);
   if (captureChecks.dropped) warnings.add('schema');
 
-  // 오프라인 여부를 읽지 못하면 더 엄격한 쪽(오프라인)으로 본다(readOfflineSlots).
+  // 제한 표시를 읽지 못하면 더 엄격한 쪽(두 단계 모두 제한)으로 본다(readOfflineSlots).
+  // 표시와 함께 저장된 까닭도 이 함수가 읽는다 — 까닭만 어긋난 것은 경고하지 않는다.
   const offline = readOfflineSlots(source.offlineSlots);
   if (offline.unreadable) warnings.add('schema');
 

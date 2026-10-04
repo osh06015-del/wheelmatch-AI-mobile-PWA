@@ -109,7 +109,7 @@ describe('toCsv', () => {
     expect(legacy[128]).toBe('');
   });
 
-  it('외관 의심의 출처를 맨 뒤 열에 적는다 — 의심이 아니거나 출처가 없는 기록은 빈 칸이다', () => {
+  it('외관 의심의 출처를 129번 열에 적는다 — 의심이 아니거나 출처가 없는 기록은 빈 칸이다', () => {
     const [, inherited] = parse(
       toCsv([
         record({
@@ -167,6 +167,75 @@ describe('toCsv', () => {
       ]),
     );
     expect(empty[129]).toBe('');
+  });
+
+  describe('제한된 까닭', () => {
+    // 제한 대조가 된 까닭은 여럿인데 analysisMode는 한 값(offline_limited)이다.
+    // 까닭을 따로 적지 않으면 판정불가의 원인을 기록으로 가려낼 수 없다.
+    const GRINDER_CAUSE = CSV_COLUMNS.indexOf('grinderLimitCause');
+    const WHEEL_CAUSE = CSV_COLUMNS.indexOf('wheelLimitCause');
+
+    it('130·131번 열에 단계별로 적는다 — 앞선 열의 자리는 그대로다', () => {
+      // 뒤에 열이 더 붙어도 이 두 열의 자리는 밀리지 않는다. 끝에서 세는 대신
+      // 자리를 번호로 고정한다.
+      expect(CSV_COLUMNS[130]).toBe('grinderLimitCause');
+      expect(CSV_COLUMNS[131]).toBe('wheelLimitCause');
+      const [, row] = parse(
+        toCsv([
+          record({
+            analysisMode: 'offline_limited',
+            analysisLimitCauses: { grinder: 'manual', wheel: 'dropped_ocr' },
+          }),
+        ]),
+      );
+      expect(row[CSV_COLUMNS.indexOf('analysisMode')]).toBe('offline_limited');
+      expect(row[GRINDER_CAUSE]).toBe('manual');
+      expect(row[WHEEL_CAUSE]).toBe('dropped_ocr');
+    });
+
+    it('제한되지 않은 단계는 빈 칸이다', () => {
+      const [, row] = parse(
+        toCsv([
+          record({
+            analysisMode: 'offline_limited',
+            analysisLimitCauses: { wheel: 'local_ocr' },
+          }),
+        ]),
+      );
+      expect(row[GRINDER_CAUSE]).toBe('');
+      expect(row[WHEEL_CAUSE]).toBe('local_ocr');
+    });
+
+    it('까닭이 기록되지 않은 단계는 unknown으로 적는다 — 빈 칸(제한 아님)과 구분한다', () => {
+      const [, row] = parse(
+        toCsv([
+          record({
+            analysisMode: 'offline_limited',
+            analysisLimitCauses: { grinder: 'unknown' },
+          }),
+        ]),
+      );
+      expect(row[GRINDER_CAUSE]).toBe('unknown');
+      expect(row[WHEEL_CAUSE]).toBe('');
+    });
+
+    it('까닭을 남기기 전에 저장된 제한 대조 기록은 빈 칸으로 둔다 — 추정해 채우지 않는다', () => {
+      const [, row] = parse(
+        toCsv([record({ analysisMode: 'offline_limited' })]),
+      );
+      expect(row[CSV_COLUMNS.indexOf('analysisMode')]).toBe('offline_limited');
+      expect(row[GRINDER_CAUSE]).toBe('');
+      expect(row[WHEEL_CAUSE]).toBe('');
+    });
+
+    it('온라인 기록과 판독 경로가 없는 구기록은 빈 칸이다', () => {
+      const [, online] = parse(toCsv([record({ analysisMode: 'online' })]));
+      const [, legacy] = parse(toCsv([record()]));
+      for (const row of [online, legacy]) {
+        expect(row[GRINDER_CAUSE]).toBe('');
+        expect(row[WHEEL_CAUSE]).toBe('');
+      }
+    });
   });
   it('첫 줄은 열 이름이다', () => {
     const [header] = parse(toCsv([]));
@@ -422,6 +491,8 @@ describe('toCsv', () => {
       'analysisMode',
       'wheelExpiryReview',
       'visibleDamageSources',
+      'grinderLimitCause',
+      'wheelLimitCause',
     ]);
   });
 
@@ -879,10 +950,11 @@ describe('다각도 외관 확인 열', () => {
     const start = CSV_COLUMNS.indexOf('workMaterial');
     expect(start).toBe(108);
     // Profile 열 8개, 종류별 상태 항목 열 9개, 판정 범위·부속품 이름·판독 경로·
-    // 사용기한 응답·외관 의심 출처 열 1개씩.
+    // 사용기한 응답·외관 의심 출처 열 1개씩, 제한 까닭 열 2개. 뒤에 붙을 뿐 앞선
+    // 자리는 그대로다.
     expect(CSV_COLUMNS.indexOf('conditionDiamondRimIntact')).toBe(116);
     expect(CSV_COLUMNS.indexOf('accessoryProfileScope')).toBe(125);
-    expect(CSV_COLUMNS.slice(start)).toHaveLength(22);
+    expect(CSV_COLUMNS.slice(start)).toHaveLength(24);
     for (const column of CSV_COLUMNS.slice(start)) {
       expect(row[CSV_COLUMNS.indexOf(column)]).toBe('');
     }
@@ -950,13 +1022,14 @@ describe('다각도 외관 확인 열', () => {
     expect(legacyRow[CSV_COLUMNS.indexOf('accessoryProfileScope')]).toBe('');
   });
 
-  it('판독 경로를 맨 뒤 열에 적는다 — 구기록은 online으로 채우지 않고 빈 칸이다', () => {
+  it('판독 경로 열의 자리는 그대로다 — 구기록은 online으로 채우지 않고 빈 칸이다', () => {
     const [, offline] = parse(
       toCsv([record({ analysisMode: 'offline_limited' })]),
     );
     expect(offline[CSV_COLUMNS.indexOf('analysisMode')]).toBe(
       'offline_limited',
     );
+    // 뒤에 열이 더 붙어도 이 열의 자리는 밀리지 않는다. 끝에서 세는 대신 자리를 고정한다.
     expect(CSV_COLUMNS[127]).toBe('analysisMode');
 
     const [, online] = parse(toCsv([record({ analysisMode: 'online' })]));

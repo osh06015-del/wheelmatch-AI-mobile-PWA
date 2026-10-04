@@ -938,42 +938,52 @@ export const zh: Messages = {
   'translation.notice':
     '此译文尚未校对。若含义不清，请以韩文原文为准并向管理人员确认。',
 
-  // 오프라인 제한 대조·진행 중 점검 복구
-  'rule.offlineLimited': '离线有限对照',
+  // 제한 대조·진행 중 점검 복구. 까닭을 가리지 않고 뜨는 문구는 오프라인이었다거나
+  // 서버에 닿지 못했다고 단정하지 않는다 — 이유는 ko.ts의 같은 자리에 적었다.
+  'rule.offlineLimited': '有限对照',
   'reason.analysisMode.offlineLimited':
-    '未经服务器分析，仅对照了作业人员输入并确认的数值。仅将转速和直径违规判定为不符，不给出规格一致的结论。',
+    '未能确认有服务器读取结果支持已确认的数值，因此仅对照了作业人员确认的数值。仅将转速和直径违规判定为不符，不给出规格一致的结论。',
   'evidence.doc.offlineLimited':
-    '应用设计 — 无法连接服务器时，不分析照片，仅对照作业人员输入的数值',
+    '应用设计 — 未能确认有服务器读取结果支持已确认的数值时，仅对照作业人员确认的数值',
   'evidence.limit.offlineLimited':
-    '输入的数值未经AI读取与标签核对。转速和直径违规会判为不符，但即使没有违规也不给出一致结论，也不开启试运转。',
+    '已确认的数值是否与标签相同，未经服务器读取结果确认。转速和直径违规会判为不符，但即使没有违规也不给出一致结论，也不开启试运转。',
   'result.undetermined.offlineLimited':
-    '这是离线有限对照。仅对照了作业人员输入的数值，因此不给出一致结论。连接后可自行选择在服务器重新分析。',
-  'scan.offline.continue': '手动输入（离线有限对照）',
+    '这是有限对照。未能确认有服务器读取结果支持已确认的数值，因此不给出一致结论。要解除限制，需要在服务器重新分析或重新拍摄。',
+  'verdict.note.limited':
+    '这是有限对照，因此不给出一致结论。请查看下方的项目和说明。',
+  'scan.offline.continue': '手动输入（有限对照）',
   'scan.offline.continueHint':
     '无法连接服务器。可以自行输入数值继续，但本次检查无法得到一致结论。',
   'scan.offline.notice':
-    '离线有限对照 — 无法在服务器分析照片。请查看标签并自行输入数值。',
+    '有限对照 — 无法在服务器分析照片。请查看标签并自行输入数值。',
   'scan.localOcr.notice':
-    '离线有限对照 — 由本设备直接读取，并非服务器分析。恢复连接后，可在结果页选择让服务器重新分析。',
+    '有限对照 — 由本设备直接读取，并非服务器分析。设备在线时，可在结果页选择让服务器重新分析。',
   'offline.limit':
-    '本结果仅对照了作业人员输入的数值。转速和直径违规判为不符，但不给出一致结论，也不开启试运转。',
+    '本结果未能确认有服务器读取结果支持已确认的数值，因此仅对照了作业人员确认的数值。转速和直径违规判为不符，但不给出一致结论，也不开启试运转。',
+  'offline.cause.line': '{step}：{cause}',
+  'offline.cause.manual': '因无法连接服务器而手动输入的数值。',
+  'offline.cause.localOcr': '由本设备读取的数值，并非服务器读取。',
+  'offline.cause.ocrDropped':
+    '已保存的AI读取结果无法读取而被舍弃后确认的数值。',
+  'offline.cause.unknown': '未记录受限原因。',
   'offline.reanalyze': '在服务器重新分析',
   'offline.reanalyzeHint':
-    '可以在服务器重新分析。重新分析不会更改您输入的数值，只会与AI数值并列比较。如果AI怀疑照片中有损伤，该警告会加入结果。',
-  'offline.stillOffline': '仍处于离线状态。连接后可选择在服务器重新分析。',
+    '可以在服务器重新分析。重新分析不会更改已确认的数值，只会与AI数值并列比较。如果AI怀疑照片中有损伤，该警告会加入结果。',
+  'offline.stillOffline':
+    '设备当前处于离线状态。连接后可选择在服务器重新分析。',
   'offline.noPhotos': '没有保存的照片，无法在服务器重新分析。',
   'offline.analyzing': '正在服务器分析...',
-  'offline.failed': '服务器重新分析失败。保留离线结果。',
-  'offline.compareTitle': '输入值与AI值比较',
-  'offline.compareRow': '{field}：输入 {worker} / AI {ai}',
+  'offline.failed': '服务器重新分析失败。保留有限对照结果。',
+  'offline.compareTitle': '已确认数值与AI值比较',
+  'offline.compareRow': '{field}：已确认 {worker} / AI {ai}',
   'offline.compareSame': '相同',
   'offline.compareDiffers': '不同',
   'offline.mismatch':
-    '部分输入值与AI值不同或AI未能读取，无法切换为在线对照。请保留离线结果或重新拍摄。',
+    '部分已确认数值与AI值不同或AI未能读取，无法解除有限对照。请保留有限对照结果或重新拍摄。',
   'offline.damageRecheck':
-    '您之前关于砂轮损伤的回答是在看到下方AI警告之前作出的。请再次查看砂轮实物并作答，才能切换为在线对照。',
-  'offline.accept': '确认与AI数值相同并切换为在线对照',
-  'offline.cancel': '取消并保留离线结果',
+    '您之前关于砂轮损伤的回答是在看到下方AI警告之前作出的。请再次查看砂轮实物并作答，才能解除有限对照。',
+  'offline.accept': '确认与AI数值相同并解除有限对照',
+  'offline.cancel': '取消并保留有限对照结果',
   'draft.title': '有未完成的检查',
   'draft.body':
     '可以继续，或删除已保存的进度并重新开始。应用不会自行继续或删除。',

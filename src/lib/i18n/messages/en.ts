@@ -1059,46 +1059,56 @@ export const en: Messages = {
   'translation.notice':
     'This translation has not been reviewed yet. If the meaning is unclear, follow the Korean text and ask your supervisor.',
 
-  // 오프라인 제한 대조·진행 중 점검 복구
-  'rule.offlineLimited': 'Offline limited check',
+  // 제한 대조·진행 중 점검 복구. 까닭을 가리지 않고 뜨는 문구는 오프라인이었다거나
+  // 서버에 닿지 못했다고 단정하지 않는다 — 이유는 ko.ts의 같은 자리에 적었다.
+  'rule.offlineLimited': 'Limited check',
   'reason.analysisMode.offlineLimited':
-    'Only values the worker entered and checked were compared, without server analysis. Only RPM and diameter violations are judged as a mismatch, and no conclusion that the specs fit is given.',
+    'It is not confirmed that a server reading backs the values, so only the values the worker confirmed were compared. Only RPM and diameter violations are judged as a mismatch, and no conclusion that the specs fit is given.',
   'evidence.doc.offlineLimited':
-    'App design — when the server could not be reached, only the values the worker entered are compared, without photo analysis',
+    'App design — when it is not confirmed that a server reading backs the values, only the values the worker confirmed are compared',
   'evidence.limit.offlineLimited':
-    'The entered values were not cross-checked against the label by AI reading. RPM and diameter violations are blocked as a mismatch, but even without a violation there is no fit conclusion and the trial run does not open.',
+    'It was not confirmed by a server reading that the confirmed values equal the label. RPM and diameter violations are blocked as a mismatch, but even without a violation there is no fit conclusion and the trial run does not open.',
   'result.undetermined.offlineLimited':
-    'This is an offline limited check. Only the values the worker entered were compared, so no fit conclusion is given. When connected, you can choose to reanalyze on the server.',
-  'scan.offline.continue': 'Enter values manually (offline limited check)',
+    'This is a limited check. It is not confirmed that a server reading backs the values, so no fit conclusion is given. Lifting it requires server reanalysis or taking the photos again.',
+  'verdict.note.limited':
+    'This is a limited check, so no fit conclusion is given. See the items and guidance below.',
+  'scan.offline.continue': 'Enter values manually (limited check)',
   'scan.offline.continueHint':
     'The server could not be reached. You can continue by entering values yourself, but this inspection cannot receive a fit conclusion.',
   'scan.offline.notice':
-    'Offline limited check — the photo could not be analyzed on the server. Look at the label and enter the values yourself.',
+    'Limited check — the photo could not be analyzed on the server. Look at the label and enter the values yourself.',
   'scan.localOcr.notice':
-    'Offline limited check — read on this device, not on the server. Once connected, you can have the server re-analyze it on the result screen.',
+    'Limited check — read on this device, not on the server. If the device is online, you can have the server re-analyze it on the result screen.',
   'offline.limit':
-    'This result compares only the values the worker entered. RPM and diameter violations are judged as a mismatch, but no fit conclusion is given and the trial run does not open.',
+    'For this result, it is not confirmed that a server reading backs the values, so only the values the worker confirmed were compared. RPM and diameter violations are judged as a mismatch, but no fit conclusion is given and the trial run does not open.',
+  'offline.cause.line': '{step}: {cause}',
+  'offline.cause.manual':
+    'Entered by hand because the server could not be reached.',
+  'offline.cause.localOcr': 'Read on this device, not on the server.',
+  'offline.cause.ocrDropped':
+    'Confirmed after the saved AI reading could not be read and was discarded.',
+  'offline.cause.unknown': 'The reason for the limit was not recorded.',
   'offline.reanalyze': 'Reanalyze on the server',
   'offline.reanalyzeHint':
-    'You can reanalyze on the server. Reanalyzing does not change the values you entered; it only shows them next to the AI values. If the AI suspects damage in the photo, that warning is added to the result.',
+    'You can reanalyze on the server. Reanalyzing does not change the confirmed values; it only shows them next to the AI values. If the AI suspects damage in the photo, that warning is added to the result.',
   'offline.stillOffline':
-    'Still offline. When connected, you can choose to reanalyze on the server.',
+    'The device is offline now. When connected, you can choose to reanalyze on the server.',
   'offline.noPhotos':
     'There is no saved photo, so server reanalysis is not possible.',
   'offline.analyzing': 'Analyzing on the server...',
   'offline.failed':
-    'Server reanalysis failed. The offline result stays as it is.',
-  'offline.compareTitle': 'Entered values vs AI values',
-  'offline.compareRow': '{field}: entered {worker} / AI {ai}',
+    'Server reanalysis failed. The limited-check result stays as it is.',
+  'offline.compareTitle': 'Confirmed values vs AI values',
+  'offline.compareRow': '{field}: confirmed {worker} / AI {ai}',
   'offline.compareSame': 'same',
   'offline.compareDiffers': 'different',
   'offline.mismatch':
-    'Some entered values differ from the AI values or the AI could not read them, so this cannot switch to an online check. Keep the offline result or take the photos again.',
+    'Some confirmed values differ from the AI values or the AI could not read them, so the limited check cannot be lifted. Keep the limited-check result or take the photos again.',
   'offline.damageRecheck':
-    'Your earlier answer about wheel damage was given before the AI warning below. Look at the actual wheel again and answer before this can switch to an online check.',
+    'Your earlier answer about wheel damage was given before the AI warning below. Look at the actual wheel again and answer before the limited check can be lifted.',
   'offline.accept':
-    'Confirm the values equal the AI values and switch to an online check',
-  'offline.cancel': 'Cancel and keep the offline result',
+    'Confirm the values equal the AI values and lift the limited check',
+  'offline.cancel': 'Cancel and keep the limited-check result',
   'draft.title': 'There is an inspection in progress',
   'draft.body':
     'You can continue it, or delete the saved progress and start over. The app does not continue or delete it on its own.',

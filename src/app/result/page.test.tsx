@@ -83,6 +83,7 @@ import { RULESET_VERSION } from '@/lib/rules/version';
 import { useResearchMode } from '@/lib/record/researchMode';
 import { useInspection } from '@/lib/state/inspection';
 import type {
+  AnalysisLimitCause,
   GrinderCondition,
   GrinderSpec,
   WheelCondition,
@@ -1389,7 +1390,7 @@ describe('결과 화면 — 알려진 액세서리 Profile', () => {
   });
 });
 
-describe('결과 화면 — 오프라인 제한 대조와 서버 재분석', () => {
+describe('결과 화면 — 제한 대조와 서버 재분석', () => {
   beforeEach(() => {
     replace.mockClear();
     push.mockClear();
@@ -1405,8 +1406,13 @@ describe('결과 화면 — 오프라인 제한 대조와 서버 재분석', () 
     });
   });
 
-  /** 명판을 오프라인으로 직접 넣고 두 Gate를 마친 상태. 규격은 서로 맞는다 */
-  function readyOffline(wheel: WheelSpec = WHEEL) {
+  /**
+   * 명판 단계가 제한 대조로 확정되고 두 Gate를 마친 상태. 규격은 서로 맞는다.
+   *
+   * @param cause 제한된 까닭. 넘기지 않으면 까닭 없이 표시만 남는다 — 까닭을 적기
+   *   전 형식의 진행 중 점검이 이렇게 읽힌다.
+   */
+  function readyOffline(wheel: WheelSpec = WHEEL, cause?: AnalysisLimitCause) {
     const result = store();
     act(() => {
       result.current.setGrinder(
@@ -1414,7 +1420,7 @@ describe('결과 화면 — 오프라인 제한 대조와 서버 재분석', () 
         new Blob(['plate'], { type: 'image/jpeg' }),
         null,
       );
-      result.current.setOfflineSlot('grinder', true);
+      result.current.setOfflineSlot('grinder', true, cause);
       result.current.setGrinderCondition(GRINDER_OK);
       result.current.setWheel(wheel);
       result.current.setWheelCondition(CONFIRMED);
@@ -1428,7 +1434,7 @@ describe('결과 화면 — 오프라인 제한 대조와 서버 재분석', () 
     }
   }
 
-  it('규격이 맞아도 적합이 아니라 판정불가 + 오프라인 제한 대조이고 시험운전을 열지 않는다', () => {
+  it('규격이 맞아도 적합이 아니라 판정불가 + 제한 대조이고 시험운전을 열지 않는다', () => {
     readyOffline();
     render(<ResultPage />);
     checkAll();
@@ -1437,19 +1443,186 @@ describe('결과 화면 — 오프라인 제한 대조와 서버 재분석', () 
     expect(screen.queryByText('적합')).not.toBeInTheDocument();
     expect(
       screen.getByText(
-        '오프라인 제한 대조입니다. 작업자가 입력한 값으로만 대조해 적합 판정을 제공하지 않습니다. 연결되면 서버 재분석을 직접 선택할 수 있습니다.',
+        '제한 대조입니다. 확정한 값을 뒷받침하는 서버 판독이 확인되지 않아 적합 판정을 제공하지 않습니다. 풀려면 서버 재분석이나 다시 촬영이 필요합니다.',
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText('시험운전')).not.toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { name: '⚠ 오프라인 제한 대조' }),
+      screen.getByRole('heading', { name: '⚠ 제한 대조' }),
     ).toBeInTheDocument();
   });
 
-  it('확정된 RPM 위반은 오프라인이어도 부적합이다', () => {
+  it('확정된 RPM 위반은 제한 대조여도 부적합이다', () => {
     readyOffline({ ...WHEEL, maxRPM: 8500 });
     render(<ResultPage />);
     expect(screen.getByText('부적합')).toBeInTheDocument();
+  });
+
+  // 제한 대조는 값이 모자라서 판정불가인 것이 아니다. 판정 카드 아래 문구가
+  // 「값을 직접 입력하세요」라고 하면, 직접 입력해서 제한 대조가 된 작업자를 같은
+  // 자리로 되돌려 보낸다.
+  it('판정 카드 아래에 값이 부족하다고 적지 않고 제한 대조라고 적는다', () => {
+    readyOffline();
+    render(<ResultPage />);
+
+    expect(
+      screen.getByText(
+        '제한 대조라 적합 판정을 제공하지 않습니다. 아래 항목과 안내를 확인하세요.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        '값이 부족해 판정할 수 없습니다. 재촬영하거나 값을 직접 입력하세요.',
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it('검사 항목의 이름과 사유도 까닭을 단정하지 않는다', () => {
+    readyOffline();
+    render(<ResultPage />);
+
+    expect(
+      screen.getAllByText(
+        '확정한 값을 뒷받침하는 서버 판독이 확인되지 않아 작업자가 확인한 값으로만 대조했습니다. RPM·지름 위반만 부적합으로 판정하며 적합 판정은 제공하지 않습니다.',
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByText(
+        '이 결과는 확정한 값을 뒷받침하는 서버 판독이 확인되지 않아 작업자가 확인한 값으로만 대조했습니다. RPM·지름 위반은 부적합으로 판정하지만 적합 판정은 제공하지 않고 시험운전도 열지 않습니다.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/오프라인/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/서버 분석 없이/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/서버에 닿지/)).not.toBeInTheDocument();
+  });
+
+  describe('제한된 까닭', () => {
+    // 까닭은 확인 화면이 확정할 때 남긴 그대로만 적는다. 결과 화면이 추정하지 않는다.
+    it.each([
+      ['manual', '그라인더: 서버에 닿지 못해 직접 입력한 값입니다.'],
+      ['local_ocr', '그라인더: 서버가 아니라 이 기기에서 읽은 값입니다.'],
+      [
+        'dropped_ocr',
+        '그라인더: 저장된 AI 판독을 읽을 수 없어 버린 뒤 확정한 값입니다.',
+      ],
+      ['unknown', '그라인더: 제한된 까닭이 기록되지 않았습니다.'],
+    ] as const)('기록된 까닭을 한 줄로 적는다 — %s', (cause, line) => {
+      readyOffline(WHEEL, cause);
+      render(<ResultPage />);
+
+      expect(screen.getByText(line)).toBeInTheDocument();
+    });
+
+    it('까닭이 남아 있지 않으면 추정하지 않고 기록되지 않았다고 적는다', () => {
+      // 까닭을 적기 전 형식으로 저장된 진행 중 점검이 이렇게 들어온다.
+      readyOffline();
+      render(<ResultPage />);
+
+      expect(
+        screen.getByText('그라인더: 제한된 까닭이 기록되지 않았습니다.'),
+      ).toBeInTheDocument();
+    });
+
+    it('제한된 단계만 적는다 — 서버로 읽은 단계의 줄은 없다', () => {
+      readyOffline(WHEEL, 'manual');
+      render(<ResultPage />);
+
+      expect(screen.queryByText(/^숫돌: /)).not.toBeInTheDocument();
+    });
+
+    it('두 단계가 모두 제한됐으면 단계마다 적는다', () => {
+      const result = readyOffline(WHEEL, 'manual');
+      act(() => {
+        result.current.setOfflineSlot('wheel', true, 'dropped_ocr');
+      });
+      render(<ResultPage />);
+
+      expect(
+        screen.getByText('그라인더: 서버에 닿지 못해 직접 입력한 값입니다.'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          '숫돌: 저장된 AI 판독을 읽을 수 없어 버린 뒤 확정한 값입니다.',
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it('까닭이 무엇이든 적합을 내지 않고 시험운전을 열지 않는다', () => {
+      // 까닭은 사실을 적는 값일 뿐이다. 제한을 푸는 근거로 쓰이면 안 된다.
+      for (const cause of [
+        'manual',
+        'local_ocr',
+        'dropped_ocr',
+        'unknown',
+      ] as const) {
+        const result = readyOffline(WHEEL, cause);
+        const view = render(<ResultPage />);
+        checkAll();
+
+        expect(result.current.analysisMode, cause).toBe('offline_limited');
+        expect(screen.getByText('판정불가')).toBeInTheDocument();
+        expect(screen.queryByText('적합')).not.toBeInTheDocument();
+        expect(screen.queryByText('시험운전')).not.toBeInTheDocument();
+        view.unmount();
+      }
+    });
+
+    it('저장하면 단계별 까닭을 기록에 남긴다', async () => {
+      readyOffline(WHEEL, 'dropped_ocr');
+      vi.mocked(saveInspection).mockResolvedValueOnce(1);
+      render(<ResultPage />);
+      checkAll();
+      fireEvent.click(
+        screen.getByRole('button', { name: /점검 완료 및 저장/ }),
+      );
+
+      await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
+      const saved = vi.mocked(saveInspection).mock.calls[0][0];
+      expect(saved.analysisMode).toBe('offline_limited');
+      // 제한되지 않은 숫돌 단계에는 까닭이 없다.
+      expect(saved.analysisLimitCauses).toEqual({ grinder: 'dropped_ocr' });
+    });
+
+    it('까닭이 남아 있지 않은 점검은 지어내지 않고 unknown으로 남긴다', async () => {
+      readyOffline();
+      vi.mocked(saveInspection).mockResolvedValueOnce(1);
+      render(<ResultPage />);
+      checkAll();
+      fireEvent.click(
+        screen.getByRole('button', { name: /점검 완료 및 저장/ }),
+      );
+
+      await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
+      expect(
+        vi.mocked(saveInspection).mock.calls[0][0].analysisLimitCauses,
+      ).toEqual({ grinder: 'unknown' });
+    });
+
+    it('재분석으로 제한을 푼 단계는 까닭도 함께 사라진다', async () => {
+      const result = readyOffline(WHEEL, 'manual');
+      extractGrinder.mockResolvedValue({ ...GRINDER, rawText: 'AI' });
+      render(<ResultPage />);
+
+      await act(async () => {
+        screen.getByRole('button', { name: '서버로 다시 분석하기' }).click();
+      });
+      await act(async () => {
+        screen
+          .getByRole('button', {
+            name: 'AI 값과 같음을 확인하고 제한 대조 풀기',
+          })
+          .click();
+      });
+
+      expect(result.current.analysisMode).toBe('online');
+      expect(result.current.offlineSlots).toEqual({
+        grinder: false,
+        wheel: false,
+      });
+      expect(
+        screen.queryByText('그라인더: 서버에 닿지 못해 직접 입력한 값입니다.'),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it('저장하면 판독 경로를 함께 남기고, 저장에 성공한 뒤에만 draft를 지운다', async () => {
@@ -1494,15 +1667,16 @@ describe('결과 화면 — 오프라인 제한 대조와 서버 재분석', () 
     vi.mocked(saveInspection).mockResolvedValueOnce(1);
     render(<ResultPage />);
     expect(
-      screen.queryByRole('heading', { name: '⚠ 오프라인 제한 대조' }),
+      screen.queryByRole('heading', { name: '⚠ 제한 대조' }),
     ).not.toBeInTheDocument();
     checkAll();
     fireEvent.click(screen.getByRole('button', { name: /점검 완료 및 저장/ }));
 
     await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
-    expect(vi.mocked(saveInspection).mock.calls[0][0].analysisMode).toBe(
-      'online',
-    );
+    const saved = vi.mocked(saveInspection).mock.calls[0][0];
+    expect(saved.analysisMode).toBe('online');
+    // 제한되지 않은 점검에는 까닭이 없다. 빈 객체로도 남기지 않는다.
+    expect(saved).not.toHaveProperty('analysisLimitCauses');
   });
 
   it('연결이 돌아와도 사용자가 고르기 전에는 서버를 부르지 않는다', () => {
@@ -1525,16 +1699,16 @@ describe('결과 화면 — 오프라인 제한 대조와 서버 재분석', () 
 
     expect(
       screen.getByText(
-        '무부하 회전속도: 작업자 입력 11000rpm / AI 값 11000rpm · 같음',
+        '무부하 회전속도: 확정한 값 11000rpm / AI 값 11000rpm · 같음',
       ),
     ).toBeInTheDocument();
-    // 전환 전까지는 여전히 오프라인 결과다.
+    // 전환 전까지는 여전히 제한 대조 결과다.
     expect(screen.getByText('판정불가')).toBeInTheDocument();
 
     await act(async () => {
       screen
         .getByRole('button', {
-          name: 'AI 값과 같음을 확인하고 온라인 대조로 전환',
+          name: 'AI 값과 같음을 확인하고 제한 대조 풀기',
         })
         .click();
     });
@@ -1545,7 +1719,7 @@ describe('결과 화면 — 오프라인 제한 대조와 서버 재분석', () 
     expect(screen.getByText('적합')).toBeInTheDocument();
   });
 
-  it('재분석 값이 다르면 전환을 막고, 취소하면 오프라인 결과를 유지한다', async () => {
+  it('재분석 값이 다르면 전환을 막고, 취소하면 제한 대조 결과를 유지한다', async () => {
     const result = readyOffline();
     extractGrinder.mockResolvedValue({ ...GRINDER, noLoadRPM: 13000 });
     render(<ResultPage />);
@@ -1556,24 +1730,24 @@ describe('결과 화면 — 오프라인 제한 대조와 서버 재분석', () 
 
     expect(
       screen.getByRole('button', {
-        name: 'AI 값과 같음을 확인하고 온라인 대조로 전환',
+        name: 'AI 값과 같음을 확인하고 제한 대조 풀기',
       }),
     ).toBeDisabled();
     expect(
       screen.getByText(
-        '입력값과 AI 값이 다르거나 AI가 읽지 못한 값이 있어 온라인 대조로 바꿀 수 없습니다. 오프라인 결과를 유지하거나 다시 촬영하세요.',
+        '확정한 값과 AI 값이 다르거나 AI가 읽지 못한 값이 있어 제한 대조를 풀 수 없습니다. 제한 대조 결과를 유지하거나 다시 촬영하세요.',
       ),
     ).toBeInTheDocument();
 
     fireEvent.click(
-      screen.getByRole('button', { name: '취소하고 오프라인 결과 유지' }),
+      screen.getByRole('button', { name: '취소하고 제한 대조 결과 유지' }),
     );
     expect(result.current.analysisMode).toBe('offline_limited');
     expect(result.current.grinder?.noLoadRPM).toBe(11000);
     expect(screen.getByText('판정불가')).toBeInTheDocument();
   });
 
-  it('재분석이 다시 실패하면 값을 지어내지 않고 오프라인 결과를 유지한다', async () => {
+  it('재분석이 다시 실패하면 값을 지어내지 않고 제한 대조 결과를 유지한다', async () => {
     const result = readyOffline();
     extractGrinder.mockRejectedValue(new Error('network'));
     render(<ResultPage />);
@@ -1584,14 +1758,14 @@ describe('결과 화면 — 오프라인 제한 대조와 서버 재분석', () 
 
     expect(
       screen.getByText(
-        '서버 재분석에 실패했습니다. 오프라인 결과를 그대로 유지합니다.',
+        '서버 재분석에 실패했습니다. 제한 대조 결과를 그대로 유지합니다.',
       ),
     ).toBeInTheDocument();
     expect(result.current.analysisMode).toBe('offline_limited');
     expect(result.current.grinderOcr).toBeNull();
   });
 
-  it('아직 오프라인이면 재분석 버튼을 보이지 않는다', () => {
+  it('기기가 오프라인이면 재분석 버튼을 보이지 않는다', () => {
     const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     readyOffline();
     render(<ResultPage />);
@@ -1601,7 +1775,7 @@ describe('결과 화면 — 오프라인 제한 대조와 서버 재분석', () 
     ).not.toBeInTheDocument();
     expect(
       screen.getByText(
-        '아직 오프라인입니다. 연결되면 서버 재분석을 선택할 수 있습니다.',
+        '지금 기기가 오프라인입니다. 연결되면 서버 재분석을 선택할 수 있습니다.',
       ),
     ).toBeInTheDocument();
     online.mockRestore();
@@ -1620,14 +1794,14 @@ describe('결과 화면 — 숫돌 라벨 재분석이 낸 외관 의심과 원�
     '사진으로는 미세균열을 확인할 수 없습니다. 장착 전 타음검사(가볍게 두드려 소리 확인)를 하세요.';
   const MARKINGS_MISMATCH =
     '라벨의 회전속도 표기와 원주속도 표기가 서로 맞지 않습니다. 둘 중 하나를 잘못 읽었을 수 있습니다. 라벨의 숫자를 다시 확인하세요.';
-  const ACCEPT = 'AI 값과 같음을 확인하고 온라인 대조로 전환';
-  const CANCEL = '취소하고 오프라인 결과 유지';
+  const ACCEPT = 'AI 값과 같음을 확인하고 제한 대조 풀기';
+  const CANCEL = '취소하고 제한 대조 결과 유지';
   const AI_DAMAGE_ALERT =
     '⚠ AI가 사진에서 눈에 띄는 손상 징후를 의심했습니다. 숫돌을 직접 자세히 확인하세요.';
   const RECHECK_HINT =
-    '앞서 답한 숫돌 손상 확인은 아래 AI 경고를 보기 전의 답입니다. 숫돌 실물을 다시 보고 답해야 온라인 대조로 바꿀 수 있습니다.';
+    '앞서 답한 숫돌 손상 확인은 아래 AI 경고를 보기 전의 답입니다. 숫돌 실물을 다시 보고 답해야 제한 대조를 풀 수 있습니다.';
   const VALUES_DIFFER =
-    '입력값과 AI 값이 다르거나 AI가 읽지 못한 값이 있어 온라인 대조로 바꿀 수 없습니다. 오프라인 결과를 유지하거나 다시 촬영하세요.';
+    '확정한 값과 AI 값이 다르거나 AI가 읽지 못한 값이 있어 제한 대조를 풀 수 없습니다. 제한 대조 결과를 유지하거나 다시 촬영하세요.';
 
   beforeEach(() => {
     replace.mockClear();
@@ -1735,7 +1909,7 @@ describe('결과 화면 — 숫돌 라벨 재분석이 낸 외관 의심과 원�
 
     await reanalyze();
 
-    // 아직 전환하지 않았다. 오프라인 결과 그대로이고 경고만 더해졌다.
+    // 아직 전환하지 않았다. 제한 대조 결과 그대로이고 경고만 더해졌다.
     expect(result.current.analysisMode).toBe('offline_limited');
     expect(screen.getByText('판정불가')).toBeInTheDocument();
     expect(screen.getByText(DAMAGE_SUSPECTED)).toBeInTheDocument();
@@ -1797,7 +1971,7 @@ describe('결과 화면 — 숫돌 라벨 재분석이 낸 외관 의심과 원�
     await reanalyze();
     expect(
       screen.getByText(
-        '최고사용회전속도: 작업자 입력 12200rpm / AI 값 12200rpm · 같음',
+        '최고사용회전속도: 확정한 값 12200rpm / AI 값 12200rpm · 같음',
       ),
     ).toBeInTheDocument();
     // 값은 모두 같다. 그래도 경고를 보고 다시 답하기 전에는 열리지 않는다.

@@ -418,6 +418,41 @@ describe('새로고침 복원 — 오프라인 표시', () => {
     expect(state.droppedOnReload).toBe(false);
   });
 
+  it('제한된 까닭도 함께 되살린다', async () => {
+    await seed();
+    put('offlineSlots', {
+      grinder: true,
+      wheel: false,
+      causes: { grinder: 'dropped_ocr' },
+    });
+
+    const state = await reload();
+
+    expect(state.offlineSlots).toEqual({
+      grinder: true,
+      wheel: false,
+      causes: { grinder: 'dropped_ocr' },
+    });
+    expect(state.analysisMode).toBe('offline_limited');
+    expect(state.droppedOnReload).toBe(false);
+  });
+
+  it('어긋난 까닭은 까닭만 버린다 — 제한은 그대로이고 단계를 다시 하게 하지 않는다', async () => {
+    await seed();
+    put('offlineSlots', {
+      grinder: true,
+      wheel: false,
+      causes: { grinder: 'server' },
+    });
+
+    const state = await reload();
+
+    // 까닭은 판정에 쓰지 않는 값이다. 표시는 온전하므로 읽지 못한 표시로 보지 않는다.
+    expect(state.offlineSlots).toEqual({ grinder: true, wheel: false });
+    expect(state.analysisMode).toBe('offline_limited');
+    expect(state.droppedOnReload).toBe(false);
+  });
+
   it.each([
     ['빈 객체', '{}'],
     ['한 단계만 있는 값', '{"grinder":false}'],

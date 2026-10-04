@@ -5,7 +5,12 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { useInspection } from './inspection';
+import {
+  limitCauseFor,
+  limitCausesOf,
+  readOfflineSlots,
+  useInspection,
+} from './inspection';
 import type { TrialRunProgress } from '@/lib/safety/trialRun';
 import type {
   CaptureQualityMetrics,
@@ -482,7 +487,7 @@ describe('작업 조건', () => {
   });
 });
 
-describe('오프라인 제한 대조 표시와 진행 중 점검 복구', () => {
+describe('제한 대조 표시와 진행 중 점검 복구', () => {
   beforeEach(() => {
     const { result } = renderHook(() => useInspection());
     act(() => result.current.reset());
@@ -844,5 +849,320 @@ describe('오프라인 제한 대조 표시와 진행 중 점검 복구', () => 
     expect(result.current.analysisMode).toBe('online');
     expect(result.current.checklist).toBeNull();
     expect(sessionStorage.getItem('wheelmatch.offlineSlots')).toBeNull();
+  });
+});
+
+describe('제한된 까닭', () => {
+  // 한 단계가 제한 대조가 된 까닭. 기록과 화면이 사실대로 말하기 위한 값이다.
+  // 제한 여부(analysisMode)는 단계별 표시(true/false)만 정한다 — 까닭이 없거나
+  // 어긋나도 제한은 그대로이고, 까닭이 있다고 제한이 풀리지도 않는다.
+  const stored = () =>
+    JSON.parse(sessionStorage.getItem('wheelmatch.offlineSlots') ?? 'null');
+
+  beforeEach(() => {
+    const { result } = renderHook(() => useInspection());
+    act(() => result.current.reset());
+  });
+
+  it('확정할 때 넘긴 까닭을 표시와 함께 남기고 새로고침용 저장에도 쓴다', () => {
+    const { result } = renderHook(() => useInspection());
+    act(() => {
+      result.current.setGrinder(GRINDER);
+      result.current.setOfflineSlot('grinder', true, 'dropped_ocr');
+    });
+
+    expect(result.current.analysisMode).toBe('offline_limited');
+    expect(limitCausesOf(result.current.offlineSlots)).toEqual({
+      grinder: 'dropped_ocr',
+    });
+    expect(stored()).toEqual({
+      grinder: true,
+      wheel: false,
+      causes: { grinder: 'dropped_ocr' },
+    });
+  });
+
+  it('까닭 없이 표시만 남기면 unknown으로 읽는다 — 추정해 채우지 않는다', () => {
+    const { result } = renderHook(() => useInspection());
+    act(() => {
+      result.current.setGrinder(GRINDER);
+      result.current.setOfflineSlot('grinder', true);
+    });
+
+    expect(result.current.analysisMode).toBe('offline_limited');
+    expect(limitCausesOf(result.current.offlineSlots)).toEqual({
+      grinder: 'unknown',
+    });
+    // 저장되는 모양은 까닭을 적기 전과 같다.
+    expect(stored()).toEqual({ grinder: true, wheel: false });
+  });
+
+  it('제한되지 않은 단계에는 까닭을 남기지 않는다', () => {
+    const { result } = renderHook(() => useInspection());
+    act(() => {
+      result.current.setGrinder(GRINDER);
+      result.current.setOfflineSlot('grinder', false, 'manual');
+    });
+
+    expect(result.current.analysisMode).toBe('online');
+    expect(limitCausesOf(result.current.offlineSlots)).toEqual({});
+    expect(result.current.offlineSlots).toEqual({
+      grinder: false,
+      wheel: false,
+    });
+  });
+
+  it('까닭이 있어도 제한은 풀리지 않는다 — 어느 까닭이든 offline_limited다', () => {
+    for (const cause of [
+      'manual',
+      'local_ocr',
+      'dropped_ocr',
+      'unknown',
+    ] as const) {
+      const { result } = renderHook(() => useInspection());
+      act(() => {
+        result.current.setGrinder(GRINDER);
+        result.current.setOfflineSlot('grinder', true, cause);
+      });
+      expect(result.current.analysisMode, cause).toBe('offline_limited');
+    }
+  });
+
+  it('숫돌을 다시 확정하면 숫돌 까닭만 지운다 — 명판 까닭은 남는다', () => {
+    const { result } = renderHook(() => useInspection());
+    act(() => {
+      result.current.setGrinder(GRINDER);
+      result.current.setOfflineSlot('grinder', true, 'manual');
+      result.current.setWheel(WHEEL);
+      result.current.setOfflineSlot('wheel', true, 'local_ocr');
+    });
+    expect(limitCausesOf(result.current.offlineSlots)).toEqual({
+      grinder: 'manual',
+      wheel: 'local_ocr',
+    });
+
+    // 새 라벨 사진을 서버로 읽었다. 이전 숫돌의 까닭이 따라오면 안 된다.
+    act(() => result.current.setWheel(WHEEL));
+
+    expect(limitCausesOf(result.current.offlineSlots)).toEqual({
+      grinder: 'manual',
+    });
+    expect(stored()).toEqual({
+      grinder: true,
+      wheel: false,
+      causes: { grinder: 'manual' },
+    });
+  });
+
+  it('명판을 다시 확정하면 두 단계의 까닭을 모두 지운다', () => {
+    const { result } = renderHook(() => useInspection());
+    act(() => {
+      result.current.setGrinder(GRINDER);
+      result.current.setOfflineSlot('grinder', true, 'manual');
+      result.current.setWheel(WHEEL);
+      result.current.setOfflineSlot('wheel', true, 'dropped_ocr');
+    });
+
+    act(() => result.current.setGrinder(GRINDER));
+
+    expect(result.current.analysisMode).toBe('online');
+    expect(limitCausesOf(result.current.offlineSlots)).toEqual({});
+    expect(result.current.offlineSlots).toEqual({
+      grinder: false,
+      wheel: false,
+    });
+  });
+
+  it('같은 단계를 다시 제한으로 확정하면 까닭을 새로 적는다 — 이전 까닭이 남지 않는다', () => {
+    const { result } = renderHook(() => useInspection());
+    act(() => {
+      result.current.setGrinder(GRINDER);
+      result.current.setWheel(WHEEL);
+      result.current.setOfflineSlot('wheel', true, 'manual');
+    });
+
+    act(() => result.current.setOfflineSlot('wheel', true));
+
+    expect(limitCausesOf(result.current.offlineSlots)).toEqual({
+      wheel: 'unknown',
+    });
+    expect(stored()).toEqual({ grinder: false, wheel: true });
+  });
+
+  it('재분석을 받아들인 단계의 까닭만 지운다', () => {
+    const { result } = renderHook(() => useInspection());
+    act(() => {
+      result.current.setGrinder(GRINDER, null, null);
+      result.current.setOfflineSlot('grinder', true, 'manual');
+      result.current.setWheel(WHEEL);
+      result.current.setOfflineSlot('wheel', true, 'local_ocr');
+    });
+
+    act(() =>
+      result.current.applyReanalysis({
+        grinderOcr: { ...GRINDER, rawText: 'AI' },
+        grinderOcrTelemetry: null,
+      }),
+    );
+
+    // 숫돌 단계가 남아 있어 점검은 여전히 제한 대조다.
+    expect(result.current.analysisMode).toBe('offline_limited');
+    expect(limitCausesOf(result.current.offlineSlots)).toEqual({
+      wheel: 'local_ocr',
+    });
+    expect(stored()).toEqual({
+      grinder: false,
+      wheel: true,
+      causes: { wheel: 'local_ocr' },
+    });
+  });
+});
+
+describe('readOfflineSlots — 저장된 까닭', () => {
+  it('까닭을 적기 전 형식(표시만 있는 값)은 그대로 읽고, 까닭은 unknown이다', () => {
+    const read = readOfflineSlots({ grinder: true, wheel: false });
+
+    expect(read.unreadable).toBe(false);
+    expect(read.slots).toEqual({ grinder: true, wheel: false });
+    expect(limitCausesOf(read.slots)).toEqual({ grinder: 'unknown' });
+  });
+
+  it('온전한 까닭은 그대로 되살린다', () => {
+    const read = readOfflineSlots({
+      grinder: true,
+      wheel: true,
+      causes: { grinder: 'manual', wheel: 'dropped_ocr' },
+    });
+
+    expect(read.unreadable).toBe(false);
+    expect(limitCausesOf(read.slots)).toEqual({
+      grinder: 'manual',
+      wheel: 'dropped_ocr',
+    });
+  });
+
+  it.each([
+    ['목록에 없는 까닭', { grinder: 'server', wheel: 'online' }],
+    ['문자열이 아닌 까닭', { grinder: 3, wheel: true }],
+    ['객체가 아닌 causes', 'manual'],
+    ['배열인 causes', ['manual', 'manual']],
+    ['null인 causes', null],
+  ])(
+    '어긋난 까닭(%s)은 까닭만 버린다 — 제한은 그대로이고 읽지 못한 표시로 보지 않는다',
+    (_name, causes) => {
+      const read = readOfflineSlots({ grinder: true, wheel: true, causes });
+
+      // 까닭은 판정에 쓰지 않는 값이다. 까닭 때문에 표시 전체를 버리지 않는다.
+      expect(read.unreadable).toBe(false);
+      expect(read.slots.grinder).toBe(true);
+      expect(read.slots.wheel).toBe(true);
+      expect(limitCausesOf(read.slots)).toEqual({
+        grinder: 'unknown',
+        wheel: 'unknown',
+      });
+    },
+  );
+
+  it('제한되지 않은 단계에 적힌 까닭은 읽지 않는다', () => {
+    const read = readOfflineSlots({
+      grinder: false,
+      wheel: true,
+      causes: { grinder: 'manual', wheel: 'local_ocr' },
+    });
+
+    expect(read.slots).toEqual({
+      grinder: false,
+      wheel: true,
+      causes: { wheel: 'local_ocr' },
+    });
+    expect(limitCausesOf(read.slots)).toEqual({ wheel: 'local_ocr' });
+  });
+
+  it('표시를 읽지 못하면 두 단계 모두 제한이고, 함께 적힌 까닭도 믿지 않는다', () => {
+    const read = readOfflineSlots({
+      grinder: 'yes',
+      wheel: true,
+      causes: { wheel: 'manual' },
+    });
+
+    expect(read.unreadable).toBe(true);
+    expect(read.slots).toEqual({ grinder: true, wheel: true });
+    // 표시를 읽지 못해 엄격한 쪽으로 본 것이다. 직접 입력했다고 적지 않는다.
+    expect(limitCausesOf(read.slots)).toEqual({
+      grinder: 'unknown',
+      wheel: 'unknown',
+    });
+  });
+
+  it('제한된 단계가 없으면 까닭도 없다', () => {
+    expect(limitCausesOf({ grinder: false, wheel: false })).toEqual({});
+    expect(limitCausesOf(readOfflineSlots(undefined).slots)).toEqual({});
+  });
+});
+
+describe('limitCauseFor — 확인 화면의 상태에서 까닭 하나를 고른다', () => {
+  const NONE = {
+    manual: false,
+    localOnly: false,
+    localOcrConfirmed: false,
+    ocrDropped: false,
+  };
+
+  it('직접 입력이면 manual이다', () => {
+    expect(limitCauseFor({ ...NONE, manual: true })).toBe('manual');
+  });
+
+  it('기기 안 OCR이 읽은 것이 확인됐으면 local_ocr이다', () => {
+    expect(
+      limitCauseFor({ ...NONE, localOnly: true, localOcrConfirmed: true }),
+    ).toBe('local_ocr');
+  });
+
+  it('서버로 읽은 판독을 버렸으면 dropped_ocr다', () => {
+    expect(limitCauseFor({ ...NONE, ocrDropped: true })).toBe('dropped_ocr');
+  });
+
+  it('제한할 까닭이 없으면 null이다', () => {
+    expect(limitCauseFor(NONE)).toBeNull();
+  });
+
+  // 확인 화면의 localOnly는 제한을 지키려고 넓게 잡은 묶음이다 — 기기 안 OCR로
+  // 읽은 값뿐 아니라, 읽을 때 기기가 오프라인으로 보고된 값과 출처가 남지 않은
+  // draft의 값도 들어 있다. 뒤의 둘은 서버가 읽은 값일 수 있다. 그 묶음 전체를
+  // 「이 기기에서 읽었다」고 기록하면 모르는 것을 단정하는 것이다.
+  it('서버 판독이 아닌 것으로 봤지만 기기 안 OCR인지 확인되지 않았으면 까닭을 적지 않는다', () => {
+    expect(limitCauseFor({ ...NONE, localOnly: true })).toBeNull();
+  });
+
+  it('출처를 모르면 버린 판독도 까닭으로 적지 않는다 — 그 판독이 서버 판독이었는지 모른다', () => {
+    expect(
+      limitCauseFor({ ...NONE, localOnly: true, ocrDropped: true }),
+    ).toBeNull();
+  });
+
+  it('겹치면 출처가 먼저다 — 기기 안 OCR로 읽은 판독이 버려져도 local_ocr로 남는다', () => {
+    // 출처는 바꿔 적지 않는다(formDraftModel.ts의 AnalysisSource). 버린 판독이
+    // 까닭이 되는 것은 서버로 읽은 판독을 버렸을 때뿐이다.
+    expect(
+      limitCauseFor({
+        ...NONE,
+        localOnly: true,
+        localOcrConfirmed: true,
+        ocrDropped: true,
+      }),
+    ).toBe('local_ocr');
+    expect(
+      limitCauseFor({
+        manual: true,
+        localOnly: true,
+        localOcrConfirmed: true,
+        ocrDropped: true,
+      }),
+    ).toBe('manual');
+  });
+
+  it('확인 표시만 있고 서버 판독이 아니라고 본 적이 없으면 무시한다', () => {
+    // localOcrConfirmed는 localOnly일 때만 뜻이 있다.
+    expect(limitCauseFor({ ...NONE, localOcrConfirmed: true })).toBeNull();
   });
 });

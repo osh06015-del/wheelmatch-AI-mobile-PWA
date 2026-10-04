@@ -4,7 +4,7 @@
 // sessionStorage에서 온다. 형태가 어긋난 값이 그대로 넘어가면
 //   · {year, month}가 아닌 유효기한 — 유효기한 규칙을 통과해 "적합"이 보인다
 //   · 목록에 없는 종류 — 엔진이 예외를 던져 화면이 죽는다
-//   · 읽지 못한 오프라인 표시 — 온라인으로 읽혀 오프라인 제한이 풀린다
+//   · 읽지 못한 제한 표시 — 온라인으로 읽혀 제한 대조가 풀린다
 //   · 종료시각을 읽지 못하는 시험운전 타이머 — 기다리지 않고 답할 수 있다
 //
 // 순수 함수 테스트는 "화면이 그 값을 실제로 받지 않는지"를 증명하지 못한다. 여기서는
@@ -238,9 +238,20 @@ describe('결과 화면 — 새로고침으로 되살아난 값', () => {
     expect(screen.getByText('판정불가')).toBeInTheDocument();
     expect(
       screen.getByText(
-        '오프라인 제한 대조입니다. 작업자가 입력한 값으로만 대조해 적합 판정을 제공하지 않습니다. 연결되면 서버 재분석을 직접 선택할 수 있습니다.',
+        '제한 대조입니다. 확정한 값을 뒷받침하는 서버 판독이 확인되지 않아 적합 판정을 제공하지 않습니다. 풀려면 서버 재분석이나 다시 촬영이 필요합니다.',
       ),
     ).toBeInTheDocument();
+    // 표시를 읽지 못해 엄격한 쪽으로 본 것이다. 서버로 읽은 점검일 수도 있으므로
+    // 까닭을 지어내지 않는다 — 직접 입력했다거나 서버에 닿지 못했다고 적지 않는다.
+    expect(
+      screen.getByText('그라인더: 제한된 까닭이 기록되지 않았습니다.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('숫돌: 제한된 까닭이 기록되지 않았습니다.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/오프라인/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/서버에 닿지/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/직접 입력한 값/)).not.toBeInTheDocument();
     // 적합 조합에서만 여는 시험운전도 열리지 않는다.
     checkAll();
     expect(screen.queryByText('시험운전')).not.toBeInTheDocument();

@@ -48,7 +48,7 @@ import {
   startTrialRun,
 } from '@/lib/safety/trialRun';
 import { isWheelConditionComplete } from '@/lib/safety/wheelCondition';
-import { useInspection } from '@/lib/state/inspection';
+import { limitCausesOf, useInspection } from '@/lib/state/inspection';
 import type {
   SafetyChecklist,
   TrialRunFinding,
@@ -182,7 +182,7 @@ export default function ResultPage() {
             profile: profileFor(wheel.wheelType),
             declaredPurpose,
             today,
-            // 서버 분석 없이 직접 넣은 단계가 있으면 적합을 내지 않는다.
+            // 제한 대조로 확정한 단계가 있으면 적합을 내지 않는다.
             analysisMode,
           })
         : null,
@@ -255,8 +255,8 @@ export default function ResultPage() {
   const scopeLimited = result.checks.some(
     (check) => check.detail?.code === 'profileScope.limited',
   );
-  // 오프라인 제한 대조라 판정불가인가. 부속품 범위보다 먼저 알린다 — 연결이
-  // 돌아오면 작업자가 직접 풀 수 있는(재분석) 원인이기 때문이다.
+  // 제한 대조라 판정불가인가. 부속품 범위보다 먼저 알린다 — 작업자가 직접 풀 수
+  // 있는(서버 재분석·다시 촬영) 원인이기 때문이다.
   const offlineLimited = analysisMode === 'offline_limited';
   // 부속품 Profile과 입력을 맞춰 본다. 판정(result)과 따로다 — 여기 결과는
   // verdict를 바꾸지 않는다. Profile이 없는 종류는 조건표가 없다고만 알린다.
@@ -268,7 +268,7 @@ export default function ResultPage() {
   const conditionKeys = conditionItemsFor(wheel.wheelType);
   // 시험운전 근거(제122조 ②)가 확인된 종류에만 시험운전을 열고 요구한다.
   // Profile이 없는 종류는 어차피 판정불가라 열리지 않는다.
-  // 오프라인 제한 대조에서는 판정이 적합이 될 수 없지만, 시험운전 진입도 따로 막는다 —
+  // 제한 대조에서는 판정이 적합이 될 수 없지만, 시험운전 진입도 따로 막는다 —
   // 규칙이 바뀌어도 이 경로로 시험운전이 열리지 않게 한다.
   const trialRunPolicyVerified =
     profile?.trialRunPolicy === 'kr_osh_122' && !offlineLimited;
@@ -372,6 +372,7 @@ export default function ResultPage() {
     try {
       // 두 시간이 같은 끝 시각을 쓰게 한다. 따로 읽으면 몇 ms씩 어긋난다.
       const savedAt = Date.now();
+      const limitCauses = limitCausesOf(offlineSlots);
       await saveInspection({
         grinder,
         wheel,
@@ -411,6 +412,11 @@ export default function ResultPage() {
         wheelImage: (withPhotos ? wheelImage : null) ?? undefined,
         ruleVersion: RULESET_VERSION,
         analysisMode,
+        // 제한된 단계와 그 까닭. 제한 대조가 아니면 남기지 않는다 — 빈 객체로도
+        // 두지 않아, 온라인 기록의 모양이 이 값을 적기 전과 같다.
+        ...(Object.keys(limitCauses).length > 0
+          ? { analysisLimitCauses: limitCauses }
+          : {}),
         createdAt: new Date().toISOString(),
       });
       setSaved(true);

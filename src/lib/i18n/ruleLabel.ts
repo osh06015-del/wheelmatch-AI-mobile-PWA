@@ -7,7 +7,7 @@
 // 짝이 없는 규칙이 생기면 화면에는 엔진의 한국어 이름이 그대로 나온다.
 // 빈 칸이 되지는 않는다. 짝이 빠지지 않았는지는 테스트가 지킨다.
 
-import { RULE } from '@/lib/rules/engine';
+import { RULE, currentRuleName } from '@/lib/rules/engine';
 import type { Translate } from './index';
 import type { MessageKey } from './messages/ko';
 
@@ -16,9 +16,18 @@ import type { MessageKey } from './messages/ko';
  *
  * 짝이 없으면 엔진이 낸 한국어 이름을 그대로 쓴다. 빈 칸이 되지 않게 하려는 것이다.
  * 결과 화면과 이력 화면이 같은 이름을 쓰도록 여기 한 곳에 둔다.
+ *
+ * 이름을 바꾸기 전에 저장된 기록은 옛 이름을 갖고 있다. 지금 이름으로 읽은 뒤
+ * 짝을 찾는다 — 안 그러면 그 기록만 옛 한국어 이름이 그대로 나온다.
  */
 export function ruleLabelText(rule: string, t: Translate): string {
-  const key = RULE_MESSAGE_KEY[rule];
+  const current = currentRuleName(rule);
+  // 표에 실제로 있는 이름만 찾는다. 기록에서 읽은 이름은 아무 문자열이나 될 수 있어
+  // (백업으로 들여온 기록), 객체에 원래 있는 이름(constructor 등)을 문구 키로 읽으면
+  // 라벨이 비고 내보낸 문서를 만들다 멈춘다.
+  const key = Object.prototype.hasOwnProperty.call(RULE_MESSAGE_KEY, current)
+    ? RULE_MESSAGE_KEY[current]
+    : undefined;
   return key ? t(key) : rule;
 }
 

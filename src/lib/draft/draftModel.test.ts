@@ -23,7 +23,7 @@ import {
 } from '@/lib/i18n/profileLabels';
 import { canSaveInspection } from '@/lib/safety/saveGuard';
 import { isTrialRunStopped } from '@/lib/safety/trialRun';
-import type { InspectionSnapshot } from '@/lib/state/inspection';
+import { limitCausesOf, type InspectionSnapshot } from '@/lib/state/inspection';
 import type {
   CaptureQualityCheck,
   CaptureQualityMetrics,
@@ -292,6 +292,72 @@ describe('recoverDraft — 손상·불일치', () => {
 
     expect(recovery.warnings).toContain('schema');
     expect(recovery.snapshot?.offlineSlots.grinder).toBe(true);
+    // 표시를 읽지 못해 엄격하게 본 것이다. 까닭을 지어내지 않는다.
+    expect(
+      recovery.snapshot && limitCausesOf(recovery.snapshot.offlineSlots),
+    ).toEqual({ grinder: 'unknown', wheel: 'unknown' });
+  });
+
+  it('제한된 까닭도 함께 저장하고 되살린다', () => {
+    const recovery = recoverDraft(
+      stored(
+        buildDraft(
+          snapshot({
+            offlineSlots: {
+              grinder: true,
+              wheel: true,
+              causes: { grinder: 'manual', wheel: 'dropped_ocr' },
+            },
+          }),
+          NOW,
+        ),
+      ),
+    );
+
+    expect(recovery.warnings).toEqual([]);
+    expect(recovery.snapshot?.offlineSlots).toEqual({
+      grinder: true,
+      wheel: true,
+      causes: { grinder: 'manual', wheel: 'dropped_ocr' },
+    });
+  });
+
+  it('까닭을 남기기 전에 저장된 draft는 제한을 그대로 되살리고 까닭은 unknown으로 읽는다', () => {
+    const recovery = recoverDraft(
+      stored(
+        buildDraft(
+          snapshot({ offlineSlots: { grinder: true, wheel: false } }),
+          NOW,
+        ),
+      ),
+    );
+
+    expect(recovery.warnings).toEqual([]);
+    expect(recovery.snapshot?.offlineSlots).toEqual({
+      grinder: true,
+      wheel: false,
+    });
+    expect(
+      recovery.snapshot && limitCausesOf(recovery.snapshot.offlineSlots),
+    ).toEqual({ grinder: 'unknown' });
+  });
+
+  it('어긋난 까닭은 까닭만 버린다 — 제한은 그대로이고 값을 버렸다고 경고하지 않는다', () => {
+    const draft = stored(buildDraft(snapshot(), NOW)) as {
+      state: Record<string, unknown>;
+    };
+    draft.state.offlineSlots = {
+      grinder: true,
+      wheel: false,
+      causes: { grinder: 'server' },
+    };
+    const recovery = recoverDraft(draft);
+
+    expect(recovery.warnings).toEqual([]);
+    expect(recovery.snapshot?.offlineSlots).toEqual({
+      grinder: true,
+      wheel: false,
+    });
   });
 
   it('일부 사진 Blob이 빠졌으면 가능한 값만 복구하고 경고한다', () => {

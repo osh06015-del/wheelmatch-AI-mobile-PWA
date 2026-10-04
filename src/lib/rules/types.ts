@@ -660,10 +660,43 @@ export type ReasonCode =
  * 판독 경로.
  *
  *   online          — 서버 분석(또는 기존 로컬 OCR)으로 읽은 값을 작업자가 확인했다
- *   offline_limited — 서버에 닿지 못해 작업자가 직접 넣은 값으로만 대조했다.
- *                     RPM·지름 위반은 부적합으로 막되 적합은 내지 않는다
+ *   offline_limited — 제한 대조. 확정한 값을 뒷받침하는 서버 판독이 확인되지 않아
+ *                     작업자가 확인한 값으로만 대조했다. RPM·지름 위반은
+ *                     부적합으로 막되 적합은 내지 않는다
+ *
+ * offline_limited라는 값은 기기가 오프라인이었다는 뜻이 아니다. 처음에는 서버에 닿지
+ * 못해 직접 입력한 경우만 있었고 그때 붙은 이름이다 — 기록·CSV·백업에 저장된 값이라
+ * 바꾸지 않는다. 왜 제한됐는지는 AnalysisLimitCause가 따로 말한다.
  */
 export type AnalysisMode = 'online' | 'offline_limited';
+
+/**
+ * 한 단계(명판·숫돌 라벨)가 제한 대조가 된 까닭.
+ *
+ *   manual      — 서버에 닿지 못해 작업자가 명판·라벨을 보고 직접 입력했다
+ *   local_ocr   — 기기 안 OCR 엔진이 읽은 것이 확인됐다. 확인 화면의 출처
+ *                 local_ocr(formDraftModel.ts의 AnalysisSource)보다 좁다 — 그쪽은
+ *                 제한을 지키려고 넓게 잡은 묶음이다
+ *   dropped_ocr — 확인 화면 draft에 저장된 서버 판독을 읽을 수 없어 통째로 버린 채
+ *                 확정했다. 기기는 오프라인이 아니었고 서버 분석도 거쳤다
+ *   unknown     — 까닭을 적을 수 없다. 서버 판독이 아닌 것으로 보고 제한했지만
+ *                 기기 안 OCR인지 확인되지 않았거나(읽을 때 기기가 오프라인으로
+ *                 보고됐을 뿐인 판독, 출처가 남지 않은 확인 화면 draft), 까닭을
+ *                 적기 전 형식으로 저장된 진행 중 점검이거나, 판독 경로 표시를
+ *                 읽지 못해 엄격한 쪽으로 본 경우다. 추정해 채우지 않는다
+ *
+ * **판정에는 쓰지 않는다.** 까닭이 무엇이든 제한 대조는 적합을 내지 않는다
+ * (checkAnalysisMode). 기록과 화면이 사실대로 말하기 위한 값이다 — 까닭을 남기지
+ * 않으면 네 경우가 offline_limited 한 값으로 섞여, 서버 분석을 거친 점검이
+ * 「오프라인」으로 읽힌다. 이 값을 제한을 푸는 근거로 쓰지 않는다.
+ */
+export type AnalysisLimitCause =
+  'manual' | 'local_ocr' | 'dropped_ocr' | 'unknown';
+
+/** 제한 대조가 된 단계와 그 까닭. 제한되지 않은 단계는 키가 없다 */
+export type AnalysisLimitCauses = Partial<
+  Record<'grinder' | 'wheel', AnalysisLimitCause>
+>;
 
 /**
  * 사유를 고른 언어로 다시 만들기 위한 코드와 값.
@@ -923,5 +956,17 @@ export interface InspectionRecord {
    * offline_limited 기록은 적합을 낼 수 없었던 판정이다.
    */
   analysisMode?: AnalysisMode;
+  /**
+   * 제한 대조가 된 단계와 그 까닭. 제한되지 않은 단계는 키가 없다.
+   *
+   * offline_limited 기록에만 있다. 2026-10-04 이전에 저장된 제한 대조 기록에는
+   * 없다 — 그 기록은 어느 단계가 왜 제한됐는지 남기지 않았다. 없다고 추정해
+   * 채우지 않는다(직접 입력과 버린 판독은 확정한 값만으로는 구분되지 않는다).
+   *
+   * 저장하는 순간에 제한돼 있는 단계만 적는다. 서버 재분석으로 풀린 단계의 까닭은
+   * 남기지 않는다 — 풀린 단계에 까닭이 남으면 제한 여부와 어긋난다. 그래서 풀려서
+   * online으로 저장된 기록에서는 처음에 왜 제한됐었는지 알 수 없다.
+   */
+  analysisLimitCauses?: AnalysisLimitCauses;
   createdAt: string;
 }

@@ -136,6 +136,7 @@ describe('recoverGrinderFormDraft', () => {
       ocr: null,
       droppedOcr: null,
       analysisSource: 'manual',
+      localOcrConfirmed: false,
     });
   });
 
@@ -255,6 +256,72 @@ describe('recoverGrinderFormDraft', () => {
       ocr: null,
     });
     expect(recovered?.analysisSource).toBe('local_ocr');
+  });
+
+  describe('기기 안 OCR이 읽은 것이 확인됐는가', () => {
+    // local_ocr은 제한을 지키려고 넓게 잡은 묶음이다. 출처를 읽지 못해 보수적으로
+    // 둔 값도, 읽을 때 기기가 오프라인으로 보고된 값도 여기 들어 있다. 그 전부를
+    // 「이 기기에서 읽었다」고 기록에 적지 않도록, 엔진이 확인된 경우만 따로 표시한다.
+    const draft = (extra: Record<string, unknown>) => ({
+      fields: EMPTY_GRINDER_FORM_FIELDS,
+      photo: null,
+      ocr: null,
+      ...extra,
+    });
+
+    it('표시가 있고 출처가 local_ocr이면 확인된 것이다', () => {
+      const recovered = recoverGrinderFormDraft(
+        draft({ analysisSource: 'local_ocr', localOcrConfirmed: true }),
+      );
+      expect(recovered?.analysisSource).toBe('local_ocr');
+      expect(recovered?.localOcrConfirmed).toBe(true);
+    });
+
+    it('출처가 남지 않아 local_ocr로 둔 draft는 확인된 것이 아니다 — 제한은 그대로다', () => {
+      for (const legacy of [draft({ offline: false }), draft({})]) {
+        const recovered = recoverGrinderFormDraft(legacy);
+        expect(recovered?.analysisSource).toBe('local_ocr');
+        expect(recovered?.localOcrConfirmed).toBe(false);
+      }
+    });
+
+    it('출처 값이 어긋나 local_ocr로 둔 draft도 확인된 것이 아니다 — 표시가 있어도 믿지 않는다', () => {
+      const recovered = recoverGrinderFormDraft(
+        draft({ analysisSource: 'cloud', localOcrConfirmed: true }),
+      );
+      expect(recovered?.analysisSource).toBe('local_ocr');
+      expect(recovered?.localOcrConfirmed).toBe(false);
+    });
+
+    it('표시 없이 저장된 local_ocr draft는 확인된 것이 아니다', () => {
+      // 이 표시를 적기 전에 저장된 draft다. 기기 안 OCR로 읽었는지, 읽을 때 기기가
+      // 오프라인으로 보고됐는지 이 draft만으로는 알 수 없다.
+      const recovered = recoverGrinderFormDraft(
+        draft({ analysisSource: 'local_ocr' }),
+      );
+      expect(recovered?.localOcrConfirmed).toBe(false);
+    });
+
+    it.each([['server'], ['manual']])(
+      '출처가 %s면 표시가 있어도 뜻이 없다',
+      (analysisSource) => {
+        const recovered = recoverGrinderFormDraft(
+          draft({ analysisSource, localOcrConfirmed: true }),
+        );
+        expect(recovered?.analysisSource).toBe(analysisSource);
+        expect(recovered?.localOcrConfirmed).toBe(false);
+      },
+    );
+
+    it.each([['true'], [1], [{}], [null]])(
+      'true가 아닌 표시(%o)는 믿지 않는다',
+      (localOcrConfirmed) => {
+        const recovered = recoverGrinderFormDraft(
+          draft({ analysisSource: 'local_ocr', localOcrConfirmed }),
+        );
+        expect(recovered?.localOcrConfirmed).toBe(false);
+      },
+    );
   });
 });
 
@@ -571,6 +638,38 @@ describe('recoverWheelFormDraft', () => {
       offline: false,
     });
     expect(recovered?.analysisSource).toBe('local_ocr');
+    // 제한은 지키되, 기기 안 OCR로 읽었다고 확인된 것은 아니다.
+    expect(recovered?.localOcrConfirmed).toBe(false);
+  });
+
+  it('기기 안 OCR이 읽은 것이 확인됐다는 표시는 출처가 local_ocr일 때만 되살린다', () => {
+    const draft = (extra: Record<string, unknown>) => ({
+      fields: EMPTY_WHEEL_FORM_FIELDS,
+      photo: null,
+      ocr: null,
+      ...extra,
+    });
+
+    expect(
+      recoverWheelFormDraft(
+        draft({ analysisSource: 'local_ocr', localOcrConfirmed: true }),
+      )?.localOcrConfirmed,
+    ).toBe(true);
+    expect(
+      recoverWheelFormDraft(draft({ analysisSource: 'local_ocr' }))
+        ?.localOcrConfirmed,
+    ).toBe(false);
+    expect(
+      recoverWheelFormDraft(
+        draft({ analysisSource: 'server', localOcrConfirmed: true }),
+      )?.localOcrConfirmed,
+    ).toBe(false);
+    // 출처 값이 어긋나 보수적으로 local_ocr로 둔 것은 확인된 것이 아니다.
+    expect(
+      recoverWheelFormDraft(
+        draft({ analysisSource: 'cloud', localOcrConfirmed: true }),
+      )?.localOcrConfirmed,
+    ).toBe(false);
   });
 });
 

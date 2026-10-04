@@ -52,6 +52,25 @@ const VERDICT_NOTE: Record<Verdict, MessageKey> = {
 };
 
 /**
+ * 판정 아래에 적는 한 줄.
+ *
+ * 제한 대조로 판정불가인 결과에는 일반 문구(「값이 부족해… 값을 직접 입력하세요」)를
+ * 쓰지 않는다. 규격이 다 있어도 제한 대조면 판정불가라 값이 부족하다는 말이 맞지
+ * 않고, 직접 입력해서 제한 대조가 된 작업자에게 다시 직접 입력하라고 하면 같은
+ * 자리로 되돌아온다. 값까지 빠진 제한 대조도 이 문구다 — 빠진 값은 아래 검사
+ * 항목에 나오고, 채워도 제한 대조는 남는다. 저장된 기록도 같은 기준으로 읽도록
+ * 규칙 이름이 아니라 사유 코드로 본다 — 이름은 바뀐 적이 있다.
+ */
+function verdictNoteKey(result: MatchResult): MessageKey {
+  const limited =
+    result.verdict === 'UNDETERMINED' &&
+    result.checks.some(
+      (check) => check.detail?.code === 'analysisMode.offlineLimited',
+    );
+  return limited ? 'verdict.note.limited' : VERDICT_NOTE[result.verdict];
+}
+
+/**
  * 보여주는 순서.
  *
  * 맞지 않는 것 → 읽지 못한 것 → 직접 확인할 것 → 확인된 것.
@@ -175,7 +194,7 @@ export function ResultCard({ result, grinder, wheel }: ResultCardProps) {
       </div>
 
       <p className="text-base leading-relaxed text-slate-300">
-        {t(VERDICT_NOTE[result.verdict])}
+        {t(verdictNoteKey(result))}
       </p>
 
       {/* 어떤 기계로 점검했는지. 이력에서 다시 볼 때도 필요하다. */}

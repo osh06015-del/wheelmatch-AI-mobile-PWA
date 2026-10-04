@@ -47,7 +47,7 @@ import {
   EMPTY_GRINDER_CONDITION,
   isGrinderConditionComplete,
 } from '@/lib/safety/grinderCondition';
-import { useInspection } from '@/lib/state/inspection';
+import { limitCauseFor, useInspection } from '@/lib/state/inspection';
 import type {
   CaptureQualityMetrics,
   GrinderCondition,
@@ -99,13 +99,18 @@ export default function GrinderScanPage() {
   const [error, setError] = useState<unknown>(null);
   // 사진 상태 경고와 이 자리에서 사진을 넣은 횟수. 명판 사진 한 자리에 대한 것이다.
   const [review, setReview] = useState<CaptureReview | null>(null);
-  // 서버에 닿지 못해 작업자가 값을 직접 넣는 중인가(오프라인 제한 대조).
+  // 서버에 닿지 못해 작업자가 값을 직접 넣는 중인가(제한 대조).
   // 이 명판 값으로 대조한 결과는 적합이 될 수 없다(engine.ts의 checkAnalysisMode).
   const [offline, setOffline] = useState(false);
   // 서버 분석이 아니라 로컬 OCR(tesseract)로 읽었거나 기기가 오프라인이었는가.
   // 값은 있지만(직접 입력이 아니다) 두 번째 눈(서버 대조) 없이 읽은 값이라
   // offline과 같은 제한 판정으로 취급한다(setOfflineSlot에서 합친다).
   const [localOnly, setLocalOnly] = useState(false);
+  // localOnly 가운데 기기 안 OCR 엔진이 읽은 것이 확인된 경우인가. localOnly는 제한을
+  // 지키려고 넓게 잡은 묶음이다 — 읽을 때 기기가 오프라인으로 보고된 값과 출처가 남지
+  // 않은 draft의 값도 들어 있고, 그 값은 서버가 읽은 것일 수 있다. 기록에 「이 기기에서
+  // 읽었다」고 남기는 것은 이 표시가 있을 때뿐이다. 제한 여부에는 쓰지 않는다.
+  const [localOcrConfirmed, setLocalOcrConfirmed] = useState(false);
   // 복원한 draft의 OCR을 읽을 수 없어 버린 경우의 흔적. 버렸다고 알린다 — 조용히
   // 버리면 신뢰도가 왜 낮음으로 떨어졌는지 화면이 말하지 않는다. 이대로 확정한 값은
   // 제한 대조로 나간다(ocrDropped). 그 명판 사진의 판독에 대한 것이라 새 사진을
@@ -139,6 +144,7 @@ export default function GrinderScanPage() {
       // 배지 문구가 서로 다르므로 하나의 불리언으로 합쳐 두지 않는다.
       setOffline(recovered.analysisSource === 'manual');
       setLocalOnly(recovered.analysisSource === 'local_ocr');
+      setLocalOcrConfirmed(recovered.localOcrConfirmed);
       if (recovered.photo) {
         setPhoto(recovered.photo);
         setPhase('confirm');
@@ -168,10 +174,25 @@ export default function GrinderScanPage() {
         // offline·localOnly를 하나의 출처 값으로 남긴다 — 복구할 때 배지 문구를
         // (직접 입력 vs 로컬 OCR) 그대로 되살리기 위해서다.
         analysisSource: offline ? 'manual' : localOnly ? 'local_ocr' : 'server',
+        // 기기 안 OCR 엔진이 읽은 것이 확인됐다는 표시. 출처(local_ocr)만으로는
+        // 그것을 알 수 없어 따로 남긴다 — 빠뜨리면 새로고침 한 번에 까닭을 잃는다.
+        ...(localOnly && !offline && localOcrConfirmed
+          ? { localOcrConfirmed: true as const }
+          : {}),
       });
     }, FORM_DRAFT_SAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [phase, form, mounting, photo, ocr, droppedOcr, offline, localOnly]);
+  }, [
+    phase,
+    form,
+    mounting,
+    photo,
+    ocr,
+    droppedOcr,
+    offline,
+    localOnly,
+    localOcrConfirmed,
+  ]);
 
   /**
    * 새 사진을 받는다.
@@ -194,6 +215,7 @@ export default function GrinderScanPage() {
     setUserConfirmed(false);
     setOffline(false);
     setLocalOnly(false);
+    setLocalOcrConfirmed(false);
     setDroppedOcr(null);
     // 이전 사진에 대한 확인 화면 draft는 이제 근거가 없다.
     void formDraftStore.remove('grinder');
@@ -234,7 +256,11 @@ export default function GrinderScanPage() {
       // 서버 분석이 아니라 로컬 OCR로 읽었거나(엔진이 tesseract) 기기가
       // 오프라인이면, 값은 있어도 서버라는 두 번째 눈이 없었던 것이다.
       // 직접 입력(offline)과 같은 제한 판정으로 남긴다.
-      setLocalOnly(telemetry?.engine === 'tesseract' || !navigator.onLine);
+      const byDeviceOcr = telemetry?.engine === 'tesseract';
+      setLocalOnly(byDeviceOcr || !navigator.onLine);
+      // 「이 기기에서 읽었다」고 기록할 수 있는 것은 엔진이 확인된 경우뿐이다.
+      // 기기가 오프라인으로 보고됐다는 것만으로 서버가 읽지 않았다고 단정하지 않는다.
+      setLocalOcrConfirmed(byDeviceOcr);
       setForm({
         model: spec.model ?? '',
         noLoadRPM: fromNumber(spec.noLoadRPM),
@@ -262,6 +288,7 @@ export default function GrinderScanPage() {
     actedRef.current = true;
     setOffline(true);
     setLocalOnly(false);
+    setLocalOcrConfirmed(false);
     setOcr(null);
     setOcrTelemetry(null);
     setForm({ model: '', noLoadRPM: '', maxWheelDiameter: '' });
@@ -330,13 +357,26 @@ export default function GrinderScanPage() {
     setGrinder(spec, photo, ocr, captureMetrics, ocrTelemetry);
     setGrinderCondition(condition);
     setCaptureCheck('grinder', toCaptureQualityCheck(review));
-    // setGrinder가 오프라인 표시를 지운다. 그 뒤에 이번 명판의 판독 경로를 넣는다.
+    // setGrinder가 제한 표시를 지운다. 그 뒤에 이번 명판의 판독 경로를 넣는다.
     // 직접 입력(offline)과 로컬 OCR(localOnly) 모두 서버 대조 없이 읽은 값이다.
     // 저장된 판독을 통째로 버린 경우(ocrDropped)도 제한 대조로 남긴다. 서버 분석을
     // 거쳤더라도 지금 내놓을 판독이 없고, 여기서 확정하는 값은 직접 입력과 내용이
     // 같다 — draft에 남은 출처만 믿고 온라인으로 내보내면 작업자의 확인만으로
     // 적합까지 간다.
-    setOfflineSlot('grinder', offline || localOnly || ocrDropped);
+    //
+    // 까닭도 함께 남긴다. 제한 여부(둘째 인자)와 따로 넘긴다 — 까닭을 고르는 쪽이
+    // 틀려도 제한이 풀리지 않는다. 확정한 뒤에는 이 화면의 draft가 지워져, 여기서
+    // 남기지 않으면 결과 화면과 기록은 왜 제한됐는지 알 길이 없다.
+    setOfflineSlot(
+      'grinder',
+      offline || localOnly || ocrDropped,
+      limitCauseFor({
+        manual: offline,
+        localOnly,
+        localOcrConfirmed,
+        ocrDropped,
+      }),
+    );
     // 확정됐다. 확인 화면 draft는 더 이상 필요 없다 — 진행 중 점검 복구가 이 값을 대신 지킨다.
     void formDraftStore.remove('grinder');
     router.push('/scan/wheel');

@@ -130,6 +130,17 @@ describe('점검 흐름 E2E — 저장된 AI 판독을 읽을 수 없게 된 확
     expect(document.body).toHaveTextContent(
       f.t('result.undetermined.offlineLimited'),
     );
+    // 이 점검은 기기가 오프라인이 아니었고 서버 분석까지 거쳤다. 결과 화면은
+    // 확인 화면과 같은 사실을 말한다 — 오프라인이었다거나 직접 입력했다고 하지 않는다.
+    expect(document.body).toHaveTextContent(
+      `${f.t('common.wheel')}: ${f.t('offline.cause.ocrDropped')}`,
+    );
+    expect(document.body).not.toHaveTextContent('오프라인');
+    expect(document.body).not.toHaveTextContent('서버 분석 없이');
+    expect(document.body).not.toHaveTextContent(f.t('offline.cause.manual'));
+    expect(document.body).not.toHaveTextContent(
+      '값이 부족해 판정할 수 없습니다',
+    );
     await f.completeChecklist();
     expect(
       screen.queryByRole('heading', { name: f.t('trialRun.title') }),
@@ -139,6 +150,8 @@ describe('점검 흐름 E2E — 저장된 AI 판독을 읽을 수 없게 된 확
     await f.atPath('/history');
     const [record] = savedRecords();
     expect(record.analysisMode).toBe('offline_limited');
+    // 확정한 값만 보면 직접 입력과 구분되지 않는다. 까닭을 따로 남겨야 가려진다.
+    expect(record.analysisLimitCauses).toEqual({ wheel: 'dropped_ocr' });
     expect(record.result.verdict).toBe('UNDETERMINED');
     expect(record.trialRun).toBeUndefined();
     // 버린 판독은 기록의 OCR 원본으로 남지 않는다. 확정한 값은 직접 입력과 같다.
@@ -180,6 +193,7 @@ describe('점검 흐름 E2E — 저장된 AI 판독을 읽을 수 없게 된 확
 
     const [record] = savedRecords();
     expect(record.analysisMode).toBe('online');
+    expect(record.analysisLimitCauses).toBeUndefined();
     expect(record.result.verdict).toBe('COMPATIBLE');
     // 적합으로 끝난 기록에는 모델이 읽은 원본이 있다 — 재분석이 다시 읽은 값이다.
     expect(record.wheelOcr).toEqual(wheelLabel());
@@ -251,6 +265,8 @@ describe('점검 흐름 E2E — 저장된 AI 판독을 읽을 수 없게 된 확
     await f.atPath('/history');
     const [record] = savedRecords();
     expect(record.analysisMode).toBe('offline_limited');
+    // 제한된 것은 명판 단계뿐이다. 서버로 읽은 숫돌 단계에는 까닭이 없다.
+    expect(record.analysisLimitCauses).toEqual({ grinder: 'dropped_ocr' });
     expect(record.result.verdict).toBe('UNDETERMINED');
     expect(record.grinderOcr).toBeUndefined();
     expect(record.grinder.confidence).toBe('high');

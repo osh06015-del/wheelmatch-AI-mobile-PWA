@@ -51,7 +51,7 @@ export class ExtractError extends Error {
 /**
  * 서버에 닿지 못한 실패인가(오프라인·연결 끊김).
  *
- * 이 경우에만 오프라인 제한 대조로 직접 입력하는 길을 연다. 서버가 오류를
+ * 이 경우에만 제한 대조로 직접 입력하는 길을 연다. 서버가 오류를
  * 돌려준 경우(rate_limited·upstream 등)는 연결 문제가 아니라 다시 시도할 일이다.
  */
 export function isNetworkFailure(error: unknown): boolean {

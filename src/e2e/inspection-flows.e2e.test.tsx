@@ -617,7 +617,7 @@ describe('점검 흐름 E2E — Gate와 시험운전', () => {
   });
 });
 
-describe('점검 흐름 E2E — 오프라인 제한 대조와 재연결', () => {
+describe('점검 흐름 E2E — 제한 대조와 서버 재분석', () => {
   /** 명판 분석이 네트워크로 실패해 직접 입력으로 넘어가고, 숫돌은 온라인으로 읽어 결과까지 간다 */
   async function openOfflineResult(
     f: ReturnType<typeof inspector>,
@@ -667,6 +667,11 @@ describe('점검 흐름 E2E — 오프라인 제한 대조와 재연결', () => 
     expect(document.body).toHaveTextContent(
       f.t('result.undetermined.offlineLimited'),
     );
+    // 왜 제한됐는지를 기록된 대로 적는다 — 명판을 직접 입력했고, 숫돌은 서버로 읽었다.
+    expect(document.body).toHaveTextContent(
+      `${f.t('common.grinder')}: ${f.t('offline.cause.manual')}`,
+    );
+    expect(document.body).not.toHaveTextContent(`${f.t('common.wheel')}: `);
     await f.completeChecklist();
     expect(
       screen.queryByRole('heading', { name: f.t('trialRun.title') }),
@@ -676,14 +681,16 @@ describe('점검 흐름 E2E — 오프라인 제한 대조와 재연결', () => 
     await f.atPath('/history');
     const [record] = savedRecords();
     expect(record.analysisMode).toBe('offline_limited');
+    expect(record.analysisLimitCauses).toEqual({ grinder: 'manual' });
     expect(record.result.verdict).toBe('UNDETERMINED');
     expect(record.grinderOcr).toBeUndefined();
     expect(record.trialRun).toBeUndefined();
-    expect(
-      record.result.checks.some(
-        (check) => check.detail?.code === 'analysisMode.offlineLimited',
-      ),
-    ).toBe(true);
+    const limited = record.result.checks.find(
+      (check) => check.detail?.code === 'analysisMode.offlineLimited',
+    );
+    // 기록에 남는 이름과 사유도 까닭을 단정하지 않는다.
+    expect(limited?.rule).toBe('제한 대조');
+    expect(limited?.reason).not.toMatch(/오프라인|서버 분석 없이|서버에 닿지/);
   });
 
   it('재연결 후 작업자가 재분석을 골라 AI 값이 같음을 확인하면 온라인 대조로 바뀐다', async () => {
@@ -714,6 +721,8 @@ describe('점검 흐름 E2E — 오프라인 제한 대조와 재연결', () => 
 
     const [record] = savedRecords();
     expect(record.analysisMode).toBe('online');
+    // 제한을 푼 점검의 기록에는 까닭이 남지 않는다.
+    expect(record.analysisLimitCauses).toBeUndefined();
     expect(record.grinder.noLoadRPM).toBe(11000);
     expect(record.grinderOcr).toEqual(GRINDER);
   });
@@ -896,7 +905,7 @@ describe('점검 흐름 E2E — 오프라인 제한 대조와 재연결', () => 
       await screen.findByRole('button', { name: f.t('offline.accept') }),
     );
 
-    // 오프라인 제한은 풀렸다. 막는 것은 표기 일치 규칙이다.
+    // 제한 대조는 풀렸다. 막는 것은 표기 일치 규칙이다.
     await waitFor(() =>
       expect(
         screen.queryByRole('heading', {

@@ -8,7 +8,7 @@
 // notVerifiable.ts·fieldGuide.ts와 같은 방식이다. 규칙 계층(src/lib/rules)에
 // 두지 않는 이유도 같다: 이 파일은 판정에 관여하지 않고 안내만 한다.
 
-import { RULE } from '@/lib/rules/engine';
+import { RULE, currentRuleName } from '@/lib/rules/engine';
 import type { MessageKey } from '@/lib/i18n';
 
 export interface EvidenceSource {
@@ -88,3 +88,18 @@ export const EVIDENCE_SOURCE: Readonly<Record<string, EvidenceSource>> = {
     limitKey: 'evidence.limit.confidence',
   },
 };
+
+/**
+ * 기록에 저장된 규칙 이름으로 근거를 찾는다.
+ *
+ * 이력 화면은 저장된 기록을 그대로 읽는다. 이름을 바꾸기 전에 저장된 기록은 옛
+ * 이름을 갖고 있어, 표를 바로 찾으면 그 항목만 근거 없이 나온다.
+ */
+export function evidenceSourceFor(rule: string): EvidenceSource | undefined {
+  const current = currentRuleName(rule);
+  // 표에 실제로 있는 이름만 찾는다. 객체에 원래 있는 이름(constructor 등)을
+  // 근거로 읽지 않는다.
+  return Object.prototype.hasOwnProperty.call(EVIDENCE_SOURCE, current)
+    ? EVIDENCE_SOURCE[current]
+    : undefined;
+}

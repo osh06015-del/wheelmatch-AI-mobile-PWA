@@ -176,7 +176,7 @@ describe('점검 기록 문서 — 사람이 읽는 형태', () => {
     expect(html).not.toContain('"onerror=');
   });
 
-  it('오프라인 제한 대조 기록은 그 한계를 함께 적는다', () => {
+  it('제한 대조 기록은 그 한계를 함께 적는다', () => {
     const html = buildReportHtml(
       [
         {
@@ -187,6 +187,115 @@ describe('점검 기록 문서 — 사람이 읽는 형태', () => {
       options,
     );
     expect(html).toContain(escapeHtml(t('offline.limit')));
+    // 문서를 받는 사람은 기기가 오프라인이었는지 알 길이 없다. 단정하지 않는다.
+    expect(html).not.toContain('오프라인');
+    expect(html).not.toContain('작업자가 입력한 값으로만');
+  });
+
+  it('제한 대조 기록은 단계별 까닭을 기록된 대로 적는다', () => {
+    const html = buildReportHtml(
+      [
+        {
+          record: record({
+            analysisMode: 'offline_limited',
+            analysisLimitCauses: { grinder: 'manual', wheel: 'dropped_ocr' },
+          }),
+          photos: [],
+        },
+      ],
+      options,
+    );
+    expect(html).toContain(
+      escapeHtml('그라인더: 서버에 닿지 못해 직접 입력한 값입니다.'),
+    );
+    expect(html).toContain(
+      escapeHtml(
+        '숫돌: 저장된 AI 판독을 읽을 수 없어 버린 뒤 확정한 값입니다.',
+      ),
+    );
+  });
+
+  it('제한되지 않은 단계의 까닭은 적지 않는다', () => {
+    const html = buildReportHtml(
+      [
+        {
+          record: record({
+            analysisMode: 'offline_limited',
+            analysisLimitCauses: { wheel: 'local_ocr' },
+          }),
+          photos: [],
+        },
+      ],
+      options,
+    );
+    expect(html).toContain(
+      escapeHtml('숫돌: 서버가 아니라 이 기기에서 읽은 값입니다.'),
+    );
+    expect(html).not.toContain(escapeHtml('그라인더: '));
+  });
+
+  it('까닭을 남기기 전에 저장된 제한 대조 기록은 까닭이 기록되지 않았다고만 적는다', () => {
+    // 어느 단계가 제한됐는지도 그 기록에는 없다. 단계와 까닭을 추정해 적지 않는다.
+    const html = buildReportHtml(
+      [
+        {
+          record: record({ analysisMode: 'offline_limited' }),
+          photos: [],
+        },
+      ],
+      options,
+    );
+    expect(html).toContain(escapeHtml('제한된 까닭이 기록되지 않았습니다.'));
+    expect(html).not.toContain('직접 입력한 값입니다');
+    expect(html).not.toContain(escapeHtml('그라인더: '));
+    expect(html).not.toContain(escapeHtml('숫돌: '));
+  });
+
+  it('기록에 든 값이 목록에 없어도 문서를 만든다 — 빈 문장이나 undefined를 찍지 않는다', () => {
+    // 백업으로 들여온 기록이나 다른 버전이 쓴 기록에는 지금 목록에 없는 규칙 이름·
+    // 까닭이 있을 수 있다. 문서 내보내기가 그 한 건 때문에 멈추면 안 된다.
+    const base = record();
+    const html = buildReportHtml(
+      [
+        {
+          record: record({
+            analysisMode: 'offline_limited',
+            analysisLimitCauses: {
+              grinder: 'server',
+            } as unknown as InspectionRecord['analysisLimitCauses'],
+            result: {
+              ...base.result,
+              checks: [
+                {
+                  rule: 'constructor',
+                  passed: null,
+                  reason: '알 수 없는 항목',
+                  grinderValue: null,
+                  wheelValue: null,
+                },
+              ],
+            },
+          }),
+          photos: [],
+        },
+      ],
+      options,
+    );
+
+    expect(html).toContain('constructor');
+    expect(html).toContain(
+      escapeHtml('그라인더: 제한된 까닭이 기록되지 않았습니다.'),
+    );
+    expect(html).not.toContain('undefined');
+  });
+
+  it('제한 대조가 아닌 기록에는 한계도 까닭도 적지 않는다', () => {
+    const html = buildReportHtml(
+      [{ record: record({ analysisMode: 'online' }), photos: [] }],
+      options,
+    );
+    expect(html).not.toContain(escapeHtml(t('offline.limit')));
+    expect(html).not.toContain('제한된 까닭');
   });
 
   describe('외관 손상 의심의 출처', () => {

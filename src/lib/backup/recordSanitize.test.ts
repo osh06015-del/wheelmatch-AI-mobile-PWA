@@ -212,6 +212,27 @@ describe('sanitizeInspectionRecord — 정상 라운드트립', () => {
     expect(sanitized && 'visibleDamageSources' in sanitized.wheel).toBe(false);
   });
 
+  it('제한 대조 기록의 단계별 까닭을 보존한다', () => {
+    const raw = fullRecordRaw();
+    raw.analysisMode = 'offline_limited';
+    raw.analysisLimitCauses = { grinder: 'manual', wheel: 'dropped_ocr' };
+    expect(sanitizeInspectionRecord(raw)).toEqual(raw);
+
+    raw.analysisLimitCauses = { wheel: 'local_ocr' };
+    expect(sanitizeInspectionRecord(raw)).toEqual(raw);
+
+    raw.analysisLimitCauses = { grinder: 'unknown' };
+    expect(sanitizeInspectionRecord(raw)).toEqual(raw);
+  });
+
+  it('까닭을 남기기 전에 저장된 제한 대조 기록은 까닭 없이 그대로 통과한다 — 채워 넣지 않는다', () => {
+    const raw = fullRecordRaw();
+    raw.analysisMode = 'offline_limited';
+    const record = sanitizeInspectionRecord(raw);
+    expect(record?.analysisMode).toBe('offline_limited');
+    expect(record).not.toHaveProperty('analysisLimitCauses');
+  });
+
   it('사진 없는 구기록(옵션 필드 전부 없음)도 통과한다', () => {
     const minimal = {
       id: 1,
@@ -373,6 +394,21 @@ describe('sanitizeInspectionRecord — 알 수 없는 속성은 어떤 깊이에
   });
 });
 
+describe('sanitizeInspectionRecord — 제한 까닭 자리의 알 수 없는 속성', () => {
+  it('단계가 아닌 속성은 버린다', () => {
+    const raw = fullRecordRaw();
+    raw.analysisMode = 'offline_limited';
+    raw.analysisLimitCauses = {
+      grinder: 'manual',
+      wheelBack: 'manual',
+      note: '<script>',
+    };
+    expect(sanitizeInspectionRecord(raw)?.analysisLimitCauses).toEqual({
+      grinder: 'manual',
+    });
+  });
+});
+
 describe('sanitizeInspectionRecord — 알려진 필드의 손상은 기록 전체를 무효로 만든다', () => {
   it('잘못된 enum(wheelType)은 무효다', () => {
     const raw = fullRecordRaw();
@@ -422,6 +458,18 @@ describe('sanitizeInspectionRecord — 알려진 필드의 손상은 기록 전�
   it('타입이 어긋난 필드(boolean이어야 할 자리에 문자열)는 무효다', () => {
     const raw = fullRecordRaw();
     (raw.checklist as Record<string, unknown>).guardCover = 'yes';
+    expect(sanitizeInspectionRecord(raw)).toBeNull();
+  });
+
+  it.each([
+    ['목록에 없는 까닭', { grinder: 'server' }],
+    ['문자열이 아닌 까닭', { wheel: true }],
+    ['객체가 아닌 값', 'manual'],
+    ['배열', ['manual']],
+  ])('어긋난 제한 까닭(%s)은 무효다', (_name, causes) => {
+    const raw = fullRecordRaw();
+    raw.analysisMode = 'offline_limited';
+    raw.analysisLimitCauses = causes;
     expect(sanitizeInspectionRecord(raw)).toBeNull();
   });
 

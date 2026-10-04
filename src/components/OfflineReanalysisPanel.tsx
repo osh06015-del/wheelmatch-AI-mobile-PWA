@@ -1,16 +1,19 @@
 'use client';
 
-// 오프라인 제한 대조 결과의 안내와, 기기가 온라인일 때의 서버 재분석.
+// 제한 대조 결과의 안내와, 기기가 온라인일 때의 서버 재분석.
 //
 // 연결이 끊겼다 돌아온 점검만 이 패널을 보는 것이 아니다. 끊긴 적 없이 제한 대조가
-// 된 점검(로컬 OCR로 읽었거나, 확인 화면 draft의 판독을 통째로 버린 경우)도 본다 —
-// 그래서 안내 문구는 연결이 돌아왔다고 말하지 않는다.
+// 된 점검(로컬 OCR로 읽었거나, 확인 화면 draft의 판독을 통째로 버렸거나, 판독 경로
+// 표시를 읽지 못한 경우)도 본다 — 그래서 안내 문구는 기기가 오프라인이었다거나
+// 연결이 돌아왔다고 말하지 않고, 값을 작업자가 입력했다고도 말하지 않는다. 왜
+// 제한됐는지는 확인 화면이 남긴 까닭을 그대로 한 줄씩 적는다. 푸는 방법은 까닭과
+// 무관하게 같아(서버 재분석·다시 촬영) 안내는 까닭별로 나누지 않는다.
 //
 // 재분석은 작업자가 버튼을 눌러야만 시작한다(자동으로 서버를 부르지 않는다).
-// 재분석 결과는 작업자가 넣은 최종값을 **덮어쓰지 않는다.** 두 값을 나란히
-// 보여주고, RPM·지름이 모두 같을 때만 "온라인 대조로 전환"을 열어 준다 — 다르면
-// 어느 쪽이 맞는지 앱이 알 수 없으므로 오프라인 결과를 유지하거나 다시 찍게 한다.
-// 취소하면 AI 값은 버리고 오프라인 결과가 그대로 남는다.
+// 재분석 결과는 작업자가 확정한 최종값을 **덮어쓰지 않는다.** 두 값을 나란히
+// 보여주고, RPM·지름이 모두 같을 때만 「제한 대조 풀기」를 열어 준다 — 다르면
+// 어느 쪽이 맞는지 앱이 알 수 없으므로 제한 대조 결과를 유지하거나 다시 찍게 한다.
+// 취소하면 AI 값은 버리고 제한 대조 결과가 그대로 남는다.
 //
 // 버리지 않는 것이 하나 있다. AI가 숫돌 사진에서 본 **외관 의심**은 견줄 값이 아니라
 // 그 사진에 대해 앱이 올린 경고라, 결과가 도착하는 대로 남긴다(onAnalyzed) — 값이
@@ -23,10 +26,15 @@ import { useState } from 'react';
 
 import { WheelConditionQuestion } from '@/components/WheelConditionGate';
 import { useLocale } from '@/lib/i18n';
+import { limitCauseLines } from '@/lib/i18n/limitCause';
 import { getExtractor } from '@/lib/ocr/extractor';
 import { useOnlineStatus } from '@/lib/pwa/onlineStatus';
 import type { GrinderSpec, WheelSpec } from '@/lib/rules/types';
-import type { OfflineSlots, ReanalysisInput } from '@/lib/state/inspection';
+import {
+  limitCausesOf,
+  type OfflineSlots,
+  type ReanalysisInput,
+} from '@/lib/state/inspection';
 
 type Phase = 'idle' | 'analyzing' | 'compare' | 'failed';
 
@@ -74,7 +82,7 @@ export function OfflineReanalysisPanel({
   // 묻지 않고 통과시키는 것과 같다.
   const [damageRecheck, setDamageRecheck] = useState<boolean | null>(null);
 
-  // 오프라인으로 넣은 단계의 사진만 다시 보낸다. 사진이 없으면 다시 분석할 근거가 없다.
+  // 제한된 단계의 사진만 다시 보낸다. 사진이 없으면 다시 분석할 근거가 없다.
   const photosReady =
     (!offlineSlots.grinder || grinderImage !== null) &&
     (!offlineSlots.wheel || wheelImage !== null);
@@ -84,7 +92,7 @@ export function OfflineReanalysisPanel({
     setAi(null);
     setDamageRecheck(null);
     try {
-      // 오프라인/로컬 OCR 제한을 풀 수 있는 유일한 경로는 서버(Claude) 대조다.
+      // 제한 대조를 이 화면에서 풀 수 있는 유일한 경로는 서버(Claude) 대조다.
       // 빌드가 tesseract 모드여도 재분석만큼은 getExtractor()의 기본값을 따르지
       // 않고 명시적으로 claude를 부른다 — 안 그러면 다시 로컬로 읽어 제한이 풀리지 않는다.
       const extractor = getExtractor('claude');
@@ -102,7 +110,7 @@ export function OfflineReanalysisPanel({
       setAi(next);
       setPhase('compare');
     } catch {
-      // 실패를 값으로 꾸미지 않는다. 오프라인 결과가 그대로 남는다.
+      // 실패를 값으로 꾸미지 않는다. 제한 대조 결과가 그대로 남는다.
       setPhase('failed');
     }
   }
@@ -181,6 +189,18 @@ export function OfflineReanalysisPanel({
       <p className="text-base leading-relaxed text-yellow-100">
         {t('offline.limit')}
       </p>
+      {/* 왜 제한됐는지. 확인 화면이 확정할 때 남긴 까닭 그대로다 — 여기서 추정하지
+          않고, 남아 있지 않으면 기록되지 않았다고 적는다. 제한된 단계만 적는다. */}
+      <ul className="flex flex-col gap-1">
+        {limitCauseLines(limitCausesOf(offlineSlots), t).map((line) => (
+          <li
+            key={line.step}
+            className="text-base leading-relaxed text-yellow-100"
+          >
+            {line.text}
+          </li>
+        ))}
+      </ul>
 
       {phase === 'compare' ? (
         <div className="flex flex-col gap-3">

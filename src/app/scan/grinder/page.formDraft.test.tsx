@@ -82,7 +82,7 @@ vi.mock('@/components/CameraView', () => ({
 
 import GrinderScanPage from './page';
 import { EMPTY_CAPTURE_METRICS } from '@/lib/image/quality';
-import { useInspection } from '@/lib/state/inspection';
+import { limitCausesOf, useInspection } from '@/lib/state/inspection';
 import type { CaptureQualityMetrics, GrinderSpec } from '@/lib/rules/types';
 
 const OCR: GrinderSpec = {
@@ -213,7 +213,7 @@ describe('그라인더 확인 화면 — 로컬 OCR 제한 판정', () => {
     // 서버 직접 입력(offline)과 다르게, 로컬 OCR 값은 입력칸에 그대로 남는다.
     expect(screen.getByDisplayValue('GWS 750-125')).toBeInTheDocument();
     expect(
-      screen.getByText('오프라인 제한 대조', { exact: false }),
+      screen.getByText('제한 대조 — 서버가 아니라', { exact: false }),
     ).toBeInTheDocument();
 
     for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
@@ -223,6 +223,46 @@ describe('그라인더 확인 화면 — 로컬 OCR 제한 판정', () => {
 
     expect(result.current.offlineSlots.grinder).toBe(true);
     expect(result.current.analysisMode).toBe('offline_limited');
+    expect(limitCausesOf(result.current.offlineSlots)).toEqual({
+      grinder: 'local_ocr',
+    });
+  });
+
+  it('서버가 읽었는데 그 순간 기기가 오프라인으로 보고되면 — 제한은 지키되 「이 기기에서 읽었다」고 기록하지 않는다', async () => {
+    // navigator.onLine은 연결이 흔들리는 망이나 일부 WebView에서 틀린 값을 낸다.
+    const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    try {
+      const result = store();
+      getLastTelemetry.mockReturnValue({
+        engine: 'claude',
+        model: 'claude-test',
+        inputTokens: 10,
+        outputTokens: 10,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
+        durationMs: 900,
+      });
+      render(<GrinderScanPage />);
+      fireEvent.click(
+        screen.getByRole('button', { name: '테스트 사진 고르기' }),
+      );
+      await screen.findByText('읽어낸 값을 확인하세요');
+
+      for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+        fireEvent.click(button);
+      }
+      fireEvent.click(
+        screen.getByRole('button', { name: '확인 후 숫돌 촬영' }),
+      );
+
+      expect(result.current.offlineSlots.grinder).toBe(true);
+      expect(result.current.analysisMode).toBe('offline_limited');
+      expect(limitCausesOf(result.current.offlineSlots)).toEqual({
+        grinder: 'unknown',
+      });
+    } finally {
+      online.mockRestore();
+    }
   });
 
   it('claude 엔진으로 정상 분석하면 제한 판정을 남기지 않는다', async () => {
@@ -297,11 +337,109 @@ describe('그라인더 확인 화면 — 로컬 OCR 제한 판정', () => {
     await screen.findByText('읽어낸 값을 확인하세요');
 
     expect(
-      screen.getByText('오프라인 제한 대조 — 서버가 아니라', { exact: false }),
+      screen.getByText('제한 대조 — 서버가 아니라', { exact: false }),
     ).toBeInTheDocument();
     expect(
       screen.queryByText('라벨을 직접 보고 값을 입력하세요', { exact: false }),
     ).not.toBeInTheDocument();
+  });
+
+  it('기기 안 OCR로 읽은 draft에는 확인됐다는 표시를 함께 저장한다', async () => {
+    getLastTelemetry.mockReturnValue({
+      engine: 'tesseract',
+      model: null,
+      inputTokens: null,
+      outputTokens: null,
+      cacheReadTokens: null,
+      cacheCreationTokens: null,
+      durationMs: 120,
+    });
+    render(<GrinderScanPage />);
+    fireEvent.click(screen.getByRole('button', { name: '테스트 사진 고르기' }));
+    await screen.findByText('읽어낸 값을 확인하세요');
+
+    await waitFor(() => expect(formSave).toHaveBeenCalled(), {
+      timeout: 3000,
+    });
+    for (const [draft] of formSave.mock.calls) {
+      expect(draft).toMatchObject({
+        analysisSource: 'local_ocr',
+        localOcrConfirmed: true,
+      });
+    }
+  });
+
+  it('표시와 함께 저장된 local_ocr draft로 확정하면 까닭을 local_ocr로 남긴다', async () => {
+    const result = store();
+    formLoad.mockResolvedValueOnce({
+      status: 'found',
+      draft: {
+        slot: 'grinder',
+        schemaVersion: 1,
+        savedAt: '2026-09-17T00:00:00.000Z',
+        fields: {
+          model: 'GWS 750-125',
+          noLoadRPM: '11000',
+          maxWheelDiameter: '125',
+          spindleThread: 'M14',
+          guardType: 'grinding',
+          guardSize: '',
+        },
+        photo: new Blob(['plate']),
+        ocr: OCR,
+        analysisSource: 'local_ocr',
+        localOcrConfirmed: true,
+      },
+    });
+    render(<GrinderScanPage />);
+    await screen.findByText('읽어낸 값을 확인하세요');
+
+    for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+      fireEvent.click(button);
+    }
+    fireEvent.click(screen.getByRole('button', { name: '확인 후 숫돌 촬영' }));
+
+    expect(result.current.analysisMode).toBe('offline_limited');
+    expect(limitCausesOf(result.current.offlineSlots)).toEqual({
+      grinder: 'local_ocr',
+    });
+  });
+
+  it('출처가 남지 않은 구버전 draft로 확정하면 제한은 지키되 까닭은 적지 않는다', async () => {
+    // 그 draft가 서버로 읽은 것인지 기기에서 읽은 것인지 알 수 없다.
+    const result = store();
+    formLoad.mockResolvedValueOnce({
+      status: 'found',
+      draft: {
+        slot: 'grinder',
+        schemaVersion: 1,
+        savedAt: '2026-09-17T00:00:00.000Z',
+        fields: {
+          model: 'GWS 750-125',
+          noLoadRPM: '11000',
+          maxWheelDiameter: '125',
+          spindleThread: 'M14',
+          guardType: 'grinding',
+          guardSize: '',
+        },
+        photo: new Blob(['plate']),
+        ocr: OCR,
+        offline: false,
+      },
+    });
+    render(<GrinderScanPage />);
+    await screen.findByText('읽어낸 값을 확인하세요');
+
+    for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+      fireEvent.click(button);
+    }
+    fireEvent.click(screen.getByRole('button', { name: '확인 후 숫돌 촬영' }));
+
+    expect(result.current.offlineSlots.grinder).toBe(true);
+    expect(result.current.analysisMode).toBe('offline_limited');
+    expect(limitCausesOf(result.current.offlineSlots)).toEqual({
+      grinder: 'unknown',
+    });
   });
 
   it('새로고침 복구 — analysisSource가 manual이면 직접 입력 배지로 되살아난다', async () => {
@@ -356,7 +494,7 @@ describe('그라인더 확인 화면 — 로컬 OCR 제한 판정', () => {
     await screen.findByText('읽어낸 값을 확인하세요');
 
     expect(
-      screen.getByText('오프라인 제한 대조 — 서버가 아니라', { exact: false }),
+      screen.getByText('제한 대조 — 서버가 아니라', { exact: false }),
     ).toBeInTheDocument();
   });
 });
@@ -446,6 +584,10 @@ describe('그라인더 확인 화면 — 통째로 버린 OCR이 남은 draft', 
     expect(result.current.grinder?.rawText).toBe('');
     expect(result.current.offlineSlots.grinder).toBe(true);
     expect(result.current.analysisMode).toBe('offline_limited');
+    // 서버 분석을 거친 점검이다. 직접 입력이나 로컬 OCR이었다고 남기지 않는다.
+    expect(limitCausesOf(result.current.offlineSlots)).toEqual({
+      grinder: 'dropped_ocr',
+    });
   });
 
   it('버렸다는 흔적을 다시 저장한다 — 한 번 더 새로고침해도 알림이 사라지지 않는다', async () => {
@@ -483,16 +625,19 @@ describe('그라인더 확인 화면 — 통째로 버린 OCR이 남은 draft', 
     expect(push).toHaveBeenCalledWith('/scan/wheel');
     expect(result.current.offlineSlots.grinder).toBe(true);
     expect(result.current.analysisMode).toBe('offline_limited');
+    expect(limitCausesOf(result.current.offlineSlots)).toEqual({
+      grinder: 'dropped_ocr',
+    });
   });
 
   it('출처가 server인 제한 대조에 로컬 OCR·직접 입력 배지를 띄우지 않는다 — 사실과 다른 말이다', async () => {
     await openDraft(draftWith({ ocr: BROKEN_OCR }));
 
     expect(screen.getByText(DROPPED_NOTICE)).toBeInTheDocument();
-    // 두 배지는 모두 「오프라인 제한 대조 — 」로 시작한다. 위 「로컬 OCR 제한 판정」
+    // 두 배지는 모두 「제한 대조 — 」로 시작한다. 위 「로컬 OCR 제한 판정」
     // 묶음이 같은 문구로 배지가 뜨는 것을 확인한다.
     expect(
-      screen.queryByText('오프라인 제한 대조', { exact: false }),
+      screen.queryByText('제한 대조 —', { exact: false }),
     ).not.toBeInTheDocument();
   });
 
@@ -548,5 +693,35 @@ describe('그라인더 확인 화면 — 통째로 버린 OCR이 남은 draft', 
     await openDraft(draftWith({ ocr: null, analysisSource: 'manual' }));
 
     expect(screen.queryByText(DROPPED_NOTICE)).not.toBeInTheDocument();
+  });
+
+  it('직접 입력으로 저장된 draft로 확정하면 까닭을 manual로 남긴다', async () => {
+    const result = store();
+    await openDraft(draftWith({ ocr: null, analysisSource: 'manual' }));
+
+    confirmAndProceed();
+
+    expect(push).toHaveBeenCalledWith('/scan/wheel');
+    expect(result.current.analysisMode).toBe('offline_limited');
+    expect(limitCausesOf(result.current.offlineSlots)).toEqual({
+      grinder: 'manual',
+    });
+  });
+
+  it('서버로 읽어 그대로 확정한 단계에는 까닭이 없다', async () => {
+    const result = store();
+    await openDraft(draftWith({ ocr: OCR }));
+
+    for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+      fireEvent.click(button);
+    }
+    fireEvent.click(screen.getByRole('button', { name: '확인 후 숫돌 촬영' }));
+
+    expect(result.current.analysisMode).toBe('online');
+    expect(limitCausesOf(result.current.offlineSlots)).toEqual({});
+    expect(result.current.offlineSlots).toEqual({
+      grinder: false,
+      wheel: false,
+    });
   });
 });

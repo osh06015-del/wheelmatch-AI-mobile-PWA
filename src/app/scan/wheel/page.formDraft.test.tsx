@@ -4,6 +4,7 @@
 
 import {
   act,
+  cleanup,
   fireEvent,
   render,
   renderHook,
@@ -95,7 +96,7 @@ import { ko } from '@/lib/i18n/messages/ko';
 import { ImageDecodeError } from '@/lib/image/optimize';
 import { EMPTY_CAPTURE_METRICS } from '@/lib/image/quality';
 import { ExtractError } from '@/lib/ocr/errors';
-import { useInspection } from '@/lib/state/inspection';
+import { limitCausesOf, useInspection } from '@/lib/state/inspection';
 import type {
   CaptureQualityMetrics,
   GrinderCondition,
@@ -505,7 +506,7 @@ describe('숫돌 확인 화면 — 로컬 OCR 제한 판정', () => {
 
     expect(screen.getByDisplayValue('12200')).toBeInTheDocument();
     expect(
-      screen.getByText('오프라인 제한 대조', { exact: false }),
+      screen.getByText('제한 대조 — 서버가 아니라', { exact: false }),
     ).toBeInTheDocument();
 
     for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
@@ -515,6 +516,143 @@ describe('숫돌 확인 화면 — 로컬 OCR 제한 판정', () => {
 
     expect(result.current.offlineSlots.wheel).toBe(true);
     expect(result.current.analysisMode).toBe('offline_limited');
+    expect(limitCausesOf(result.current.offlineSlots)).toEqual({
+      wheel: 'local_ocr',
+    });
+  });
+
+  it('기기가 온라인이어도 로컬 OCR 배지는 오프라인이었다고 말하지 않는다', async () => {
+    // 기기 안 OCR로 읽는 빌드에서는 연결이 멀쩡해도 이 배지가 뜬다.
+    readyGrinder();
+    getLastTelemetry.mockReturnValue({
+      engine: 'tesseract',
+      model: null,
+      inputTokens: null,
+      outputTokens: null,
+      cacheReadTokens: null,
+      cacheCreationTokens: null,
+      durationMs: 90,
+    });
+    render(<WheelScanPage />);
+    fireEvent.click(screen.getByRole('button', { name: '테스트 사진 고르기' }));
+    await screen.findByText('읽어낸 값을 확인하세요');
+
+    expect(
+      screen.getByText(
+        '⚠ 제한 대조 — 서버가 아니라 이 기기에서 직접 읽었습니다. 기기가 온라인이면 결과 화면에서 서버로 다시 분석할 수 있습니다.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/오프라인/)).not.toBeInTheDocument();
+  });
+
+  it('서버가 읽었는데 그 순간 기기가 오프라인으로 보고되면 — 제한은 지키되 「이 기기에서 읽었다」고 기록하지 않는다', async () => {
+    // navigator.onLine은 연결이 흔들리는 망이나 일부 WebView에서 틀린 값을 낸다.
+    // 그 값 하나로 서버가 읽은 판독을 「기기 안 OCR」로 기록하면 모르는 것을
+    // 단정하는 것이다.
+    const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    try {
+      const result = readyGrinder();
+      getLastTelemetry.mockReturnValue({
+        engine: 'claude',
+        model: 'claude-test',
+        inputTokens: 10,
+        outputTokens: 10,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
+        durationMs: 900,
+      });
+      render(<WheelScanPage />);
+      fireEvent.click(
+        screen.getByRole('button', { name: '테스트 사진 고르기' }),
+      );
+      await screen.findByText('읽어낸 값을 확인하세요');
+
+      for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+        fireEvent.click(button);
+      }
+      fireEvent.click(
+        screen.getByRole('button', { name: '확인 후 규격 대조' }),
+      );
+
+      expect(result.current.offlineSlots.wheel).toBe(true);
+      expect(result.current.analysisMode).toBe('offline_limited');
+      expect(limitCausesOf(result.current.offlineSlots)).toEqual({
+        wheel: 'unknown',
+      });
+    } finally {
+      online.mockRestore();
+    }
+  });
+
+  it('기기 안 OCR로 읽은 draft에는 확인됐다는 표시를 함께 저장한다 — 새로고침 뒤에도 까닭이 남는다', async () => {
+    readyGrinder();
+    getLastTelemetry.mockReturnValue({
+      engine: 'tesseract',
+      model: null,
+      inputTokens: null,
+      outputTokens: null,
+      cacheReadTokens: null,
+      cacheCreationTokens: null,
+      durationMs: 90,
+    });
+    render(<WheelScanPage />);
+    fireEvent.click(screen.getByRole('button', { name: '테스트 사진 고르기' }));
+    await screen.findByText('읽어낸 값을 확인하세요');
+
+    await waitFor(() => expect(formSave).toHaveBeenCalled(), {
+      timeout: 3000,
+    });
+    const saved = formSave.mock.calls.at(-1)?.[0];
+    expect(saved).toMatchObject({
+      analysisSource: 'local_ocr',
+      localOcrConfirmed: true,
+    });
+
+    // 저장된 그대로 새로고침 뒤 되살려 확정한다. 복원한 화면은 직접 확인과 상태
+    // 확인을 다시 받는다.
+    cleanup();
+    formLoad.mockResolvedValueOnce({ status: 'found', draft: saved });
+    render(<WheelScanPage />);
+    await screen.findByText('읽어낸 값을 확인하세요');
+    fireEvent.click(screen.getByRole('checkbox', { name: /라벨을 직접 보고/ }));
+    for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+      fireEvent.click(button);
+    }
+    const proceed = screen.getByRole('button', { name: '확인 후 규격 대조' });
+    expect(proceed).toBeEnabled();
+    fireEvent.click(proceed);
+
+    expect(push).toHaveBeenCalledWith('/result');
+    // cleanup()이 앞서 만든 저장소 관찰자도 내렸다. 지금 상태는 새로 읽는다.
+    const after = store();
+    expect(after.current.analysisMode).toBe('offline_limited');
+    expect(limitCausesOf(after.current.offlineSlots)).toEqual({
+      wheel: 'local_ocr',
+    });
+  });
+
+  it('서버로 읽은 draft에는 그 표시를 저장하지 않는다', async () => {
+    readyGrinder();
+    getLastTelemetry.mockReturnValue({
+      engine: 'claude',
+      model: 'claude-test',
+      inputTokens: 10,
+      outputTokens: 10,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+      durationMs: 900,
+    });
+    render(<WheelScanPage />);
+    fireEvent.click(screen.getByRole('button', { name: '테스트 사진 고르기' }));
+    await screen.findByText('읽어낸 값을 확인하세요');
+
+    await waitFor(() => expect(formSave).toHaveBeenCalled(), {
+      timeout: 3000,
+    });
+    for (const [draft] of formSave.mock.calls) {
+      expect(draft).toMatchObject({ analysisSource: 'server' });
+      expect(draft).not.toHaveProperty('localOcrConfirmed');
+    }
   });
 
   it('로컬 OCR로 읽은 확인 화면 draft는 출처를 local_ocr로 남긴다(직접 입력과 구분)', async () => {
@@ -568,7 +706,7 @@ describe('숫돌 확인 화면 — 로컬 OCR 제한 판정', () => {
     await screen.findByText('읽어낸 값을 확인하세요');
 
     expect(
-      screen.getByText('오프라인 제한 대조 — 서버가 아니라', { exact: false }),
+      screen.getByText('제한 대조 — 서버가 아니라', { exact: false }),
     ).toBeInTheDocument();
     expect(
       screen.queryByText('라벨을 직접 보고 값을 입력하세요', { exact: false }),
@@ -601,8 +739,47 @@ describe('숫돌 확인 화면 — 로컬 OCR 제한 판정', () => {
     await screen.findByText('읽어낸 값을 확인하세요');
 
     expect(
-      screen.getByText('오프라인 제한 대조 — 서버가 아니라', { exact: false }),
+      screen.getByText('제한 대조 — 서버가 아니라', { exact: false }),
     ).toBeInTheDocument();
+  });
+
+  it('출처가 남지 않은 구버전 draft로 확정하면 제한은 지키되 까닭은 적지 않는다', async () => {
+    // 그 draft가 서버로 읽은 것인지 기기에서 읽은 것인지 알 수 없다.
+    const result = readyGrinder();
+    formLoad.mockResolvedValueOnce({
+      status: 'found',
+      draft: {
+        slot: 'wheel',
+        schemaVersion: 1,
+        savedAt: '2026-09-17T00:00:00.000Z',
+        fields: {
+          maxRPM: '12200',
+          diameter: '125',
+          thickness: '1.6',
+          purpose: 'cutting',
+          expiry: '',
+          wheelType: 'bonded_abrasive',
+          accessoryName: '',
+        },
+        photo: new Blob(['label']),
+        ocr: OCR_BONDED,
+        offline: false,
+      },
+    });
+    render(<WheelScanPage />);
+    await screen.findByText('읽어낸 값을 확인하세요');
+
+    for (const button of screen.getAllByRole('button', { name: /확인함/ })) {
+      fireEvent.click(button);
+    }
+    fireEvent.click(screen.getByRole('button', { name: '확인 후 규격 대조' }));
+
+    expect(push).toHaveBeenCalledWith('/result');
+    expect(result.current.offlineSlots.wheel).toBe(true);
+    expect(result.current.analysisMode).toBe('offline_limited');
+    expect(limitCausesOf(result.current.offlineSlots)).toEqual({
+      wheel: 'unknown',
+    });
   });
 });
 
@@ -895,6 +1072,45 @@ describe('숫돌 확인 화면 — 통째로 버린 OCR이 남은 draft', () => 
     expect(result.current.wheel?.rawText).toBe('');
     expect(result.current.offlineSlots.wheel).toBe(true);
     expect(result.current.analysisMode).toBe('offline_limited');
+    // 서버 분석을 거친 점검이다. 직접 입력이나 로컬 OCR이었다고 남기지 않는다.
+    expect(limitCausesOf(result.current.offlineSlots)).toEqual({
+      wheel: 'dropped_ocr',
+    });
+  });
+
+  it('기기 안 OCR로 읽은 것이 확인된 판독이 버려진 draft는 까닭을 local_ocr로 남긴다 — 출처를 바꿔 적지 않는다', async () => {
+    const result = await openDraft({
+      ...brokenOcrDraft('none_visible'),
+      analysisSource: 'local_ocr',
+      localOcrConfirmed: true,
+    });
+
+    confirmAndAnswer();
+    fireEvent.click(proceedButton());
+
+    expect(push).toHaveBeenCalledWith('/result');
+    expect(result.current.analysisMode).toBe('offline_limited');
+    expect(limitCausesOf(result.current.offlineSlots)).toEqual({
+      wheel: 'local_ocr',
+    });
+  });
+
+  it('출처를 모르는 판독이 버려진 draft는 까닭을 적지 않는다 — 서버 판독을 버렸다고도, 기기에서 읽었다고도 하지 않는다', async () => {
+    // 출처 값이 어긋난 draft다. 제한을 지키려고 local_ocr로 읽지만 실제 출처는 모른다.
+    const result = await openDraft({
+      ...brokenOcrDraft('none_visible'),
+      analysisSource: 'cloud',
+    });
+
+    confirmAndAnswer();
+    fireEvent.click(proceedButton());
+
+    expect(push).toHaveBeenCalledWith('/result');
+    expect(result.current.offlineSlots.wheel).toBe(true);
+    expect(result.current.analysisMode).toBe('offline_limited');
+    expect(limitCausesOf(result.current.offlineSlots)).toEqual({
+      wheel: 'unknown',
+    });
   });
 
   it('이어받은 의심을 다시 저장한다 — 한 번 더 새로고침해도 사라지지 않는다', async () => {
@@ -942,16 +1158,19 @@ describe('숫돌 확인 화면 — 통째로 버린 OCR이 남은 draft', () => 
     expect(push).toHaveBeenCalledWith('/result');
     expect(result.current.offlineSlots.wheel).toBe(true);
     expect(result.current.analysisMode).toBe('offline_limited');
+    expect(limitCausesOf(result.current.offlineSlots)).toEqual({
+      wheel: 'dropped_ocr',
+    });
   });
 
   it('출처가 server인 제한 대조에 로컬 OCR·직접 입력 배지를 띄우지 않는다 — 사실과 다른 말이다', async () => {
     await openDraft(brokenOcrDraft('none_visible'));
 
     expect(screen.getByText(DROPPED_NOTICE)).toBeInTheDocument();
-    // 두 배지는 모두 「오프라인 제한 대조 — 」로 시작한다. 위 「로컬 OCR 제한 판정」
+    // 두 배지는 모두 「제한 대조 — 」로 시작한다. 위 「로컬 OCR 제한 판정」
     // 묶음이 같은 문구로 배지가 뜨는 것을 확인한다.
     expect(
-      screen.queryByText('오프라인 제한 대조', { exact: false }),
+      screen.queryByText('제한 대조 —', { exact: false }),
     ).not.toBeInTheDocument();
   });
 
@@ -1371,7 +1590,7 @@ describe('숫돌 확인 화면 — 확인 화면을 되살리지 못한 draft', 
     pickPhoto();
     fireEvent.click(
       await screen.findByRole('button', {
-        name: '오프라인 제한 대조로 직접 입력',
+        name: '제한 대조로 직접 입력',
       }),
     );
     await screen.findByText('읽어낸 값을 확인하세요');

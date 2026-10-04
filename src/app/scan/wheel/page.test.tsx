@@ -58,7 +58,7 @@ vi.mock('@/components/CameraView', () => ({
 
 import WheelScanPage from './page';
 import { ExtractError } from '@/lib/ocr/errors';
-import { useInspection } from '@/lib/state/inspection';
+import { limitCausesOf, useInspection } from '@/lib/state/inspection';
 import type {
   GrinderCondition,
   GrinderSpec,
@@ -647,7 +647,7 @@ describe('숫돌 촬영 화면 — 종류별 상태 확인 항목', () => {
   });
 });
 
-describe('숫돌 촬영 화면 — 오프라인 제한 대조로 직접 입력', () => {
+describe('숫돌 촬영 화면 — 제한 대조로 직접 입력', () => {
   beforeEach(() => {
     replace.mockClear();
     push.mockClear();
@@ -682,12 +682,12 @@ describe('숫돌 촬영 화면 — 오프라인 제한 대조로 직접 입력',
       ),
     ).toBeInTheDocument();
     fireEvent.click(
-      screen.getByRole('button', { name: '오프라인 제한 대조로 직접 입력' }),
+      screen.getByRole('button', { name: '제한 대조로 직접 입력' }),
     );
 
     await screen.findByText('읽어낸 값을 확인하세요');
     expect(screen.getByRole('status')).toHaveTextContent(
-      '오프라인 제한 대조 — 사진을 서버로 분석하지 못했습니다.',
+      '제한 대조 — 사진을 서버로 분석하지 못했습니다.',
     );
     // 입력칸은 비어 있다. 추정값으로 채우지 않는다.
     for (const input of screen.getAllByPlaceholderText(
@@ -723,13 +723,17 @@ describe('숫돌 촬영 화면 — 오프라인 제한 대조로 직접 입력',
     expect(result.current.wheelOcr).toBeNull();
     expect(result.current.offlineSlots.wheel).toBe(true);
     expect(result.current.analysisMode).toBe('offline_limited');
+    // 왜 제한됐는지도 함께 남긴다 — 서버에 닿지 못해 직접 입력했다.
+    expect(limitCausesOf(result.current.offlineSlots)).toEqual({
+      wheel: 'manual',
+    });
   });
 
   it('서버가 오류를 돌려준 경우(연결 문제가 아님)에는 직접 입력을 제안하지 않는다', async () => {
     await openFailure(new ExtractError('rate_limited', 429));
 
     expect(
-      screen.queryByRole('button', { name: '오프라인 제한 대조로 직접 입력' }),
+      screen.queryByRole('button', { name: '제한 대조로 직접 입력' }),
     ).not.toBeInTheDocument();
   });
 });

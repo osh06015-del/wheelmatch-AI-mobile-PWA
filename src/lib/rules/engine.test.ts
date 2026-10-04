@@ -9,6 +9,7 @@ import {
   checkAnalysisMode,
   checkProfileScope,
   checkUnitConsistency,
+  currentRuleName,
   failureReasons,
   matchSpecs,
   undeterminedReasons,
@@ -1003,9 +1004,9 @@ describe('10. 종류를 특정하지 못한 부속품(other·unknown)도 RPM·�
   });
 });
 
-describe('11. 오프라인 제한 대조(analysisMode: offline_limited)', () => {
-  const OFFLINE_REASON =
-    '서버 분석 없이 작업자가 입력·확인한 값으로만 대조했습니다. RPM·지름 위반만 부적합으로 판정하며 적합 판정은 제공하지 않습니다.';
+describe('11. 제한 대조(analysisMode: offline_limited)', () => {
+  const LIMITED_REASON =
+    '확정한 값을 뒷받침하는 서버 판독이 확인되지 않아 작업자가 확인한 값으로만 대조했습니다. RPM·지름 위반만 부적합으로 판정하며 적합 판정은 제공하지 않습니다.';
 
   it('online(기본)이면 항목을 만들지 않고 기존 판정 그대로다', () => {
     expect(checkAnalysisMode('online')).toBeNull();
@@ -1016,7 +1017,7 @@ describe('11. 오프라인 제한 대조(analysisMode: offline_limited)', () => 
     );
   });
 
-  it('위반이 없어도 적합이 아니라 판정불가 + 오프라인 제한 대조다', () => {
+  it('위반이 없어도 적합이 아니라 판정불가 + 제한 대조다', () => {
     const result = match(grinder(), wheel(), {
       analysisMode: 'offline_limited',
     });
@@ -1024,14 +1025,28 @@ describe('11. 오프라인 제한 대조(analysisMode: offline_limited)', () => 
     const check = checkOf(result, RULE.OFFLINE_LIMITED);
     expect(check).toMatchObject({
       passed: null,
-      reason: OFFLINE_REASON,
+      reason: LIMITED_REASON,
       detail: { code: 'analysisMode.offlineLimited' },
     });
     // 경고가 아니다 — 전체 판정을 실제로 끌어내려야 한다.
     expect(check.advisory).toBeUndefined();
   });
 
-  it('확정된 RPM 위반은 오프라인이어도 부적합이다 — 1rpm 부족 경계 포함', () => {
+  // 이름과 사유는 기록(result.checks)에 그대로 저장되고 한국어 화면에 그대로 뜬다.
+  // 이 항목은 기기가 오프라인이 아니어도 생긴다 — 기기 안 OCR로만 읽었거나, 저장된
+  // 서버 판독을 버린 채 확정했거나, 판독 경로 표시를 읽지 못한 점검이다. 그래서
+  // 까닭을 「오프라인」「서버에 닿지 못해」「서버 분석 없이」로 단정하지 않는다.
+  it('규칙 이름과 사유가 제한된 까닭을 단정하지 않는다', () => {
+    expect(RULE.OFFLINE_LIMITED).toBe('제한 대조');
+    const check = checkAnalysisMode('offline_limited');
+    expect(check?.rule).toBe('제한 대조');
+    expect(check?.reason).toBe(LIMITED_REASON);
+    expect(`${check?.rule} ${check?.reason}`).not.toMatch(
+      /오프라인|온라인|서버에 닿지|서버 분석 없이/,
+    );
+  });
+
+  it('확정된 RPM 위반은 제한 대조여도 부적합이다 — 1rpm 부족 경계 포함', () => {
     expect(
       match(grinder(), wheel({ maxRPM: 8500 }), {
         analysisMode: 'offline_limited',
@@ -1044,7 +1059,7 @@ describe('11. 오프라인 제한 대조(analysisMode: offline_limited)', () => 
     ).toBe('INCOMPATIBLE');
   });
 
-  it('확정된 지름 위반도 오프라인이어도 부적합이다', () => {
+  it('확정된 지름 위반도 제한 대조여도 부적합이다', () => {
     expect(
       match(grinder(), wheel({ diameter: 126 }), {
         analysisMode: 'offline_limited',
@@ -1058,5 +1073,27 @@ describe('11. 오프라인 제한 대조(analysisMode: offline_limited)', () => 
         analysisMode: 'offline_limited',
       }).verdict,
     ).toBe('UNDETERMINED');
+  });
+});
+
+describe('규칙 이름 — 이름을 바꾸기 전에 저장된 기록', () => {
+  // 규칙 이름은 기록(result.checks[].rule)에 그대로 저장되고, 화면은 그 이름으로
+  // 라벨과 근거를 찾는다. 2026-10-04에 「오프라인 제한 대조」를 「제한 대조」로
+  // 바꿨다 — 그 전 기록이 짝을 잃지 않도록 옛 이름을 지금 이름으로 읽는다.
+  it('옛 이름 「오프라인 제한 대조」는 지금 이름으로 읽는다', () => {
+    expect(currentRuleName('오프라인 제한 대조')).toBe(RULE.OFFLINE_LIMITED);
+  });
+
+  it('지금 이름은 그대로다', () => {
+    for (const rule of Object.values(RULE)) {
+      expect(currentRuleName(rule)).toBe(rule);
+    }
+  });
+
+  it('모르는 이름을 다른 규칙으로 바꾸지 않는다', () => {
+    expect(currentRuleName('없는 규칙')).toBe('없는 규칙');
+    // 객체에 원래 있는 이름(constructor 등)을 규칙으로 읽지 않는다.
+    expect(currentRuleName('constructor')).toBe('constructor');
+    expect(currentRuleName('toString')).toBe('toString');
   });
 });

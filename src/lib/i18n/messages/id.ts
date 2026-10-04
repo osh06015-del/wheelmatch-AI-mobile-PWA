@@ -1077,46 +1077,56 @@ export const id: Messages = {
   'translation.notice':
     'Terjemahan ini belum diperiksa. Jika artinya kurang jelas, ikuti teks bahasa Korea dan tanyakan kepada pengawas Anda.',
 
-  // 오프라인 제한 대조·진행 중 점검 복구
-  'rule.offlineLimited': 'Pemeriksaan terbatas luring',
+  // 제한 대조·진행 중 점검 복구. 까닭을 가리지 않고 뜨는 문구는 오프라인이었다거나
+  // 서버에 닿지 못했다고 단정하지 않는다 — 이유는 ko.ts의 같은 자리에 적었다.
+  'rule.offlineLimited': 'Pemeriksaan terbatas',
   'reason.analysisMode.offlineLimited':
-    'Hanya nilai yang dimasukkan dan diperiksa pekerja yang dibandingkan, tanpa analisis server. Hanya pelanggaran kecepatan dan diameter yang dinilai tidak sesuai; tidak ada kesimpulan bahwa spesifikasi sesuai.',
+    'Pembacaan server yang mendukung nilai yang dikonfirmasi tidak terkonfirmasi, jadi hanya nilai yang dikonfirmasi pekerja yang dibandingkan. Hanya pelanggaran kecepatan dan diameter yang dinilai tidak sesuai; tidak ada kesimpulan bahwa spesifikasi sesuai.',
   'evidence.doc.offlineLimited':
-    'Desain aplikasi — saat server tidak terjangkau, hanya nilai yang dimasukkan pekerja yang dibandingkan, tanpa analisis foto',
+    'Desain aplikasi — saat pembacaan server yang mendukung nilai yang dikonfirmasi tidak terkonfirmasi, hanya nilai yang dikonfirmasi pekerja yang dibandingkan',
   'evidence.limit.offlineLimited':
-    'Nilai yang dimasukkan tidak diperiksa silang dengan label oleh pembacaan AI. Pelanggaran kecepatan dan diameter diblokir sebagai tidak sesuai, tetapi tanpa pelanggaran pun tidak ada kesimpulan sesuai dan uji jalan tidak dibuka.',
+    'Tidak terkonfirmasi oleh pembacaan server bahwa nilai yang dikonfirmasi sama dengan label. Pelanggaran kecepatan dan diameter diblokir sebagai tidak sesuai, tetapi tanpa pelanggaran pun tidak ada kesimpulan sesuai dan uji jalan tidak dibuka.',
   'result.undetermined.offlineLimited':
-    'Ini pemeriksaan terbatas luring. Hanya nilai yang dimasukkan pekerja yang dibandingkan, jadi tidak ada kesimpulan sesuai. Saat terhubung, Anda dapat memilih analisis ulang di server.',
-  'scan.offline.continue': 'Masukkan manual (pemeriksaan terbatas luring)',
+    'Ini pemeriksaan terbatas. Pembacaan server yang mendukung nilai yang dikonfirmasi tidak terkonfirmasi, jadi tidak ada kesimpulan sesuai. Untuk mencabut batasan ini diperlukan analisis ulang di server atau foto ulang.',
+  'verdict.note.limited':
+    'Ini pemeriksaan terbatas, jadi tidak ada kesimpulan sesuai. Lihat butir dan petunjuk di bawah.',
+  'scan.offline.continue': 'Masukkan manual (pemeriksaan terbatas)',
   'scan.offline.continueHint':
     'Server tidak terjangkau. Anda dapat melanjutkan dengan memasukkan nilai sendiri, tetapi pemeriksaan ini tidak bisa mendapat kesimpulan sesuai.',
   'scan.offline.notice':
-    'Pemeriksaan terbatas luring — foto tidak dapat dianalisis di server. Lihat label dan masukkan nilainya sendiri.',
+    'Pemeriksaan terbatas — foto tidak dapat dianalisis di server. Lihat label dan masukkan nilainya sendiri.',
   'scan.localOcr.notice':
-    'Pemeriksaan terbatas luring — dibaca di perangkat ini, bukan di server. Setelah tersambung, Anda dapat memilih analisis ulang di server pada layar hasil.',
+    'Pemeriksaan terbatas — dibaca di perangkat ini, bukan di server. Jika perangkat sedang daring, Anda dapat memilih analisis ulang di server pada layar hasil.',
   'offline.limit':
-    'Hasil ini hanya membandingkan nilai yang dimasukkan pekerja. Pelanggaran kecepatan dan diameter dinilai tidak sesuai, tetapi tidak ada kesimpulan sesuai dan uji jalan tidak dibuka.',
+    'Untuk hasil ini, pembacaan server yang mendukung nilai yang dikonfirmasi tidak terkonfirmasi, jadi hanya nilai yang dikonfirmasi pekerja yang dibandingkan. Pelanggaran kecepatan dan diameter dinilai tidak sesuai, tetapi tidak ada kesimpulan sesuai dan uji jalan tidak dibuka.',
+  'offline.cause.line': '{step}: {cause}',
+  'offline.cause.manual':
+    'Nilai dimasukkan sendiri karena server tidak terjangkau.',
+  'offline.cause.localOcr': 'Nilai dibaca di perangkat ini, bukan di server.',
+  'offline.cause.ocrDropped':
+    'Nilai dikonfirmasi setelah pembacaan AI yang tersimpan tidak dapat dibaca dan dibuang.',
+  'offline.cause.unknown': 'Alasan pembatasan tidak tercatat.',
   'offline.reanalyze': 'Analisis ulang di server',
   'offline.reanalyzeHint':
-    'Anda dapat menganalisis ulang di server. Analisis ulang tidak mengubah nilai yang Anda masukkan; hanya menampilkannya berdampingan dengan nilai AI. Jika AI mencurigai kerusakan pada foto, peringatan itu ditambahkan ke hasil.',
+    'Anda dapat menganalisis ulang di server. Analisis ulang tidak mengubah nilai yang dikonfirmasi; hanya menampilkannya berdampingan dengan nilai AI. Jika AI mencurigai kerusakan pada foto, peringatan itu ditambahkan ke hasil.',
   'offline.stillOffline':
-    'Masih luring. Saat terhubung, Anda dapat memilih analisis ulang di server.',
+    'Perangkat sedang luring. Saat terhubung, Anda dapat memilih analisis ulang di server.',
   'offline.noPhotos':
     'Tidak ada foto tersimpan, jadi analisis ulang server tidak dapat dilakukan.',
   'offline.analyzing': 'Menganalisis di server...',
   'offline.failed':
-    'Analisis ulang server gagal. Hasil luring tetap dipertahankan.',
-  'offline.compareTitle': 'Perbandingan nilai masukan dan nilai AI',
-  'offline.compareRow': '{field}: masukan {worker} / AI {ai}',
+    'Analisis ulang server gagal. Hasil pemeriksaan terbatas tetap dipertahankan.',
+  'offline.compareTitle': 'Perbandingan nilai yang dikonfirmasi dan nilai AI',
+  'offline.compareRow': '{field}: dikonfirmasi {worker} / AI {ai}',
   'offline.compareSame': 'sama',
   'offline.compareDiffers': 'berbeda',
   'offline.mismatch':
-    'Ada nilai masukan yang berbeda dari nilai AI atau tidak terbaca AI, jadi tidak dapat beralih ke pemeriksaan daring. Pertahankan hasil luring atau ambil foto ulang.',
+    'Ada nilai yang dikonfirmasi yang berbeda dari nilai AI atau tidak terbaca AI, jadi pemeriksaan terbatas tidak dapat dicabut. Pertahankan hasil pemeriksaan terbatas atau ambil foto ulang.',
   'offline.damageRecheck':
-    'Jawaban Anda sebelumnya tentang kerusakan batu gerinda diberikan sebelum peringatan AI di bawah ini. Periksa kembali batu gerinda yang sebenarnya dan jawab sebelum dapat beralih ke pemeriksaan daring.',
+    'Jawaban Anda sebelumnya tentang kerusakan batu gerinda diberikan sebelum peringatan AI di bawah ini. Periksa kembali batu gerinda yang sebenarnya dan jawab sebelum pemeriksaan terbatas dapat dicabut.',
   'offline.accept':
-    'Konfirmasi nilai sama dengan nilai AI dan beralih ke pemeriksaan daring',
-  'offline.cancel': 'Batal dan pertahankan hasil luring',
+    'Konfirmasi nilai sama dengan nilai AI dan cabut pemeriksaan terbatas',
+  'offline.cancel': 'Batal dan pertahankan hasil pemeriksaan terbatas',
   'draft.title': 'Ada pemeriksaan yang sedang berlangsung',
   'draft.body':
     'Anda dapat melanjutkannya, atau menghapus progres tersimpan dan memulai ulang. Aplikasi tidak melanjutkan atau menghapusnya sendiri.',

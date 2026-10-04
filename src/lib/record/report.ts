@@ -11,6 +11,7 @@
 
 import type { Locale, MessageKey, Translate } from '@/lib/i18n';
 import { checkReasonText, damageSourceNotes } from '@/lib/i18n/checkText';
+import { limitCauseLines } from '@/lib/i18n/limitCause';
 import { ruleLabelText } from '@/lib/i18n/ruleLabel';
 import { formatDateTime } from './datetime';
 import type {
@@ -180,6 +181,25 @@ function renderTrialRun(record: InspectionRecord, t: Translate): string {
   )}</p>${findings.length > 0 ? `<p>${escapeHtml(findings.join(', '))}</p>` : ''}`;
 }
 
+/**
+ * 제한 대조 기록의 한계와 까닭.
+ *
+ * 문서를 받는 사람은 그 점검에서 무슨 일이 있었는지 알 길이 없다. 한계 문장은
+ * 까닭을 단정하지 않고, 까닭은 기록에 남은 대로만 단계별로 적는다. 까닭을 남기기
+ * 전에 저장된 기록에는 어느 단계가 제한됐는지도 없으므로, 단계를 붙이지 않고
+ * 기록되지 않았다고만 적는다 — 추정해 적지 않는다.
+ */
+function renderLimit(record: InspectionRecord, t: Translate): string {
+  if (record.analysisMode !== 'offline_limited') return '';
+  const causes = record.analysisLimitCauses
+    ? limitCauseLines(record.analysisLimitCauses, t).map((line) => line.text)
+    : [];
+  const lines = causes.length > 0 ? causes : [t('offline.cause.unknown')];
+  return `<p class="warn">${escapeHtml(t('offline.limit'))}</p><ul>${lines
+    .map((line) => `<li>${escapeHtml(line)}</li>`)
+    .join('')}</ul>`;
+}
+
 function renderRecord(
   entry: ReportEntry,
   t: Translate,
@@ -194,15 +214,11 @@ function renderRecord(
     .filter((part): part is string => Boolean(part))
     .join(' · ');
   const meta = `${t('ruleVersion.label')}: ${record.ruleVersion ?? t('ruleVersion.missing')}`;
-  const offline =
-    record.analysisMode === 'offline_limited'
-      ? `<p class="warn">${escapeHtml(t('offline.limit'))}</p>`
-      : '';
   return `<section class="record"><h2><span class="badge ${verdict}">${escapeHtml(
     t(VERDICT_TEXT[verdict]),
   )}</span> ${escapeHtml(heading)}</h2><p class="summary">${escapeHtml(
     summary(record, t),
-  )}</p><p class="muted">${escapeHtml(meta)}</p>${offline}${renderPhotos(
+  )}</p><p class="muted">${escapeHtml(meta)}</p>${renderLimit(record, t)}${renderPhotos(
     entry.photos,
     t,
   )}${renderChecks(record, t, locale)}${renderExam(record, t)}${renderTrialRun(

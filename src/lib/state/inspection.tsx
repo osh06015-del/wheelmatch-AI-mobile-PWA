@@ -30,6 +30,8 @@ import {
   type TrialRunProgress,
 } from '@/lib/safety/trialRun';
 import type {
+  AnalysisLimitCause,
+  AnalysisLimitCauses,
   AnalysisMode,
   CaptureQualityCheck,
   CaptureQualityMetrics,
@@ -61,24 +63,44 @@ const CAPTURE_CHECKS_KEY = 'wheelmatch.captureChecks';
 const WORK_CONDITIONS_KEY = 'wheelmatch.workConditions';
 const OFFLINE_SLOTS_KEY = 'wheelmatch.offlineSlots';
 
+/** 판독 단계. 명판과 숫돌 라벨 둘이다 */
+export type OfflineSlot = 'grinder' | 'wheel';
+
+const OFFLINE_SLOT_NAMES: readonly OfflineSlot[] = ['grinder', 'wheel'];
+
 /**
- * 어느 단계를 서버 판독의 뒷받침 없이(오프라인 제한 대조) 확정했는가. 세 경우다 —
+ * 어느 단계를 서버 판독의 뒷받침 없이(제한 대조) 확정했는가. 세 경우다 —
  * 서버에 닿지 못해 작업자가 직접 입력했거나, 기기 안 OCR로만 읽었거나, 확인 화면
  * draft에 저장된 서버 판독을 읽을 수 없어 통째로 버린 채 확정했다
- * (formDraftModel.ts의 DroppedOcrTrace).
+ * (formDraftModel.ts의 DroppedOcrTrace). 저장된 이 표시 자체를 읽지 못했을 때도
+ * 두 단계 모두 제한으로 본다(readOfflineSlots).
  *
  * 한 단계라도 true면 이 점검 전체가 offline_limited다(analysisModeOf). 단계별로
  * 두는 이유: 명판을 다시 찍어 온라인으로 읽으면 명판 쪽만 풀려야 하고, 숫돌을
- * 다시 찍었다고 오프라인으로 넣은 명판 값이 풀리면 안 된다.
+ * 다시 찍었다고 제한으로 확정한 명판 값이 풀리면 안 된다.
+ *
+ * 이름의 Offline은 처음 만들 때의 한 경우에서 왔다. 기기가 오프라인이었다는 뜻이
+ * 아니다 — sessionStorage와 진행 중 점검 draft에 저장된 이름이라 그대로 둔다.
  */
 export interface OfflineSlots {
   grinder: boolean;
   wheel: boolean;
+  /**
+   * 제한된 단계의 까닭. **제한 여부는 위의 두 값만 정한다** — 이 값은 기록과 화면이
+   * 사실대로 말하기 위한 것이고 판정에는 쓰지 않는다. 까닭이 없거나 어긋나도 제한은
+   * 그대로다.
+   *
+   * 제한되지 않은 단계의 까닭은 두지 않는다. 제한됐는데 까닭이 없으면 unknown으로
+   * 읽는다(limitCausesOf) — 까닭을 적기 전에 저장된 표시와 읽지 못한 표시가 그렇다.
+   * 남길 까닭이 하나도 없으면 이 칸 자체를 두지 않아, 저장되는 모양이 까닭을 적기
+   * 전과 같다.
+   */
+  causes?: AnalysisLimitCauses;
 }
 
 export const NO_OFFLINE_SLOTS: OfflineSlots = { grinder: false, wheel: false };
 
-/** 단계 중 하나라도 오프라인으로 넣었으면 점검 전체가 오프라인 제한 대조다. */
+/** 단계 중 하나라도 제한으로 확정했으면 점검 전체가 제한 대조다. */
 export function analysisModeOf(slots: OfflineSlots): AnalysisMode {
   return slots.grinder || slots.wheel ? 'offline_limited' : 'online';
 }
@@ -86,13 +108,117 @@ export function analysisModeOf(slots: OfflineSlots): AnalysisMode {
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/** 남겨 둘 수 있는 까닭. unknown은 「까닭 없음」과 같아 따로 적지 않는다 */
+const RECORDED_LIMIT_CAUSES = [
+  'manual',
+  'local_ocr',
+  'dropped_ocr',
+] as const satisfies readonly AnalysisLimitCause[];
+
+const isRecordedLimitCause = (
+  value: unknown,
+): value is (typeof RECORDED_LIMIT_CAUSES)[number] =>
+  (RECORDED_LIMIT_CAUSES as readonly unknown[]).includes(value);
+
 /**
- * 저장된 오프라인 표시를 읽는다. draft 복구(lib/draft/draftModel.ts)와 새로고침
+ * 단계별 표시와 까닭을 한 모양으로 만든다. 표시를 만드는 곳은 모두 이 함수를 거친다.
+ *
+ * 까닭은 제한된 단계의 것만, 목록에 있는 값만 남긴다. 풀린 단계의 까닭이 남아
+ * 있으면 그 단계를 다시 제한으로 확정할 때 이전 사진의 까닭이 따라온다.
+ */
+function offlineSlotsOf(
+  flags: Record<OfflineSlot, boolean>,
+  causes: Partial<Record<OfflineSlot, unknown>> = {},
+): OfflineSlots {
+  const kept: AnalysisLimitCauses = {};
+  for (const slot of OFFLINE_SLOT_NAMES) {
+    const cause = causes[slot];
+    if (flags[slot] && isRecordedLimitCause(cause)) kept[slot] = cause;
+  }
+  const slots: OfflineSlots = { grinder: flags.grinder, wheel: flags.wheel };
+  if (Object.keys(kept).length > 0) slots.causes = kept;
+  return slots;
+}
+
+/** 한 단계의 표시를 바꾼다. 그 단계의 까닭은 새로 적거나(cause) 지운다 */
+function withOfflineSlot(
+  slots: OfflineSlots,
+  slot: OfflineSlot,
+  offline: boolean,
+  cause?: AnalysisLimitCause | null,
+): OfflineSlots {
+  return offlineSlotsOf(
+    { grinder: slots.grinder, wheel: slots.wheel, [slot]: offline },
+    { ...slots.causes, [slot]: cause },
+  );
+}
+
+/**
+ * 제한된 단계와 그 까닭. 제한되지 않은 단계는 넣지 않는다.
+ *
+ * 까닭이 남아 있지 않은 단계는 unknown이다. 추정해 채우지 않는다 — 확정한 값만
+ * 보면 직접 입력과 버린 판독이 구분되지 않는다.
+ *
+ * 이 값이 그대로 기록에 저장된다. 목록에 없는 값이 섞여 나가면 백업 정리
+ * (recordSanitize.ts)가 그 기록을 통째로 무효로 본다 — 그래서 여기서도 한 번 더
+ * 걸러 unknown으로 낸다.
+ */
+export function limitCausesOf(slots: OfflineSlots): AnalysisLimitCauses {
+  const causes: AnalysisLimitCauses = {};
+  for (const slot of OFFLINE_SLOT_NAMES) {
+    if (!slots[slot]) continue;
+    const cause = slots.causes?.[slot];
+    causes[slot] = isRecordedLimitCause(cause) ? cause : 'unknown';
+  }
+  return causes;
+}
+
+/**
+ * 확인 화면의 상태에서 기록에 남길 까닭 하나를 고른다. 적을 까닭이 없으면 null이다.
+ *
+ * **제한 여부는 이 함수가 정하지 않는다.** 확인 화면은 제한 여부를 따로 넘긴다
+ * (setOfflineSlot의 둘째 인자) — 이 함수가 틀려도, null을 내도 제한은 풀리지 않는다.
+ * 제한됐는데 까닭이 null이면 unknown으로 읽힌다(limitCausesOf).
+ *
+ * 둘이 겹치면 출처가 먼저다(직접 입력 → 기기 안 OCR → 버린 판독). 기기 안 OCR로
+ * 읽은 판독이 버려진 draft는 local_ocr로 남는다 — 출처는 바꿔 적지 않는다
+ * (formDraftModel.ts의 AnalysisSource). 버린 판독이 까닭이 되는 것은 서버로 읽은
+ * 판독을 버렸을 때뿐이다.
+ *
+ * **모르면 적지 않는다.** 확인 화면의 localOnly는 제한을 지키려고 넓게 잡은
+ * 묶음이라, 기기 안 OCR로 읽은 값 말고도 읽을 때 기기가 오프라인으로 보고된 값과
+ * 출처가 남지 않은 draft의 값이 들어 있다. 뒤의 둘은 서버가 읽은 값일 수 있다.
+ * 그래서 엔진이 확인된 경우에만 local_ocr을 낸다. 확인되지 않았으면 버린 판독도
+ * 까닭으로 내지 않는다 — 그 판독이 서버 판독이었는지부터 모른다.
+ */
+export function limitCauseFor(flags: {
+  /** 서버에 닿지 못해 직접 입력했다 */
+  manual: boolean;
+  /** 서버 판독이 아닌 것으로 보고 제한한 값이다(넓게 잡은 묶음) */
+  localOnly: boolean;
+  /** 그 가운데 기기 안 OCR 엔진이 읽은 것이 확인됐다. localOnly일 때만 뜻이 있다 */
+  localOcrConfirmed: boolean;
+  /** 저장된 판독을 통째로 버려 화면에 판독이 없다 */
+  ocrDropped: boolean;
+}): AnalysisLimitCause | null {
+  if (flags.manual) return 'manual';
+  if (flags.localOnly) return flags.localOcrConfirmed ? 'local_ocr' : null;
+  if (flags.ocrDropped) return 'dropped_ocr';
+  return null;
+}
+
+/**
+ * 저장된 제한 표시를 읽는다. draft 복구(lib/draft/draftModel.ts)와 새로고침
  * 복원이 같이 쓴다.
  *
- * 저장된 적이 없으면(undefined) 아직 오프라인으로 넣은 단계가 없는 것이다. 값이
- * 있는데 읽지 못하면 더 엄격한 쪽(두 단계 모두 오프라인)으로 본다 — 모르는 것을
+ * 저장된 적이 없으면(undefined) 아직 제한으로 확정한 단계가 없는 것이다. 값이
+ * 있는데 읽지 못하면 더 엄격한 쪽(두 단계 모두 제한)으로 본다 — 모르는 것을
  * 온라인으로 추정하면 적합이 근거 없이 열린다.
+ *
+ * 까닭은 따로 본다. 표시가 온전하면 까닭이 어긋나도 표시를 버리지 않고 까닭만
+ * 버린다(unknown으로 읽힌다) — 판정에 쓰지 않는 값 때문에 온전한 표시까지
+ * 「읽지 못함」으로 만들 이유가 없다. 표시를 읽지 못했으면 함께 적힌 까닭도 믿지
+ * 않는다. 그 단계가 정말 제한됐는지부터 모르는 것이다.
  */
 export function readOfflineSlots(value: unknown): {
   slots: OfflineSlots;
@@ -107,7 +233,10 @@ export function readOfflineSlots(value: unknown): {
     typeof value.wheel === 'boolean'
   ) {
     return {
-      slots: { grinder: value.grinder, wheel: value.wheel },
+      slots: offlineSlotsOf(
+        { grinder: value.grinder, wheel: value.wheel },
+        isObject(value.causes) ? value.causes : {},
+      ),
       unreadable: false,
     };
   }
@@ -202,7 +331,7 @@ interface InspectionState {
   wheelOcrTelemetry: OcrTelemetry | null;
   /** 촬영 직후 사진 상태 경고와 재촬영 여부(검증용). 판정·Gate에 쓰지 않는다. */
   captureChecks: CaptureChecks;
-  /** 서버 분석 없이 직접 입력한 단계. sessionStorage에 남는다 */
+  /** 제한 대조로 확정한 단계와 그 까닭. sessionStorage에 남는다 */
   offlineSlots: OfflineSlots;
   /**
    * 결과 화면의 작업 전 체크리스트. 아직 누르지 않았으면 null.
@@ -260,7 +389,7 @@ export function dropOrphanedSteps(
     trialRun: null,
     checklist: null,
     trialRunRecord: null,
-    offlineSlots: { ...snapshot.offlineSlots, wheel: false },
+    offlineSlots: withOfflineSlot(snapshot.offlineSlots, 'wheel', false),
     captureChecks: grinderCheck ? { grinder: grinderCheck } : {},
   };
 }
@@ -296,8 +425,8 @@ const UNREADABLE = Symbol('unreadable');
 
 /**
  * 저장된 값을 타입 없이(unknown) 읽는다. 저장된 적이 없으면 undefined다 —
- * 읽지 못한 것(UNREADABLE)과 가른다. 둘을 같게 보면 깨진 오프라인 표시가
- * "오프라인으로 넣은 단계 없음"으로 읽힌다.
+ * 읽지 못한 것(UNREADABLE)과 가른다. 둘을 같게 보면 깨진 제한 표시가
+ * "제한으로 확정한 단계 없음"으로 읽힌다.
  */
 function readStored(key: string): unknown {
   let raw: string | null;
@@ -438,9 +567,9 @@ function initialClientState(): InspectionState {
   });
 
   // 버린 값이 있으면 새로고침용 저장도 되살린 상태에 맞춘다. 어긋난 값을 남겨
-  // 두면 새로고침할 때마다 같은 값을 다시 버리고 다시 알린다. 읽지 못한 오프라인
-  // 표시는 여기서 오프라인으로 적힌다 — 지우기만 하면 다음 새로고침에 "표시
-  // 없음"(온라인)으로 읽혀 제한이 풀린다.
+  // 두면 새로고침할 때마다 같은 값을 다시 버리고 다시 알린다. 읽지 못한 제한
+  // 표시는 여기서 두 단계 모두 제한으로 적힌다 — 지우기만 하면 다음 새로고침에
+  // "표시 없음"(온라인)으로 읽혀 제한이 풀린다.
   if (dropped) persistSnapshot(snapshot);
 
   return { ...snapshot, hydrated: true, droppedOnReload: dropped };
@@ -505,10 +634,19 @@ export interface InspectionStore extends InspectionState {
   ) => void;
   setTrialRun: (progress: TrialRunProgress | null) => void;
   /**
-   * 이 단계를 서버 분석 없이 직접 입력했는지. setGrinder/setWheel 뒤에 부른다 —
+   * 이 단계를 제한 대조로 확정했는지. setGrinder/setWheel 뒤에 부른다 —
    * 그 둘이 해당 단계의 표시를 지우기 때문이다.
+   *
+   * @param offline 제한 여부. 이 값만 판정에 닿는다.
+   * @param cause 제한된 까닭. 기록과 화면에 적을 사실이고 판정에는 쓰지 않는다.
+   *   넘기지 않으면 까닭 없이 표시만 남는다(unknown으로 읽힌다). offline이
+   *   false면 버린다.
    */
-  setOfflineSlot: (slot: keyof OfflineSlots, offline: boolean) => void;
+  setOfflineSlot: (
+    slot: OfflineSlot,
+    offline: boolean,
+    cause?: AnalysisLimitCause | null,
+  ) => void;
   /**
    * 서버 재분석 결과가 도착했다. 전환을 받아들이기 전에, 받아들이지 않더라도 부른다.
    *
@@ -525,10 +663,10 @@ export interface InspectionStore extends InspectionState {
     analyzedWheelImage: Blob | null,
   ) => void;
   /**
-   * 연결이 돌아와 사용자가 서버 재분석 결과를 확인하고 온라인 대조로 바꾼다.
+   * 사용자가 서버 재분석 결과를 확인하고 제한 대조를 푼다(판독 경로가 online이 된다).
    *
    * 작업자가 확인 화면에서 확정한 값은 건드리지 않는다. AI 값은 OCR 원본 자리에
-   * 넣고, 넣은 단계의 오프라인 표시만 푼다.
+   * 넣고, 넣은 단계의 제한 표시만 푼다.
    *
    * 숫돌 확정값에서 옮기는 것은 OCR이 실어 오던 두 칸뿐이다 — 외관 의심과 원본
    * 표시의 빈 자리(withAcceptedReanalysis). 확인 화면에 없어 작업자가 확정한 적이
@@ -624,7 +762,7 @@ export function useInspection(): InspectionStore {
       }
       setState({
         grinder: spec,
-        // 이번 명판이 오프라인 입력인지는 곧바로 이어지는 setOfflineSlot이 정한다.
+        // 이번 명판이 제한 대조인지는 곧바로 이어지는 setOfflineSlot이 정한다.
         offlineSlots: NO_OFFLINE_SLOTS,
         checklist: null,
         trialRunRecord: null,
@@ -678,8 +816,8 @@ export function useInspection(): InspectionStore {
         ? { grinder: state.captureChecks.grinder }
         : {};
       writeStored(CAPTURE_CHECKS_KEY, kept);
-      // 숫돌 쪽 오프라인 표시만 지운다. 명판을 오프라인으로 넣었다는 사실은 남는다.
-      const offlineSlots = { ...state.offlineSlots, wheel: false };
+      // 숫돌 쪽 제한 표시와 까닭만 지운다. 명판을 제한으로 확정했다는 사실은 남는다.
+      const offlineSlots = withOfflineSlot(state.offlineSlots, 'wheel', false);
       writeStored(OFFLINE_SLOTS_KEY, offlineSlots);
       setState({
         wheel: spec,
@@ -737,8 +875,17 @@ export function useInspection(): InspectionStore {
   }, []);
 
   const setOfflineSlot = useCallback(
-    (slot: keyof OfflineSlots, offline: boolean) => {
-      const offlineSlots = { ...state.offlineSlots, [slot]: offline };
+    (
+      slot: OfflineSlot,
+      offline: boolean,
+      cause?: AnalysisLimitCause | null,
+    ) => {
+      const offlineSlots = withOfflineSlot(
+        state.offlineSlots,
+        slot,
+        offline,
+        cause,
+      );
       writeStored(OFFLINE_SLOTS_KEY, offlineSlots);
       setState({ offlineSlots });
     },
@@ -762,10 +909,12 @@ export function useInspection(): InspectionStore {
   );
 
   const applyReanalysis = useCallback((input: ReanalysisInput) => {
-    const offlineSlots = {
-      grinder: input.grinderOcr ? false : state.offlineSlots.grinder,
-      wheel: input.wheelOcr ? false : state.offlineSlots.wheel,
-    };
+    // 다시 분석한 단계의 제한만 푼다. 풀린 단계의 까닭도 함께 지운다.
+    let offlineSlots = state.offlineSlots;
+    if (input.grinderOcr)
+      offlineSlots = withOfflineSlot(offlineSlots, 'grinder', false);
+    if (input.wheelOcr)
+      offlineSlots = withOfflineSlot(offlineSlots, 'wheel', false);
     const next: Partial<InspectionState> = { offlineSlots };
     if (input.grinderOcr) {
       next.grinderOcr = input.grinderOcr;

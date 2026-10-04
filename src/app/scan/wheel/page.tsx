@@ -56,7 +56,7 @@ import {
   isWheelConditionComplete,
   pickWheelCondition,
 } from '@/lib/safety/wheelCondition';
-import { useInspection } from '@/lib/state/inspection';
+import { limitCauseFor, useInspection } from '@/lib/state/inspection';
 import type {
   CaptureQualityMetrics,
   OcrTelemetry,
@@ -136,11 +136,16 @@ export default function WheelScanPage() {
   const [error, setError] = useState<unknown>(null);
   // 라벨 사진 한 자리의 사진 상태 경고와 넣은 횟수.
   const [labelReview, setLabelReview] = useState<CaptureReview | null>(null);
-  // 서버에 닿지 못해 작업자가 라벨 값을 직접 넣는 중인가(오프라인 제한 대조).
+  // 서버에 닿지 못해 작업자가 라벨 값을 직접 넣는 중인가(제한 대조).
   const [offline, setOffline] = useState(false);
   // 서버 분석이 아니라 로컬 OCR(tesseract)로 읽었거나 기기가 오프라인이었는가.
   // 값은 있지만 서버라는 두 번째 눈이 없었던 것이라 offline과 같은 제한 판정으로 남긴다.
   const [localOnly, setLocalOnly] = useState(false);
+  // localOnly 가운데 기기 안 OCR 엔진이 읽은 것이 확인된 경우인가. localOnly는 제한을
+  // 지키려고 넓게 잡은 묶음이다 — 읽을 때 기기가 오프라인으로 보고된 값과 출처가 남지
+  // 않은 draft의 값도 들어 있고, 그 값은 서버가 읽은 것일 수 있다. 기록에 「이 기기에서
+  // 읽었다」고 남기는 것은 이 표시가 있을 때뿐이다. 제한 여부에는 쓰지 않는다.
+  const [localOcrConfirmed, setLocalOcrConfirmed] = useState(false);
   // 이전 버전(다각도 외관 확인이 있던 시기)이 남긴 draft에서 이어진 경우의 흔적.
   // 추가 사진·AI 결과는 되살리지 않았다고 알리고, 그 확인이 의심했던 숫돌이면
   // 의심을 이어간다. 이 라벨 사진의 숫돌에 대한 것이라 새 사진을 찍으면 지운다.
@@ -205,6 +210,7 @@ export default function WheelScanPage() {
       // 배지 문구가 서로 다르므로 하나의 불리언으로 합쳐 두지 않는다.
       setOffline(recovered.analysisSource === 'manual');
       setLocalOnly(recovered.analysisSource === 'local_ocr');
+      setLocalOcrConfirmed(recovered.localOcrConfirmed);
       setLegacyExam(recovered.legacyExam);
       setCarriedDamage(recovered.carriedDamage === 'suspected');
       setPhoto(recovered.photo);
@@ -235,6 +241,11 @@ export default function WheelScanPage() {
         // offline·localOnly를 하나의 출처 값으로 남긴다 — 복구할 때 배지 문구를
         // (직접 입력 vs 로컬 OCR) 그대로 되살리기 위해서다.
         analysisSource: offline ? 'manual' : localOnly ? 'local_ocr' : 'server',
+        // 기기 안 OCR 엔진이 읽은 것이 확인됐다는 표시. 출처(local_ocr)만으로는
+        // 그것을 알 수 없어 따로 남긴다 — 빠뜨리면 새로고침 한 번에 까닭을 잃는다.
+        ...(localOnly && !offline && localOcrConfirmed
+          ? { localOcrConfirmed: true as const }
+          : {}),
         // 이어받은 흔적을 다시 저장한다. 빠뜨리면 새로고침 한 번에 의심이 사라진다.
         ...(legacyExam ? { legacyExam } : {}),
         // 확인 화면을 되살리지 못한 draft에서 이어받은 의심도 같다. 여기 저장되는
@@ -252,6 +263,7 @@ export default function WheelScanPage() {
     droppedOcr,
     offline,
     localOnly,
+    localOcrConfirmed,
     legacyExam,
     carriedDamage,
   ]);
@@ -298,6 +310,7 @@ export default function WheelScanPage() {
     setUserConfirmed(false);
     setOffline(false);
     setLocalOnly(false);
+    setLocalOcrConfirmed(false);
     setLegacyExam(null);
     setDroppedOcr(null);
     // 확인 화면을 되살리지 못한 draft에서 이어받은 의심(carriedDamage)은 여기서
@@ -348,7 +361,11 @@ export default function WheelScanPage() {
       setOffline(false);
       // 서버 분석이 아니라 로컬 OCR로 읽었거나(엔진이 tesseract) 기기가
       // 오프라인이면 직접 입력(offline)과 같은 제한 판정으로 남긴다.
-      setLocalOnly(telemetry?.engine === 'tesseract' || !navigator.onLine);
+      const byDeviceOcr = telemetry?.engine === 'tesseract';
+      setLocalOnly(byDeviceOcr || !navigator.onLine);
+      // 「이 기기에서 읽었다」고 기록할 수 있는 것은 엔진이 확인된 경우뿐이다.
+      // 기기가 오프라인으로 보고됐다는 것만으로 서버가 읽지 않았다고 단정하지 않는다.
+      setLocalOcrConfirmed(byDeviceOcr);
       setForm({
         maxRPM: fromNumber(spec.maxRPM),
         diameter: fromNumber(spec.diameter),
@@ -382,6 +399,7 @@ export default function WheelScanPage() {
     actedRef.current = true;
     setOffline(true);
     setLocalOnly(false);
+    setLocalOcrConfirmed(false);
     setOcr(null);
     setOcrAltered(false);
     setOcrTelemetry(null);
@@ -498,13 +516,26 @@ export default function WheelScanPage() {
       ocrTelemetry,
     );
     setCaptureCheck('wheel', toCaptureQualityCheck(labelReview));
-    // setWheel이 숫돌 쪽 오프라인 표시를 지운다. 그 뒤에 이번 라벨의 판독 경로를 넣는다.
+    // setWheel이 숫돌 쪽 제한 표시를 지운다. 그 뒤에 이번 라벨의 판독 경로를 넣는다.
     // 직접 입력(offline)과 로컬 OCR(localOnly) 모두 서버 대조 없이 읽은 값이다.
     // 저장된 판독을 통째로 버린 경우(ocrDropped)도 제한 대조로 남긴다. 서버 분석을
     // 거쳤더라도 지금 내놓을 판독이 없고, 여기서 확정하는 값은 직접 입력과 내용이
     // 같다 — draft에 남은 출처만 믿고 온라인으로 내보내면 작업자의 확인만으로
     // 적합까지 간다.
-    setOfflineSlot('wheel', offline || localOnly || ocrDropped);
+    //
+    // 까닭도 함께 남긴다. 제한 여부(둘째 인자)와 따로 넘긴다 — 까닭을 고르는 쪽이
+    // 틀려도 제한이 풀리지 않는다. 확정한 뒤에는 이 화면의 draft가 지워져, 여기서
+    // 남기지 않으면 결과 화면과 기록은 왜 제한됐는지 알 길이 없다.
+    setOfflineSlot(
+      'wheel',
+      offline || localOnly || ocrDropped,
+      limitCauseFor({
+        manual: offline,
+        localOnly,
+        localOcrConfirmed,
+        ocrDropped,
+      }),
+    );
     // 확정됐다. 확인 화면 draft는 더 이상 필요 없다.
     void formDraftStore.remove('wheel');
     // 이 종류에서 물은 항목의 답만 남긴다. 다른 종류로 답한 항목이 섞이지 않게.

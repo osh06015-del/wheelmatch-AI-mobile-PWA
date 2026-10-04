@@ -13,6 +13,7 @@
 
 import type {
   AccessoryProfileRef,
+  AnalysisLimitCauses,
   CaptureQualityCheck,
   CaptureQualityMetrics,
   CaptureSlot,
@@ -301,6 +302,12 @@ const REASON_CODES = [
   'analysisMode.offlineLimited',
 ] as const;
 const ANALYSIS_MODES = ['online', 'offline_limited'] as const;
+const ANALYSIS_LIMIT_CAUSES = [
+  'manual',
+  'local_ocr',
+  'dropped_ocr',
+  'unknown',
+] as const;
 const WHEEL_EXAM_STATUSES = [
   'suspected',
   'not_observed',
@@ -671,6 +678,20 @@ function sanitizeOcrTelemetry(raw: unknown): OcrTelemetry {
   };
 }
 
+/**
+ * 제한 대조가 된 단계와 까닭. 명판·숫돌 두 단계만 옮겨 담는다.
+ *
+ * 다른 알려진 필드와 같이, 값이 있는데 목록에 없으면 기록 전체가 무효다. 없는
+ * 단계를 채워 넣지 않는다 — 까닭을 남기기 전의 기록에는 이 값 자체가 없다.
+ */
+function sanitizeAnalysisLimitCauses(raw: unknown): AnalysisLimitCauses {
+  const r = obj(raw);
+  const result: AnalysisLimitCauses = {};
+  setOpt(result, 'grinder', optOneOf(r.grinder, ANALYSIS_LIMIT_CAUSES));
+  setOpt(result, 'wheel', optOneOf(r.wheel, ANALYSIS_LIMIT_CAUSES));
+  return result;
+}
+
 // ── 규격이 아닌 값 하나가 이 파일의 기준에 맞는가 ──
 //
 // 위의 isValidGrinderSpec·isValidWheelSpec과 같은 이유로 내놓는다. draft 복구
@@ -929,6 +950,13 @@ export function sanitizeInspectionRecord(
     );
     setOpt(result, 'ruleVersion', optStr(r.ruleVersion));
     setOpt(result, 'analysisMode', optOneOf(r.analysisMode, ANALYSIS_MODES));
+    setOpt(
+      result,
+      'analysisLimitCauses',
+      r.analysisLimitCauses === undefined
+        ? undefined
+        : sanitizeAnalysisLimitCauses(r.analysisLimitCauses),
+    );
     return result;
   } catch (error) {
     if (error instanceof Invalid) return null;
