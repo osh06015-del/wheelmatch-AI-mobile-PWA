@@ -134,6 +134,12 @@ export const id: Messages = {
   'evidence.source.converted': 'Konversi AI',
   'evidence.source.user': 'Input pekerja',
   'evidence.notRecorded': 'Tidak tercatat',
+  'evidence.markings.title':
+    'Penandaan label yang dipakai dalam pemeriksaan tetapi berbeda dari mentah OCR',
+  'evidence.markings.row':
+    '{field}: nilai yang dipakai {used} / mentah OCR {ocr}',
+  'evidence.markings.note':
+    'Nilai ini berbeda dari mentah OCR yang tercatat. Tampaknya ini penandaan yang dibaca sebelum analisis ulang di server, dan tidak dikonfirmasi pekerja.',
   'evidence.rules.title': 'Dasar hasil per aturan',
   'evidence.rules.formula': 'Rumus',
   'evidence.rules.difference': 'Selisih',
@@ -670,6 +676,9 @@ export const id: Messages = {
     'Keyakinan pembacaan: rendah — foto ulang atau isi nilainya sendiri',
   'field.rawShow': 'Tampilkan teks yang terbaca',
   'field.rawHide': 'Sembunyikan teks yang terbaca',
+  'marking.labeledRPM': 'Penandaan kecepatan (rpm)',
+  'marking.peripheralSpeedMps': 'Penandaan kecepatan keliling (m/s)',
+  'marking.boreDiameter': 'Penandaan diameter lubang',
   'manualConfirm.label':
     'Saya sudah melihat label sendiri dan memastikan nilai di atas',
   'manualConfirm.hint':
@@ -1120,8 +1129,17 @@ export const id: Messages = {
   'offline.compareRow': '{field}: dikonfirmasi {worker} / AI {ai}',
   'offline.compareSame': 'sama',
   'offline.compareDiffers': 'berbeda',
+  'offline.compareAbstained': 'tidak ada nilai untuk dibandingkan',
   'offline.mismatch':
     'Ada nilai yang dikonfirmasi yang berbeda dari nilai AI atau tidak terbaca AI, jadi pemeriksaan terbatas tidak dapat dicabut. Pertahankan hasil pemeriksaan terbatas atau ambil foto ulang.',
+  'offline.compareMarkingRow': '{field}: dibaca perangkat {local} / AI {ai}',
+  'offline.compareMarkingRowUnknown':
+    '{field}: bacaan sebelumnya {local} / AI {ai}',
+  'offline.markingConflict':
+    'Penandaan label yang dibaca sebelumnya berbeda dari yang dibaca AI kali ini. Aplikasi tidak dapat mengetahui mana yang benar, jadi pemeriksaan terbatas tidak dapat dicabut. Pertahankan hasil pemeriksaan terbatas atau ambil foto ulang.',
+  'offline.lowConfidenceRow': '{photo}: keyakinan pembacaan AI rendah',
+  'offline.lowConfidence':
+    'AI membaca foto dengan keyakinan rendah. Meskipun nilainya sama, pemeriksaan terbatas tidak dapat dicabut dengan bacaan itu. Pertahankan hasil pemeriksaan terbatas atau ambil foto ulang.',
   'offline.damageRecheck':
     'Jawaban Anda sebelumnya tentang kerusakan batu gerinda diberikan sebelum peringatan AI di bawah ini. Periksa kembali batu gerinda yang sebenarnya dan jawab sebelum pemeriksaan terbatas dapat dicabut.',
   'offline.accept':

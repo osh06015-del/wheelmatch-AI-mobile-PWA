@@ -131,6 +131,11 @@ export const en: Messages = {
   'evidence.source.converted': 'AI conversion',
   'evidence.source.user': 'Worker entry',
   'evidence.notRecorded': 'Not recorded',
+  'evidence.markings.title':
+    'Label markings used in the check that differ from the OCR raw reading',
+  'evidence.markings.row': '{field}: used {used} / OCR raw {ocr}',
+  'evidence.markings.note':
+    'These values differ from the recorded OCR raw reading. They appear to be markings read before the server re-analysis, and they were not confirmed by the worker.',
   'evidence.rules.title': 'Per-rule verdict evidence',
   'evidence.rules.formula': 'Formula',
   'evidence.rules.difference': 'Difference',
@@ -657,6 +662,9 @@ export const en: Messages = {
     'Reading confidence: low — retake the photo or enter the values yourself',
   'field.rawShow': 'Show the text that was read',
   'field.rawHide': 'Hide the text that was read',
+  'marking.labeledRPM': 'Speed marking (rpm)',
+  'marking.peripheralSpeedMps': 'Peripheral speed marking (m/s)',
+  'marking.boreDiameter': 'Bore marking',
   'manualConfirm.label':
     'I checked the label myself and confirmed the values above',
   'manualConfirm.hint':
@@ -1102,8 +1110,17 @@ export const en: Messages = {
   'offline.compareRow': '{field}: confirmed {worker} / AI {ai}',
   'offline.compareSame': 'same',
   'offline.compareDiffers': 'different',
+  'offline.compareAbstained': 'nothing to compare',
   'offline.mismatch':
     'Some confirmed values differ from the AI values or the AI could not read them, so the limited check cannot be lifted. Keep the limited-check result or take the photos again.',
+  'offline.compareMarkingRow': '{field}: device read {local} / AI {ai}',
+  'offline.compareMarkingRowUnknown':
+    '{field}: earlier reading {local} / AI {ai}',
+  'offline.markingConflict':
+    'The label markings read earlier differ from what the AI read this time. The app cannot tell which is right, so the limited check cannot be lifted. Keep the limited-check result or take the photos again.',
+  'offline.lowConfidenceRow': '{photo}: AI reading confidence is low',
+  'offline.lowConfidence':
+    'The AI read a photo with low confidence. Even if the values are the same, the limited check cannot be lifted with that reading. Keep the limited-check result or take the photos again.',
   'offline.damageRecheck':
     'Your earlier answer about wheel damage was given before the AI warning below. Look at the actual wheel again and answer before the limited check can be lifted.',
   'offline.accept':

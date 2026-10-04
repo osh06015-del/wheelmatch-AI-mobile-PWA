@@ -2302,4 +2302,637 @@ describe('결과 화면 — 숫돌 라벨 재분석이 낸 외관 의심과 원�
     expect(result.current.wheel?.visibleDamage).toBe('unknown');
     expect(screen.getByText('적합')).toBeInTheDocument();
   });
+
+  describe('기기 판독(로컬 OCR)의 표기와 AI가 읽은 표기', () => {
+    // 로컬 OCR로 읽은 숫돌은 확정값에 그 판독의 원본 표시가 실려 있다. 재분석을
+    // 받아들이면 빈 자리만 서버 표기로 채우므로, 두 판독이 같은 칸을 **다르게**
+    // 읽었을 때 그냥 전환하면 로컬 표기가 조용히 이긴다. 값이 있고 다른 것은 충돌이고
+    // (safety-critical.md 3번) 어느 쪽이 맞는지 앱은 모른다 — 전환을 열지 않는다.
+    const MARKING_CONFLICT =
+      '앞서 읽은 라벨 표기와 AI가 다시 읽은 표기가 다릅니다. 어느 쪽이 맞는지 앱이 알 수 없어 제한 대조를 풀 수 없습니다. 제한 대조 결과를 유지하거나 다시 촬영하세요.';
+
+    /** 이 기기의 로컬 OCR이 같은 라벨에서 읽은 판독. 글자만 읽어 종류·외관은 모른다 */
+    function localRead(
+      markings: Partial<NonNullable<WheelSpec['markings']>> = {},
+    ): WheelSpec {
+      return aiWheel(
+        { wheelType: 'unknown', visibleDamage: 'unknown', rawText: 'LOCAL' },
+        markings,
+      );
+    }
+
+    /**
+     * 로컬 OCR로 읽은 라벨을 작업자가 종류를 골라 직접 확인하고 결과까지 온 상태.
+     *
+     * @param cause 확인 화면이 남긴 제한 까닭. 기기 안 OCR 엔진이 읽은 것이 확인된
+     *   경우에만 'local_ocr'이 남는다. null이면 까닭이 남지 않은 제한이다.
+     */
+    function readyLocalOcrWheel(
+      ocr: WheelSpec = localRead(),
+      cause: 'local_ocr' | null = 'local_ocr',
+    ) {
+      const wheel = confirmedWheelSpec(ocr, {
+        maxRPM: ocr.maxRPM,
+        diameter: ocr.diameter,
+        thickness: ocr.thickness,
+        purpose: ocr.purpose,
+        wheelType: 'bonded_abrasive',
+        expiryText: ocr.markings?.expiryRaw ?? '',
+        userConfirmed: true,
+      });
+      const result = store();
+      act(() => {
+        result.current.setGrinder(GRINDER, null, GRINDER);
+        result.current.setGrinderCondition(GRINDER_OK);
+        result.current.setWheel(
+          wheel,
+          new Blob(['label'], { type: 'image/jpeg' }),
+          ocr,
+        );
+        result.current.setOfflineSlot('wheel', true, cause);
+        result.current.setWheelCondition(CONFIRMED);
+      });
+      return result;
+    }
+
+    it('그 표기를 기기가 읽었다는 까닭이 남아 있지 않으면 기기 판독이라고 적지 않는다', async () => {
+      // 읽을 때 기기가 오프라인으로 보고됐을 뿐인 판독은 서버가 읽은 것일 수도 있다.
+      // 확인 화면은 그런 값에 까닭을 남기지 않는다. 막는 것은 같고, 모르는 것을
+      // 기기가 읽었다고 적지 않을 뿐이다.
+      const result = readyLocalOcrWheel(localRead(), null);
+      extractWheel.mockResolvedValue(aiWheel({}, { peripheralSpeedMps: 30 }));
+      render(<ResultPage />);
+
+      await reanalyze();
+
+      expect(
+        screen.getByText('원주속도 표기: 앞선 판독 80m/s / AI 값 30m/s · 다름'),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/기기 판독/)).not.toBeInTheDocument();
+      expect(screen.getByText(MARKING_CONFLICT)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: ACCEPT })).toBeDisabled();
+      await accept();
+      expect(result.current.analysisMode).toBe('offline_limited');
+    });
+
+    it('서버가 m/s 표기를 다르게 읽으면 그 칸을 보여 주고 전환을 막는다 — 로컬 표기로 적합이 되지 않는다', async () => {
+      // 라벨 Φ125 / 12,200rpm / 80m/s. 로컬 OCR은 그대로 읽었고 서버는 m/s를 30으로
+      // 읽었다. 같은 사진을 처음부터 서버로 읽었다면 표기 불일치로 판정불가였다.
+      const result = readyLocalOcrWheel();
+      const before = result.current.wheel;
+      extractWheel.mockResolvedValue(aiWheel({}, { peripheralSpeedMps: 30 }));
+      render(<ResultPage />);
+
+      await reanalyze();
+
+      // 회전속도와 지름은 같다. 그 둘만 견주면 전환이 열린다.
+      expect(
+        screen.getByText(
+          '최고사용회전속도: 확정한 값 12200rpm / AI 값 12200rpm · 같음',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('지름: 확정한 값 Φ125mm / AI 값 Φ125mm · 같음'),
+      ).toBeInTheDocument();
+      // 작업자가 넣은 값이 아니라 기기가 읽은 값이라고 적는다.
+      expect(
+        screen.getByText('원주속도 표기: 기기 판독 80m/s / AI 값 30m/s · 다름'),
+      ).toBeInTheDocument();
+      expect(screen.getByText(MARKING_CONFLICT)).toBeInTheDocument();
+      // 작업자 입력값이 다른 것이 아니다. 그 안내는 띄우지 않는다.
+      expect(screen.queryByText(VALUES_DIFFER)).not.toBeInTheDocument();
+      // 같게 읽은 칸은 따로 보이지 않는다.
+      expect(
+        screen.queryByText(/회전속도 표기: 기기 판독/),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/내경 표기: 기기 판독/),
+      ).not.toBeInTheDocument();
+
+      expect(screen.getByRole('button', { name: ACCEPT })).toBeDisabled();
+      await accept();
+
+      expect(result.current.analysisMode).toBe('offline_limited');
+      expect(screen.getByText('판정불가')).toBeInTheDocument();
+      expect(screen.queryByText('적합')).not.toBeInTheDocument();
+      // 확정값도 OCR 원본 자리도 그대로다. 받아들이지 않은 AI 값은 넣지 않는다.
+      expect(result.current.wheel).toBe(before);
+      expect(result.current.wheelOcr?.rawText).toBe('LOCAL');
+
+      fireEvent.click(screen.getByRole('button', { name: CANCEL }));
+      expect(result.current.analysisMode).toBe('offline_limited');
+      expect(screen.getByText('판정불가')).toBeInTheDocument();
+    });
+
+    it('다르게 읽은 칸을 모두 보여 준다', async () => {
+      readyLocalOcrWheel();
+      extractWheel.mockResolvedValue(
+        aiWheel(
+          {},
+          { labeledRPM: 13300, peripheralSpeedMps: 63, boreDiameter: 16 },
+        ),
+      );
+      render(<ResultPage />);
+
+      await reanalyze();
+
+      expect(
+        screen.getByText(
+          '회전속도 표기: 기기 판독 12200rpm / AI 값 13300rpm · 다름',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('원주속도 표기: 기기 판독 80m/s / AI 값 63m/s · 다름'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('내경 표기: 기기 판독 Φ22.23mm / AI 값 Φ16mm · 다름'),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: ACCEPT })).toBeDisabled();
+    });
+
+    it('작업자가 오독을 고쳤어도 원본 표기가 다르면 전환을 막는다', async () => {
+      // 로컬 OCR이 12,200을 1,220으로 읽었고 작업자가 확인 화면에서 고쳤다. 확정한
+      // 회전속도는 AI 값과 같지만, 확정값에 실린 원본 표기는 여전히 1220이다
+      // (confirm.ts — 확인은 정규화 값만 바꾼다). 그 표기를 서버 값으로 덮으면 로컬이
+      // 올린 표기가 사라지므로 덮지 않고, 덮지 않은 채 전환하지도 않는다.
+      const ocr = localRead({ labeledRPM: 1220, peripheralSpeedMps: null });
+      const result = store();
+      act(() => {
+        result.current.setGrinder(GRINDER, null, GRINDER);
+        result.current.setGrinderCondition(GRINDER_OK);
+        result.current.setWheel(
+          confirmedWheelSpec(
+            { ...ocr, maxRPM: 1220 },
+            {
+              maxRPM: 12200,
+              diameter: 125,
+              thickness: 1.6,
+              purpose: 'cutting',
+              wheelType: 'bonded_abrasive',
+              expiryText: '12/2099',
+              userConfirmed: true,
+            },
+          ),
+          new Blob(['label'], { type: 'image/jpeg' }),
+          { ...ocr, maxRPM: 1220 },
+        );
+        result.current.setOfflineSlot('wheel', true, 'local_ocr');
+        result.current.setWheelCondition(CONFIRMED);
+      });
+      extractWheel.mockResolvedValue(aiWheel());
+      render(<ResultPage />);
+
+      await reanalyze();
+
+      expect(
+        screen.getByText(
+          '최고사용회전속도: 확정한 값 12200rpm / AI 값 12200rpm · 같음',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          '회전속도 표기: 기기 판독 1220rpm / AI 값 12200rpm · 다름',
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByText(MARKING_CONFLICT)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: ACCEPT })).toBeDisabled();
+      await accept();
+      expect(result.current.analysisMode).toBe('offline_limited');
+      expect(result.current.wheel?.markings?.labeledRPM).toBe(1220);
+    });
+
+    it('한쪽이 읽지 못한 칸은 충돌이 아니다 — 빈 자리를 채우고 전환한다', async () => {
+      // 로컬 OCR은 rpm 표기만 읽었다. 서버는 rpm을 같게 읽고 m/s와 내경을 더 읽었다.
+      const result = readyLocalOcrWheel(
+        localRead({ peripheralSpeedMps: null, boreDiameter: null }),
+      );
+      extractWheel.mockResolvedValue(aiWheel());
+      render(<ResultPage />);
+
+      await reanalyze();
+
+      expect(screen.queryByText(/기기 판독/)).not.toBeInTheDocument();
+      expect(screen.queryByText(MARKING_CONFLICT)).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: ACCEPT })).toBeEnabled();
+      await accept();
+
+      expect(result.current.analysisMode).toBe('online');
+      expect(result.current.wheel?.markings).toEqual({
+        labeledRPM: 12200,
+        peripheralSpeedMps: 80,
+        boreDiameter: 22.23,
+        expiryRaw: '12/2099',
+      });
+      expect(screen.getByText('적합')).toBeInTheDocument();
+    });
+
+    it('표기가 충돌하면 AI가 올린 의심은 남기되, 전환할 수 없으므로 손상 항목은 다시 묻지 않는다', async () => {
+      const result = readyLocalOcrWheel();
+      extractWheel.mockResolvedValue(
+        aiWheel({ visibleDamage: 'suspected' }, { peripheralSpeedMps: 30 }),
+      );
+      render(<ResultPage />);
+
+      await reanalyze();
+
+      expect(screen.getByText(MARKING_CONFLICT)).toBeInTheDocument();
+      expect(screen.getByText(AI_DAMAGE_ALERT)).toBeInTheDocument();
+      expect(screen.queryByText(RECHECK_HINT)).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /확인함/ }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: ACCEPT })).toBeDisabled();
+      expect(result.current.wheel?.visibleDamage).toBe('suspected');
+      expect(screen.getByText(DAMAGE_SUSPECTED)).toBeInTheDocument();
+    });
+
+    it('전환하지 않고 저장하면 제한 대조 기록으로 남고, OCR 원본 자리에는 기기 판독이 그대로다', async () => {
+      const local = localRead();
+      readyLocalOcrWheel(local);
+      extractWheel.mockResolvedValue(aiWheel({}, { peripheralSpeedMps: 30 }));
+      vi.mocked(saveInspection).mockResolvedValueOnce(1);
+      render(<ResultPage />);
+
+      await reanalyze();
+      checkAll();
+      fireEvent.click(
+        screen.getByRole('button', { name: /점검 완료 및 저장/ }),
+      );
+      await waitFor(() => expect(saveInspection).toHaveBeenCalledTimes(1));
+
+      const saved = vi.mocked(saveInspection).mock.calls[0][0];
+      expect(saved.analysisMode).toBe('offline_limited');
+      expect(saved.result.verdict).toBe('UNDETERMINED');
+      expect(saved.trialRun).toBeUndefined();
+      expect(saved.wheel.markings).toEqual(local.markings);
+      expect(saved.wheelOcr).toEqual(local);
+    });
+
+    it('전환 뒤 판정에 쓴 표기가 서버 판독에 없는 값이면 판정 근거가 그 출처를 알린다', async () => {
+      // 로컬 OCR이 80m/s를 60으로 잘못 읽었고 서버는 m/s 표기를 읽지 못했다. 충돌이
+      // 아니라 전환되고, 로컬이 올린 표기 불일치는 그대로 판정불가로 남는다. 그런데
+      // OCR 원본 자리는 서버 판독으로 바뀌어, 판정을 막은 60이 어디서 왔는지 사라진다.
+      const result = readyLocalOcrWheel(localRead({ peripheralSpeedMps: 60 }));
+      extractWheel.mockResolvedValue(aiWheel({}, { peripheralSpeedMps: null }));
+      render(<ResultPage />);
+
+      await reanalyze();
+      await accept();
+
+      expect(result.current.analysisMode).toBe('online');
+      expect(screen.getByText('판정불가')).toBeInTheDocument();
+      expect(screen.getByText(MARKINGS_MISMATCH)).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: '근거 보기' }));
+
+      const row = screen
+        .getByText('판정에 쓴 라벨 표기 중 OCR 원본과 다른 값')
+        .closest('li');
+      expect(row).toHaveTextContent(
+        '원주속도 표기: 판정에 쓴 값 60m/s / OCR 원본 —',
+      );
+      expect(row).toHaveTextContent(
+        '기록된 OCR 원본과 다른 값입니다. 서버로 다시 분석하기 전에 읽어 둔 표기로 보이며, 작업자가 확인한 값이 아닙니다.',
+      );
+      // 서버가 같게 읽은 칸은 여기 나오지 않는다.
+      expect(row).not.toHaveTextContent('회전속도 표기');
+    });
+  });
+
+  describe('작업자가 확정한 용도·유효기한·종류와 AI 판독', () => {
+    // 처음부터 온라인이었다면 AI가 읽은 값이 확인 화면의 기본값이고, 작업자가 그
+    // 값을 보면서 일부러 고쳐야 바뀐다(종류는 직접 확인까지 요구한다). 재분석은 확정
+    // 뒤에 오므로 그 장치가 없다. 다르면 회전속도·지름처럼 전환을 열지 않는다 —
+    // 어느 쪽이 맞는지 앱은 모른다. AI가 읽지 못한 칸은 기권이라 막지 않는다.
+
+    it('세 값이 모두 같으면 비교표에 같음으로 보이고 전환이 열린다', async () => {
+      const result = readyOfflineWheel();
+      extractWheel.mockResolvedValue(aiWheel());
+      render(<ResultPage />);
+
+      await reanalyze();
+
+      expect(
+        screen.getByText('용도: 확정한 값 절단용 / AI 값 절단용 · 같음'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('유효기한: 확정한 값 12/2099 / AI 값 12/2099 · 같음'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          '숫돌 종류: 확정한 값 일반 결합숫돌 / AI 값 일반 결합숫돌 · 같음',
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: ACCEPT })).toBeEnabled();
+      await accept();
+      expect(result.current.analysisMode).toBe('online');
+      expect(screen.getByText('적합')).toBeInTheDocument();
+    });
+
+    it('AI가 용도를 다르게 읽으면 전환을 막는다 — 작업자 값으로 적합이 되지 않는다', async () => {
+      // 오늘 작업은 절단이고 작업자는 절단용으로 넣었다. AI는 연삭용으로 읽었다.
+      const result = readyOfflineWheel();
+      extractWheel.mockResolvedValue(aiWheel({ purpose: 'grinding' }));
+      render(<ResultPage />);
+
+      await reanalyze();
+
+      expect(
+        screen.getByText('용도: 확정한 값 절단용 / AI 값 연삭용 · 다름'),
+      ).toBeInTheDocument();
+      expect(screen.getByText(VALUES_DIFFER)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: ACCEPT })).toBeDisabled();
+      await accept();
+
+      expect(result.current.analysisMode).toBe('offline_limited');
+      expect(screen.getByText('판정불가')).toBeInTheDocument();
+      expect(screen.queryByText('적합')).not.toBeInTheDocument();
+      // 작업자가 넣은 값은 AI 값으로 바뀌지 않는다.
+      expect(result.current.wheel?.purpose).toBe('cutting');
+    });
+
+    it('작업자는 기한 표시를 찾지 못했는데 AI가 날짜를 읽었으면 전환을 막는다', async () => {
+      // 그대로 전환하면 기한 미확인 경고만 남고 적합이 된다. 처음부터 온라인이었다면
+      // AI가 읽은 날짜가 입력칸에 남아 만료로 부적합이었다.
+      const result = readyOfflineWheel(
+        confirmedWheelSpec(null, {
+          maxRPM: 12200,
+          diameter: 125,
+          thickness: 1.6,
+          purpose: 'cutting',
+          wheelType: 'bonded_abrasive',
+          expiryText: '',
+          expiryReview: 'not_found',
+          userConfirmed: true,
+        }),
+      );
+      extractWheel.mockResolvedValue(
+        aiWheel({ expiry: { year: 2023, month: 4 } }, { expiryRaw: '04/2023' }),
+      );
+      render(<ResultPage />);
+
+      await reanalyze();
+
+      expect(
+        screen.getByText(
+          '유효기한: 확정한 값 표시를 찾지 못함 / AI 값 04/2023 · 다름',
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: ACCEPT })).toBeDisabled();
+      await accept();
+      expect(result.current.analysisMode).toBe('offline_limited');
+      expect(screen.queryByText('적합')).not.toBeInTheDocument();
+      expect(result.current.wheel?.expiry).toBeNull();
+    });
+
+    it('AI가 유효기한을 다른 달로 읽으면 전환을 막는다', async () => {
+      const result = readyOfflineWheel();
+      extractWheel.mockResolvedValue(
+        aiWheel({ expiry: { year: 2023, month: 4 } }, { expiryRaw: '04/2023' }),
+      );
+      render(<ResultPage />);
+
+      await reanalyze();
+
+      expect(
+        screen.getByText('유효기한: 확정한 값 12/2099 / AI 값 04/2023 · 다름'),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: ACCEPT })).toBeDisabled();
+      expect(result.current.wheel?.expiry).toEqual({ year: 2099, month: 12 });
+    });
+
+    it('AI가 종류를 다르게 보면 전환을 막는다', async () => {
+      const result = readyOfflineWheel();
+      extractWheel.mockResolvedValue(aiWheel({ wheelType: 'diamond' }));
+      render(<ResultPage />);
+
+      await reanalyze();
+
+      expect(
+        screen.getByText(
+          '숫돌 종류: 확정한 값 일반 결합숫돌 / AI 값 다이아몬드 휠 · 다름',
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByText(VALUES_DIFFER)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: ACCEPT })).toBeDisabled();
+      await accept();
+      expect(result.current.analysisMode).toBe('offline_limited');
+      expect(result.current.wheel?.wheelType).toBe('bonded_abrasive');
+    });
+
+    it('작업자가 세부 형식을 고른 것은 AI의 굵은 분류와 다르지 않다', async () => {
+      const result = readyOfflineWheel({
+        ...TYPED_WHEEL,
+        wheelType: 'bonded_cutting',
+      });
+      extractWheel.mockResolvedValue(aiWheel());
+      render(<ResultPage />);
+
+      await reanalyze();
+
+      expect(
+        screen.getByText(
+          '숫돌 종류: 확정한 값 결합 절단숫돌(Type 1/41) / AI 값 일반 결합숫돌 · 같음',
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: ACCEPT })).toBeEnabled();
+      await accept();
+      expect(result.current.analysisMode).toBe('online');
+    });
+
+    it('AI가 읽지 못한 칸은 견줄 값이 없다고 보이고 전환을 막지 않는다', async () => {
+      // 값 없음은 기권이다. 다름이 아니다. AI가 그 칸을 확인해 준 것도 아니다.
+      const result = readyOfflineWheel();
+      extractWheel.mockResolvedValue(
+        aiWheel(
+          { purpose: 'unknown', wheelType: 'unknown', expiry: null },
+          { expiryRaw: null },
+        ),
+      );
+      render(<ResultPage />);
+
+      await reanalyze();
+
+      expect(
+        screen.getByText(
+          '용도: 확정한 값 절단용 / AI 값 미확인 · 견줄 값 없음',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          '유효기한: 확정한 값 12/2099 / AI 값 — · 견줄 값 없음',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          '숫돌 종류: 확정한 값 일반 결합숫돌 / AI 값 확인 안 됨 · 견줄 값 없음',
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(VALUES_DIFFER)).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: ACCEPT })).toBeEnabled();
+      await accept();
+
+      expect(result.current.analysisMode).toBe('online');
+      // 판정은 작업자 확정값으로 한다. 엔진이 낸 그대로다.
+      expect(screen.getByText('적합')).toBeInTheDocument();
+    });
+
+    it('값이 달라 전환이 막히면 AI가 올린 의심은 남기되 손상 항목은 다시 묻지 않는다', async () => {
+      const result = readyOfflineWheel();
+      extractWheel.mockResolvedValue(
+        aiWheel({ purpose: 'grinding', visibleDamage: 'suspected' }),
+      );
+      render(<ResultPage />);
+
+      await reanalyze();
+
+      expect(screen.getByText(AI_DAMAGE_ALERT)).toBeInTheDocument();
+      expect(screen.queryByText(RECHECK_HINT)).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /확인함/ }),
+      ).not.toBeInTheDocument();
+      expect(result.current.wheel?.visibleDamage).toBe('suspected');
+    });
+
+    it('명판만 다시 분석할 때는 숫돌 쪽 칸을 견주지 않는다', async () => {
+      const result = store();
+      act(() => {
+        result.current.setGrinder(
+          GRINDER,
+          new Blob(['plate'], { type: 'image/jpeg' }),
+          null,
+        );
+        result.current.setOfflineSlot('grinder', true);
+        result.current.setGrinderCondition(GRINDER_OK);
+        result.current.setWheel(WHEEL);
+        result.current.setWheelCondition(CONFIRMED);
+      });
+      extractGrinder.mockResolvedValue({ ...GRINDER, rawText: 'AI' });
+      render(<ResultPage />);
+
+      await reanalyze();
+
+      expect(screen.queryByText(/^용도:/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/^유효기한:/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/^숫돌 종류:/)).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: ACCEPT })).toBeEnabled();
+    });
+  });
+
+  describe('서버가 낮은 신뢰도로 읽은 판독', () => {
+    // 신뢰도는 모델이 주는 유일한 자기 경고다(safety-critical.md 4번). 처음부터
+    // 온라인이었다면 낮은 신뢰도는 판정불가이고, 작업자가 그 경고를 보면서 직접
+    // 확인해야 풀린다. 재분석 경로에서 작업자의 직접 확인은 그 경고보다 먼저 한
+    // 것이고, 로컬 OCR로 읽은 명판은 직접 확인 없이도 진행된다. 값이 같아도 그런
+    // 판독으로 제한을 풀지 않는다.
+    const LOW_CONFIDENCE =
+      'AI가 낮은 신뢰도로 읽은 사진이 있습니다. 값이 같아도 그 판독으로는 제한 대조를 풀 수 없습니다. 제한 대조 결과를 유지하거나 다시 촬영하세요.';
+
+    it('숫돌 라벨을 낮은 신뢰도로 읽었으면 값이 모두 같아도 전환을 막는다', async () => {
+      // 작업자는 직접 입력하며 「직접 확인」을 눌렀다(신뢰도 높음). AI가 자신 없다고
+      // 말한 것은 그 뒤다.
+      const result = readyOfflineWheel();
+      expect(result.current.wheel?.confidence).toBe('high');
+      extractWheel.mockResolvedValue(aiWheel({ confidence: 'low' }));
+      render(<ResultPage />);
+
+      await reanalyze();
+
+      expect(
+        screen.getByText(
+          '최고사용회전속도: 확정한 값 12200rpm / AI 값 12200rpm · 같음',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('숫돌 라벨: AI 인식 신뢰도 낮음'),
+      ).toBeInTheDocument();
+      expect(screen.getByText(LOW_CONFIDENCE)).toBeInTheDocument();
+      // 값이 다른 것이 아니다. 그 안내는 띄우지 않는다.
+      expect(screen.queryByText(VALUES_DIFFER)).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: ACCEPT })).toBeDisabled();
+      await accept();
+
+      expect(result.current.analysisMode).toBe('offline_limited');
+      expect(screen.getByText('판정불가')).toBeInTheDocument();
+      expect(screen.queryByText('적합')).not.toBeInTheDocument();
+      expect(result.current.wheelOcr).toBeNull();
+    });
+
+    it('명판을 낮은 신뢰도로 읽었으면 값이 모두 같아도 전환을 막는다', async () => {
+      // 로컬 OCR로 읽은 명판은 값을 다 읽으면 신뢰도가 높음으로 나오고, 작업자가
+      // 직접 확인을 누르지 않아도 진행된다. 그대로 전환하면 사람의 직접 확인이 한
+      // 번도 없이 낮은 신뢰도 판독이 적합까지 간다.
+      const result = store();
+      act(() => {
+        result.current.setGrinder(
+          GRINDER,
+          new Blob(['plate'], { type: 'image/jpeg' }),
+          GRINDER,
+        );
+        result.current.setOfflineSlot('grinder', true);
+        result.current.setGrinderCondition(GRINDER_OK);
+        result.current.setWheel(WHEEL);
+        result.current.setWheelCondition(CONFIRMED);
+      });
+      extractGrinder.mockResolvedValue({
+        ...GRINDER,
+        rawText: 'AI',
+        confidence: 'low',
+      });
+      render(<ResultPage />);
+
+      await reanalyze();
+
+      expect(
+        screen.getByText(
+          '무부하 회전속도: 확정한 값 11000rpm / AI 값 11000rpm · 같음',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('그라인더 명판: AI 인식 신뢰도 낮음'),
+      ).toBeInTheDocument();
+      expect(screen.getByText(LOW_CONFIDENCE)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: ACCEPT })).toBeDisabled();
+      await accept();
+
+      expect(result.current.analysisMode).toBe('offline_limited');
+      expect(screen.queryByText('적합')).not.toBeInTheDocument();
+      // 받아들이지 않은 AI 값은 OCR 원본 자리에 넣지 않는다.
+      expect(result.current.grinderOcr?.rawText).not.toBe('AI');
+    });
+
+    it('신뢰도가 보통이면 막지 않는다 — 규칙엔진이 막는 것도 낮음뿐이다', async () => {
+      const result = readyOfflineWheel();
+      extractWheel.mockResolvedValue(aiWheel({ confidence: 'medium' }));
+      render(<ResultPage />);
+
+      await reanalyze();
+
+      expect(screen.queryByText(LOW_CONFIDENCE)).not.toBeInTheDocument();
+      expect(screen.queryByText(/AI 인식 신뢰도 낮음/)).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: ACCEPT })).toBeEnabled();
+      await accept();
+
+      expect(result.current.analysisMode).toBe('online');
+      expect(screen.getByText('적합')).toBeInTheDocument();
+    });
+
+    it('낮은 신뢰도로 전환이 막혀도 AI가 올린 의심은 남기고, 손상 항목은 다시 묻지 않는다', async () => {
+      const result = readyOfflineWheel();
+      extractWheel.mockResolvedValue(
+        aiWheel({ confidence: 'low', visibleDamage: 'suspected' }),
+      );
+      render(<ResultPage />);
+
+      await reanalyze();
+
+      expect(screen.getByText(LOW_CONFIDENCE)).toBeInTheDocument();
+      expect(screen.getByText(AI_DAMAGE_ALERT)).toBeInTheDocument();
+      expect(screen.queryByText(RECHECK_HINT)).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /확인함/ }),
+      ).not.toBeInTheDocument();
+      expect(result.current.wheel?.visibleDamage).toBe('suspected');
+    });
+  });
 });

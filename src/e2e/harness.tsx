@@ -35,7 +35,7 @@ import { translate, type Locale, type MessageKey } from '@/lib/i18n';
 import type { ExtractFailure } from '@/lib/ocr/errors';
 import type { OCRExtractor } from '@/lib/ocr/extractor';
 import { normalizeExpiry } from '@/lib/ocr/parser';
-import type { GrinderSpec, WheelSpec } from '@/lib/rules/types';
+import type { GrinderSpec, OcrTelemetry, WheelSpec } from '@/lib/rules/types';
 
 type Params = Record<string, string | number>;
 
@@ -253,10 +253,22 @@ async function take<T>(queue: Step<T>[], what: string): Promise<T> {
   return step;
 }
 
+/** 서버가 아니라 이 기기의 로컬 OCR(tesseract)이 읽었을 때 앱이 받는 메타데이터 */
+const LOCAL_OCR_TELEMETRY: OcrTelemetry = {
+  engine: 'tesseract',
+  model: null,
+  inputTokens: null,
+  outputTokens: null,
+  cacheReadTokens: null,
+  cacheCreationTokens: null,
+  durationMs: 1000,
+};
+
 /** 사진을 넣을 때마다 정해 둔 결과를 차례로 돌려준다. */
 export class FixtureExtractor implements OCRExtractor {
   private readonly grinders: Step<GrinderSpec>[] = [];
   private readonly wheels: Step<WheelSpec>[] = [];
+  private lastTelemetry: OcrTelemetry | null = null;
 
   grinder(...steps: Step<GrinderSpec>[]): this {
     this.grinders.push(...steps);
@@ -268,12 +280,33 @@ export class FixtureExtractor implements OCRExtractor {
     return this;
   }
 
+  /**
+   * 숫돌 라벨을 이 기기의 로컬 OCR이 읽은 것으로 돌려준다.
+   *
+   * 확인 화면은 판독 엔진을 메타데이터로 알아보고(engine: 'tesseract') 그 숫돌을
+   * 서버 분석 없이 읽은 제한 대조로 남긴다. 실제 로컬 OCR은 돌지 않는다.
+   */
+  wheelReadLocally(spec: WheelSpec): this {
+    this.wheels.push(async () => {
+      this.lastTelemetry = LOCAL_OCR_TELEMETRY;
+      return spec;
+    });
+    return this;
+  }
+
   extractGrinder(): Promise<GrinderSpec> {
+    this.lastTelemetry = null;
     return take(this.grinders, 'grinder');
   }
 
   extractWheel(): Promise<WheelSpec> {
+    this.lastTelemetry = null;
     return take(this.wheels, 'wheel');
+  }
+
+  /** 방금 돌려준 결과의 메타데이터. 로컬 OCR로 넣은 결과가 아니면 없다(null) */
+  getLastTelemetry(): OcrTelemetry | null {
+    return this.lastTelemetry;
   }
 }
 

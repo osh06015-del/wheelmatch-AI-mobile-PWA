@@ -735,41 +735,103 @@ describe('제한 대조 표시와 진행 중 점검 복구', () => {
       expect(storedWheel().visibleDamage).toBe('unknown');
     });
 
-    it('로컬 OCR이 읽어 둔 표기는 덮지 않고 빈 자리만 채운다', () => {
-      // 로컬 OCR은 rpm 표기만 읽었다. 서버가 m/s와 내경을 더 읽었고, rpm은 다르게 읽었다.
-      const result = typedOffline({
-        ...TYPED,
-        markings: {
-          labeledRPM: 12200,
-          peripheralSpeedMps: null,
-          boreDiameter: null,
-          expiryRaw: null,
-        },
-      });
+    /** 로컬 OCR이 rpm 표기만 읽어 둔 확정값 */
+    const LOCAL_RPM_ONLY: WheelSpec = {
+      ...TYPED,
+      markings: {
+        labeledRPM: 12200,
+        peripheralSpeedMps: null,
+        boreDiameter: null,
+        expiryRaw: null,
+      },
+    };
+
+    /** 서버가 rpm 표기를 로컬 OCR과 다르게 읽은 판독. 나머지 값은 모두 같다 */
+    const AI_RPM_MARKING_DIFFERS: WheelSpec = {
+      ...AI,
+      markings: {
+        labeledRPM: 13300,
+        peripheralSpeedMps: 80,
+        boreDiameter: 22.23,
+        expiryRaw: '12/2099',
+      },
+    };
+
+    it('로컬 OCR이 읽어 둔 표기는 그대로 두고 빈 자리만 채운다', () => {
+      // 로컬 OCR은 rpm 표기만 읽었다. 서버는 rpm을 같게 읽고 m/s와 내경을 더 읽었다.
+      const result = typedOffline(LOCAL_RPM_ONLY);
 
       act(() =>
         result.current.applyReanalysis({
-          wheelOcr: {
-            ...AI,
-            markings: {
-              labeledRPM: 13300,
-              peripheralSpeedMps: 80,
-              boreDiameter: 22.23,
-              expiryRaw: '12/2099',
-            },
-          },
+          wheelOcr: AI,
           wheelOcrTelemetry: null,
         }),
       );
 
+      expect(result.current.analysisMode).toBe('online');
       expect(result.current.wheel?.markings).toEqual({
         labeledRPM: 12200,
         peripheralSpeedMps: 80,
         boreDiameter: 22.23,
         expiryRaw: '12/2099',
       });
-      // OCR 원본 자리에는 서버가 읽은 그대로 남는다.
-      expect(result.current.wheelOcr?.markings?.labeledRPM).toBe(13300);
+      expect(storedWheel().markings).toEqual(result.current.wheel?.markings);
+    });
+
+    it('로컬 OCR이 읽어 둔 표기를 서버가 다르게 읽었으면 전환하지 않는다', () => {
+      // 값이 있고 다른 것은 충돌이다. 로컬 표기를 남긴 채 전환하면 서버가 읽은 표기가
+      // 판정에서 빠지고, 서버 표기로 덮으면 로컬이 올린 표기가 사라진다. 어느 쪽도
+      // 하지 않고 제한 대조로 남긴다. 화면이 먼저 막지만(OfflineReanalysisPanel)
+      // 버튼만 막으면 다른 경로로 불렸을 때 샌다 — 저장소도 막는다.
+      const result = typedOffline(LOCAL_RPM_ONLY);
+      const before = result.current.wheel;
+      const storedBefore = sessionStorage.getItem('wheelmatch.wheel');
+
+      act(() =>
+        result.current.applyReanalysis({
+          wheelOcr: AI_RPM_MARKING_DIFFERS,
+          wheelOcrTelemetry: null,
+        }),
+      );
+
+      expect(result.current.analysisMode).toBe('offline_limited');
+      expect(result.current.wheel).toBe(before);
+      expect(sessionStorage.getItem('wheelmatch.wheel')).toBe(storedBefore);
+      // 받아들이지 않은 AI 값은 OCR 원본 자리에도 넣지 않는다.
+      expect(result.current.wheelOcr).toBeNull();
+      expect(sessionStorage.getItem('wheelmatch.wheelOcr')).toBe('null');
+      expect(
+        JSON.parse(sessionStorage.getItem('wheelmatch.offlineSlots') ?? 'null'),
+      ).toEqual({ grinder: false, wheel: true });
+    });
+
+    it('숫돌 표기가 충돌하면 함께 다시 분석한 명판도 전환하지 않는다', () => {
+      // 한 번의 재분석은 통째로 받아들이거나 받아들이지 않는다. 명판만 풀면 화면이
+      // 막아 둔 전환의 절반이 조용히 적용된다.
+      const { result } = renderHook(() => useInspection());
+      act(() => {
+        result.current.setGrinder(GRINDER, null, null);
+        result.current.setOfflineSlot('grinder', true);
+        result.current.setWheel(LOCAL_RPM_ONLY, PHOTO, null);
+        result.current.setOfflineSlot('wheel', true);
+      });
+
+      act(() =>
+        result.current.applyReanalysis({
+          grinderOcr: GRINDER,
+          grinderOcrTelemetry: null,
+          wheelOcr: AI_RPM_MARKING_DIFFERS,
+          wheelOcrTelemetry: null,
+        }),
+      );
+
+      expect(result.current.offlineSlots).toEqual({
+        grinder: true,
+        wheel: true,
+      });
+      expect(result.current.grinderOcr).toBeNull();
+      expect(result.current.wheelOcr).toBeNull();
+      expect(result.current.wheel).toEqual(LOCAL_RPM_ONLY);
     });
 
     it('명판만 재분석하면 숫돌 최종값은 건드리지 않는다', () => {

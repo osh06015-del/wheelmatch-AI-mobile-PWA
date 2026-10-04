@@ -124,6 +124,10 @@ export const zh: Messages = {
   'evidence.source.converted': 'AI 换算',
   'evidence.source.user': '作业者输入',
   'evidence.notRecorded': '未记录',
+  'evidence.markings.title': '用于判定但与 OCR 原始值不同的标签标示',
+  'evidence.markings.row': '{field}：判定所用值 {used} / OCR 原始值 {ocr}',
+  'evidence.markings.note':
+    '这些值与记录的 OCR 原始值不同。看起来是在服务器重新分析之前读取的标示，并非作业者确认的值。',
   'evidence.rules.title': '各规则判定依据',
   'evidence.rules.formula': '计算公式',
   'evidence.rules.difference': '差值',
@@ -575,6 +579,9 @@ export const zh: Messages = {
   'field.confidence.low': '识别可信度：低 — 请重新拍摄或手动输入',
   'field.rawShow': '查看识别出的原文',
   'field.rawHide': '收起识别出的原文',
+  'marking.labeledRPM': '转速标示',
+  'marking.peripheralSpeedMps': '线速度标示',
+  'marking.boreDiameter': '内孔标示',
   'manualConfirm.label': '我已亲自查看标签并确认上方数值',
   'manualConfirm.hint': '勾选后，将以你确认的数值代替识别可信度进行判定。',
 
@@ -978,8 +985,16 @@ export const zh: Messages = {
   'offline.compareRow': '{field}：已确认 {worker} / AI {ai}',
   'offline.compareSame': '相同',
   'offline.compareDiffers': '不同',
+  'offline.compareAbstained': '无可比对的值',
   'offline.mismatch':
     '部分已确认数值与AI值不同或AI未能读取，无法解除有限对照。请保留有限对照结果或重新拍摄。',
+  'offline.compareMarkingRow': '{field}：设备读取 {local} / AI {ai}',
+  'offline.compareMarkingRowUnknown': '{field}：先前读取 {local} / AI {ai}',
+  'offline.markingConflict':
+    '先前读取的标签标示与AI本次读取的标示不同。应用无法判断哪一方正确，因此无法解除有限对照。请保留有限对照结果或重新拍摄。',
+  'offline.lowConfidenceRow': '{photo}：AI 识别可信度低',
+  'offline.lowConfidence':
+    'AI 对照片的识别可信度低。即使数值相同，也不能凭该识别结果解除有限对照。请保留有限对照结果或重新拍摄。',
   'offline.damageRecheck':
     '您之前关于砂轮损伤的回答是在看到下方AI警告之前作出的。请再次查看砂轮实物并作答，才能解除有限对照。',
   'offline.accept': '确认与AI数值相同并解除有限对照',

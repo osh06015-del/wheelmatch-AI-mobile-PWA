@@ -206,6 +206,11 @@ describe('비통과 문구', () => {
       'scan.offline.continueHint',
       'scan.offline.notice',
       'scan.localOcr.notice',
+      // 서버 재분석으로 온라인 대조로 바꿀 수 없다는 사유. 번역에서 "맞다"로
+      // 읽히면 전환이 막힌 화면이 값이 맞았다고 말하게 된다.
+      'offline.mismatch',
+      'offline.markingConflict',
+      'offline.lowConfidence',
     ] as const;
 
     for (const { code } of LOCALES) {
@@ -241,7 +246,14 @@ describe('제한 대조 문구', () => {
     'offline.failed',
     'offline.compareTitle',
     'offline.compareRow',
+    'offline.compareAbstained',
     'offline.mismatch',
+    // 표기 충돌 줄은 둘이다. 기기 안 OCR이 읽었다고 까닭에 남은 경우의 줄
+    // (offline.compareMarkingRow)은 사실을 말하는 것이라 여기 없다.
+    'offline.compareMarkingRowUnknown',
+    'offline.markingConflict',
+    'offline.lowConfidenceRow',
+    'offline.lowConfidence',
     'offline.damageRecheck',
     'offline.accept',
     'offline.cancel',

@@ -672,6 +672,10 @@ export interface InspectionStore extends InspectionState {
    * 표시의 빈 자리(withAcceptedReanalysis). 확인 화면에 없어 작업자가 확정한 적이
    * 없는 값이고, 판정은 확정값만 보므로 옮기지 않으면 처음부터 온라인으로 읽은
    * 점검보다 느슨하게 대조하게 된다.
+   *
+   * 확정값에 이미 실려 있던 표기(로컬 OCR이 읽은 것)를 서버가 다르게 읽었으면
+   * 아무것도 하지 않는다 — 오프라인 표시도 OCR 원본 자리도 그대로 남는다. 빈
+   * 자리만 채우는 규칙으로는 그 충돌에서 로컬 표기가 조용히 이기기 때문이다.
    */
   applyReanalysis: (input: ReanalysisInput) => void;
   setChecklist: (checklist: SafetyChecklist | null) => void;
@@ -909,6 +913,18 @@ export function useInspection(): InspectionStore {
   );
 
   const applyReanalysis = useCallback((input: ReanalysisInput) => {
+    // 숫돌 확정값부터 만든다. 숫돌을 다시 분석하지 않았거나 확정한 숫돌이 없으면
+    // 바꿀 것이 없다(undefined).
+    const acceptedWheel =
+      input.wheelOcr && state.wheel
+        ? withAcceptedReanalysis(state.wheel, input.wheelOcr)
+        : undefined;
+    // 확정값에 실린 표기와 서버가 읽은 표기가 같은 칸에서 다르면 받아들일 수 없다
+    // (null). 아무것도 쓰지 않고 그만둔다 — 함께 다시 분석한 명판도 풀지 않는다. 한
+    // 번의 재분석은 통째로 받아들이거나 받아들이지 않는다. 화면이 전환 버튼을 막지만
+    // 버튼만 막으면 다른 경로로 불렸을 때 샌다.
+    if (acceptedWheel === null) return;
+
     // 다시 분석한 단계의 제한만 푼다. 풀린 단계의 까닭도 함께 지운다.
     let offlineSlots = state.offlineSlots;
     if (input.grinderOcr)
@@ -929,13 +945,10 @@ export function useInspection(): InspectionStore {
       writeStored(WHEEL_OCR_TELEMETRY_KEY, next.wheelOcrTelemetry);
       // 온라인 대조로 바뀌면 판정은 확정값만 본다. AI가 올린 외관 의심과 읽어 온
       // 원본 표시를 여기서 옮기지 않으면 판정에서 통째로 빠진다. 작업자가 확정한
-      // 값은 그대로 둔다.
-      if (state.wheel) {
-        const wheel = withAcceptedReanalysis(state.wheel, input.wheelOcr);
-        if (wheel !== state.wheel) {
-          next.wheel = wheel;
-          writeStored(WHEEL_KEY, wheel);
-        }
+      // 값은 그대로 둔다. 옮길 것이 없으면 같은 객체라 저장소를 건드리지 않는다.
+      if (acceptedWheel !== undefined && acceptedWheel !== state.wheel) {
+        next.wheel = acceptedWheel;
+        writeStored(WHEEL_KEY, acceptedWheel);
       }
     }
     writeStored(OFFLINE_SLOTS_KEY, offlineSlots);

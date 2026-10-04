@@ -6,16 +6,20 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  confirmedValueAgreement,
   confirmedWheelSpec,
+  markingConflicts,
+  markingsNotFromOcr,
   wheelTypeDiffersFromSuggestion,
   withAcceptedReanalysis,
   withReanalysisSuspicion,
   type ConfirmedWheelFields,
 } from './confirm';
+import { normalizeExpiry } from './parser';
 import { isValidWheelSpec } from '@/lib/backup/recordSanitize';
 import { RULE, matchSpecs } from '@/lib/rules/engine';
 import type { GrinderSpec, WheelSpec } from '@/lib/rules/types';
-import { BONDED_ABRASIVE_PROFILE } from '@/lib/rules/profiles';
+import { BONDED_ABRASIVE_PROFILE, profileFor } from '@/lib/rules/profiles';
 
 /** 기준일을 고정한다. 엔진은 시계를 읽지 않으므로 결과가 흔들리지 않는다. */
 const TODAY = '2026-09-08';
@@ -736,6 +740,20 @@ describe('서버 재분석 뒤의 확정값', () => {
     );
   }
 
+  /**
+   * 받아들일 수 있는 재분석으로 바꾼 확정값.
+   *
+   * 표기가 충돌하면 withAcceptedReanalysis는 null을 낸다. 충돌이 없다고 보고 쓴
+   * 테스트가 null을 조용히 지나가지 않게 여기서 멈춘다.
+   */
+  function accepted(wheel: WheelSpec, reanalyzed: WheelSpec): WheelSpec {
+    const next = withAcceptedReanalysis(wheel, reanalyzed);
+    if (next === null) {
+      throw new Error('표기가 충돌해 받아들일 수 없는 재분석이다');
+    }
+    return next;
+  }
+
   const judge = (spec: WheelSpec) =>
     matchSpecs(grinder(), spec, {
       profile: BONDED_ABRASIVE_PROFILE,
@@ -804,9 +822,7 @@ describe('서버 재분석 뒤의 확정값', () => {
         expect(withReanalysisSuspicion(wheel, reanalyzed).visibleDamage).toBe(
           'suspected',
         );
-        expect(withAcceptedReanalysis(wheel, reanalyzed).visibleDamage).toBe(
-          'suspected',
-        );
+        expect(accepted(wheel, reanalyzed).visibleDamage).toBe('suspected');
       },
     );
 
@@ -893,7 +909,7 @@ describe('서버 재분석 뒤의 확정값', () => {
         confidence: 'low',
         rawText: 'AI가 읽은 원문',
       });
-      const next = withAcceptedReanalysis(wheel, reanalyzed);
+      const next = accepted(wheel, reanalyzed);
 
       expect(next).toEqual({
         ...wheel,
@@ -907,7 +923,7 @@ describe('서버 재분석 뒤의 확정값', () => {
 
     it('옮겨 온 원본 표시는 OCR 원본과 객체를 공유하지 않는다', () => {
       const reanalyzed = ocrWheel();
-      const next = withAcceptedReanalysis(typedWheel(), reanalyzed);
+      const next = accepted(typedWheel(), reanalyzed);
 
       expect(next.markings).toEqual(reanalyzed.markings);
       expect(next.markings).not.toBe(reanalyzed.markings);
@@ -932,9 +948,9 @@ describe('서버 재분석 뒤의 확정값', () => {
         expect(
           isValidWheelSpec(stored(withReanalysisSuspicion(wheel, reanalyzed))),
         ).toBe(true);
-        expect(
-          isValidWheelSpec(stored(withAcceptedReanalysis(wheel, reanalyzed))),
-        ).toBe(true);
+        expect(isValidWheelSpec(stored(accepted(wheel, reanalyzed)))).toBe(
+          true,
+        );
       }
     });
 
@@ -965,14 +981,14 @@ describe('서버 재분석 뒤의 확정값', () => {
     ];
 
     it.each(READINGS)('%s', (_name, reanalyzed) => {
-      const viaReanalysis = withAcceptedReanalysis(typedWheel(), reanalyzed);
+      const viaReanalysis = accepted(typedWheel(), reanalyzed);
       const onlineFromStart = confirmedWheelSpec(reanalyzed, TYPED);
 
       expect(outcome(viaReanalysis)).toEqual(outcome(onlineFromStart));
     });
 
     it('표기가 서로 어긋난 판독으로 전환하면 적합이 아니라 판정불가다', () => {
-      const next = withAcceptedReanalysis(
+      const next = accepted(
         typedWheel(),
         ocrWheel({}, { peripheralSpeedMps: 8 }),
       );
@@ -990,7 +1006,7 @@ describe('서버 재분석 뒤의 확정값', () => {
       // 표기 일치의 통과는 전체 판정을 올리는 근거가 못 된다. 다른 이유로
       // 판정불가인 확정값은 표시를 옮긴 뒤에도 판정불가다.
       const wheel = confirmedWheelSpec(null, { ...TYPED, purpose: 'unknown' });
-      const next = withAcceptedReanalysis(wheel, ocrWheel());
+      const next = accepted(wheel, ocrWheel());
 
       expect(judge(wheel).verdict).toBe('UNDETERMINED');
       expect(
@@ -1002,31 +1018,12 @@ describe('서버 재분석 뒤의 확정값', () => {
   });
 
   describe('로컬 OCR이 읽어 둔 표기 — 빈 자리만 채운다', () => {
-    it('이미 있는 표기는 재분석이 다르게 읽어도 덮지 않는다', () => {
-      const wheel = localOcrWheel({});
-      const next = withAcceptedReanalysis(
-        wheel,
-        ocrWheel(
-          {},
-          {
-            labeledRPM: 13300,
-            peripheralSpeedMps: 63,
-            boreDiameter: 16,
-            expiryRaw: '01/2030',
-          },
-        ),
-      );
-
-      // 채울 빈 자리가 없다. 같은 객체가 돌아온다.
-      expect(next).toBe(wheel);
-    });
-
-    it('로컬 OCR이 올린 표기 불일치는 재분석이 맞게 읽어도 사라지지 않는다', () => {
-      // 덮어쓰면 재분석이 의심을 덜어내는 길이 된다.
+    it('로컬 OCR이 올린 표기 불일치는 서버가 그 칸을 읽지 못했으면 그대로 남는다', () => {
+      // 서버가 읽지 못한 칸은 기권이다. 로컬이 올린 어긋남을 지울 근거가 못 된다.
       const wheel = localOcrWheel({ peripheralSpeedMps: 8 });
       expect(judge(wheel).verdict).toBe('UNDETERMINED');
 
-      const next = withAcceptedReanalysis(wheel, ocrWheel());
+      const next = accepted(wheel, ocrWheel({}, { peripheralSpeedMps: null }));
 
       expect(next.markings?.peripheralSpeedMps).toBe(8);
       expect(
@@ -1047,10 +1044,7 @@ describe('서버 재분석 뒤의 확정값', () => {
         judge(wheel).checks.some((c) => c.rule === RULE.UNIT_CONSISTENCY),
       ).toBe(false);
 
-      const next = withAcceptedReanalysis(
-        wheel,
-        ocrWheel({}, { peripheralSpeedMps: 8 }),
-      );
+      const next = accepted(wheel, ocrWheel({}, { peripheralSpeedMps: 8 }));
 
       expect(next.markings).toEqual({
         labeledRPM: 12200,
@@ -1069,10 +1063,7 @@ describe('서버 재분석 뒤의 확정값', () => {
 
     it('유효기한 원문만 비어 있으면 그 칸만 채운다', () => {
       const wheel = localOcrWheel({ expiryRaw: null });
-      const next = withAcceptedReanalysis(
-        wheel,
-        ocrWheel({}, { labeledRPM: 13300, expiryRaw: '01/2030' }),
-      );
+      const next = accepted(wheel, ocrWheel({}, { expiryRaw: '01/2030' }));
 
       expect(next.markings).toEqual({
         ...wheel.markings,
@@ -1083,12 +1074,562 @@ describe('서버 재분석 뒤의 확정값', () => {
       expect(outcome(next)).toEqual(outcome(wheel));
     });
 
+    it('유효기한 원문은 서로 달라도 표기 충돌이 아니고, 이미 있는 원문은 덮지 않는다', () => {
+      // 원문은 판정에 쓰이지 않는다. 판정에 쓰이는 유효기한은 작업자가 확정한 값이고,
+      // 그 값이 재분석 판독과 다른지는 confirmedValueAgreement가 본다.
+      const wheel = localOcrWheel({});
+      const reanalyzed = ocrWheel({}, { expiryRaw: '01/2030' });
+
+      expect(markingConflicts(wheel, reanalyzed)).toEqual([]);
+      // 채울 빈 자리가 없다. 같은 객체가 돌아온다.
+      expect(withAcceptedReanalysis(wheel, reanalyzed)).toBe(wheel);
+    });
+
     it('재분석도 유효기한 원문을 읽지 못했으면 없는 칸을 만들지 않는다', () => {
       const wheel = localOcrWheel({ expiryRaw: null });
 
       expect(
         withAcceptedReanalysis(wheel, ocrWheel({}, { expiryRaw: null })),
       ).toBe(wheel);
+    });
+  });
+
+  describe('표기 충돌 — 두 판독이 같은 칸을 다르게 읽으면 받아들이지 않는다', () => {
+    // 빈 자리만 채우면, 두 판독이 같은 칸을 **다르게** 읽었을 때 로컬 표기가 조용히
+    // 이긴다. 값이 있고 다른 것은 충돌이고 어느 쪽이 맞는지 앱은 모른다
+    // (safety-critical.md 3번). 값이 없는 것은 기권이라 충돌이 아니다(vision-ocr.md).
+
+    /** 로컬 OCR로 읽은 숫돌을 확정할 때 작업자가 넣은 값 */
+    const LOCAL_FIELDS = untouched(ocrWheel(), {
+      wheelType: 'bonded_abrasive',
+      userConfirmed: true,
+    });
+
+    it('서버가 m/s 표기를 다르게 읽으면 받아들이지 않는다 — 받아들이면 재분석 경로만 적합이 된다', () => {
+      // 라벨 Φ125 / 12,200rpm / 80m/s. 로컬 OCR은 그대로 읽었고 서버는 m/s를 30으로
+      // 읽었다. 회전속도와 지름은 서로 같아, 그 둘만 견주면 전환이 열린다.
+      const wheel = localOcrWheel({});
+      const reanalyzed = ocrWheel({}, { peripheralSpeedMps: 30 });
+
+      expect(markingConflicts(wheel, reanalyzed)).toEqual([
+        { key: 'peripheralSpeedMps', confirmed: 80, reanalyzed: 30 },
+      ]);
+      expect(withAcceptedReanalysis(wheel, reanalyzed)).toBeNull();
+
+      // 왜 받아들이지 않는가. 같은 사진을 처음부터 서버로 읽었다면 표기 불일치로
+      // 판정불가였다. 로컬 표기를 남긴 채 온라인 대조로 바꾸면 그 판독이 판정에서
+      // 빠져 적합이 된다.
+      expect(judge(confirmedWheelSpec(reanalyzed, LOCAL_FIELDS)).verdict).toBe(
+        'UNDETERMINED',
+      );
+      expect(judge(wheel).verdict).toBe('COMPATIBLE');
+    });
+
+    it.each([
+      [
+        '회전속도 표기',
+        { labeledRPM: 13300 },
+        { key: 'labeledRPM', confirmed: 12200, reanalyzed: 13300 },
+      ],
+      [
+        '원주속도 표기',
+        { peripheralSpeedMps: 63 },
+        { key: 'peripheralSpeedMps', confirmed: 80, reanalyzed: 63 },
+      ],
+      [
+        '내경',
+        { boreDiameter: 16 },
+        { key: 'boreDiameter', confirmed: 22.23, reanalyzed: 16 },
+      ],
+    ] as const)('%s 한 칸만 달라도 충돌이다', (_name, differing, conflict) => {
+      const wheel = localOcrWheel({});
+      const reanalyzed = ocrWheel({}, differing);
+
+      expect(markingConflicts(wheel, reanalyzed)).toEqual([conflict]);
+      expect(withAcceptedReanalysis(wheel, reanalyzed)).toBeNull();
+    });
+
+    it('여러 칸이 다르면 다른 칸을 모두 알린다', () => {
+      expect(
+        markingConflicts(
+          localOcrWheel({}),
+          ocrWheel(
+            {},
+            { labeledRPM: 13300, peripheralSpeedMps: 63, boreDiameter: 16 },
+          ),
+        ),
+      ).toEqual([
+        { key: 'labeledRPM', confirmed: 12200, reanalyzed: 13300 },
+        { key: 'peripheralSpeedMps', confirmed: 80, reanalyzed: 63 },
+        { key: 'boreDiameter', confirmed: 22.23, reanalyzed: 16 },
+      ]);
+    });
+
+    it('값이 없는 칸은 기권이다 — 어느 쪽이 못 읽었든 충돌이 아니다', () => {
+      const NOTHING_READ = {
+        labeledRPM: null,
+        peripheralSpeedMps: null,
+        boreDiameter: null,
+      };
+
+      // 서버가 못 읽었다.
+      expect(
+        markingConflicts(localOcrWheel({}), ocrWheel({}, NOTHING_READ)),
+      ).toEqual([]);
+      // 로컬 OCR이 못 읽었다.
+      expect(markingConflicts(localOcrWheel(NOTHING_READ), ocrWheel())).toEqual(
+        [],
+      );
+    });
+
+    it('두 판독이 같게 읽었으면 충돌이 아니다', () => {
+      const wheel = localOcrWheel({});
+
+      expect(markingConflicts(wheel, ocrWheel())).toEqual([]);
+      // 채울 빈 자리도 없다. 같은 객체가 돌아온다.
+      expect(withAcceptedReanalysis(wheel, ocrWheel())).toBe(wheel);
+    });
+
+    it('원본 표시가 없는 쪽이 있으면 견줄 것이 없다', () => {
+      // 직접 입력한 확정값에는 원본 표시가 없다.
+      expect(markingConflicts(typedWheel(), ocrWheel())).toEqual([]);
+
+      // 서버가 스키마에 맞는 응답을 못 주면 표시 없이 온다(route.ts의 emptySpec).
+      const noMarkings = ocrWheel();
+      delete noMarkings.markings;
+      expect(markingConflicts(localOcrWheel({}), noMarkings)).toEqual([]);
+    });
+
+    it('충돌로 받아들이지 않아도 재분석이 올린 외관 의심은 따로 남는다', () => {
+      // 의심은 전환과 무관하게 더한다(withReanalysisSuspicion). 충돌이 그 길을 막지 않는다.
+      const wheel = localOcrWheel({});
+      const reanalyzed = ocrWheel(
+        { visibleDamage: 'suspected' },
+        { peripheralSpeedMps: 30 },
+      );
+
+      expect(withAcceptedReanalysis(wheel, reanalyzed)).toBeNull();
+      expect(withReanalysisSuspicion(wheel, reanalyzed).visibleDamage).toBe(
+        'suspected',
+      );
+    });
+
+    it('충돌이 없는 모든 조합에서 — 서버가 읽은 칸을 모두 담고, 처음부터 온라인으로 읽은 점검보다 느슨하게 판정되지 않는다', () => {
+      // rpm·m/s 표기를 각각 「못 읽음 / 맞게 읽음 / 틀리게 읽음」으로 두 판독에 돌린다.
+      const RPM = [null, 12200, 1220];
+      const MPS = [null, 80, 30];
+      let acceptedCount = 0;
+      let refusedCount = 0;
+
+      for (const localRpm of RPM) {
+        for (const localMps of MPS) {
+          for (const serverRpm of RPM) {
+            for (const serverMps of MPS) {
+              const name = `로컬 {${localRpm}, ${localMps}} / 서버 {${serverRpm}, ${serverMps}}`;
+              const wheel = localOcrWheel({
+                labeledRPM: localRpm,
+                peripheralSpeedMps: localMps,
+              });
+              const reanalyzed = ocrWheel(
+                {},
+                { labeledRPM: serverRpm, peripheralSpeedMps: serverMps },
+              );
+              const differs = (a: number | null, b: number | null) =>
+                a !== null && b !== null && a !== b;
+              const next = withAcceptedReanalysis(wheel, reanalyzed);
+
+              if (
+                differs(localRpm, serverRpm) ||
+                differs(localMps, serverMps)
+              ) {
+                expect(next, name).toBeNull();
+                refusedCount += 1;
+                continue;
+              }
+              if (next === null) {
+                throw new Error(`${name}: 충돌이 없는데 받아들이지 않았다`);
+              }
+              acceptedCount += 1;
+
+              // 서버가 읽은 칸은 그대로 들어 있고, 로컬이 읽어 둔 칸은 지워지지 않았다.
+              expect(next.markings?.labeledRPM, name).toBe(
+                serverRpm ?? localRpm,
+              );
+              expect(next.markings?.peripheralSpeedMps, name).toBe(
+                serverMps ?? localMps,
+              );
+
+              // 온라인 경로가 적합이 아니면 재분석 경로도 적합이 아니다.
+              const online = judge(
+                confirmedWheelSpec(reanalyzed, LOCAL_FIELDS),
+              ).verdict;
+              if (online !== 'COMPATIBLE') {
+                expect(judge(next).verdict, name).not.toBe('COMPATIBLE');
+              }
+            }
+          }
+        }
+      }
+
+      // 3×3×3×3가지를 실제로 돌았다. 칸마다 9쌍 중 2쌍이 충돌이다 — 7×7 = 49가지가 남는다.
+      expect(acceptedCount).toBe(49);
+      expect(refusedCount).toBe(32);
+    });
+  });
+
+  describe('작업자가 확정한 용도·유효기한·종류 — 재분석 판독과 견준다', () => {
+    // 처음부터 온라인이었다면 AI가 읽은 값이 확인 화면의 기본값으로 들어가고, 작업자가
+    // 그 값을 보면서 일부러 고쳐야 바뀐다. 재분석은 확정 뒤에 오므로 AI 값이 판정에
+    // 들어갈 길이 없다. 그래서 다르면 전환을 열지 않는다(OfflineReanalysisPanel) —
+    // 회전속도·지름과 같은 이유다. 한쪽에 견줄 값이 없으면 기권이고, 다름이 아니다.
+
+    const confirmed = (fields: Partial<ConfirmedWheelFields> = {}) =>
+      confirmedWheelSpec(null, { ...TYPED, ...fields });
+
+    /** 유효기한 표기를 raw로 읽은 서버 판독. 정규화는 route.ts와 같은 함수가 한다 */
+    const aiExpiry = (raw: string | null) =>
+      ocrWheel({ expiry: normalizeExpiry(raw) }, { expiryRaw: raw });
+
+    /** 종류에 맞는 Profile로 판정한다. 결과 화면과 같다 */
+    const judgeByType = (spec: WheelSpec) =>
+      matchSpecs(grinder(), spec, {
+        profile: profileFor(spec.wheelType),
+        declaredPurpose: 'cutting',
+        today: TODAY,
+      }).verdict;
+
+    /** 작업자가 확인 화면에서 고를 수 있는 종류. 모르겠음(unknown)은 따로 본다 */
+    const SELECTABLE = [
+      'bonded_abrasive',
+      'bonded_cutting',
+      'bonded_grinding',
+      'bonded_combination',
+      'bonded_cup',
+      'flap_disc',
+      'cup_wheel',
+      'diamond',
+      'diamond_continuous',
+      'diamond_turbo',
+      'diamond_segmented',
+      'diamond_cup',
+      'tuck_pointing',
+      'wire_brush',
+      'fibre_disc',
+      'nonwoven_disc',
+      'polishing_pad',
+      'other',
+    ] as const;
+
+    it('세 값이 모두 재분석 판독과 같으면 같음이다', () => {
+      expect(confirmedValueAgreement(confirmed(), ocrWheel())).toEqual({
+        purpose: 'same',
+        expiry: 'same',
+        wheelType: 'same',
+      });
+    });
+
+    it.each([
+      ['cutting', 'cutting', 'same'],
+      ['cutting', 'grinding', 'differs'],
+      ['grinding', 'cutting', 'differs'],
+      // 어느 한쪽이 용도를 모르면 견줄 값이 없다.
+      ['cutting', 'unknown', 'abstained'],
+      ['unknown', 'cutting', 'abstained'],
+      ['unknown', 'unknown', 'abstained'],
+    ] as const)('용도 — 작업자 %s / AI %s → %s', (worker, ai, expected) => {
+      expect(
+        confirmedValueAgreement(
+          confirmed({ purpose: worker }),
+          ocrWheel({ purpose: ai }),
+        ).purpose,
+      ).toBe(expected);
+    });
+
+    it.each([
+      ['bonded_abrasive', 'bonded_abrasive', 'same'],
+      // 세부 형식을 고른 것은 AI의 굵은 분류를 좁힌 것이지 어긋난 것이 아니다.
+      ['bonded_cutting', 'bonded_abrasive', 'same'],
+      ['diamond_segmented', 'diamond', 'same'],
+      ['bonded_abrasive', 'diamond', 'differs'],
+      ['flap_disc', 'bonded_abrasive', 'differs'],
+      ['bonded_abrasive', 'other', 'differs'],
+      // 어느 한쪽이 종류를 모르면 견줄 값이 없다.
+      ['bonded_abrasive', 'unknown', 'abstained'],
+      ['unknown', 'bonded_abrasive', 'abstained'],
+    ] as const)('종류 — 작업자 %s / AI %s → %s', (worker, ai, expected) => {
+      expect(
+        confirmedValueAgreement(
+          confirmed({ wheelType: worker }),
+          ocrWheel({ wheelType: ai }),
+        ).wheelType,
+      ).toBe(expected);
+    });
+
+    it('종류의 다름은 확인 화면이 직접 확인을 요구하는 기준과 같다', () => {
+      // 기준이 둘이면 갈라진다. 양쪽 다 종류를 말한 모든 조합에서 같은 답을 낸다.
+      const AI_CLASSES = [
+        'bonded_abrasive',
+        'flap_disc',
+        'cup_wheel',
+        'diamond',
+        'wire_brush',
+        'other',
+      ] as const;
+
+      for (const ai of AI_CLASSES) {
+        for (const worker of SELECTABLE) {
+          const reanalyzed = ocrWheel({ wheelType: ai });
+          expect(
+            confirmedValueAgreement(
+              confirmed({ wheelType: worker }),
+              reanalyzed,
+            ).wheelType,
+            `작업자 ${worker} / AI ${ai}`,
+          ).toBe(
+            wheelTypeDiffersFromSuggestion(reanalyzed, worker)
+              ? 'differs'
+              : 'same',
+          );
+        }
+      }
+    });
+
+    it.each([
+      ['같은 달', 'same', { expiryText: '04/2027' }, '04/2027'],
+      ['다른 달', 'differs', { expiryText: '04/2027' }, '04/2023'],
+      ['AI가 기한을 읽지 못함', 'abstained', { expiryText: '04/2027' }, null],
+      [
+        'AI가 읽은 표기가 모호함(두 자리 연도)',
+        'abstained',
+        { expiryText: '04/2027' },
+        '04/23',
+      ],
+      // 「찾지 못함」·「읽기 어려움」은 작업자의 답이다. AI가 날짜를 읽었다면 그
+      // 답과 어긋난다 — 답 그대로 전환하면 AI가 읽은 기한이 판정에서 빠진다.
+      [
+        '작업자는 표시를 찾지 못했다고 답했는데 AI는 날짜를 읽음',
+        'differs',
+        { expiryText: '', expiryReview: 'not_found' },
+        '04/2023',
+      ],
+      [
+        '작업자는 읽기 어렵다고 답했는데 AI는 날짜를 읽음',
+        'differs',
+        { expiryText: '', expiryReview: 'unreadable' },
+        '04/2023',
+      ],
+      // 날짜도 답도 없으면 견줄 값이 없다. 그 확정값은 어차피 판정불가로 남는다.
+      [
+        '작업자가 날짜를 비워 둠',
+        'abstained',
+        { expiryText: '', expiryReview: 'marked' },
+        '04/2023',
+      ],
+      [
+        '작업자가 넣은 날짜가 모호함(두 자리 연도)',
+        'abstained',
+        { expiryText: '04/27', expiryReview: 'marked' },
+        '04/2023',
+      ],
+      [
+        '작업자도 AI도 기한을 찾지 못함',
+        'abstained',
+        { expiryText: '', expiryReview: 'not_found' },
+        null,
+      ],
+    ] as const)('유효기한 — %s → %s', (_name, expected, fields, aiRaw) => {
+      expect(
+        confirmedValueAgreement(confirmed(fields), aiExpiry(aiRaw)).expiry,
+      ).toBe(expected);
+    });
+
+    describe('확정값 쪽에 견줄 값이 없어 기권한 경우 — 전환돼도 느슨해지지 않는다', () => {
+      // 기권은 전환을 막지 않는다. 그래도 느슨해지지 않는 까닭은 값이 없는 확정값이
+      // 규칙엔진에서 이미 적합에 이르지 못하기 때문인데, 그 근거는 종류별 Profile
+      // 구성에 기대고 있다(profiles.ts). 아래가 깨지면 — 예를 들어 유효기한을 보지
+      // 않으면서 적합까지 낼 수 있는 종류가 생기면 — confirm.ts의 기권을 다시 봐야 한다.
+      const EVERY_TYPE = [...SELECTABLE, 'unknown'] as const;
+
+      it('유효기한에 날짜도 답도 없는 확정값은 어느 종류에서도 적합이 아니다', () => {
+        // AI는 날짜를 읽었다. 확정값에는 날짜가 없고 「찾지 못함」·「읽기 어려움」
+        // 답도 없다.
+        const reanalyzed = aiExpiry('04/2023');
+
+        for (const wheelType of EVERY_TYPE) {
+          for (const expiryReview of ['marked', undefined] as const) {
+            const name = `${wheelType} / ${expiryReview ?? '답 없음'}`;
+            const wheel = confirmed({
+              wheelType,
+              expiryText: '',
+              expiryReview,
+            });
+
+            expect(
+              confirmedValueAgreement(wheel, reanalyzed).expiry,
+              name,
+            ).toBe('abstained');
+            expect(judgeByType(accepted(wheel, reanalyzed)), name).not.toBe(
+              'COMPATIBLE',
+            );
+          }
+        }
+      });
+
+      it('종류를 모르겠음으로 둔 확정값은 적합이 아니다', () => {
+        // AI는 일반 결합숫돌로 보았다.
+        const wheel = confirmed({ wheelType: 'unknown' });
+        const reanalyzed = ocrWheel();
+
+        expect(confirmedValueAgreement(wheel, reanalyzed).wheelType).toBe(
+          'abstained',
+        );
+        expect(judgeByType(accepted(wheel, reanalyzed))).not.toBe('COMPATIBLE');
+      });
+
+      it('용도를 모르겠음으로 둔 확정값이 적합인 종류는, 어느 용도로 대조해도 적합이다', () => {
+        // 용도를 라벨로 대조하는 종류에서는 모르겠음이 판정불가라 여기 오지 않는다.
+        // 용도를 대조하지 않는 종류만 남고, 그 종류는 AI가 읽은 용도가 판정에
+        // 들어가도 결과가 같다 — AI의 용도를 견주지 않아서 얻는 적합은 없다.
+        const reached: string[] = [];
+
+        for (const wheelType of EVERY_TYPE) {
+          const withUnknown = judgeByType(
+            confirmed({ wheelType, purpose: 'unknown' }),
+          );
+          if (withUnknown !== 'COMPATIBLE') continue;
+          reached.push(wheelType);
+
+          for (const purpose of ['cutting', 'grinding'] as const) {
+            expect(
+              judgeByType(confirmed({ wheelType, purpose })),
+              `${wheelType} / ${purpose}`,
+            ).toBe('COMPATIBLE');
+          }
+        }
+
+        // 일반 결합숫돌은 용도를 라벨로 대조한다. 모르겠음으로는 적합이 안 된다.
+        expect(reached).not.toContain('bonded_abrasive');
+      });
+    });
+
+    describe('다른데도 전환하면 처음부터 온라인으로 읽은 점검보다 느슨해진다', () => {
+      // 아래 세 경우가 실제로 그랬다. 재분석은 작업자가 확정한 값을 바꾸지 않으므로
+      // (바꾸면 어느 쪽이 맞는지 모르는 값을 앱이 고르는 것이다), 전환을 막는 것
+      // 말고는 AI가 다르게 읽었다는 사실을 판정에 반영할 길이 없다.
+
+      it('용도 — AI는 연삭용으로 읽었는데 오늘 작업은 절단이다', () => {
+        const wheel = confirmed();
+        const reanalyzed = ocrWheel({ purpose: 'grinding' });
+
+        expect(confirmedValueAgreement(wheel, reanalyzed).purpose).toBe(
+          'differs',
+        );
+        // 전환하면 작업자가 넣은 절단용으로 적합이다.
+        expect(judgeByType(accepted(wheel, reanalyzed))).toBe('COMPATIBLE');
+        // 처음부터 온라인이면 AI가 읽은 용도가 기본값이라 작업 목적 불일치다.
+        expect(
+          judgeByType(confirmedWheelSpec(reanalyzed, untouched(reanalyzed))),
+        ).toBe('INCOMPATIBLE');
+      });
+
+      it('유효기한 — 작업자는 표시를 찾지 못했는데 AI는 지난 기한을 읽었다', () => {
+        const wheel = confirmed({ expiryText: '', expiryReview: 'not_found' });
+        const reanalyzed = aiExpiry('04/2023');
+
+        expect(confirmedValueAgreement(wheel, reanalyzed).expiry).toBe(
+          'differs',
+        );
+        // 전환하면 기한 미확인 경고만 남고 적합이다.
+        expect(judgeByType(accepted(wheel, reanalyzed))).toBe('COMPATIBLE');
+        // 처음부터 온라인이면 「표시를 찾지 못함」을 골라도 AI가 읽은 날짜는 지워지지
+        // 않아(확인 화면의 onReview) 만료로 부적합이다.
+        expect(
+          judgeByType(
+            confirmedWheelSpec(
+              reanalyzed,
+              untouched(reanalyzed, { expiryReview: 'not_found' }),
+            ),
+          ),
+        ).toBe('INCOMPATIBLE');
+      });
+
+      it('종류 — AI는 다이아몬드 휠로 보았다', () => {
+        const wheel = confirmed();
+        const reanalyzed = ocrWheel({ wheelType: 'diamond' });
+
+        expect(confirmedValueAgreement(wheel, reanalyzed).wheelType).toBe(
+          'differs',
+        );
+        // 전환하면 작업자가 고른 일반 결합숫돌의 규칙으로 적합이다.
+        expect(judgeByType(accepted(wheel, reanalyzed))).toBe('COMPATIBLE');
+        // 처음부터 온라인이면 AI 제안이 기본값이라 이 앱이 대조하지 않는 종류다.
+        expect(
+          judgeByType(confirmedWheelSpec(reanalyzed, untouched(reanalyzed))),
+        ).toBe('UNDETERMINED');
+      });
+    });
+  });
+
+  describe('판정에 쓴 표기 중 기록된 OCR 원본과 다른 값', () => {
+    // 전환하면 OCR 원본 자리에는 서버 판독이 들어간다(applyReanalysis). 확정값에
+    // 남은 로컬 OCR의 표기는 계속 판정에 쓰이는데, 그 값이 어디서 왔는지는 원본
+    // 자리에서 사라진다. 판정 근거 화면이 이 함수로 그런 칸을 찾아 따로 보인다.
+
+    it('서버가 읽지 못한 칸에 남은 로컬 표기를 찾는다', () => {
+      // 로컬 OCR이 80m/s를 60으로 잘못 읽었고, 서버는 m/s 표기를 읽지 못했다.
+      const reanalyzed = ocrWheel({}, { peripheralSpeedMps: null });
+      const next = accepted(
+        localOcrWheel({ peripheralSpeedMps: 60 }),
+        reanalyzed,
+      );
+
+      // 판정을 막는 60m/s는 서버 판독 어디에도 없다.
+      expect(judge(next).verdict).toBe('UNDETERMINED');
+      expect(markingsNotFromOcr(next, reanalyzed)).toEqual([
+        { key: 'peripheralSpeedMps', used: 60, ocr: null },
+      ]);
+    });
+
+    it('확정값의 표기가 OCR 원본에서 온 것이면 없다', () => {
+      const ocr = ocrWheel();
+
+      expect(
+        markingsNotFromOcr(confirmedWheelSpec(ocr, untouched(ocr)), ocr),
+      ).toEqual([]);
+      // 직접 입력한 숫돌을 재분석해 채운 표기는 모두 그 OCR 원본에서 왔다.
+      expect(markingsNotFromOcr(accepted(typedWheel(), ocr), ocr)).toEqual([]);
+    });
+
+    it('OCR 원본과 다른 표기로 대조한 이전 기록도 그 칸을 알린다', () => {
+      // 표기 충돌을 막기 전에 전환한 점검에는 로컬 표기와 서버 표기가 다른 채 남아 있다.
+      expect(
+        markingsNotFromOcr(
+          localOcrWheel({}),
+          ocrWheel({}, { peripheralSpeedMps: 30 }),
+        ),
+      ).toEqual([{ key: 'peripheralSpeedMps', used: 80, ocr: 30 }]);
+    });
+
+    it('OCR 원본에 표시가 통째로 없으면 확정값의 표기가 모두 해당한다', () => {
+      const noMarkings = ocrWheel();
+      delete noMarkings.markings;
+
+      expect(markingsNotFromOcr(localOcrWheel({}), noMarkings)).toEqual([
+        { key: 'labeledRPM', used: 12200, ocr: null },
+        { key: 'peripheralSpeedMps', used: 80, ocr: null },
+        { key: 'boreDiameter', used: 22.23, ocr: null },
+      ]);
+    });
+
+    it('확정값에 없는 칸과 유효기한 원문은 알리지 않는다', () => {
+      // 확정값이 비워 둔 칸은 판정에 쓰이지 않았다. 유효기한 원문도 판정에 쓰이지 않는다.
+      expect(
+        markingsNotFromOcr(
+          localOcrWheel({ peripheralSpeedMps: null, expiryRaw: '01/2030' }),
+          ocrWheel(),
+        ),
+      ).toEqual([]);
+      expect(markingsNotFromOcr(typedWheel(), ocrWheel())).toEqual([]);
     });
   });
 });

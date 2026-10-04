@@ -284,6 +284,114 @@ describe('EvidencePanel — 안전 경계', () => {
   });
 });
 
+describe('EvidencePanel — 판정에 쓴 표기의 출처', () => {
+  // 서버 재분석을 받아들이면 OCR 원본 자리에는 서버 판독이 들어간다. 확정값에 남은
+  // 로컬 OCR의 표기는 계속 판정에 쓰이는데, 원본 자리만 보면 그 숫자가 어디서 왔는지
+  // 알 수 없다. 판정을 막은 숫자의 출처가 화면에 없으면 작업자는 되짚을 수 없다.
+
+  const SERVER_MARKINGS = {
+    labeledRPM: 12200,
+    peripheralSpeedMps: null,
+    boreDiameter: 22.23,
+    expiryRaw: '04/2027',
+  };
+
+  function renderWith(markings: WheelSpec['markings']) {
+    const g = grinder();
+    const w = wheel({ markings });
+    render(
+      <EvidencePanel
+        grinder={g}
+        wheel={w}
+        result={matchSpecs(g, w, {
+          declaredPurpose: 'cutting',
+          profile: BONDED_ABRASIVE_PROFILE,
+          today: TODAY,
+        })}
+        grinderOcr={g}
+        wheelOcr={wheel({ markings: SERVER_MARKINGS })}
+      />,
+    );
+  }
+
+  it('서버 판독에 없는 표기로 대조했으면 그 값과 출처를 따로 보여준다', async () => {
+    const user = userEvent.setup();
+    // 로컬 OCR이 m/s를 60으로 읽어 두었고, 서버는 그 칸을 읽지 못했다.
+    renderWith({ ...SERVER_MARKINGS, peripheralSpeedMps: 60 });
+
+    await user.click(screen.getByRole('button', { name: '근거 보기' }));
+
+    const row = screen
+      .getByText('판정에 쓴 라벨 표기 중 OCR 원본과 다른 값')
+      .closest('li');
+    expect(row).toHaveTextContent(
+      '원주속도 표기: 판정에 쓴 값 60m/s / OCR 원본 —',
+    );
+    expect(row).toHaveTextContent(
+      '기록된 OCR 원본과 다른 값입니다. 서버로 다시 분석하기 전에 읽어 둔 표기로 보이며, 작업자가 확인한 값이 아닙니다.',
+    );
+    // 서버가 같게 읽은 칸은 나오지 않는다.
+    expect(row).not.toHaveTextContent('회전속도 표기');
+    expect(row).not.toHaveTextContent('내경 표기');
+  });
+
+  it('OCR 원본이 다르게 읽은 칸은 두 값을 나란히 보여준다', async () => {
+    const user = userEvent.setup();
+    // 표기 충돌을 막기 전에 전환한 기록 — 로컬 표기로 대조했고 서버는 다르게 읽었다.
+    renderWith({ ...SERVER_MARKINGS, labeledRPM: 1220, boreDiameter: 16 });
+
+    await user.click(screen.getByRole('button', { name: '근거 보기' }));
+
+    const row = screen
+      .getByText('판정에 쓴 라벨 표기 중 OCR 원본과 다른 값')
+      .closest('li');
+    expect(row).toHaveTextContent(
+      '회전속도 표기: 판정에 쓴 값 1220rpm / OCR 원본 12200rpm',
+    );
+    expect(row).toHaveTextContent(
+      '내경 표기: 판정에 쓴 값 Φ16mm / OCR 원본 Φ22.23mm',
+    );
+  });
+
+  it('확정값의 표기가 OCR 원본과 같으면 이 항목을 만들지 않는다', async () => {
+    const user = userEvent.setup();
+    renderWith({ ...SERVER_MARKINGS });
+
+    await user.click(screen.getByRole('button', { name: '근거 보기' }));
+
+    expect(
+      screen.queryByText('판정에 쓴 라벨 표기 중 OCR 원본과 다른 값'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('OCR 원본이 없는 기록에서는 견줄 원본이 없어 이 항목을 만들지 않는다', async () => {
+    const user = userEvent.setup();
+    const g = grinder();
+    const w = wheel({
+      markings: { ...SERVER_MARKINGS, peripheralSpeedMps: 60 },
+    });
+    render(
+      <EvidencePanel
+        grinder={g}
+        wheel={w}
+        result={matchSpecs(g, w, {
+          declaredPurpose: 'cutting',
+          profile: BONDED_ABRASIVE_PROFILE,
+          today: TODAY,
+        })}
+        // wheelOcr을 넘기지 않는다 — OCR 원본을 남기지 않은 기록이다.
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: '근거 보기' }));
+
+    // 원본이 없으면 "원본과 다르다"고 말할 수 없다. 재분석 전 판독이라고 지어내지 않는다.
+    expect(
+      screen.queryByText('판정에 쓴 라벨 표기 중 OCR 원본과 다른 값'),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe('EvidencePanel — 계산식과 차이', () => {
   it('RPM 상한 대조 항목에 계산식과 여유율을 함께 보여준다', async () => {
     const user = userEvent.setup();

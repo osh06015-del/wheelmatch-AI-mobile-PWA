@@ -17,7 +17,12 @@
 import { useState } from 'react';
 
 import { evidenceSourceFor } from '@/lib/guide/evidenceSources';
-import { useLocale, type Locale, type Translate } from '@/lib/i18n';
+import {
+  useLocale,
+  type Locale,
+  type MessageKey,
+  type Translate,
+} from '@/lib/i18n';
 import {
   WHEEL_PURPOSE_LABEL,
   WHEEL_TYPE_LABEL,
@@ -28,6 +33,7 @@ import {
 } from '@/lib/i18n/checkText';
 import { formatMargin } from '@/lib/i18n/format';
 import { ruleLabelText } from '@/lib/i18n/ruleLabel';
+import { markingsNotFromOcr, type NumericMarkingKey } from '@/lib/ocr/confirm';
 import { RULE, formatExpiry } from '@/lib/rules/engine';
 import { margins } from '@/lib/rules/requirement';
 import type {
@@ -58,6 +64,16 @@ const diameterText = (value: number | null): string | null =>
   value === null ? null : `Φ${value}mm`;
 const mpsText = (value: number | null): string | null =>
   value === null ? null : `${value}m/s`;
+
+/** 라벨 원본 표기 칸의 이름과 단위 */
+const MARKING_TEXT: Record<
+  NumericMarkingKey,
+  { labelKey: MessageKey; text: (value: number | null) => string | null }
+> = {
+  labeledRPM: { labelKey: 'marking.labeledRPM', text: rpmText },
+  peripheralSpeedMps: { labelKey: 'marking.peripheralSpeedMps', text: mpsText },
+  boreDiameter: { labelKey: 'marking.boreDiameter', text: diameterText },
+};
 
 /** OCR 원본이 아예 없는(이 기능 도입 전 기록) 값은 '미기록'. 있지만 못 읽은 값은 '—'. */
 function rawCell(
@@ -297,6 +313,16 @@ export function EvidencePanel({
     },
   ];
 
+  // 판정에 쓴 표기 가운데 기록된 OCR 원본과 다른 값. 지금 코드에서는 서버 재분석을
+  // 받아들인 점검에만 생긴다 — OCR 원본 자리는 서버 판독으로 바뀌고, 확정값에는 그
+  // 전에 기기가 읽어 둔 표기가 남아 표기 일치·장착 규격 항목에 쓰인다. 여기서 알리지
+  // 않으면 판정을 막은 숫자가 어디서 왔는지 화면 어디에도 없다.
+  //
+  // 기록이 말해 주는 것은 "두 값이 다르다"까지다. 어디서 온 값인지는 거기서 추론한
+  // 것이라 문구도 「…로 보인다」고 적는다(evidence.markings.note). OCR 원본이 없는
+  // 기록은 견줄 원본이 없으므로 만들지 않는다 — 재분석 전 판독이라고 지어내지 않는다.
+  const deviceMarkings = wheelOcr ? markingsNotFromOcr(wheel, wheelOcr) : [];
+
   // 최고사용회전속도만 라벨 표기(rpm 또는 m/s)와 정규화된 rpm이 다를 수 있다.
   const markings = wheelOcr?.markings;
   const rpmRaw =
@@ -453,6 +479,34 @@ export function EvidencePanel({
               {wheelRows.map((row) => (
                 <FieldRow key={`wheel-${row.key}`} row={row} t={t} />
               ))}
+              {/* 위 줄들의 「OCR 원본」은 기록된 판독(서버)이다. 그와 다른 표기로
+                  대조했으면 섞지 않고 따로 적는다 — 작업자가 확인한 최종값도 아니다. */}
+              {deviceMarkings.length > 0 && (
+                <li className="flex flex-col gap-1 rounded-lg border border-yellow-500/40 bg-slate-800 px-4 py-3">
+                  <span className="text-base font-semibold text-slate-100">
+                    {t('evidence.markings.title')}
+                  </span>
+                  {deviceMarkings.map((marking) => (
+                    <span key={marking.key} className="text-sm text-slate-300">
+                      {t('evidence.markings.row', {
+                        field: t(MARKING_TEXT[marking.key].labelKey),
+                        used: finalCell(
+                          MARKING_TEXT[marking.key].text(marking.used),
+                        ),
+                        // OCR 원본은 있고 그 칸만 읽지 못한 경우가 '—'다.
+                        ocr: rawCell(
+                          true,
+                          MARKING_TEXT[marking.key].text(marking.ocr),
+                          t,
+                        ),
+                      })}
+                    </span>
+                  ))}
+                  <span className="text-sm leading-relaxed text-slate-400">
+                    {t('evidence.markings.note')}
+                  </span>
+                </li>
+              )}
             </ul>
           </section>
 

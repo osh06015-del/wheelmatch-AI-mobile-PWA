@@ -131,6 +131,10 @@ export const ko = {
   'evidence.source.converted': 'AI 환산',
   'evidence.source.user': '작업자 입력',
   'evidence.notRecorded': '미기록',
+  'evidence.markings.title': '판정에 쓴 라벨 표기 중 OCR 원본과 다른 값',
+  'evidence.markings.row': '{field}: 판정에 쓴 값 {used} / OCR 원본 {ocr}',
+  'evidence.markings.note':
+    '기록된 OCR 원본과 다른 값입니다. 서버로 다시 분석하기 전에 읽어 둔 표기로 보이며, 작업자가 확인한 값이 아닙니다.',
   'evidence.rules.title': '규칙별 판정 근거',
   'evidence.rules.formula': '계산식',
   'evidence.rules.difference': '차이',
@@ -633,6 +637,9 @@ export const ko = {
   'field.confidence.low': '인식 신뢰도 낮음 — 재촬영하거나 직접 입력하세요',
   'field.rawShow': '읽어낸 원문 보기',
   'field.rawHide': '읽어낸 원문 접기',
+  'marking.labeledRPM': '회전속도 표기',
+  'marking.peripheralSpeedMps': '원주속도 표기',
+  'marking.boreDiameter': '내경 표기',
   'manualConfirm.label': '라벨을 직접 보고 위 값을 확인했습니다',
   'manualConfirm.hint':
     '체크하면 인식 신뢰도 대신 사용자가 확인한 값으로 판정합니다.',
@@ -1079,8 +1086,16 @@ export const ko = {
   'offline.compareRow': '{field}: 확정한 값 {worker} / AI 값 {ai}',
   'offline.compareSame': '같음',
   'offline.compareDiffers': '다름',
+  'offline.compareAbstained': '견줄 값 없음',
   'offline.mismatch':
     '확정한 값과 AI 값이 다르거나 AI가 읽지 못한 값이 있어 제한 대조를 풀 수 없습니다. 제한 대조 결과를 유지하거나 다시 촬영하세요.',
+  'offline.compareMarkingRow': '{field}: 기기 판독 {local} / AI 값 {ai}',
+  'offline.compareMarkingRowUnknown': '{field}: 앞선 판독 {local} / AI 값 {ai}',
+  'offline.markingConflict':
+    '앞서 읽은 라벨 표기와 AI가 다시 읽은 표기가 다릅니다. 어느 쪽이 맞는지 앱이 알 수 없어 제한 대조를 풀 수 없습니다. 제한 대조 결과를 유지하거나 다시 촬영하세요.',
+  'offline.lowConfidenceRow': '{photo}: AI 인식 신뢰도 낮음',
+  'offline.lowConfidence':
+    'AI가 낮은 신뢰도로 읽은 사진이 있습니다. 값이 같아도 그 판독으로는 제한 대조를 풀 수 없습니다. 제한 대조 결과를 유지하거나 다시 촬영하세요.',
   'offline.damageRecheck':
     '앞서 답한 숫돌 손상 확인은 아래 AI 경고를 보기 전의 답입니다. 숫돌 실물을 다시 보고 답해야 제한 대조를 풀 수 있습니다.',
   'offline.accept': 'AI 값과 같음을 확인하고 제한 대조 풀기',

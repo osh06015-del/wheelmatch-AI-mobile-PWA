@@ -937,4 +937,246 @@ describe('점검 흐름 E2E — 제한 대조와 서버 재분석', () => {
       ),
     ).toMatchObject({ passed: null });
   });
+
+  it('직접 넣은 숫돌을 재분석한 AI가 용도를 다르게 읽으면 — 전환이 막히고 제한 대조 기록으로 남는다', async () => {
+    const f = inspector('ko');
+    // 작업자는 절단용으로 넣었다(오늘 작업도 절단). 서버는 라벨을 연삭용으로 읽었다.
+    // 처음부터 온라인이었다면 AI가 읽은 용도가 기본값이라 작업 목적 불일치였다.
+    await openOfflineWheelResult(
+      f,
+      new FixtureExtractor()
+        .grinder(GRINDER)
+        .wheel(failure('network'), wheelLabel({ purpose: 'grinding' })),
+    );
+
+    await f.user.click(f.button('offline.reanalyze'));
+
+    expect(
+      await screen.findByText(f.t('offline.mismatch')),
+    ).toBeInTheDocument();
+    expect(document.body).toHaveTextContent(
+      `${f.t('offline.compareRow', {
+        field: f.t('field.purpose'),
+        worker: f.t('wheelPurpose.cutting'),
+        ai: f.t('wheelPurpose.grinding'),
+      })} · ${f.t('offline.compareDiffers')}`,
+    );
+    expect(f.button('offline.accept')).toBeDisabled();
+    expect(screen.getByText(f.t('verdict.undetermined'))).toBeInTheDocument();
+    expect(
+      screen.queryByText(f.t('verdict.compatible')),
+    ).not.toBeInTheDocument();
+
+    await f.completeChecklist();
+    expect(
+      screen.queryByRole('heading', { name: f.t('trialRun.title') }),
+    ).not.toBeInTheDocument();
+    await f.user.click(f.button('result.save'));
+    await f.atPath('/history');
+
+    const [record] = savedRecords();
+    expect(record.analysisMode).toBe('offline_limited');
+    expect(record.result.verdict).toBe('UNDETERMINED');
+    expect(record.trialRun).toBeUndefined();
+    // 작업자가 넣은 값 그대로이고, 받아들이지 않은 AI 값은 기록에 넣지 않는다.
+    expect(record.wheel.purpose).toBe('cutting');
+    expect(record.wheelOcr).toBeUndefined();
+    expect(record.wheel.markings).toBeUndefined();
+  });
+
+  /**
+   * 명판은 온라인으로 읽고, 숫돌 라벨은 이 기기의 로컬 OCR이 읽는다. 로컬 OCR은
+   * 글자만 읽으므로 종류는 작업자가 골라 직접 확인하고 결과까지 간다. 확정값에는
+   * 로컬 OCR이 읽은 원본 표시가 실려 있다.
+   */
+  async function openLocalOcrWheelResult(
+    f: ReturnType<typeof inspector>,
+    extractor: FixtureExtractor,
+  ) {
+    await mountApp(extractor);
+    await f.chooseJob('cutting');
+    await f.pickPhoto();
+    await f.answerGrinderCondition();
+    await f.user.click(f.button('scan.grinder.proceed'));
+    await f.atPath('/scan/wheel');
+
+    await f.pickPhoto();
+    await screen.findByText(f.t('scan.localOcr.notice'), { exact: false });
+    const [, wheelType] = screen.getAllByRole('combobox');
+    await f.user.selectOptions(wheelType, 'bonded_abrasive');
+    // 종류를 고치면 직접 확인이 풀린다. 그 뒤에 누른다.
+    await f.user.click(
+      screen.getByRole('checkbox', {
+        name: new RegExp(f.t('manualConfirm.label')),
+      }),
+    );
+    await f.answerWheelCondition();
+    await f.user.click(f.button('scan.wheel.proceed'));
+    await f.atPath('/result');
+    await screen.findByText(f.t('result.title'));
+  }
+
+  it('로컬 OCR로 읽은 숫돌을 재분석한 AI가 m/s 표기를 다르게 읽으면 — 전환이 막히고, 기기가 읽은 표기로 적합이 되지 않는다', async () => {
+    const f = inspector('ko');
+    // 라벨 Φ125 / 12,200rpm / 80m/s. 로컬 OCR은 그대로 읽었고 서버는 m/s를 30으로
+    // 읽었다. 같은 사진을 처음부터 서버로 읽었다면 표기 불일치로 판정불가였다.
+    const local = wheelLabel({
+      wheelType: 'unknown',
+      visibleDamage: 'unknown',
+      markings: {
+        labeledRPM: 12200,
+        peripheralSpeedMps: 80,
+        boreDiameter: 22.23,
+        expiryRaw: '12/2099',
+      },
+    });
+    const reanalyzed = wheelLabel({
+      markings: {
+        labeledRPM: 12200,
+        peripheralSpeedMps: 30,
+        boreDiameter: 22.23,
+        expiryRaw: '12/2099',
+      },
+    });
+    await openLocalOcrWheelResult(
+      f,
+      new FixtureExtractor()
+        .grinder(GRINDER)
+        .wheelReadLocally(local)
+        .wheel(reanalyzed),
+    );
+    expect(screen.getByText(f.t('verdict.undetermined'))).toBeInTheDocument();
+
+    await f.user.click(f.button('offline.reanalyze'));
+
+    expect(
+      await screen.findByText(f.t('offline.markingConflict')),
+    ).toBeInTheDocument();
+    expect(document.body).toHaveTextContent(
+      `${f.t('offline.compareMarkingRow', {
+        field: f.t('marking.peripheralSpeedMps'),
+        local: '80m/s',
+        ai: '30m/s',
+      })} · ${f.t('offline.compareDiffers')}`,
+    );
+    // 작업자가 확정한 값은 AI 값과 모두 같다. 막는 것은 표기 충돌뿐이다.
+    expect(screen.queryByText(f.t('offline.mismatch'))).not.toBeInTheDocument();
+    expect(f.button('offline.accept')).toBeDisabled();
+    expect(
+      screen.getByRole('heading', { name: `⚠ ${f.t('rule.offlineLimited')}` }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(f.t('verdict.undetermined'))).toBeInTheDocument();
+    expect(
+      screen.queryByText(f.t('verdict.compatible')),
+    ).not.toBeInTheDocument();
+
+    await f.completeChecklist();
+    expect(
+      screen.queryByRole('heading', { name: f.t('trialRun.title') }),
+    ).not.toBeInTheDocument();
+    await f.user.click(f.button('result.save'));
+    await f.atPath('/history');
+
+    const [record] = savedRecords();
+    expect(record.analysisMode).toBe('offline_limited');
+    expect(record.result.verdict).toBe('UNDETERMINED');
+    expect(record.trialRun).toBeUndefined();
+    // 기기가 읽은 표기도 그 판독(OCR 원본)도 그대로다. 받아들이지 않은 AI 값은 넣지 않는다.
+    expect(record.wheel.markings).toEqual(local.markings);
+    expect(record.wheelOcr).toEqual(local);
+    expect(record.wheelOcrTelemetry?.engine).toBe('tesseract');
+  });
+
+  it('로컬 OCR이 읽지 못한 표기만 서버가 더 읽었으면 — 빈 자리를 채워 온라인 대조로 바뀐다', async () => {
+    const f = inspector('ko');
+    // 로컬 OCR은 rpm 표기만 읽었다. 서버는 rpm을 같게 읽고 m/s와 내경을 더 읽었다.
+    const local = wheelLabel({
+      wheelType: 'unknown',
+      visibleDamage: 'unknown',
+      markings: {
+        labeledRPM: 12200,
+        peripheralSpeedMps: null,
+        boreDiameter: null,
+        expiryRaw: '12/2099',
+      },
+    });
+    const reanalyzed = wheelLabel({
+      markings: {
+        labeledRPM: 12200,
+        peripheralSpeedMps: 80,
+        boreDiameter: 22.23,
+        expiryRaw: '12/2099',
+      },
+    });
+    await openLocalOcrWheelResult(
+      f,
+      new FixtureExtractor()
+        .grinder(GRINDER)
+        .wheelReadLocally(local)
+        .wheel(reanalyzed),
+    );
+
+    await f.user.click(f.button('offline.reanalyze'));
+    await f.user.click(
+      await screen.findByRole('button', { name: f.t('offline.accept') }),
+    );
+
+    expect(
+      await screen.findByText(f.t('verdict.compatible')),
+    ).toBeInTheDocument();
+    await f.completeChecklist();
+    await f.user.click(f.button('trialRun.startBeforeWork', { seconds: 60 }));
+    await finishTrialRun(f);
+    await f.user.click(f.button('result.save'));
+    await f.atPath('/history');
+
+    const [record] = savedRecords();
+    expect(record.analysisMode).toBe('online');
+    expect(record.result.verdict).toBe('COMPATIBLE');
+    expect(record.wheel.markings).toEqual(reanalyzed.markings);
+    // OCR 원본 자리에는 서버 판독이 들어간다.
+    expect(record.wheelOcr).toEqual(reanalyzed);
+  });
+
+  it('재연결 후 재분석한 AI가 명판을 낮은 신뢰도로 읽으면 — 값이 같아도 전환이 막히고 제한 대조 기록으로 남는다', async () => {
+    const f = inspector('ko');
+    // 서버는 작업자가 넣은 것과 같은 값을 읽었지만 스스로 낮은 신뢰도라고 했다.
+    // 처음부터 온라인이었다면 작업자가 그 경고를 보며 직접 확인해야 풀리는 판독이다.
+    await openOfflineResult(
+      f,
+      new FixtureExtractor()
+        .grinder(failure('network'), { ...GRINDER, confidence: 'low' })
+        .wheel(wheelLabel()),
+    );
+
+    await f.user.click(f.button('offline.reanalyze'));
+
+    expect(
+      await screen.findByText(f.t('offline.lowConfidence')),
+    ).toBeInTheDocument();
+    expect(document.body).toHaveTextContent(
+      f.t('offline.lowConfidenceRow', { photo: f.t('history.grinderPhoto') }),
+    );
+    // 값은 모두 같다. 막는 것은 신뢰도뿐이다.
+    expect(screen.queryByText(f.t('offline.mismatch'))).not.toBeInTheDocument();
+    expect(f.button('offline.accept')).toBeDisabled();
+    expect(screen.getByText(f.t('verdict.undetermined'))).toBeInTheDocument();
+    expect(
+      screen.queryByText(f.t('verdict.compatible')),
+    ).not.toBeInTheDocument();
+
+    await f.completeChecklist();
+    expect(
+      screen.queryByRole('heading', { name: f.t('trialRun.title') }),
+    ).not.toBeInTheDocument();
+    await f.user.click(f.button('result.save'));
+    await f.atPath('/history');
+
+    const [record] = savedRecords();
+    expect(record.analysisMode).toBe('offline_limited');
+    expect(record.result.verdict).toBe('UNDETERMINED');
+    expect(record.trialRun).toBeUndefined();
+    // 받아들이지 않은 AI 값은 기록에 넣지 않는다.
+    expect(record.grinderOcr).toBeUndefined();
+  });
 });

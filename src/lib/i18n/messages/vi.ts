@@ -134,6 +134,12 @@ export const vi: Messages = {
   'evidence.source.converted': 'AI quy đổi',
   'evidence.source.user': 'Người vận hành nhập',
   'evidence.notRecorded': 'Chưa ghi',
+  'evidence.markings.title':
+    'Giá trị ghi trên nhãn đã dùng để đối chiếu nhưng khác với bản gốc OCR',
+  'evidence.markings.row':
+    '{field}: giá trị đã dùng {used} / bản gốc OCR {ocr}',
+  'evidence.markings.note':
+    'Các giá trị này khác với bản gốc OCR đã ghi. Có vẻ đây là giá trị đọc được trước khi phân tích lại trên máy chủ, và không phải giá trị người vận hành đã xác nhận.',
   'evidence.rules.title': 'Căn cứ kết quả theo từng quy tắc',
   'evidence.rules.formula': 'Công thức',
   'evidence.rules.difference': 'Chênh lệch',
@@ -648,6 +654,9 @@ export const vi: Messages = {
     'Độ tin cậy khi đọc: thấp — hãy chụp lại hoặc tự nhập giá trị',
   'field.rawShow': 'Xem văn bản đã đọc',
   'field.rawHide': 'Ẩn văn bản đã đọc',
+  'marking.labeledRPM': 'Tốc độ ghi trên nhãn (rpm)',
+  'marking.peripheralSpeedMps': 'Tốc độ vòng ngoài ghi trên nhãn (m/s)',
+  'marking.boreDiameter': 'Đường kính lỗ lắp ghi trên nhãn',
   'manualConfirm.label': 'Tôi đã tự xem nhãn và xác nhận các giá trị ở trên',
   'manualConfirm.hint':
     'Khi đánh dấu, kết quả dùng giá trị bạn đã xác nhận thay cho độ tin cậy khi đọc.',
@@ -1089,8 +1098,17 @@ export const vi: Messages = {
   'offline.compareRow': '{field}: đã xác nhận {worker} / AI {ai}',
   'offline.compareSame': 'giống nhau',
   'offline.compareDiffers': 'khác nhau',
+  'offline.compareAbstained': 'không có giá trị để so sánh',
   'offline.mismatch':
     'Có giá trị đã xác nhận khác giá trị AI hoặc AI không đọc được, nên không thể gỡ đối chiếu hạn chế. Hãy giữ kết quả đối chiếu hạn chế hoặc chụp lại.',
+  'offline.compareMarkingRow': '{field}: thiết bị đọc {local} / AI {ai}',
+  'offline.compareMarkingRowUnknown':
+    '{field}: lần đọc trước {local} / AI {ai}',
+  'offline.markingConflict':
+    'Giá trị ghi trên nhãn đọc được trước đó khác với giá trị AI đọc lần này. Ứng dụng không biết bên nào đúng nên không thể gỡ đối chiếu hạn chế. Hãy giữ kết quả đối chiếu hạn chế hoặc chụp lại.',
+  'offline.lowConfidenceRow': '{photo}: độ tin cậy khi AI đọc thấp',
+  'offline.lowConfidence':
+    'AI đã đọc ảnh với độ tin cậy thấp. Dù giá trị giống nhau, không thể dựa vào kết quả đọc đó để gỡ đối chiếu hạn chế. Hãy giữ kết quả đối chiếu hạn chế hoặc chụp lại.',
   'offline.damageRecheck':
     'Câu trả lời trước đó của bạn về hư hỏng đá mài được đưa ra trước cảnh báo AI bên dưới. Hãy xem lại đá mài thực tế và trả lời thì mới gỡ được đối chiếu hạn chế.',
   'offline.accept': 'Xác nhận giá trị giống giá trị AI và gỡ đối chiếu hạn chế',

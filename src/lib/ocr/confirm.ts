@@ -216,6 +216,22 @@ export function confirmedWheelSpec(
 // 거친 쪽이 더 느슨해지는 것이라 이 앱에 넣을 수 없다(docs/safety-boundaries.md).
 //
 // 둘 다 **의심을 더하는 방향으로만** 옮긴다. 이미 있는 의심과 표기는 지우지 않는다.
+//
+// 옮기는 것만으로는 모자란 경우가 둘 있다. 둘 다 "두 판독이 값이 있고 다르다"이고,
+// 어느 쪽이 맞는지 앱은 모른다(safety-critical.md 3번). 고르지 않고 전환을 열지 않는다.
+//
+//   표기 충돌     — 확정값에 이미 실려 있던 표기(로컬 OCR)와 재분석이 읽은 표기가
+//                   같은 칸에서 다르다(markingConflicts).
+//   확정값의 차이 — 작업자가 확정한 용도·유효기한·종류가 재분석 판독과 다르다
+//                   (confirmedValueAgreement). 회전속도·지름은 화면이 견준다.
+//
+// 막는 자리는 서로 다르다. 표기 충돌은 값을 합치는 withAcceptedReanalysis가 null을
+// 내어 저장소(applyReanalysis)도 받지 않는다 — 합치는 자리에서 한쪽이 조용히 이기는
+// 일이라 그 자리에서 막는다. 확정값의 차이는 화면(OfflineReanalysisPanel)의 전환
+// 버튼만 막고, 저장소는 다시 보지 않는다. 화면은 이 밖에 서버 판독의 낮은 신뢰도도
+// 막는다 — 값을 견주는 일이 아니라 이 파일에는 없다.
+//
+// 값이 없는 것은 기권이지 다름이 아니다(vision-ocr.md).
 // ─────────────────────────────────────────────────────────────
 
 /**
@@ -256,12 +272,73 @@ export function withReanalysisSuspicion(
 }
 
 /**
+ * 원본 표시 가운데 숫자로 읽는 칸. 표기 일치 판정(rpm·m/s)과 직접 확인 안내(내경)에
+ * 쓰인다. 유효기한 원문은 판정에도 안내에도 쓰이지 않아 여기 없다.
+ */
+export type NumericMarkingKey =
+  'labeledRPM' | 'peripheralSpeedMps' | 'boreDiameter';
+
+/** 화면이 칸을 보여 주는 순서이기도 하다 */
+const NUMERIC_MARKING_KEYS: readonly NumericMarkingKey[] = [
+  'labeledRPM',
+  'peripheralSpeedMps',
+  'boreDiameter',
+];
+
+/** 두 판독이 같은 칸을 다르게 읽은 원본 표시 */
+export interface MarkingConflict {
+  key: NumericMarkingKey;
+  /** 확정값에 실려 있던 표기 — 확정할 때의 판독(로컬 OCR)이 읽은 값 */
+  confirmed: number;
+  /** 재분석이 읽은 표기 */
+  reanalyzed: number;
+}
+
+/**
+ * 확정값에 실린 원본 표시와 재분석이 읽은 표시가 **같은 칸에서 값이 있고 다른** 곳.
+ *
+ * 왜 따로 보는가: 빈 자리만 채우는 규칙은, 두 판독이 같은 칸을 다르게 읽었을 때
+ * 확정값 쪽(로컬 OCR)을 조용히 이기게 한다. 서버가 읽은 쪽이 어긋나는 표기였다면
+ * 그 판독은 판정에서 빠지고, 처음부터 온라인으로 읽었을 때 막혔을 점검이 통과한다.
+ * 그렇다고 서버 값으로 덮으면 로컬이 올린 표기가 사라진다. 어느 쪽이 맞는지 앱은
+ * 알 수 없으므로 충돌이 있으면 받아들이지 않는다(withAcceptedReanalysis).
+ *
+ * 값이 없는 칸은 기권이다 — 충돌이 아니다. 한쪽이 못 읽은 것까지 충돌로 세면
+ * 현장 사진이 거의 전부 막힌다(vision-ocr.md).
+ *
+ * 유효기한 원문은 보지 않는다. 판정에 쓰이는 유효기한은 작업자가 확정한 값이고,
+ * 그 값이 재분석 판독과 다른지는 confirmedValueAgreement가 본다.
+ */
+export function markingConflicts(
+  wheel: WheelSpec,
+  reanalyzed: WheelSpec,
+): MarkingConflict[] {
+  const confirmed = wheel.markings;
+  const read = reanalyzed.markings;
+  if (!confirmed || !read) return [];
+
+  const conflicts: MarkingConflict[] = [];
+  for (const key of NUMERIC_MARKING_KEYS) {
+    // 저장소에서 되살린 값에는 칸 자체가 없을 수 있다. 없는 것도 읽지 못한 것이다.
+    const mine = confirmed[key] ?? null;
+    const theirs = read[key] ?? null;
+    if (mine !== null && theirs !== null && mine !== theirs) {
+      conflicts.push({ key, confirmed: mine, reanalyzed: theirs });
+    }
+  }
+  return conflicts;
+}
+
+/**
  * 확정값의 원본 표시에서 비어 있는 자리만 재분석이 읽은 표시로 채운다.
  *
  * 이미 있는 표기는 덮지 않는다. 로컬 OCR이 읽어 둔 표기가 서로 어긋나 있었다면
  * 그 어긋남이 재분석으로 사라지면 안 된다. 빈 자리를 채우는 쪽은 표기 일치·장착
  * 규격 항목을 새로 만들 수만 있어 판정을 느슨하게 하지 못한다 — 표기 일치의 통과는
  * 전체 판정을 올리지 못하고(engine.ts의 decideVerdict), 어긋나면 판정불가로 막는다.
+ *
+ * 두 판독이 같은 칸을 다르게 읽은 경우는 여기 오지 않는다 — 덮지 않으면 확정값 쪽이
+ * 조용히 이기므로 withAcceptedReanalysis가 먼저 걸러 낸다.
  */
 function withBlankMarkingsFilled(
   confirmed: WheelMarkings | undefined,
@@ -292,17 +369,26 @@ function withBlankMarkingsFilled(
 }
 
 /**
- * 재분석을 받아들여 온라인 대조로 바꿀 때의 확정값.
+ * 재분석을 받아들여 온라인 대조로 바꿀 때의 확정값. 받아들일 수 없으면 null이다.
  *
- * 외관 의심(withReanalysisSuspicion)에 더해 원본 표시의 빈 자리를 채운다. 표시는
- * 전환할 때만 옮긴다 — 전환하지 않으면 AI 값은 버리는 것이고, 표시도 AI가 읽은 값이다.
+ * 두 판독이 원본 표시의 같은 칸을 다르게 읽었으면(markingConflicts) 받아들이지
+ * 않는다. 이 조건과 빈 자리 채움이 함께 있어야, 받아들인 표시가 서버가 읽은 칸을
+ * 모두 그대로 담는다 — 그래야 표기 일치 판정이 같은 사진을 처음부터 온라인으로 읽은
+ * 점검보다 느슨해지지 않는다. 화면이 전환 버튼을 막지만(OfflineReanalysisPanel)
+ * 값을 만드는 이 함수도 막는다. 버튼만 막으면 다른 경로로 불렸을 때 샌다.
+ *
+ * 받아들일 때는 외관 의심(withReanalysisSuspicion)에 더해 원본 표시의 빈 자리를
+ * 채운다. 표시는 전환할 때만 옮긴다 — 전환하지 않으면 AI 값은 버리는 것이고, 표시도
+ * AI가 읽은 값이다.
  *
  * 바뀐 것이 없으면 같은 객체를 돌려준다.
  */
 export function withAcceptedReanalysis(
   wheel: WheelSpec,
   reanalyzed: WheelSpec,
-): WheelSpec {
+): WheelSpec | null {
+  if (markingConflicts(wheel, reanalyzed).length > 0) return null;
+
   const suspected = withReanalysisSuspicion(wheel, reanalyzed);
   const markings = withBlankMarkingsFilled(
     suspected.markings,
@@ -310,4 +396,131 @@ export function withAcceptedReanalysis(
   );
   if (markings === suspected.markings) return suspected;
   return { ...suspected, markings };
+}
+
+/**
+ * 작업자가 확정한 값 하나를 재분석 판독과 견준 결과.
+ *
+ *   same      — 양쪽 다 값이 있고 같다
+ *   differs   — 양쪽 다 값이 있고 다르다. 어느 쪽이 맞는지 앱은 모른다
+ *   abstained — 한쪽에 견줄 값이 없다. 기권이지 다름이 아니다
+ */
+export type ReanalysisAgreement = 'same' | 'differs' | 'abstained';
+
+export interface ConfirmedValueAgreement {
+  purpose: ReanalysisAgreement;
+  expiry: ReanalysisAgreement;
+  wheelType: ReanalysisAgreement;
+}
+
+function purposeAgreement(
+  confirmed: WheelPurpose,
+  reanalyzed: WheelPurpose,
+): ReanalysisAgreement {
+  // 'unknown'은 값이 아니라 모른다는 표시다.
+  if (confirmed === 'unknown' || reanalyzed === 'unknown') return 'abstained';
+  return confirmed === reanalyzed ? 'same' : 'differs';
+}
+
+function wheelTypeAgreement(
+  confirmed: WheelType,
+  reanalyzed: WheelSpec,
+): ReanalysisAgreement {
+  if (confirmed === 'unknown' || reanalyzed.wheelType === 'unknown') {
+    return 'abstained';
+  }
+  // 다름의 기준은 확인 화면과 하나로 둔다. 둘이면 갈라진다. 작업자가 세부 형식을
+  // 고른 것은 AI의 굵은 분류를 좁힌 것이지 어긋난 것이 아니다.
+  return wheelTypeDiffersFromSuggestion(reanalyzed, confirmed)
+    ? 'differs'
+    : 'same';
+}
+
+function expiryAgreement(
+  wheel: WheelSpec,
+  reanalyzed: WheelSpec,
+): ReanalysisAgreement {
+  const read = reanalyzed.expiry ?? null;
+  // AI가 기한을 읽지 못했거나 표기가 모호했다. 견줄 값이 없다.
+  if (read === null) return 'abstained';
+
+  const confirmed = wheel.expiry ?? null;
+  if (confirmed !== null) {
+    return confirmed.year === read.year && confirmed.month === read.month
+      ? 'same'
+      : 'differs';
+  }
+
+  // 확정값에 날짜가 없다. 「표시를 찾지 못함」·「읽기 어려움」은 작업자의 답이고,
+  // 규칙엔진은 그 답을 기한 미확인 경고로만 남긴다(checkExpiry). AI가 날짜를 읽었는데
+  // 그 답 그대로 전환하면 AI가 읽은 기한이 판정에서 빠진다. 처음부터 온라인이었다면
+  // 그 날짜가 입력칸에 남아 만료 여부를 판정했다 — 답만 골라서는 지워지지 않는다.
+  //
+  // 답도 날짜도 없으면 견줄 값이 없다. 그런 확정값은 유효기한을 보는 종류에서 이미
+  // 판정불가이므로(expiry.unreadable) 전환해도 적합에 이르지 못한다.
+  return wheel.expiryReview === 'not_found' ||
+    wheel.expiryReview === 'unreadable'
+    ? 'differs'
+    : 'abstained';
+}
+
+/**
+ * 작업자가 확정한 용도·유효기한·종류를 재분석 판독과 견준다.
+ *
+ * 왜 견주는가: 처음부터 온라인으로 읽었다면 AI가 읽은 값이 확인 화면의 기본값으로
+ * 들어가고, 작업자가 그 값을 보면서 일부러 고쳐야 바뀐다(종류는 직접 확인까지
+ * 요구한다). 재분석은 확정 뒤에 오므로 AI 값이 판정에 들어갈 길이 없다. 견주지
+ * 않으면 AI가 용도를 반대로 읽었거나 지난 기한을 읽었어도 작업자 값만으로 적합이
+ * 나온다. 그래서 다르면 전환을 열지 않는다(OfflineReanalysisPanel) — 회전속도·지름과
+ * 같은 이유다.
+ *
+ * 확정값을 AI 값으로 바꾸지 않는다. 판정도 하지 않는다. 견주기만 한다.
+ */
+export function confirmedValueAgreement(
+  wheel: WheelSpec,
+  reanalyzed: WheelSpec,
+): ConfirmedValueAgreement {
+  return {
+    purpose: purposeAgreement(wheel.purpose, reanalyzed.purpose),
+    expiry: expiryAgreement(wheel, reanalyzed),
+    wheelType: wheelTypeAgreement(wheel.wheelType, reanalyzed),
+  };
+}
+
+/** 판정에 쓴 원본 표시 가운데 기록된 OCR 원본에서 오지 않은 칸 */
+export interface MarkingNotFromOcr {
+  key: NumericMarkingKey;
+  /** 확정값에 실려 판정에 쓰인 표기 */
+  used: number;
+  /** 기록된 OCR 원본의 같은 칸. 읽지 못했으면 null */
+  ocr: number | null;
+}
+
+/**
+ * 확정값의 원본 표시 가운데 기록된 OCR 원본과 다른 칸.
+ *
+ * 재분석을 받아들이면 OCR 원본 자리에는 서버 판독이 들어가고(applyReanalysis),
+ * 확정값에는 확정할 때의 판독(로컬 OCR)이 읽어 둔 표기가 남는다. 그 표기는 표기
+ * 일치·장착 규격 항목에 그대로 쓰이는데, 원본 자리만 보면 그 숫자가 어디서 왔는지
+ * 알 수 없다. 판정 근거 화면이 이 함수로 그런 칸을 찾아 출처와 함께 보인다.
+ *
+ * 재분석을 거치지 않은 점검은 확정값의 표시가 OCR 원본의 사본이라 결과가 비어 있다.
+ * 확정값이 비워 둔 칸은 판정에 쓰이지 않았으므로 알리지 않는다.
+ */
+export function markingsNotFromOcr(
+  wheel: WheelSpec,
+  ocr: WheelSpec,
+): MarkingNotFromOcr[] {
+  const confirmed = wheel.markings;
+  if (!confirmed) return [];
+
+  const differing: MarkingNotFromOcr[] = [];
+  for (const key of NUMERIC_MARKING_KEYS) {
+    const used = confirmed[key] ?? null;
+    const original = ocr.markings?.[key] ?? null;
+    if (used !== null && used !== original) {
+      differing.push({ key, used, ocr: original });
+    }
+  }
+  return differing;
 }
