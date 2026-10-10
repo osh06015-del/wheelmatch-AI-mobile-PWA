@@ -132,17 +132,24 @@ describe('앱 시작 모션과 기존 화면 접근', () => {
     expect(screen.getByRole('button')).toBeInTheDocument();
   });
 
-  it('모션 감소 설정에서는 재생하지 않고, 재생 중 설정을 바꾸면 즉시 끝낸다', async () => {
+  it('모션 감소 설정에서도 정적 로고를 1초 표시하고 홈의 입력 잠금을 푼다', async () => {
     reduced = true;
-    const { unmount } = render(content());
+    const { container } = render(content());
     await settle();
+    expect(screen.getByRole('status')).toHaveAttribute(
+      'data-motion',
+      'reduced',
+    );
+    expect(environment.load).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('[inert]')).not.toBeNull();
+    await act(() => vi.advanceTimersByTimeAsync(999));
+    expect(screen.getByRole('status')).toBeInTheDocument();
+    await act(() => vi.advanceTimersByTimeAsync(1));
     expect(screen.queryByRole('status')).toBeNull();
-    expect(environment.load).not.toHaveBeenCalled();
-    unmount();
+    expect(container.querySelector('[inert]')).toBeNull();
+  });
 
-    vi.resetModules();
-    ({ AppLaunch } = await import('./AppLaunch'));
-    reduced = false;
+  it('재생 중 모션 감소로 바꾸면 움직임을 멈추고 정적 로고 뒤 홈을 연다', async () => {
     render(content());
     await settle();
     expect(screen.getByRole('status')).toBeInTheDocument();
@@ -150,6 +157,11 @@ describe('앱 시작 모션과 기존 화면 접근', () => {
       reduced = true;
       preferenceChanged?.();
     });
+    expect(screen.getByRole('status')).toHaveAttribute(
+      'data-motion',
+      'reduced',
+    );
+    await act(() => vi.advanceTimersByTimeAsync(1000));
     expect(screen.queryByRole('status')).toBeNull();
   });
 
