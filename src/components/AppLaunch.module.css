@@ -174,32 +174,3 @@
     opacity: 0;
   }
 }
-
-.overlay[data-motion='reduced'],
-.overlay[data-motion='reduced'] * {
-  animation: none;
-}
-
-.overlay[data-motion='reduced'] .progress {
-  stroke-dashoffset: 0;
-}
-
-.overlay[data-motion='reduced'] .sparks {
-  opacity: 0;
-}
-
-/* JS 판단 전에도 모션 감소 설정을 존중하며 완성된 정적 화면을 보여 준다. */
-@media (prefers-reduced-motion: reduce) {
-  .overlay,
-  .overlay * {
-    animation: none;
-  }
-
-  .progress {
-    stroke-dashoffset: 0;
-  }
-
-  .sparks {
-    opacity: 0;
-  }
-}

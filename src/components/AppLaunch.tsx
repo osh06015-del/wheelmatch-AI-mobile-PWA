@@ -9,7 +9,6 @@ import { LaunchArtwork } from './LaunchArtwork';
 import styles from './AppLaunch.module.css';
 
 export const LAUNCH_DURATION_MS = 1800;
-export const STATIC_LAUNCH_DURATION_MS = 1000;
 const DRAFT_CHECK_LIMIT_MS = 400;
 
 // 같은 문서의 화면 이동만 재생을 막는다. 새 접속·새로고침은 새 문서라 다시 재생한다.
@@ -51,7 +50,6 @@ export function AppLaunch({ children }: { children: ReactNode }) {
   );
   const decision = useRef<Promise<boolean> | null>(null);
   const started = useRef(false);
-  const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,35 +59,23 @@ export function AppLaunch({ children }: { children: ReactNode }) {
       if (cancelled) return;
       if (play && pathname === '/' && !started.current) {
         started.current = true;
-        setReducedMotion(
-          window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-        );
         setPhase('playing');
       } else {
         setPhase('done');
       }
     });
 
-    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const reduce = () => {
-      setReducedMotion(preference.matches);
-    };
-    preference.addEventListener('change', reduce);
     return () => {
       cancelled = true;
-      preference.removeEventListener('change', reduce);
     };
   }, [pathname]);
 
   useEffect(() => {
     if (phase !== 'playing') return;
-    // 모션 감소 시 움직임만 없애고 로고는 표시한다. 시간 제한으로 반드시 홈을 연다.
-    const timer = window.setTimeout(
-      () => setPhase('done'),
-      reducedMotion ? STATIC_LAUNCH_DURATION_MS : LAUNCH_DURATION_MS,
-    );
+    // 요청한 V3 원본 연출을 유지하되 완료 이벤트가 없어도 반드시 홈을 연다.
+    const timer = window.setTimeout(() => setPhase('done'), LAUNCH_DURATION_MS);
     return () => window.clearTimeout(timer);
-  }, [phase, reducedMotion]);
+  }, [phase]);
 
   const visible = pathname === '/' && phase !== 'done';
 
@@ -106,7 +92,7 @@ export function AppLaunch({ children }: { children: ReactNode }) {
         <div
           className={styles.overlay}
           data-phase={phase}
-          data-motion={reducedMotion ? 'reduced' : 'animated'}
+          data-motion="animated"
           role="status"
           aria-label={t('home.title')}
         >
