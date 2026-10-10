@@ -30,6 +30,7 @@ export const zh: Messages = {
   'common.language': '语言',
 
   'home.title': 'WheelMatch AI',
+  'splash.subtitle': '作业前核对角磨机与附件规格',
   'home.subtitle': '角磨机与砂轮规格核对',
   'home.question': '今天做什么作业？',
   'home.cutting': '切割',

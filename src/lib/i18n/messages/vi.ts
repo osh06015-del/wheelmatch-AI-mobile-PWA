@@ -30,6 +30,8 @@ export const vi: Messages = {
   'common.language': 'Ngôn ngữ',
 
   'home.title': 'WheelMatch AI',
+  'splash.subtitle':
+    'Đối chiếu thông số máy mài và phụ kiện trước khi làm việc',
   'home.subtitle': 'Đối chiếu thông số máy mài và đá mài',
   'home.question': 'Hôm nay làm việc gì?',
   'home.cutting': 'Cắt',

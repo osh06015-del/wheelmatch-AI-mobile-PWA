@@ -28,6 +28,7 @@ export const ko = {
   'common.language': '언어',
 
   'home.title': 'WheelMatch AI',
+  'splash.subtitle': '그라인더·부속품 작업 전 규격 대조',
   'home.subtitle': '그라인더·숫돌 규격 대조',
   'home.question': '오늘 작업은?',
   'home.cutting': '절단',

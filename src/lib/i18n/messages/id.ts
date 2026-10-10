@@ -30,6 +30,7 @@ export const id: Messages = {
   'common.language': 'Bahasa',
 
   'home.title': 'WheelMatch AI',
+  'splash.subtitle': 'Periksa spesifikasi gerinda dan aksesori sebelum bekerja',
   'home.subtitle': 'Pencocokan spesifikasi gerinda dan batu gerinda',
   'home.question': 'Pekerjaan hari ini?',
   'home.cutting': 'Memotong',

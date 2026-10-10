@@ -27,6 +27,7 @@ export const en: Messages = {
   'common.language': 'Language',
 
   'home.title': 'WheelMatch AI',
+  'splash.subtitle': 'Pre-work grinder and accessory specification check',
   'home.subtitle': 'Grinder and wheel specification check',
   'home.question': "Today's job?",
   'home.cutting': 'Cutting',
