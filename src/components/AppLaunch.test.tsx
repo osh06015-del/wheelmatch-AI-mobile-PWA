@@ -153,24 +153,44 @@ describe('앱 시작 모션과 기존 화면 접근', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 
-  it.each(['reload', 'back_forward'] as const)(
-    '%s에서는 세션 표시가 없어도 다시 재생하지 않는다',
+  it.each(['navigate', 'reload'] as const)(
+    '%s로 문서를 새로 열면 이전 세션 표시가 있어도 시작 모션을 재생한다',
     async (type) => {
+      window.sessionStorage.setItem('wheelmatch.launch.seen', '1');
       vi.mocked(performance.getEntriesByType).mockReturnValue([
         { type } as PerformanceNavigationTiming,
       ]);
       render(content());
       await settle();
-      expect(screen.queryByRole('status')).toBeNull();
-      expect(environment.load).not.toHaveBeenCalled();
+      expect(screen.getByRole('status')).toBeInTheDocument();
+      expect(environment.load).toHaveBeenCalledTimes(1);
     },
   );
 
-  it('한 번 재생한 세션은 문서를 새로 불러와도 재생하지 않는다', async () => {
-    window.sessionStorage.setItem('wheelmatch.launch.seen', '1');
+  it('브라우저 뒤로가기로 문서를 복원하면 시작 모션을 재생하지 않는다', async () => {
+    vi.mocked(performance.getEntriesByType).mockReturnValue([
+      { type: 'back_forward' } as PerformanceNavigationTiming,
+    ]);
     render(content());
     await settle();
     expect(screen.queryByRole('status')).toBeNull();
     expect(environment.load).not.toHaveBeenCalled();
+  });
+
+  it('문서를 다시 시작하면 재생하되 같은 문서의 재마운트에서는 반복하지 않는다', async () => {
+    const first = render(content());
+    await settle();
+    await act(() => vi.advanceTimersByTimeAsync(1800));
+    first.unmount();
+    const second = render(content());
+    await settle();
+    expect(screen.queryByRole('status')).toBeNull();
+    second.unmount();
+
+    vi.resetModules();
+    ({ AppLaunch } = await import('./AppLaunch'));
+    render(content());
+    await settle();
+    expect(screen.getByRole('status')).toBeInTheDocument();
   });
 });

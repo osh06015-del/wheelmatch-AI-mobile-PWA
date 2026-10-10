@@ -10,9 +10,8 @@ import styles from './AppLaunch.module.css';
 
 export const LAUNCH_DURATION_MS = 1800;
 const DRAFT_CHECK_LIMIT_MS = 400;
-const SEEN_KEY = 'wheelmatch.launch.seen';
 
-// 저장소가 차단된 브라우저에서도 같은 문서 안의 화면 이동은 재생을 반복하지 않는다.
+// 같은 문서의 화면 이동만 재생을 막는다. 새 접속·새로고침은 새 문서라 다시 재생한다.
 let consumedInDocument = false;
 
 async function shouldPlay(pathname: string | null): Promise<boolean> {
@@ -23,13 +22,8 @@ async function shouldPlay(pathname: string | null): Promise<boolean> {
     return false;
   const navigation = performance.getEntriesByType('navigation')[0] as
     PerformanceNavigationTiming | undefined;
-  if (navigation?.type === 'reload' || navigation?.type === 'back_forward') {
+  if (navigation?.type === 'back_forward') {
     return false;
-  }
-  try {
-    if (window.sessionStorage.getItem(SEEN_KEY)) return false;
-  } catch {
-    // 세션 저장 실패는 앱 진입을 막을 이유가 아니다.
   }
 
   // 복구 창을 시작 연출로 가리지 않는다. DB가 응답하지 않아도 화면은 열어 준다.
@@ -42,11 +36,6 @@ async function shouldPlay(pathname: string | null): Promise<boolean> {
       }),
     ]);
     if (!noDraft) return false;
-    try {
-      window.sessionStorage.setItem(SEEN_KEY, '1');
-    } catch {
-      // 이 문서에서의 중복 방지는 위의 메모리 표시가 맡는다.
-    }
     return true;
   } catch {
     return false;
