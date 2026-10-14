@@ -21,14 +21,14 @@ export const metadata: Metadata = {
   metadataBase: siteUrl,
   title: TITLE,
   description: DESCRIPTION,
-  manifest: '/manifest.json?v=grindok-1',
+  manifest: '/manifest.json?v=grindok-2',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'GRINDOK',
   },
   icons: {
-    apple: '/icons/grindok-192.png',
+    apple: '/icons/grindok-192-v2.png',
   },
   openGraph: {
     type: 'website',

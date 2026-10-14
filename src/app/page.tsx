@@ -100,7 +100,7 @@ export default function Home() {
     <main className="flex flex-1 flex-col justify-between gap-8 px-6 py-10">
       <header className="flex items-center gap-4">
         <Image
-          src="/icons/grindok-logo.png"
+          src="/icons/grindok-logo-v2.png"
           alt=""
           width={164}
           height={152}

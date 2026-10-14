@@ -26,7 +26,7 @@ const VERDICT_COLORS = ['#22C55E', '#EF4444', '#EAB308'];
 
 export default async function OpengraphImage() {
   const logo = await readFile(
-    join(process.cwd(), 'public/icons/grindok-logo.png'),
+    join(process.cwd(), 'public/icons/grindok-logo-v2.png'),
   );
   return new ImageResponse(
     <div
