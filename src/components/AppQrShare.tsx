@@ -9,7 +9,7 @@ import { useLocale, type MessageKey } from '@/lib/i18n';
 // 주소를 변경하면 PNG도 다시 생성하고 디코딩 결과가 같은지 확인해야 한다.
 export const APP_SHARE_URL = 'https://wheelmatch-nu.vercel.app/';
 export const APP_QR_PATH = '/share/wheelmatch-production-qr-v1.png';
-const FILE_NAME = 'WheelMatch_AI_QR.png';
+const FILE_NAME = 'GRINDOK_QR.png';
 const ACTION =
   'flex min-h-12 items-center justify-center rounded-lg border border-slate-500 px-4 py-3 font-semibold active:bg-slate-700 disabled:opacity-50';
 
@@ -69,7 +69,7 @@ function QrDialog({ onClose }: { onClose: () => void }) {
     setSharing(true);
     setNotice(null);
     try {
-      await navigator.share({ title: 'WheelMatch AI', files: [file] });
+      await navigator.share({ title: 'GRINDOK', files: [file] });
     } catch (error) {
       if (!(error instanceof DOMException && error.name === 'AbortError')) {
         setNotice('share.shareFailed');

@@ -9,6 +9,7 @@
 // 연삭 작업에 절단날을 쓰면 측면 하중으로 숫돌이 깨진다. 규칙엔진이 이를 잡는다.
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
@@ -97,11 +98,22 @@ export default function Home() {
 
   return (
     <main className="flex flex-1 flex-col justify-between gap-8 px-6 py-10">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-3xl font-black text-slate-100">
-          {t('home.title')}
-        </h1>
-        <p className="text-lg text-slate-400">{t('home.subtitle')}</p>
+      <header className="flex items-center gap-4">
+        <Image
+          src="/icons/grindok-logo.png"
+          alt=""
+          width={164}
+          height={152}
+          preload
+          unoptimized
+          className="h-auto w-20 shrink-0 rounded-2xl"
+        />
+        <div className="min-w-0">
+          <h1 className="text-3xl font-black tracking-tight text-slate-100">
+            {t('home.title')}
+          </h1>
+          <p className="mt-2 text-lg text-slate-400">{t('home.subtitle')}</p>
+        </div>
       </header>
 
       <div className="flex flex-col gap-4">

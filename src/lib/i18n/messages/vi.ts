@@ -29,7 +29,7 @@ export const vi: Messages = {
   'common.wheel': 'Đá mài',
   'common.language': 'Ngôn ngữ',
 
-  'home.title': 'WheelMatch AI',
+  'home.title': 'GRINDOK',
   'splash.subtitle':
     'Đối chiếu thông số máy mài và phụ kiện trước khi làm việc',
   'home.subtitle': 'Đối chiếu thông số máy mài và đá mài',
@@ -47,8 +47,8 @@ export const vi: Messages = {
   'share.open': 'Chia sẻ mã QR',
   'share.title': 'Chia sẻ mã QR ứng dụng',
   'share.close': 'Đóng',
-  'share.hint': 'Quét mã QR để mở bản chính thức của WheelMatch AI.',
-  'share.qrAlt': 'Mã QR mở bản chính thức của WheelMatch AI',
+  'share.hint': 'Quét mã QR để mở bản chính thức của GRINDOK.',
+  'share.qrAlt': 'Mã QR mở bản chính thức của GRINDOK',
   'share.privacy':
     'Chỉ chia sẻ địa chỉ ứng dụng. Không bao gồm ảnh và hồ sơ kiểm tra.',
   'share.image': 'Chia sẻ ảnh QR',
@@ -1055,7 +1055,7 @@ export const vi: Messages = {
   'update.blockedDuringInspection':
     'Bạn có thể cập nhật sau khi hoàn tất kiểm tra.',
 
-  'meta.title': 'WheelMatch AI — Đối chiếu thông số máy mài và đá mài',
+  'meta.title': 'GRINDOK — Đối chiếu thông số máy mài và đá mài',
 
   disclaimer:
     'Ứng dụng này chỉ đối chiếu các thông số in trên nhãn. Ứng dụng không bảo đảm an toàn lao động và không thay thế hướng dẫn của nhà sản xuất hay nội quy an toàn của nơi làm việc.',

@@ -10,20 +10,24 @@
 // 이미지는 도형과 로마자만으로 구성한다.
 
 import { ImageResponse } from 'next/og';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
-export const alt = 'WheelMatch AI — 그라인더·숫돌 규격 대조';
+export const alt = 'GRINDOK — 그라인더·숫돌 규격 대조';
 
 const SLATE_900 = '#0F172A';
 const SLATE_100 = '#F1F5F9';
 const SLATE_400 = '#94A3B8';
-const RIM = '#CBD5E1';
 
 // 판정 3색. 앱의 결과 화면과 같은 색을 쓴다.
 const VERDICT_COLORS = ['#22C55E', '#EF4444', '#EAB308'];
 
-export default function OpengraphImage() {
+export default async function OpengraphImage() {
+  const logo = await readFile(
+    join(process.cwd(), 'public/icons/grindok-logo.png'),
+  );
   return new ImageResponse(
     <div
       style={{
@@ -35,40 +39,15 @@ export default function OpengraphImage() {
         padding: '0 90px',
       }}
     >
-      {/* 숫돌 — 앱 아이콘과 같은 형태 (바깥 테, 본체, 가운데 구멍) */}
-      <div
-        style={{
-          width: 320,
-          height: 320,
-          borderRadius: '50%',
-          backgroundColor: RIM,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-        }}
-      >
-        <div
-          style={{
-            width: 268,
-            height: 268,
-            borderRadius: '50%',
-            backgroundColor: VERDICT_COLORS[0],
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <div
-            style={{
-              width: 92,
-              height: 92,
-              borderRadius: '50%',
-              backgroundColor: SLATE_900,
-            }}
-          />
-        </div>
-      </div>
+      {/* ImageResponse는 next/image 대신 원본 이미지 데이터를 사용한다. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`data:image/png;base64,${logo.toString('base64')}`}
+        alt=""
+        width={320}
+        height={297}
+        style={{ borderRadius: 32, flexShrink: 0 }}
+      />
 
       <div
         style={{
@@ -78,7 +57,7 @@ export default function OpengraphImage() {
         }}
       >
         <div style={{ fontSize: 84, fontWeight: 700, color: SLATE_100 }}>
-          WheelMatch AI
+          GRINDOK
         </div>
         <div style={{ fontSize: 38, color: SLATE_400, marginTop: 16 }}>
           Grinder / Wheel spec check

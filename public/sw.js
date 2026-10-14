@@ -1,4 +1,4 @@
-/* WheelMatch AI 서비스 워커.
+/* GRINDOK 서비스 워커.
  *
  * 캐싱 전략
  *   - /api/*            : Network Only. OCR 결과를 절대 캐시하지 않는다.
@@ -12,16 +12,17 @@
 // 이 파일을 고칠 때마다 버전을 올린다. activate가 예전 이름의 캐시를 지우는
 // 기준이 이 문자열이다 — 안 올리면 같은 캐시 객체에 새 항목이 덮어써질 뿐,
 // "새 버전이 이전 것을 대체했다"는 신호가 없어 정리 로직이 아무 일도 하지 않는다.
-const CACHE = 'wheelmatch-v2';
+const CACHE = 'wheelmatch-v3-grindok';
 const APP_SHELL = [
   '/',
   '/scan/grinder',
   '/scan/wheel',
   '/result',
   '/history',
-  '/manifest.json',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
+  '/manifest.json?v=grindok-1',
+  '/icons/grindok-logo.png',
+  '/icons/grindok-192.png',
+  '/icons/grindok-512.png',
 ];
 
 self.addEventListener('install', (event) => {

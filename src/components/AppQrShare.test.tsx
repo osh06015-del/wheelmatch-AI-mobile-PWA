@@ -62,7 +62,7 @@ describe('AppQrShare', () => {
     );
     const download = screen.getByRole('link', { name: 'PNG 저장' });
     expect(download).toHaveAttribute('href', APP_QR_PATH);
-    expect(download).toHaveAttribute('download', 'WheelMatch_AI_QR.png');
+    expect(download).toHaveAttribute('download', 'GRINDOK_QR.png');
     expect(share).not.toHaveBeenCalled();
     expect(fetchQr).toHaveBeenCalledWith(APP_QR_PATH, {
       signal: expect.any(AbortSignal),
@@ -106,7 +106,7 @@ describe('AppQrShare', () => {
     const payload = share.mock.calls[0][0] as ShareData;
     expect(Object.keys(payload).sort()).toEqual(['files', 'title']);
     expect(payload.files).toHaveLength(1);
-    expect(payload.files![0].name).toBe('WheelMatch_AI_QR.png');
+    expect(payload.files![0].name).toBe('GRINDOK_QR.png');
     expect(payload.files![0].type).toBe('image/png');
     expect(await payload.files![0].text()).toBe('qr-only');
     await act(async () => resolveShare());

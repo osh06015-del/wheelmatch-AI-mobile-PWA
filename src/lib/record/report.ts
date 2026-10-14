@@ -312,7 +312,7 @@ export function buildReportHtml(
   const title = t('report.title');
   return `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(
     title,
-  )}</title><style>${STYLE}</style></head><body><h1>WheelMatch AI · ${escapeHtml(
+  )}</title><style>${STYLE}</style></head><body><h1>GRINDOK · ${escapeHtml(
     title,
   )}</h1><p class="muted">${escapeHtml(
     t('report.generatedAt', {

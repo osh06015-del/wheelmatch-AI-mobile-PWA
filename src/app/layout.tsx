@@ -8,7 +8,7 @@ import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
 import { ValidationBuildBanner } from '@/components/ValidationBuildBanner';
 import { resolveSiteUrl } from '@/lib/siteUrl';
 
-const TITLE = 'WheelMatch AI — 그라인더·숫돌 규격 대조';
+const TITLE = 'GRINDOK — 그라인더·숫돌 규격 대조';
 const DESCRIPTION =
   '그라인더 명판과 숫돌 라벨을 촬영하면 장착 가능 여부를 적합·부적합·판정불가로 알려줍니다.';
 
@@ -21,19 +21,19 @@ export const metadata: Metadata = {
   metadataBase: siteUrl,
   title: TITLE,
   description: DESCRIPTION,
-  manifest: '/manifest.json',
+  manifest: '/manifest.json?v=grindok-1',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'WheelMatch',
+    title: 'GRINDOK',
   },
   icons: {
-    apple: '/icons/icon-192.png',
+    apple: '/icons/grindok-192.png',
   },
   openGraph: {
     type: 'website',
     locale: 'ko_KR',
-    siteName: 'WheelMatch AI',
+    siteName: 'GRINDOK',
     title: TITLE,
     description: DESCRIPTION,
     url: siteUrl.toString(),

@@ -26,7 +26,7 @@ export const en: Messages = {
   'common.wheel': 'Wheel',
   'common.language': 'Language',
 
-  'home.title': 'WheelMatch AI',
+  'home.title': 'GRINDOK',
   'splash.subtitle': 'Pre-work grinder and accessory specification check',
   'home.subtitle': 'Grinder and wheel specification check',
   'home.question': "Today's job?",
@@ -43,8 +43,8 @@ export const en: Messages = {
   'share.open': 'Share QR code',
   'share.title': 'Share app QR code',
   'share.close': 'Close',
-  'share.hint': 'Scan the QR code to open the WheelMatch AI production app.',
-  'share.qrAlt': 'QR code for the WheelMatch AI production app',
+  'share.hint': 'Scan the QR code to open the GRINDOK production app.',
+  'share.qrAlt': 'QR code for the GRINDOK production app',
   'share.privacy':
     'Only the app address is shared. Inspection photos and records are not included.',
   'share.image': 'Share QR image',
@@ -1066,7 +1066,7 @@ export const en: Messages = {
   'update.blockedDuringInspection':
     'You can update once the inspection is finished.',
 
-  'meta.title': 'WheelMatch AI — Grinder and wheel specification check',
+  'meta.title': 'GRINDOK — Grinder and wheel specification check',
 
   disclaimer:
     'This app only compares the specifications printed on the labels. It does not guarantee work safety and does not replace the manufacturer manual or your site safety rules.',

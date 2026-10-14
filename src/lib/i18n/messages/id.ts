@@ -29,7 +29,7 @@ export const id: Messages = {
   'common.wheel': 'Batu gerinda',
   'common.language': 'Bahasa',
 
-  'home.title': 'WheelMatch AI',
+  'home.title': 'GRINDOK',
   'splash.subtitle': 'Periksa spesifikasi gerinda dan aksesori sebelum bekerja',
   'home.subtitle': 'Pencocokan spesifikasi gerinda dan batu gerinda',
   'home.question': 'Pekerjaan hari ini?',
@@ -46,8 +46,8 @@ export const id: Messages = {
   'share.open': 'Bagikan kode QR',
   'share.title': 'Bagikan kode QR aplikasi',
   'share.close': 'Tutup',
-  'share.hint': 'Pindai kode QR untuk membuka aplikasi produksi WheelMatch AI.',
-  'share.qrAlt': 'Kode QR aplikasi produksi WheelMatch AI',
+  'share.hint': 'Pindai kode QR untuk membuka aplikasi produksi GRINDOK.',
+  'share.qrAlt': 'Kode QR aplikasi produksi GRINDOK',
   'share.privacy':
     'Hanya alamat aplikasi yang dibagikan. Foto dan catatan pemeriksaan tidak disertakan.',
   'share.image': 'Bagikan gambar QR',
@@ -1083,8 +1083,7 @@ export const id: Messages = {
   'update.blockedDuringInspection':
     'Anda dapat memperbarui setelah pemeriksaan selesai.',
 
-  'meta.title':
-    'WheelMatch AI — Pencocokan spesifikasi gerinda dan batu gerinda',
+  'meta.title': 'GRINDOK — Pencocokan spesifikasi gerinda dan batu gerinda',
 
   disclaimer:
     'Aplikasi ini hanya membandingkan spesifikasi yang tercetak pada label. Aplikasi ini tidak menjamin keselamatan kerja dan tidak menggantikan buku panduan pabrikan maupun peraturan keselamatan di lokasi kerja.',

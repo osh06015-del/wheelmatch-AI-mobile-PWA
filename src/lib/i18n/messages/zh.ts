@@ -29,7 +29,7 @@ export const zh: Messages = {
   'common.wheel': '砂轮',
   'common.language': '语言',
 
-  'home.title': 'WheelMatch AI',
+  'home.title': 'GRINDOK',
   'splash.subtitle': '作业前核对角磨机与附件规格',
   'home.subtitle': '角磨机与砂轮规格核对',
   'home.question': '今天做什么作业？',
@@ -45,8 +45,8 @@ export const zh: Messages = {
   'share.open': '分享二维码',
   'share.title': '分享应用二维码',
   'share.close': '关闭',
-  'share.hint': '扫描二维码即可打开 WheelMatch AI 正式版。',
-  'share.qrAlt': 'WheelMatch AI 正式版二维码',
+  'share.hint': '扫描二维码即可打开 GRINDOK 正式版。',
+  'share.qrAlt': 'GRINDOK 正式版二维码',
   'share.privacy': '仅分享应用地址，不包含检查照片和记录。',
   'share.image': '分享二维码图片',
   'share.download': '保存 PNG',
@@ -945,7 +945,7 @@ export const zh: Messages = {
   'update.applying': '正在应用更新...',
   'update.blockedDuringInspection': '完成检查后即可更新。',
 
-  'meta.title': 'WheelMatch AI — 角磨机与砂轮规格核对',
+  'meta.title': 'GRINDOK — 角磨机与砂轮规格核对',
 
   disclaimer:
     '本应用仅提供标签所示规格的核对结果。不保证作业安全，也不能替代制造商说明书和作业现场的安全规程。',

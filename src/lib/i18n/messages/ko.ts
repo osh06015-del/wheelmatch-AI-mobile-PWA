@@ -27,7 +27,7 @@ export const ko = {
   'common.wheel': '숫돌',
   'common.language': '언어',
 
-  'home.title': 'WheelMatch AI',
+  'home.title': 'GRINDOK',
   'splash.subtitle': '그라인더·부속품 작업 전 규격 대조',
   'home.subtitle': '그라인더·숫돌 규격 대조',
   'home.question': '오늘 작업은?',
@@ -43,8 +43,8 @@ export const ko = {
   'share.open': 'QR코드 공유',
   'share.title': '앱 QR코드 공유',
   'share.close': '닫기',
-  'share.hint': 'QR코드를 스캔하면 WheelMatch AI 운영판이 열립니다.',
-  'share.qrAlt': 'WheelMatch AI 운영판 접속 QR코드',
+  'share.hint': 'QR코드를 스캔하면 GRINDOK 운영판이 열립니다.',
+  'share.qrAlt': 'GRINDOK 운영판 접속 QR코드',
   'share.privacy':
     '앱 주소만 공유합니다. 점검 사진과 기록은 포함하지 않습니다.',
   'share.image': 'QR 이미지 공유',
@@ -1035,7 +1035,7 @@ export const ko = {
   'update.applying': '업데이트 적용 중...',
   'update.blockedDuringInspection': '점검을 마치면 업데이트할 수 있습니다.',
 
-  'meta.title': 'WheelMatch AI — 그라인더·숫돌 규격 대조',
+  'meta.title': 'GRINDOK — 그라인더·숫돌 규격 대조',
 
   disclaimer:
     '이 앱은 라벨에 표시된 규격의 대조 결과만 제공합니다. 작업 안전성을 보증하지 않으며, 제조사 취급설명서와 사업장 안전수칙을 대체할 수 없습니다.',
